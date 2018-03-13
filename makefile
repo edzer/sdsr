@@ -1,0 +1,2 @@
+book:
+	./_build.sh
