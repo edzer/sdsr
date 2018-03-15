@@ -3,3 +3,12 @@ book:
 
 clean:
 	rm -fr _book/*
+
+view:
+	google-chrome _book/index.html
+
+tangle:
+	Rscript -e "knitr::purl('sdsr.Rmd', documentation=0)"
+
+pdf:
+	Rscript --quiet _render.R "bookdown::pdf_book"

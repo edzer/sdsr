@@ -2,13 +2,198 @@
 
 # Hello, world! {#intro}
 
-hello world, spatial data
+This chapter gives a quick start to get you going with spatial data
+science with R. It is easier to read when understanding R at the
+level of, say, [R for Data Science](http://r4ds.had.co.nz/) [@r4ds].
 
-```{r eval=TRUE, fig=TRUE}
+## A first map
+
+There is a lot to say about spatial data, but let us first create a map.
+We can create a simple map by:
+```{r first-map, fig.cap="a first map", eval=TRUE, fig=TRUE}
 library(tidyverse)
 library(sf)
 system.file("gpkg/nc.gpkg", package="sf") %>%
-	read_sf %>%
-	select(NWBIR74) %>%
-	plot
+	read_sf() %>%
+	st_transform(32119) %>%
+	select(BIR74) %>%
+	plot(graticule = TRUE, axes = TRUE)
 ```
+A lot went on, here. We will describe the steps in detail.
+First, we loaded two R packages:
+```{r}
+library(tidyverse)
+library(sf)
+```
+where `tidyverse` is needed for the tidyverse functions and methods,
+and `sf` is needed for the spatial commands and spatial tidyverse
+methods. Package `sf` implements simple features, a standardised
+way to encode polygon data (points, lines, polygons). We will say
+more about simple features in chapter \@ref(geometries).  Most
+commands in package `sf` start with `st_`, short for spatiotemporal,
+a convention it shares with e.g. PostGIS.
+
+The `%>%` (pipe) symbols should be read as _then_: we read
+```{r eval=FALSE}
+a %>% b() %>% c() %>% d(n = 10)
+```
+as _`a` then `b` then `c` then `d`_, and that is just alternative syntax for
+```{r eval=FALSE}
+d(c(b(a)), n = 10)
+```
+or 
+```{r eval=FALSE}
+tmp1 <- b(a)
+tmp2 <- c(tmp1)
+tmp3 <- d(tmp2, n = 10)
+```
+The pipe form is easier to read because we don't have to go from
+right to left, and avoids the need to choose names for intermediate
+results.
+
+For the illustration we picked a data file that comes with `sf`, 
+the location of which depends on the operating system used: 
+```{r}
+(file <- system.file("gpkg/nc.gpkg", package="sf"))
+```
+Never use `system.file` if you want to read your own data; in
+that case, `fname` should be the data source (typically file) name
+(section \@ref(reading)). (Parens around this expression are used
+to have the result not only stored, but also printed.)
+
+Then, we read this file into R using `read_sf`:
+```{r}
+(nc <- read_sf(file))
+```
+which creates a "spatial tibble":
+```{r}
+class(nc)
+```
+This object is transformed into a new coordinate reference system (North Carolina State Plane, with EPSG code 32119):
+```{r}
+(nc.32119 <- st_transform(nc, 32119))
+```
+and a single attribute column is selected
+```{r}
+(nc.32119.bir74 <- select(nc.32119, BIR74))
+```
+Finally, the result is plotted, with the command:
+```{r eval=FALSE}
+plot(nc.32119.bir74, graticule = TRUE, axes = TRUE)
+```
+as shown in figure \@ref(fig:first-map).
+
+Where do these commands come from? `library` and `system.file` are base R. We
+can ask for help about a particular command by entering e.g.
+```{r eval=FALSE}
+?library
+```
+The command `read_sf` is an alternative to the `st_read`, which
+returns a spatial tibble instead of a spatial data frame, and will
+be discussed in section \@ref(reading). The `st_transform`
+method is used here to convert from the geographic coordinates
+(degrees longitude and latitude) into "flat" coordinates, meaning
+$x$ and $y$ coordinates in a planar system. It will be discussed
+in section \@ref(transform). The `plot` method for `sf` objects
+chooses default colors and legends settings; we instructed it to
+add a graticule (the grey lines of equal longitude and latitude) and
+degree labels along the axes. It is described in chapter \@ref(plot).
+
+As witnessed by the plot, the plot command receives county polygons
+as well as `BIR74` values for each polygon. How is it possible
+that we `select` _only_ the `BIR74` variable, but still can plot
+the polygons? This is because package `sf` provides a `select` method:
+```{r}
+methods(select)
+```
+and this method (`select.sf`) makes the geometry (`geom`) sticky:
+```{r}
+nc %>% select(BIR74) %>% names()
+```
+We get the "normal" `select` behaviour if we first coerce to a normal tibble:
+```{r}
+nc %>% as_tibble(validate = TRUE) %>% select(BIR74) %>% names()
+```
+A ggplot is created when we use `geom_sf`:
+```{r}
+ggplot() + geom_sf(data = nc.32119) + aes(fill = BIR74) +
+    theme(panel.grid.major = element_line(color = "white")) +
+    scale_fill_gradientn(colors = sf.colors(20))
+```
+and a facet plot for a pair of columns in `nc.32119` is obtained by gathering the columns:
+```{r}
+nc2 <- nc.32119 %>% select(SID74, SID79) %>% gather(VAR, SID, -geom)
+ggplot() + geom_sf(data = nc2, aes(fill = SID)) + facet_wrap(~VAR, ncol = 1) +
+  scale_y_continuous(breaks = 34:36) +
+  scale_fill_gradientn(colors = sf.colors(20)) +
+  theme(panel.grid.major = element_line(color = "white"))
+```
+An interactive, leaflet-type map is obtained by
+```{r}
+suppressPackageStartupMessages(library(mapview))
+nc.32119 %>% mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
+```
+
+## Reading and writing {#reading}
+
+### Files
+
+```{r}
+str <- '{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [102.0, 0.5]
+      },
+      "properties": {
+        "prop0": "value0"
+      }
+    },
+    { "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]
+        ]
+      },
+      "properties": {
+        "prop0": "value0",
+        "prop1": 0.0
+      }
+    },
+    { "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [100.0, 0.0], [101.0, 0.0], [101.0, 1.0],
+            [100.0, 1.0], [100.0, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "prop0": "value0",
+        "prop1": { "this": "that" }
+      }
+    }
+  ]
+}'
+(sf_obj <- read_sf(str))
+```
+
+`st_read` bla
+`read_sf` 
+
+### Text
+
+### Database
+
+GeoJSON as fname; 
+databases
+
+## Exercises
+
+1. 
+2.
