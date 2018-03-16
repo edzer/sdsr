@@ -1,6 +1,6 @@
 # (PART) Spatial Data {-}
 
-# Hello, world! {#intro}
+# Getting Started {#intro}
 
 This chapter gives a quick start to get you going with spatial data
 science with R. It is easier to read when understanding R at the
@@ -136,7 +136,125 @@ nc.32119 %>% mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
 
 ## Reading and writing {#reading}
 
-### Files
+Typical R data science tasks start with reading data from an external
+source; this may be a file, or a set of files like a "shapefile",
+or a database, or a web service. Package `sf` can read from a large
+number of different data sources; the following command shows how many
+```{r}
+nrow(st_drivers("vector")) # vector drivers
+nrow(st_drivers("raster")) # raster drivers
+```
+(the output you see may differ because of different operating system
+and configuration.)
+
+### GDAL
+
+`st_drivers` lists the drivers available to GDAL, the geospatial data
+abstraction library. This library can be seen as the swiss army knive
+of spatial data; besides for R it is used in
+Python, QGIS, PostGIS, [and more than 100 other software
+projects](https://trac.osgeo.org/gdal/wiki/SoftwareUsingGdal).
+The dependency of `sf` on other R libraries and system libraries
+is shown in figure \@ref(fig:gdal-fig).
+
+```{r gdal-fig,echo=FALSE,fig.cap = "sf and its dependencies"}
+knitr::include_graphics("images/sf_deps.png")
+```
+
+Note that the C/C++ libraries used (GDAL, GEOS, Proj, liblwgeom,
+udunits2) are all developed, maintained and used by (data) science
+communities that are much larger than the R community.  By using
+these libraries, we share how we understand what we are doing with
+all the other communities that use these libraries. This is not
+only important for resolving problems, but also for establishing
+which findings are facts.
+
+GDAL is a "library of libraries" -- in order to read all these data
+sources it needs a large number of other libraries. It typically
+links to over 100 other libraries. Binary packages distributed by
+CRAN contain only statically linked code: CRAN does not want to make
+any assumptions about presence of third-party libraries on the host
+system. As a consequence, when the binary `sf` package is installed
+from CRAN, it includes a copy of all the required external libraries
+as well as their dependencies, which may amount to 50 or 100 Mb.
+
+### `st_read` or `read_sf`?
+
+The function to read vector data is `st_read`.  Function `read_sf`
+is largely the same as `st_read, but chooses a few tidyverse-style
+defaults:
+
+* it is silent by default, where `st_read` gives a short report
+* it returns a spatial tibble instead of a spatial data frame
+* it sets as default `stringsAsFactors = FALSE`, where `st_read`
+listens to the global option `default.stringsAsFactors()` (which is
+`TRUE` by default)
+
+In the same fashion, compared to `st_write` `write_sf`, 
+
+* is also silent
+* overwrites layers (i.e., sets `delete_layer = TRUE`) by default, which `st_write` does not do.
+
+(TBD: reading and writing raster data)
+
+### Getting help
+
+### Reading from files, and shapefiles
+
+We saw above that a spatial dataset can be read from a single file by
+```{r}
+nc <- system.file("gpkg/nc.gpkg", package="sf") %>% read_sf()
+```
+
+In some cases, spatial datasets are contained in _multiple_
+files, e.g.  in the case of shapefiles. A "shapefile" should be
+really understood as a set of files with a common prefix, or even
+a directory with several of such sets.
+
+Package `sf` comes with a couple of shapefiles packaged, a directory
+listing of the `shape` directory in the packge is obtained by
+```{r}
+list.files(system.file("shape/", package = "sf"))
+```
+
+We can read a single shapefile by
+```{r}
+nc <- system.file("shape/nc.shp", package="sf") %>% read_sf()
+```
+and it is important to know that in that case all four files starting
+with `nc` are read from this directory.
+
+We can also read the directory with shapfiles by
+```{r}
+something <- system.file("shape", package="sf") %>% read_sf()
+```
+but we see some warnings now, indicating that we are reading only the first
+layer from a multi-layer dataset (and not `nc.shp`!).
+Indeed, this directory contains multiple layers, which can be queried by
+```{r}
+system.file("shape", package="sf") %>% st_layers()
+```
+From this list, we could pick one, and use it as the `layer` argument, as
+in
+```{r}
+dataset <- system.file("shape", package="sf")
+layer <- "nc"
+nc <- read_sf(dataset, layer)
+```
+which is essentially a convoluted way of what we did before to read
+`nc.shp`.
+
+Considering shapefiles in directories as layers in a dataset is
+not something that `sf` came up with, but is the way GDAL handles
+this.  Although it is a good idea in general to [give up using
+shapefiles](http://switchfromshapefile.org/), we cannot always
+control the format of the spatial data we get to start with. 
+
+
+### Reading from a text string
+In the special case of a GeoJSON [@geojson] dataset, when the dataset
+is contained in a length-one character vector, it can be directly
+passed to `read_sf` and read from memory:
 
 ```{r}
 str <- '{
@@ -183,17 +301,14 @@ str <- '{
 (sf_obj <- read_sf(str))
 ```
 
-`st_read` bla
-`read_sf` 
-
-### Text
-
 ### Database
 
-GeoJSON as fname; 
-databases
+reading and writing databases
 
 ## Exercises
 
-1. 
-2.
+1. Read the shapefile `storms_xyz_feature` from the `shape` directory in the `sf` package
+2. Copy this file to another directory on your computer, and read it from there (note: a shapefile consists of more than one file!)
+3. How many features does this dataset contain?
+4. Plot the dataset, with `axes = TRUE` (hint: before plotting, pipe through `st_zm` to drop Z and M coordinates; more about this in chapter \@ref(geometries)).
+5. Before plotting, pipe the dataset through `st_set_crs(4326)`. What is different in the plot obtained?
