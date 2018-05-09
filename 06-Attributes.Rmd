@@ -1,3 +1,116 @@
 # Attributes
 
-discuss
+Feature _attributes_ refer to the properties of features ("things")
+that do not describe the feature's geometry. Feature attributes can
+be _derived_ from geometry (e.g. lenght of a `LINESTRING`, area
+of a `POLYGON`) but they can also refer to completely different
+properties, such as 
+
+* the name of a street or a county, 
+* the number of people living in a country, 
+* the type of a road
+* the soil type in a polygon from a soil map.
+* the opening hours of a shop
+
+Although we believe that temporal properties of features are at no
+less fundamental than their spatial properties, the simple feature
+access standard and consequently the `sf` package does not give
+time a similar role as space; more on that in chapter \@ref(array).
+
+Most `sf` objects will contain both geometries and attributes for
+features. The geometric operations described in the previous chapter
+\@ref{geometries} operate on geometries _only_. When applied to an
+object of class `sf`, all _unary operations_ will, for functions
+returning
+
+* a predicate or a measure, ignore all attributes
+* a geometr y, replace the object's geometry.
+
+In all these cases, attribute _values_ remain unmodified. At first
+sight, that looks rather harmless. But if we look into a simple
+case of replacing a county boundary with a county centroid, as in
+```{r}
+library(sf)
+library(dplyr)
+system.file("gpkg/nc.gpkg", package="sf") %>%
+	read_sf() %>%
+	st_transform(32119) %>%
+	select(BIR74, SID74, NAME) %>%
+	st_centroid() %>%
+	head(n = 1)
+```
+we receive a warning. This warning is justified for the first two
+variables shown (total births and number of SID disease cases,
+1974) which, as such, are _not associated with_ a feature whose
+geometry is `POINT (385605.4 300303.5)`. The third variable,
+`NAME` is however still the county name for the point indicated,
+but the point geometry no longer _is_ the county geometry.
+
+## Attribute-geometry relationship {#agr}
+
+Changing the feature geometry without changing the feature attributes
+does change the _feature_, since the feature is characterised by
+the combination of geometry and attributes. Can we, ahead of time,
+predict whether the resulting feature will still meaningfully
+represent the data when we for instance replaced all geometries
+with their convex hull or centroid? It depends.
+
+Take the example of a road, represented by a `LINESTRING`, and
+its attribute property road width. What then is the road width
+of an arbitray subsectin of this road? That depends on whether
+the attribute road length describes, for instance the road width
+everywhere, i.e. road width is constant along the road, or whether
+it describes an aggregate property, such as minimum road width.
+In case of the latter, for an arbitrary subsection of the road one
+could still argue that the minimum road with must be at least as
+large as the minimum road width for the whole segment, but it is
+no longer _the minimum_ for that subsection. This gives us two
+"types" for the attribute-geometry relationship (AGR)
+
+* **constant** the attribute value is valid everywhere in or over the geometry
+* **aggregate** the attribute is an aggregate, a summary value over the geometry
+
+For polygon data, typical examples of **constant** AGR are
+
+* land use for a land use polygon
+* rock units or geologic strata in a geological map
+* soil type in a soil map
+* elevation class in a elevation map that shows elevation as classes
+* klimate zone in a climate zone map
+
+Typical examples for the **aggregate** AGR are
+
+* population, either as number of persons or as population density
+* other socio-economic data, summarised by area
+* total emission of pollutants by region
+
+A third type of AGR is that where an attribute identifies a feature
+geometry. The example above is county `NAME`: the name identifies
+the county, and is still the county `NAME` for any sub-area. For an
+arbitrary sub-area, it is however loses the **identity** property
+but becomes a **constant** attribute. The example is:
+
+* any point inside a county has still the same county name, but does not longer represent the geometry of that county.
+
+We can specify the AGR of an attribute in an `sf` object by `st_set_agr`:
+```{r}
+nc <- system.file("gpkg/nc.gpkg", package="sf") %>%
+	read_sf() %>%
+	st_transform(32119)
+nc1 <- nc %>% select(BIR74, SID74, NAME) %>%
+	st_set_agr(c(BIR74 = "aggregate", SID74 = "aggregate", NAME = "identity"))
+```
+This helps to get rid of warnings that a particular attribute is assumed to be constant over a geometry, if it already is. The following no longer generates a warning
+```{r}
+nc1 %>% select(NAME) %>%
+	st_centroid() %>%
+	head(1)
+```
+and also changes AGR for `NAME` from `identity` to `constant` when replacing the geometry with the geometry's centroid:
+```{r}
+nc1 %>% select(NAME) %>%
+	st_centroid() %>% 
+	st_agr()
+```
+
+## Spatially intensive and extensive variables
