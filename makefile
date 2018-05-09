@@ -15,5 +15,6 @@ pdf:
 
 push:
 	make
+	git add _book/*html
 	git commit -a -m 'commit'
 	git push
