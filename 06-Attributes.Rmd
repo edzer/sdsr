@@ -117,7 +117,47 @@ nc1 %>% select(NAME) %>%
 	st_agr()
 ```
 
+## Spatial join
+
+## Aggregate and summarise
+
+## Intersections
+
+Suppose we have two datasets with different geometries and attributes, and we want to compute their
+intersections:
+```{r}
+p1 = st_polygon(list(rbind(c(0,0), c(4,0), c(4,4), c(0,4), c(0,0))))
+d1 = st_sf(a = c(3,1), geom = st_sfc(p1, p1 + c(4, 0)))
+d2 = st_sf(b = c(4), geom = st_sfc(p1 * .75 + c(3, 2)))
+plot(d1, xlim = c(0,8), ylim = c(0, 6), col = NA, border = 1, reset = FALSE)
+plot(d2, col = NA, border = 'red', add = TRUE, lwd = 2)
+```
+What will the intersection of these two objects give?
+```{r}
+(i = st_intersection(d1, d2))
+plot(d1, xlim = c(0,8), ylim = c(0, 6), col = NA, border = 1, lwd = 2, reset = FALSE)
+plot(d2, col = NA, border = 'red', add = TRUE, lwd = 3)
+plot(st_geometry(i), add = TRUE, col = grey(c(.7,.9)), , border = 'green', lwd = 1)
+```
+It gives the areas of intersection, along with the corresponding attributes of both objects, and a warning that attributes were assumed to be spatially constant.
+
 ## Area-weighted interpolation
 
-## Spatially intensive and extensive variables
+Suppose we want to combine geometries and attributes of two datasets such, that we get attribute values of the first datasets summarised for the geometries of the second. There are various ways we can go for this. The simples one, building on the previous example, would be to obtain for the geometry of `d2` the attribute of `d1` that has the largest overlap with `d2`. This is obtained by
+```{r}
+st_join(d2, d1, largest = TRUE)
+```
 
+Another option would be to summarise the attribute, e.g. taking its mean, regardless the amount of overlap. This is obtained by
+```{r}
+aggregate(d1, d2, mean)
+```
+
+A third option is to apply area-weighted interpolation, meaning that we interpolate (average) the variable by taking into account the respective area contributions of overlap. This is done e.g. by
+```{r}
+d3 = st_sfc(p1 * .75 + c(3, 2), p1 * .75 + c(3,3))
+st_interpolate_aw(d1, d3, extensive = FALSE)
+st_interpolate_aw(d1, d3, extensive = TRUE)
+```
+
+### Spatially intensive and extensive variables
