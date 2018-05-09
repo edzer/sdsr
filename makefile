@@ -12,3 +12,8 @@ tangle:
 
 pdf:
 	Rscript --quiet _render.R "bookdown::pdf_book"
+
+push:
+	make
+	git commit -a -m 'commit'
+	git push
