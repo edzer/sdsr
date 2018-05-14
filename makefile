@@ -15,7 +15,6 @@ pdf:
 
 push:
 	make
-	git add _book/*html
-	git add _book/sdsr_files/figure-html/*
+	git add _book/*html _book/sdsr_files/figure-html/* _book/images/*png
 	git commit -a -m 'commit'
 	git push
