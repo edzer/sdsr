@@ -32,8 +32,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   
   
-<link rel="prev" href="units-of-measure-revisited-attribute-units-intensive-and-extensive-variables.html">
-<link rel="next" href="spatial-interpolation-and-geostatistics.html">
+<link rel="prev" href="intro.html">
+<link rel="next" href="geometries.html">
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -185,20 +185,93 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
           <div class="page-inner">
 
             <section class="normal" id="section-">
-<div id="up--and-downscaling" class="section level1">
-<h1><span class="header-section-number">Chapter 16</span> Up- and Downscaling</h1>
-<p>sampling</p>
-<p>largest sub-geometry</p>
-<p>area-weighted interpolation</p>
+<div id="spaces" class="section level1">
+<h1><span class="header-section-number">Chapter 2</span> Spaces</h1>
+<p>For spatial data, the location of observations are characterised by coordinates, and coordinates are defined in a certain space. Different spaces are used for this, and the most important difference is whether coordinates are defined over a 2-dimensional or 3-dimensional space referenced to orthogonal axes (Cartesian coordinates), or using distance and direction angles (polar coordinates, spherical coordinates).</p>
+<div class="figure" style="text-align: center"><span id="fig:polar"></span>
+<img src="sdsr_files/figure-html/polar-1.png" alt="Two-dimensional polar (red) and Cartesian (blue) coordinates" width="672" />
+<p class="caption">
+Figure 2.1: Two-dimensional polar (red) and Cartesian (blue) coordinates
+</p>
+</div>
+<div id="cartesian-and-polar-coordinates" class="section level2">
+<h2><span class="header-section-number">2.1</span> Cartesian and polar coordinates</h2>
+<p>Figure <a href="spaces.html#fig:polar">2.1</a> shows both polar and Cartesian coordinates for a standard two-dimensional situation. In Cartesian coordinates, the point shown is <span class="math inline">\((x,y) = (3,4)\)</span>, for polar coordinates it is <span class="math inline">\((r,\phi) = (5, \mbox{arctan}(4/3))\)</span>, where <span class="math inline">\(\mbox{arctan}(4/3)\)</span> is approximately <span class="math inline">\(0.93\)</span> radians, or <span class="math inline">\(53^{\circ}\)</span>. Note that <span class="math inline">\(x\)</span>, <span class="math inline">\(y\)</span> and <span class="math inline">\(r\)</span> all have length units, where <span class="math inline">\(\phi\)</span> is an angle (a unitless length/length ratio). Converting back and forth between Cartesian and polar coordinates is trivial, <span class="math display">\[x = r~\mbox{cos} \phi\]</span> <span class="math display">\[y = r~\mbox{sin} \phi\]</span> <span class="math display">\[\phi = \mbox{arctan}(y/x)\]</span> <span class="math display">\[r = \sqrt{x^2 + y^2}\]</span> but requires care with using the right quadrant for <span class="math inline">\(\mbox{arctan}\)</span>; the <code>atan2</code> function is helpful here.</p>
+</div>
+<div id="spherical-and-ellipsoidal-coordinates" class="section level2">
+<h2><span class="header-section-number">2.2</span> Spherical and ellipsoidal coordinates</h2>
+<p>In three dimensions, where Cartesian coordinates are expressed as <span class="math inline">\((x,y,z)\)</span>, spherical coordinates are the three-dimensional equivalent of polar coordinates and can be expressed as <span class="math inline">\((r,\lambda,\phi)\)</span>, where</p>
+<ul>
+<li><span class="math inline">\(r\)</span> is the distance (or altitude)</li>
+<li><span class="math inline">\(\lambda\)</span> is the longitude, measured in the <span class="math inline">\((x,y)\)</span> plane counter-clockwise from positive <span class="math inline">\(x\)</span>, and</li>
+<li><span class="math inline">\(\phi\)</span> is the latitude, the angle between the vector and the <span class="math inline">\((x,y)\)</span> plane.</li>
+</ul>
+<p>When we are only interested in points on a sphere with given radius, we can drop <span class="math inline">\(r\)</span> and <span class="math inline">\((\lambda,\phi)\)</span> suffice to identify any point.</p>
+<p>It should be noted that this is just <em>a</em> definition, one could for instance also choose to measure polar angle, the angle between the vector and <span class="math inline">\(z\)</span>, instead of latitude. There is also a long tradition of specifying points as <span class="math inline">\((\phi,\lambda)\)</span> but throughout this book we will stick to longitude-latitude, <span class="math inline">\((\lambda,\phi)\)</span>.</p>
+<p>For points on an ellipse, there are two ways in which angle can be expressed (figure <a href="spaces.html#fig:ellipse">2.2</a>): measured from the center of the ellipse (<span class="math inline">\(\psi\)</span>), or measured perpendicular to the tangent on the ellipse at the target point (<span class="math inline">\(\phi\)</span>).</p>
+<div class="figure" style="text-align: center"><span id="fig:ellipse"></span>
+<img src="sdsr_files/figure-html/ellipse-1.png" alt="Angles on an ellipse: geodetic (blue) and geocentric (red) latitude" width="672" />
+<p class="caption">
+Figure 2.2: Angles on an ellipse: geodetic (blue) and geocentric (red) latitude
+</p>
+</div>
+<p>The most common parametric model for the Earth is a spheroid, also called an ellipsoid of revolution, which is an ellipsoid with two equal semi-axes. In effect, this is a flattened sphere: the distance between the poles is (slightly: about 0.33%) smaller than the distance between two opposite points on the equator. Under this model, longitude is always measured along a circle, but latitude along an ellispe. If we think of figure <a href="spaces.html#fig:ellipse">2.2</a> as a cross section of the Earth passing through the poles, the latitude measure <span class="math inline">\(\phi\)</span> is the one used when no further specification is given; it is also called <em>geodetic latitude</em>. The latitude measure <span class="math inline">\(\psi\)</span> is called the <em>geocentric latitude</em>.</p>
+<p>In addition to longitude and latitude we can add <em>altitude</em> to define points that are not on the spheroid, and obtain a three dimensional space again. When defining altitude, we need to choose where zero altitude is (on the ellipsoid, or on the mean sea level?), as well as which direction is positive (usually upwards), and which direction is “straight up”: perpendicular to the spheroid surface, or in the direction opposite to gravitation? All these choices may matter, depending on the application area.</p>
+</div>
+<div id="distances" class="section level2">
+<h2><span class="header-section-number">2.3</span> Distances</h2>
+<p>Distances between two points <span class="math inline">\(p_i\)</span> and <span class="math inline">\(p_j\)</span> in Cartesian coordinates are computed as Euclidian distances, in two dimensions by <span class="math display">\[d_{ij} = \sqrt{(x_i-x_j)^2+(y_i-y_j)^2}\]</span> with <span class="math inline">\(p_i = (x_i,y_i)\)</span> and in three dimensions by <span class="math display">\[d_{ij} = \sqrt{(x_i-x_j)^2+(y_i-y_j)^2+(z_i-z_j)^2}\]</span> with <span class="math inline">\(p_i = (x_i,y_i,z_i).\)</span> These distances represent the length of a <em>straight</em> line between two points <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span>.</p>
+<p>For two points on a circle, the length of the arc of two points <span class="math inline">\(c_1 = (r,{\phi}_i)\)</span> and <span class="math inline">\(c_2 = (r, \phi_2)\)</span> is <span class="math display">\[s_{ij}=r~|\phi_1-\phi_2| = r ~\theta\]</span> with <span class="math inline">\(\theta\)</span> the angle between <span class="math inline">\(\phi_1\)</span> and <span class="math inline">\(\phi_2\)</span> in radians. For very small values of <span class="math inline">\(\theta\)</span>, we will have <span class="math inline">\(s_{ij} \approx d_{ij}\)</span>.</p>
+<p>For two points <span class="math inline">\(p_1 = (\lambda_1,\phi_1)\)</span> and <span class="math inline">\(p_2 = (\lambda_2,\phi_2)\)</span> on a sphere with radius <span class="math inline">\(r&#39;\)</span>, the <em>great circle distance</em> is the arc length between <span class="math inline">\(p_1\)</span> and <span class="math inline">\(p_2\)</span> on the circle that passes through <span class="math inline">\(p_1\)</span> and <span class="math inline">\(p_2\)</span> and has the center of the sphere as its center, and is given by <span class="math inline">\(s_{12} = r ~ \theta_{12}\)</span> with <span class="math display">\[\theta_{12} = \arccos(\sin \phi_1 \cdot \sin \phi_2 + \cos \phi_1 \cdot \cos \phi_2 \cdot \cos(|\lambda_1-\lambda_2|))\]</span> the angle in radians.</p>
+<p>Arc distances between two points on a spheroid are more complicated to compute. Details about the computation method used in package <code>lwgeom</code> (which, in turn, is used by package <code>sf</code>) are given in <span class="citation">(Karney <a href="#ref-karney2013algorithms">2013</a>)</span>.</p>
+</div>
+<div id="bounded-spaces" class="section level2">
+<h2><span class="header-section-number">2.4</span> Bounded spaces</h2>
+<p>All the above assumes pure geometric computations in spaces where there are no unexpected obstructions. When we move through space on a daily basis, we typically find constraints e.g.</p>
+<ul>
+<li>when we walk through a building</li>
+<li>when we cycle to work</li>
+<li>or when we drive to a shop.</li>
+</ul>
+<p>Distances, in such case, can be made up of a sequence of shortest (straight line or great circle) distances, but follow a more complex path than a straight line. Typical constraints come from road networks, or from the requirement for a certain habitat (water for fish, forest for certain bird species).</p>
+</div>
+<div id="time" class="section level2">
+<h2><span class="header-section-number">2.5</span> Time</h2>
+<p>When we describe over which “space” a certain phenomenon is characterised, time forms an integral component: nothing exists forever. It is tempting to think that time, compared to geographical “space”, is one-dimensional and that is often the way we address time, e.g. in R where <code>Date</code> is represented by the number of days since 1970-01-01</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">(<span class="dt">d =</span> <span class="kw">as.Date</span>(<span class="st">&quot;1970-02-01&quot;</span>))
+<span class="co">#&gt; [1] &quot;1970-02-01&quot;</span>
+<span class="kw">as.numeric</span>(d)
+<span class="co">#&gt; [1] 31</span></code></pre></div>
+<p>and <code>POSIXt</code> time by the number of seconds since that date</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">(<span class="dt">t =</span> <span class="kw">as.POSIXct</span>(<span class="st">&quot;1970-01-02 00:00&quot;</span>, <span class="dt">tz =</span> <span class="st">&quot;UTC&quot;</span>))
+<span class="co">#&gt; [1] &quot;1970-01-02 UTC&quot;</span>
+<span class="kw">as.numeric</span>(t)
+<span class="co">#&gt; [1] 86400</span></code></pre></div>
+<p>In practical cases however, we may be interested in how certain phenomena vary over the day, or over the year, in which case it may more convenient to represent time as the tuple (year, day-of-year), or (day, time-of-day). When we study for instance traffic patterns, day of week plays a role, in which we may end up with (year, week-of-year, day-of-week, time-of-day) in order to quantify within-day, within-week, within-year and between-year signals.</p>
+</div>
+<div id="exercises-1" class="section level2">
+<h2><span class="header-section-number">2.6</span> Exercises</h2>
+<ul>
+<li>convert the <span class="math inline">\((x,y)\)</span> points <span class="math inline">\((10,2)\)</span>, <span class="math inline">\((-10,-2)\)</span>, <span class="math inline">\((10,-2)\)</span> and <span class="math inline">\((0,10)\)</span> to polar coordinates</li>
+<li>convert the polar <span class="math inline">\((r,\phi)\)</span> points <span class="math inline">\((10,45^{\circ})\)</span>, <span class="math inline">\((0,100^{\circ})\)</span> and <span class="math inline">\((5,359^{\circ})\)</span> to Cartesian coordinates</li>
+<li>assuming the Earth is a sphere with radius is 6371 km, compute for <span class="math inline">\((\lambda,\phi)\)</span> points the great circle distance between <span class="math inline">\((10,10)\)</span> and <span class="math inline">\((11,10)\)</span>, between <span class="math inline">\((10,80)\)</span> and <span class="math inline">\((11,80)\)</span>, between <span class="math inline">\((10,10)\)</span> and <span class="math inline">\((10,11)\)</span> and between <span class="math inline">\((10,80)\)</span> and <span class="math inline">\((10,81)\)</span> (units: degree).</li>
+</ul>
 
+</div>
+</div>
+<h3>References</h3>
+<div id="refs" class="references">
+<div id="ref-karney2013algorithms">
+<p>Karney, Charles FF. 2013. “Algorithms for Geodesics.” <em>Journal of Geodesy</em> 87 (1). Springer: 43–55. <a href="https://link.springer.com/content/pdf/10.1007/s00190-012-0578-z.pdf" class="uri">https://link.springer.com/content/pdf/10.1007/s00190-012-0578-z.pdf</a>.</p>
+</div>
 </div>
             </section>
 
           </div>
         </div>
       </div>
-<a href="units-of-measure-revisited-attribute-units-intensive-and-extensive-variables.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-<a href="spatial-interpolation-and-geostatistics.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="intro.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="geometries.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
@@ -228,7 +301,7 @@ gitbook.start({
 "size": 2
 },
 "edit": {
-"link": "https://github.com/edzer/sdsr/edit/master/16-UpDownscaling.Rmd",
+"link": "https://github.com/edzer/sdsr/edit/master/02-Spaces.Rmd",
 "text": "Edit"
 },
 "download": ["sdsr.pdf", "sdsr.epub"],

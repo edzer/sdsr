@@ -1,5 +1,189 @@
-# Spaces: 1, 2 and 3-dimensional, spherical, time, bounded spaces
+# Spaces
 
-discusses spaces
+For spatial data, the location of observations are characterised
+by coordinates, and coordinates are defined in a certain space.
+Different spaces are used for this, and the most important
+difference is whether coordinates are defined over a 2-dimensional
+or 3-dimensional space referenced to orthogonal axes (Cartesian
+coordinates), or using distance and direction angles (polar
+coordinates, spherical coordinates).
 
-bounded: water, rivers, road networks
+```{r polar, fig.cap="Two-dimensional polar (red) and Cartesian (blue) coordinates", eval=TRUE, fig=TRUE, echo=FALSE}
+par(mar = rep(0,4))
+plot(3, 4, xlim = c(-6,6), ylim = c(-6,6), asp = 1)
+axis(1, pos = 0, at = 0:6)
+axis(2, pos = 0, at = -6:6)
+xd = seq(-5, 5, by = .1)
+lines(xd, sqrt(25 - xd^2), col = 'grey')
+lines(xd, -sqrt(25 - xd^2), col = 'grey')
+arrows(0, 0, 3, 4, col = 'red', length = .15, angle = 20)
+text(1.5, 2.7, label = "r", col = 'red')
+xd = seq(3/5, 1, by = .1)
+lines(xd, sqrt(1 - xd^2), col = 'red')
+text(1.2, 0.5, label = parse(text = "phi"), col = 'red')
+lines(c(3,3), c(0,4), lty = 2, col = 'blue')
+lines(c(0,3), c(4,4), lty = 2, col = 'blue')
+text(3.3, 0.3, label = "x", col = 'blue')
+text(0.3, 4.3, label = "y", col = 'blue')
+```
+
+## Cartesian and polar coordinates
+Figure \@ref(fig:polar) shows both polar and Cartesian coordinates
+for a standard two-dimensional situation. In Cartesian coordinates,
+the point shown is $(x,y) = (3,4)$, for polar coordinates it is
+$(r,\phi) = (5, \mbox{arctan}(4/3))$, where $\mbox{arctan}(4/3)$ is
+approximately $0.93$ radians, or $53^{\circ}$. Note that $x$, $y$
+and $r$ all have length units, where $\phi$ is an angle (a unitless
+length/length ratio). Converting back and forth between Cartesian
+and polar coordinates is trivial, 
+$$x = r~\mbox{cos} \phi$$
+$$y = r~\mbox{sin} \phi$$
+$$\phi = \mbox{arctan}(y/x)$$
+$$r = \sqrt{x^2 + y^2}$$
+but requires care with using the
+right quadrant for $\mbox{arctan}$; the `atan2` function is helpful
+here.
+
+## Spherical and ellipsoidal coordinates
+
+In three dimensions, where Cartesian coordinates are expressed as
+$(x,y,z)$, spherical coordinates are the three-dimensional equivalent
+of polar coordinates and can be expressed as $(r,\lambda,\phi)$, where
+
+* $r$ is the distance (or altitude)
+* $\lambda$ is the longitude, measured in the $(x,y)$ plane counter-clockwise from positive $x$, and
+* $\phi$ is the latitude, the angle between the vector and the $(x,y)$ plane.
+
+When we are only interested in points on a sphere with given radius,
+we can drop $r$ and $(\lambda,\phi)$ suffice to identify any point.
+
+It should be noted that this is just _a_ definition, one could for
+instance also choose to measure polar angle, the angle between the
+vector and $z$, instead of latitude. There is also a long tradition
+of specifying points as $(\phi,\lambda)$ but throughout this book
+we will stick to longitude-latitude, $(\lambda,\phi)$.
+
+For points on an ellipse, there are two ways in which angle can be
+expressed (figure \@ref(fig:ellipse)): measured from the center of
+the ellipse ($\psi$), or measured perpendicular to the tangent on
+the ellipse at the target point ($\phi$).
+
+```{r ellipse, fig.cap="Angles on an ellipse: geodetic (blue) and geocentric (red) latitude", eval=TRUE, fig=TRUE, echo=FALSE}
+par(mar = rep(0,4))
+x = 4
+y = 5/8 * sqrt(48)
+plot(x, y, xlim = c(-6,6), ylim = c(-8,8), asp = 1)
+axis(1, pos = 0, at = 0:9)
+axis(2, pos = 0, at = -5:5)
+xd = seq(-8, 8, by = .1)
+lines(xd, 5/8 * sqrt(64 - xd^2), col = 'grey')
+lines(xd, 5/8 * -sqrt(64 - xd^2), col = 'grey')
+arrows(0, 0, x, y, col = 'red', length = .15, angle = 20)
+b = (x * 25) / (-y * 64)
+a = y - x * b
+abline(a, b, col = 'grey')
+b = -1/b
+x0 = x - y / b
+arrows(x0, 0, x, y, col = 'blue', length = .15, angle = 20)
+text(1.2, 0.5, label = parse(text = "psi"), col = 'red')
+text(3, 0.5, label = parse(text = "phi"), col = 'blue')
+```
+
+The most common parametric model for the Earth is a spheroid, also
+called an ellipsoid of revolution, which is an ellipsoid with two
+equal semi-axes. In effect, this is a flattened sphere: the distance
+between the poles is (slightly: about 0.33%) smaller than the distance between
+two opposite points on the equator. Under this model, longitude is
+always measured along a circle, but latitude along an ellispe. If
+we think of figure \@ref(fig:ellipse) as a cross section of the
+Earth passing through the poles, the latitude measure $\phi$ is
+the one used when no further specification is given; it is also
+called _geodetic latitude_. The latitude measure $\psi$ is called
+the _geocentric latitude_.
+
+In addition to longitude and latitude we can add _altitude_ to
+define points that are not on the spheroid, and obtain a three
+dimensional space again. When defining altitude, we need to choose
+where zero altitude is (on the ellipsoid, or on the mean sea level?),
+as well as which direction is positive (usually upwards), and which
+direction is "straight up": perpendicular to the spheroid surface,
+or in the direction opposite to gravitation? All these choices may
+matter, depending on the application area.
+
+## Distances
+
+Distances between two points $p_i$ and $p_j$ in Cartesian coordinates are computed
+as Euclidian distances, in two dimensions by
+$$d_{ij} = \sqrt{(x_i-x_j)^2+(y_i-y_j)^2}$$
+with $p_i = (x_i,y_i)$
+and in three dimensions by
+$$d_{ij} = \sqrt{(x_i-x_j)^2+(y_i-y_j)^2+(z_i-z_j)^2}$$
+with $p_i = (x_i,y_i,z_i).$
+These distances represent the length of a _straight_ line between
+two points $i$ and $j$.
+
+For two points on a circle, the length of the arc of two points $c_1 = (r,{\phi}_i)$ and
+$c_2 = (r, \phi_2)$ is
+$$s_{ij}=r~|\phi_1-\phi_2| = r ~\theta$$
+with $\theta$ the angle between $\phi_1$ and $\phi_2$ in radians.
+For very small values of $\theta$, we will have $s_{ij} \approx d_{ij}$.
+
+For two points $p_1 = (\lambda_1,\phi_1)$ and $p_2 =
+(\lambda_2,\phi_2)$ on a sphere with radius $r'$, the _great circle
+distance_ is the arc length between $p_1$ and $p_2$ on the circle
+that passes through $p_1$ and $p_2$ and has the center of the sphere as its center, and
+is given by $s_{12} = r ~ \theta_{12}$ with
+$$\theta_{12} = \arccos(\sin \phi_1 \cdot \sin \phi_2 + \cos \phi_1 \cdot \cos \phi_2 \cdot \cos(|\lambda_1-\lambda_2|))$$
+the angle in radians.
+
+Arc distances between two points on a spheroid are more complicated
+to compute.  Details about the computation method used in package
+`lwgeom` (which, in turn, is used by package `sf`) are given in
+[@karney2013algorithms].
+
+## Bounded spaces
+
+All the above assumes pure geometric computations in spaces where
+there are no unexpected obstructions. When we move through space
+on a daily basis, we typically find constraints e.g.
+
+* when we walk through a building
+* when we cycle to work
+* or when we drive to a shop.
+
+Distances, in such case, can be made up of a sequence of shortest
+(straight line or great circle) distances, but follow a more
+complex path than a straight line. Typical constraints come from
+road networks, or from the requirement for a certain habitat (water
+for fish, forest for certain bird species).
+
+## Time
+
+When we describe over which "space" a certain phenomenon is
+characterised, time forms an integral component: nothing exists
+forever. It is tempting to think that time, compared to geographical
+"space", is one-dimensional and that is often the way we address
+time, e.g. in R where `Date` is represented by the number of days
+since 1970-01-01
+```{r}
+(d = as.Date("1970-02-01"))
+as.numeric(d)
+```
+and `POSIXt` time by the number of seconds since that date
+```{r}
+(t = as.POSIXct("1970-01-02 00:00", tz = "UTC"))
+as.numeric(t)
+```
+In practical cases however, we may be interested in how certain
+phenomena vary over the day, or over the year, in which case it may
+more convenient to represent time as the tuple (year, day-of-year),
+or (day, time-of-day). When we study for instance traffic patterns,
+day of week plays a role, in which we may end up with (year,
+week-of-year, day-of-week, time-of-day) in order to quantify
+within-day, within-week, within-year and between-year signals.
+
+## Exercises
+
+* convert the $(x,y)$ points $(10,2)$, $(-10,-2)$, $(10,-2)$ and $(0,10)$ to polar coordinates
+* convert the polar $(r,\phi)$ points $(10,45^{\circ})$, $(0,100^{\circ})$ and $(5,359^{\circ})$ to Cartesian coordinates
+* assuming the Earth is a sphere with radius is 6371 km, compute for $(\lambda,\phi)$ points the great circle distance between $(10,10)$ and $(11,10)$, between $(10,80)$ and $(11,80)$, between $(10,10)$ and $(10,11)$ and between $(10,80)$ and $(10,81)$ (units: degree).
