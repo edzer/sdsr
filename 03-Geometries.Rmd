@@ -1,3 +1,260 @@
 # Geometries {#geometries}
 
-vertices, edges, lines, polygons, simple features; raster cells
+Having learned how we describe spaces, we can define how geometries
+can be described in these space.
+
+## Simple feature geometries
+
+Simple feature geometries are a way to describe the geometries of
+_features_.  By _features_ we mean _things_ that have a geometry,
+some time properties, and other attributes.  The main application of
+simple feature geometries is to describe two-dimensional geometries
+by points, lines, or polygons. The "simple" adjective refers to
+the fact that the line or polygon geometries are represented by
+sequences of points connected with straight lines.
+
+_Simple features access_ is a standard 
+[@sfa, @sfa2, @iso].
+for describing simple feature geometries that includes
+
+* a class hierarchy
+* a set of operations
+* binary and text encodings
+
+We will now discuss the seven most common simple feature geometry
+types. Although in practice we will most often import spatial data
+from external sources (files, databases, web services), we will
+create them here from scratch using simple constructor functions.
+
+### The big seven
+
+The most commonly used simple features geometries, used to represent a _single_ feature are:
+
+| type | description |
+|------|-------------------------|
+| `POINT` | single point geometry |
+| `MULTIPOINT` | set of points |
+| `LINESTRING` | single line |
+| `MULTILINESTRING` | multiple lines |
+| `POLYGON` | exterior ring with zero or more inner rings, denoting holes |
+| `MULTIPOLYGON` | set of polygons |
+| `GEOMETRYCOLLECTION` | set of geometries  |
+
+A `POINT` can be created by
+```{r}
+(pt = st_point(c(5,7)))
+```
+Points and vertices in simple feature geometries represent XY coordinates, in that order.
+A `MULTIPOINT` or a `LINESTRING` can be created by a matrix
+```{r}
+(m1 = rbind(c(8, 1), c(2, 5), c(3, 2)))
+(mp = st_multipoint(m1))
+(ls = st_linestring(m1))
+```
+Although these geometries contain the same points, they have entirely different meaning:
+```{r}
+st_dimension(mp)
+st_dimension(ls)
+```
+A `MULTILINESTRING` can be constructed from a list of matrices, representing vertices:
+```{r}
+m2 = rbind(c(22,20), c(18, 15))
+mls = st_multilinestring(list(m1, m2))
+```
+A `POLYGON` consists of an outer ring, followed by zero or more
+inner rings that denote holes in the outer ring:
+```{r}
+(ring1 = rbind(c(0,0), c(4,0), c(4,4), c(0,4), c(0,0)))
+(p1 = st_polygon(list(ring1)))
+(ring2 = ring1 + 5)
+(ring3 = (ring1[5:1,] / 4) + 6)
+(p2 = st_polygon(list(ring2, ring3)))
+```
+A `MULTIPOLYGON` can be constructed as a list of lists of matrices:
+```{r}
+(mpol = st_multipolygon(list(list(ring1), list(ring2, ring3))))
+```
+And finally, a `GEOMETRYCOLLECTION` can be constructed from a list of typed geometries:
+```{r}
+st_geometrycollection(list(pt, mp, ls, mpol))
+```
+
+### Constraints
+
+The following constraints to simple feature geometries are useful to note:
+
+* lines shall not self-intersect
+* polygon rings shall be closed (the last point equals the first)
+* polygon holes (inner rings) shall be inside their exterior ring
+* polygon inner rings shall maximally touch the exterior ring in single points, not over a line
+* a polygon ring shall not repeat its own path
+
+Functions `st_is_simple` and `st_is_valid` help detect non-simple and non-valid geometries:
+```{r}
+st_is_simple(st_linestring(rbind(c(0,0), c(1,1), c(1,0), c(0,1)))) # self-intersects
+st_is_valid(st_polygon(list(rbind(c(1,1), c(0,0), c(1,1), c(2,2), c(2,1), c(1,1))))) # repeats
+```
+
+### Z and M
+
+In addition to X and Y coordinates, Single points (vertices) of
+simple feature geometries can have
+
+* a `Z` coordinate, denoting altitude
+* an `M` value, denoting some "measure"
+
+but it should be noted that infrastructure for truly
+three-dimensional geometries is not available. Practically all
+functions available for simple feature geometries only operate on
+the XY dimensions.
+
+The `M` attribute shall be a property of the vertex. It sounds
+attractive to encode a time stamp in it, e.g. to pack trajectories
+in `LINESTRING`s. These become however invalid once the trajectory
+self-intersects.
+
+Some examples of `XYZ` and `XYM` and `XYZM` geometries:
+```{r}
+system.file("shape/storms_xyz_feature.shp", package="sf") %>%
+	st_read()
+system.file("shape/storms_xyzm_feature.shp", package="sf") %>% # badly named!
+	st_read()
+(pzm = st_point(c(1,2,3,4)))
+```
+
+### The other ten
+
+There are 10 more geometry types which are more rare, but increasingly find implementation:
+
+| type | description                                        |
+| ---- | -------------------------------------------------- |
+| `CIRCULARSTRING` | The CIRCULARSTRING is the basic curve type, similar to a LINESTRING in the linear world. A single segment requires three points, the start and end points (first and third) and any other point on the arc. The exception to this is for a closed circle, where the start and end points are the same. In this case the second point MUST be the center of the arc, ie the opposite side of the circle. To chain arcs together, the last point of the previous arc becomes the first point of the next arc, just like in LINESTRING. This means that a valid circular string must have an odd number of points greated than 1. |
+| `COMPOUNDCURVE` | A compound curve is a single, continuous curve that has both curved (circular) segments and linear segments. That means that in addition to having well-formed components, the end point of every component (except the last) must be coincident with the start point of the following component. |
+| `CURVEPOLYGON` | Example compound curve in a curve polygon: CURVEPOLYGON(COMPOUNDCURVE(CIRCULARSTRING(0 0,2 0, 2 1, 2 3, 4 3),(4 3, 4 5, 1 4, 0 0)), CIRCULARSTRING(1.7 1, 1.4 0.4, 1.6 0.4, 1.6 0.5, 1.7 1) ) |
+| `MULTICURVE` |  A MultiCurve is a 1-dimensional GeometryCollection whose elements are Curves, it can include linear strings, circular strings or compound strings.  |
+| `MULTISURFACE` | A MultiSurface is a 2-dimensional GeometryCollection whose elements are Surfaces, all using coordinates from the same coordinate reference system. |
+| `CURVE` | A Curve is a 1-dimensional geometric object usually stored as a sequence of Points, with the subtype of Curve specifying the form of the interpolation between Points |
+| `SURFACE` | A Surface is a 2-dimensional geometric object |
+| `POLYHEDRALSURFACE` | A PolyhedralSurface is a contiguous collection of polygons, which share common boundary segments  |
+| `TIN` | A TIN (triangulated irregular network) is a PolyhedralSurface consisting only of Triangle patches.|
+| `TRIANGLE` | A Triangle is a polygon with 3 distinct, non-collinear vertices and no interior boundary |
+
+Note that `CIRCULASTRING`, `COMPOUNDCURVE` and `CURVEPOLYGON` are not described in the SFA standard, but in the [SQL-MM part 3 standard](https://www.iso.org/standard/38651.html). The descriptions above were copied from the [PostGIS manual](http://postgis.net/docs/using_postgis_dbmanagement.html).
+
+`CURVE`, `COMPOUNDCURVE` and `CIRCULARSTRING` have `st_cast` methods to cast them to `LINESTRING`;
+`MULTISURFACE` has an `st_cast` method to `MULTIPOLYGON`. An example is
+```{r}
+(ls <- st_as_sfc("CIRCULARSTRING(0 0,1 0,1 1)") %>% st_cast("LINESTRING"))
+plot(ls, axes = TRUE)
+```
+
+### Encodings: WKT, WKB
+
+Part of the simple feature standard are two encodings: a text and a
+binary encoding.
+The text strings `POINT (0 1)` and so on indicate text encodings,
+also known as _well-known text_ (WKT) encodings, of simple feature
+geometries. They are meant for human readability. By default, package
+`sf` prints the same number of digits as R, but this can be manipulated:
+```{r}
+st_point(c(1/3, 2/3))
+old = options(digits = 16)
+st_point(c(1/3, 2/3))
+options(digits = 3)
+st_point(c(1/3, 2/3))
+options(digits = old$digits) # set back
+```
+
+An encoding that is more useful for machine-to-machine communication is
+_well-known binary_. An example of a round-trip R $\rightarrow$ binary $\rightarrow$ R is
+```{r}
+(wkb = st_as_binary(st_point(c(1/3, 2/3))))
+st_as_sfc(wkb)[[1]]
+```
+Object `r` is a raw vector, which is little useful in R. Binary
+conversion is used to communicate geometries to external libraries
+(GDAL, GEOS, liblwgeom) and and spatial databases: it is fast,
+and lossless. Whenever there is a choice, binary encoding should
+be prefered over text encoding.
+
+## `sfc`: Simple feature geometry list-columns
+
+### Individual geometries
+
+This section describes the implementation of simple feature
+geometries in package `sf`. It will first explain how single simple
+feature geometry objects are represented in R data structures of
+class `sfg`. Next, it will explain how _sets_ of simple feature
+geometry objects are collected in a list of class `sfc`. This list
+acts as a geometry _list-column_ in data.frame objects, of class `sf`.
+
+Single simple feature geometry objects are implemented pretty much
+like the arguments to their constructor function, that is, as a
+
+* numeric vector for `POINT`,
+* numeric matrix for `MULTIPOINT` and `LINESTRING`
+* list of numeric matrices for `MULTILINESTRING` and `POLYGON`
+* list of lists of numeric matrices for `MULTIPOLYGON`
+* list of typed geometries for `GEOMETRYCOLLECTION`
+
+All other geometry types use the simples possible from this list.
+Objects have a class indicating their dimension, type, and a
+superclass (`sfg` for simple feature geometry), and have no other
+attributes than their S3 class:
+```{r}
+attributes(mpol)
+attributes(pzm)
+```
+
+### Sets of geometries
+
+Rather than handling geometries individually, we typically handle
+them as sets. We can do that by _naively_ putting them in a list,
+but package `sf` provides a dedicated class for this, called `sfc`
+(for simple feature geometry list column). We can create such a
+list with `st_sfc`:
+```{r}
+(sfc = st_sfc(st_point(c(0,1)), st_point(c(-3,2)), crs = 4326))
+```
+The default report from the `print` method for `sfc` gives
+
+* the number of features geometries
+* the feature geometry type (`POINT`)
+* the feature geometry dimension (`XY`)
+* the bounding box for the set
+* the coordinate reference system for the set (`epsg` and `proj4string`: this is discussed in chapter \@ref(crs))
+* the first few geometries, as WKT 
+
+The class of the geometry list-column,
+```{r}
+class(sfc)
+```
+is again a combination of a specific class, and a super class.
+In addition to a `class`, the object has further attributes
+```{r}
+names(attributes(sfc))
+```
+which are used to record _for the hole set_:
+
+* a precision value (see section \@ref{precision})
+* the bounding box enclosing all geometries (for x and y)
+* a coordinate reference system (section \@ref{crs})
+* the total number of empty geometries in the set
+
+This means that all these properties are defined for the set,
+and not for geometries individually.
+
+### `st_cast`: Conversion between geometry types
+
+Also discuss `st_collection_extract`.
+
+## Geometries on the spheroid
+
+geometries on the sphere: dividing the sphere in two areas; ring
+direction, angles, distances, area.
+
+## Other geometries
+
+coverage; raster cells; topological representation; three-dimensional volumes
+
+
