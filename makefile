@@ -3,6 +3,7 @@ book:
 
 clean:
 	rm -fr _book/*
+	rm -fr _bookdown_files
 
 view:
 	google-chrome _book/index.html

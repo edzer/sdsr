@@ -28,7 +28,7 @@ library(sf)
 where `tidyverse` is needed for the tidyverse functions and methods,
 and `sf` is needed for the spatial commands and spatial tidyverse
 methods. Package `sf` implements simple features, a standardised
-way to encode polygon data (points, lines, polygons). We will say
+way to encode vector data (points, lines, polygons). We will say
 more about simple features in chapter \@ref(geometries).  Most
 commands in package `sf` start with `st_`, short for spatiotemporal,
 a convention it shares with e.g. PostGIS.
@@ -47,23 +47,24 @@ tmp1 <- b(a)
 tmp2 <- c(tmp1)
 tmp3 <- d(tmp2, n = 10)
 ```
-The pipe form is easier to read because we don't have to go from
-right to left, and avoids the need to choose names for intermediate
-results.
+To many, the pipe-form is easier to read because execution order
+follows reading order (from left to right). Like nested function
+calls, it avoids the need to choose names for intermediate results.
 
 For the illustration we picked a data file that comes with `sf`, 
-the location of which depends on the operating system used: 
+the location of which depends on the operating system used. The
+following will give a different output on your computer:
 ```{r}
 (file <- system.file("gpkg/nc.gpkg", package="sf"))
 ```
-Never use `system.file` if you want to read your own data; in
-that case, `fname` should be the data source (typically file) name
-(section \@ref(reading)). (Parens around this expression are used
-to have the result not only stored, but also printed.)
+Never use `system.file` if you want to read your own data; in that
+case, `fname` should be the data source (typically file or path)
+name (section \@ref(reading)). (Parens around this expression are
+used to have the result not only stored, but also printed.)
 
 Then, we read this file into R using `read_sf`:
 ```{r}
-(nc <- read_sf(file))
+(nc <- file %>% read_sf())
 ```
 which creates a "spatial tibble":
 ```{r}
@@ -71,15 +72,15 @@ class(nc)
 ```
 This object is transformed into a new coordinate reference system (North Carolina State Plane, with EPSG code 32119):
 ```{r}
-(nc.32119 <- st_transform(nc, 32119))
+(nc.32119 <- nc %>% st_transform(32119))
 ```
 and a single attribute column is selected
 ```{r}
-(nc.32119.bir74 <- select(nc.32119, BIR74))
+(nc.32119.bir74 <- nc.32119 %>% select(BIR74))
 ```
 Finally, the result is plotted, with the command:
 ```{r eval=FALSE}
-plot(nc.32119.bir74, graticule = TRUE, axes = TRUE)
+nc.32119.bir74 %>% plot(graticule = TRUE, axes = TRUE)
 ```
 as shown in figure \@ref(fig:first-map).
 
@@ -141,8 +142,8 @@ source; this may be a file, or a set of files like a "shapefile",
 or a database, or a web service. Package `sf` can read from a large
 number of different data sources; the following command shows how many
 ```{r}
-nrow(st_drivers("vector")) # vector drivers
-nrow(st_drivers("raster")) # raster drivers
+st_drivers("vector") %>% nrow() # vector drivers
+st_drivers("raster") %>% nrow() # raster drivers
 ```
 (the output you see may differ because of different operating system
 and configuration.)
@@ -189,15 +190,36 @@ defaults:
 * it sets as default `stringsAsFactors = FALSE`, where `st_read`
 listens to the global option `default.stringsAsFactors()` (which is
 `TRUE` by default)
+* it accepts list-columns as input
 
-In the same fashion, compared to `st_write` `write_sf`, 
+In the same fashion, compared to `st_write`, function `write_sf`, 
 
 * is also silent
 * overwrites layers (i.e., sets `delete_layer = TRUE`) by default, which `st_write` does not do.
 
-(TBD: reading and writing raster data)
+### reading and writing raster data
 
-### Getting help
+Raster data can be read with function `read_stars` from package `stars`:
+```{r}
+library(stars)
+tif = system.file("tif/L7_ETMs.tif", package = "stars")
+(x = tif %>% read_stars())
+```
+Plotting this object shows the six different spectral bands read, with color breaks based on quantiles of pixel values accross all bands:
+```{r}
+plot(x)
+```
+Similarly, we can write raster data with `st_write`
+```{r}
+tif_file = paste0(tempfile(), ".tif")
+st_write(x, tif_file)
+```
+We can read back the raster metadata (its dimensions and reference system, but not the actual pixel values) by
+```{r}
+read_stars(tif_file, proxy = TRUE)
+```
+
+Raster data analysis and its integration with vector data is explained in detail in chapter \@ref(raster).
 
 ### Reading from files, and shapefiles
 
@@ -303,7 +325,24 @@ str <- '{
 
 ### Database
 
-reading and writing databases
+Data can be read from a spatial database directly through two paths. The first is to
+use the standard database interface of R (DBI), for instance with a SQLITE database:
+```{r}
+library(RSQLite)
+db = system.file("sqlite/meuse.sqlite", package = "sf")
+dbcon <- dbConnect(dbDriver("SQLite"), db)
+(s = st_read(dbcon, "meuse.sqlite"))[1:3,]
+dbDisconnect(dbcon)
+```
+Another way is to use GDAL database drivers, e.g. by
+```{r}
+st_read(db)[1:3,]
+```
+An advantage of the former approach may be that any query can be
+passed, allowing for reading only parts of a table into R's memory.
+A disadvantage is that it does not read the coordinate reference
+system; for other spatial databases, like PostGIS, this may work
+better.
 
 ## Exercises
 
