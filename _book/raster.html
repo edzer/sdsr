@@ -25,7 +25,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand">
 
 
-<meta name="date" content="2018-09-27">
+<meta name="date" content="2018-10-01">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -136,11 +136,15 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li class="chapter" data-level="3" data-path="geometries.html"><a href="geometries.html"><i class="fa fa-check"></i><b>3</b> Geometries</a><ul>
 <li class="chapter" data-level="3.1" data-path="geometries.html"><a href="geometries.html#simple-feature-geometry-types"><i class="fa fa-check"></i><b>3.1</b> Simple feature geometry types</a></li>
 <li class="chapter" data-level="3.2" data-path="geometries.html"><a href="geometries.html#simple-features-in-sf"><i class="fa fa-check"></i><b>3.2</b> Simple features in <code>sf</code></a></li>
-<li class="chapter" data-level="3.3" data-path="geometries.html"><a href="geometries.html#tesselations-coverages-rasters"><i class="fa fa-check"></i><b>3.3</b> Tesselations: Coverages, rasters</a></li>
+<li class="chapter" data-level="3.3" data-path="geometries.html"><a href="geometries.html#geomraster"><i class="fa fa-check"></i><b>3.3</b> Tesselations: coverages, rasters</a></li>
 <li class="chapter" data-level="3.4" data-path="geometries.html"><a href="geometries.html#networks"><i class="fa fa-check"></i><b>3.4</b> Networks</a></li>
 <li class="chapter" data-level="3.5" data-path="geometries.html"><a href="geometries.html#geometries-on-the-sphere"><i class="fa fa-check"></i><b>3.5</b> Geometries on the sphere</a></li>
 </ul></li>
-<li class="chapter" data-level="4" data-path="raster.html"><a href="raster.html"><i class="fa fa-check"></i><b>4</b> Raster data and datacubes</a></li>
+<li class="chapter" data-level="4" data-path="raster.html"><a href="raster.html"><i class="fa fa-check"></i><b>4</b> Raster data and datacubes</a><ul>
+<li class="chapter" data-level="4.1" data-path="raster.html"><a href="raster.html#package-stars"><i class="fa fa-check"></i><b>4.1</b> Package <code>stars</code></a></li>
+<li class="chapter" data-level="4.2" data-path="raster.html"><a href="raster.html#raster-data"><i class="fa fa-check"></i><b>4.2</b> Raster data</a></li>
+<li class="chapter" data-level="4.3" data-path="raster.html"><a href="raster.html#datacubes"><i class="fa fa-check"></i><b>4.3</b> Datacubes</a></li>
+</ul></li>
 <li class="chapter" data-level="5" data-path="geommanip.html"><a href="geommanip.html"><i class="fa fa-check"></i><b>5</b> Geometric Manipulations</a><ul>
 <li class="chapter" data-level="5.1" data-path="geommanip.html"><a href="geommanip.html#unary-operations"><i class="fa fa-check"></i><b>5.1</b> Unary Operations</a></li>
 <li class="chapter" data-level="5.2" data-path="geommanip.html"><a href="geommanip.html#binary-operations"><i class="fa fa-check"></i><b>5.2</b> Binary Operations</a></li>
@@ -214,8 +218,318 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
             <section class="normal" id="section-">
 <div id="raster" class="section level1">
 <h1><span class="header-section-number">Chapter 4</span> Raster data and datacubes</h1>
-<p>differences, correspondence; properties of rasters; arrays</p>
+<div id="package-stars" class="section level2">
+<h2><span class="header-section-number">4.1</span> Package <code>stars</code></h2>
+<pre><code>#&gt; Warning in citation(pkg, auto = if (pkg == &quot;base&quot;) NULL else TRUE): no date
+#&gt; field in DESCRIPTION file of package &#39;stars&#39;
+#&gt; Warning in citation(pkg, auto = if (pkg == &quot;base&quot;) NULL else TRUE): could
+#&gt; not determine year for &#39;stars&#39; from package DESCRIPTION file</code></pre>
+<p>Athough package <code>sp</code> has always had limited support for raster data, over the last decade R package <code>raster</code> has clearly been dominant as the prime package for meaningful and scalable raster analysis. Its data model is that of a 2D raster, or a set of raster layers (a “raster stack”). This follows the classical static GIS world view, where the world is modelled as a set of layers, each representing a different theme. A lot of data available Today however is dymic, and comes as time series of rasters for different themes. A raster stack does not meaningfully reflect this, requiring the user to do shadow book keeping of which layer represents what. Also, the <code>raster</code> package does an excellent job in scaling computations up to datasizes no larger than the local storage (the computer’s hard drives). Recent datasets however, including satellite imagery, climate model or wheather forecasting data, often no longer fit in local storage. Package <code>spacetime</code> addresses the analysis of time series of vector geometries or raster grid cells, but does not extend to higher-dimensional arrays.</p>
+<p>Here, we introduce a new package for raster analysis, called <code>stars</code> (for scalable, spatiotemporal tidy arrays) that</p>
+<ul>
+<li>allows for representing dynamic raster stacks,</li>
+<li>addition to regular grids handles rotated, sheared, rectilinear and curvilinear rasters,</li>
+<li>provides a tight integration with package <code>sf</code>,</li>
+<li>follows the tidyverse design principles,</li>
+<li>aims at being scalable, also beyond local disk size,</li>
+<li>handles array data with non-raster spatial dimensions, called <em>vector datacubes</em>,</li>
+<li>provides further integration with the GDAL library than other R packages have given so far.</li>
+</ul>
+<p>Vector data cubes include for instance time series for simple features, or spatial graph data such as origin-destination matrices, the wider concept of data cubes is explained in section <a href="raster.html#datacubes">4.3</a></p>
+</div>
+<div id="raster-data" class="section level2">
+<h2><span class="header-section-number">4.2</span> Raster data</h2>
+<p>As introduced in section <a href="geometries.html#geomraster">3.3</a>, raster data are spatial datasets where observations are aligned on a regular grid usually with square grid cells. Raster datasets are used often to represent spatially continuously varying phenomena such as temperature or elevation, and also for observed imagery for instance obtained from satellites.</p>
+<div id="reading-and-writing-raster-data-1" class="section level3">
+<h3><span class="header-section-number">4.2.1</span> Reading and writing raster data</h3>
+<p>Raster data typically are read from a file. We read an example file of a regular, non-rotated grid from the package <code>stars</code>:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">tif =<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;tif/L7_ETMs.tif&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;stars&quot;</span>)
+x =<span class="st"> </span><span class="kw">read_stars</span>(tif)</code></pre></div>
+<p>The dataset contains (a section of) a Landsat 7 scene, with the 6 30m-resolution bands (bands 1-5 and 7) for a region covering the city of Olinda, Brazil. A short summary of the data is given by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">x
+<span class="co">#&gt; stars object with 3 dimensions and 1 attribute</span>
+<span class="co">#&gt; attribute(s):</span>
+<span class="co">#&gt;   L7_ETMs.tif   </span>
+<span class="co">#&gt;  Min.   :  1.0  </span>
+<span class="co">#&gt;  1st Qu.: 54.0  </span>
+<span class="co">#&gt;  Median : 69.0  </span>
+<span class="co">#&gt;  Mean   : 68.9  </span>
+<span class="co">#&gt;  3rd Qu.: 86.0  </span>
+<span class="co">#&gt;  Max.   :255.0  </span>
+<span class="co">#&gt; dimension(s):</span>
+<span class="co">#&gt;      from  to  offset delta                       refsys point values    </span>
+<span class="co">#&gt; x       1 349  288776  28.5 +proj=utm +zone=25 +south... FALSE   NULL [x]</span>
+<span class="co">#&gt; y       1 352 9120761 -28.5 +proj=utm +zone=25 +south... FALSE   NULL [y]</span>
+<span class="co">#&gt; band    1   6      NA    NA                           NA    NA   NULL</span></code></pre></div>
+<p>where we see the offset, cellsize, coordinate reference system, and dimensions. The object <code>x</code> is a simple list of length one, holding a three-dimensional array:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">length</span>(x)
+<span class="co">#&gt; [1] 1</span>
+<span class="kw">class</span>(x[[<span class="dv">1</span>]])
+<span class="co">#&gt; [1] &quot;array&quot;</span>
+<span class="kw">dim</span>(x[[<span class="dv">1</span>]])
+<span class="co">#&gt;    x    y band </span>
+<span class="co">#&gt;  349  352    6</span></code></pre></div>
+<p>and in addition holds an attribute with a dimensions table with all the metadata required to know what the array values refer to, obtained by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_dimensions</span>(x)
+<span class="co">#&gt;      from  to  offset delta                       refsys point values    </span>
+<span class="co">#&gt; x       1 349  288776  28.5 +proj=utm +zone=25 +south... FALSE   NULL [x]</span>
+<span class="co">#&gt; y       1 352 9120761 -28.5 +proj=utm +zone=25 +south... FALSE   NULL [y]</span>
+<span class="co">#&gt; band    1   6      NA    NA                           NA    NA   NULL</span></code></pre></div>
+<p>We can get the spatial extent of the array by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_bbox</span>(x)
+<span class="co">#&gt;    xmin    ymin    xmax    ymax </span>
+<span class="co">#&gt;  288776 9110729  298723 9120761</span></code></pre></div>
+<p>Raster data can be written to local disk using <code>st_write</code>:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_write</span>(x, <span class="st">&quot;x.tif&quot;</span>)</code></pre></div>
+<p>where the format (in this case, GeoTIFF) is derived from the file extension. As for simple features, reading and writing uses the GDAL library; the list of available drivers for raster data is obtained by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_drivers</span>(<span class="st">&quot;raster&quot;</span>)</code></pre></div>
+</div>
+<div id="plotting-raster-data" class="section level3">
+<h3><span class="header-section-number">4.2.2</span> Plotting raster data</h3>
+<p>We can use the base plot method for <code>stars</code> objects:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">plot</span>(x)</code></pre></div>
+<p><img src="sdsr_files/figure-html/unnamed-chunk-80-1.png" width="672" style="display: block; margin: auto;" /> The default color scale uses grey tones, and stretches this such that color breaks correspond to data quantiles over all bands. A more familiar view is the rgb or false color composite:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))
+<span class="kw">plot</span>(x, <span class="dt">rgb =</span> <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">reset =</span> <span class="ot">FALSE</span>, <span class="dt">main =</span> <span class="st">&quot;RGB&quot;</span>) <span class="co"># rgb</span>
+<span class="kw">plot</span>(x, <span class="dt">rgb =</span> <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">3</span>,<span class="dv">2</span>), <span class="dt">main =</span> <span class="st">&quot;False color (NIR-R-G)&quot;</span>) <span class="co"># false color</span></code></pre></div>
+<p><img src="sdsr_files/figure-html/unnamed-chunk-81-1.png" width="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="analysing-raster-data" class="section level3">
+<h3><span class="header-section-number">4.2.3</span> Analysing raster data</h3>
+<p>Element-wise mathematical operations on <code>stars</code> objects are just passed on to the arrays. This means that we can call functions and create expressions:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">log</span>(x)
+<span class="co">#&gt; stars object with 3 dimensions and 1 attribute</span>
+<span class="co">#&gt; attribute(s):</span>
+<span class="co">#&gt;   L7_ETMs.tif  </span>
+<span class="co">#&gt;  Min.   :0.00  </span>
+<span class="co">#&gt;  1st Qu.:3.99  </span>
+<span class="co">#&gt;  Median :4.23  </span>
+<span class="co">#&gt;  Mean   :4.12  </span>
+<span class="co">#&gt;  3rd Qu.:4.45  </span>
+<span class="co">#&gt;  Max.   :5.54  </span>
+<span class="co">#&gt; dimension(s):</span>
+<span class="co">#&gt;      from  to  offset delta                       refsys point values    </span>
+<span class="co">#&gt; x       1 349  288776  28.5 +proj=utm +zone=25 +south... FALSE   NULL [x]</span>
+<span class="co">#&gt; y       1 352 9120761 -28.5 +proj=utm +zone=25 +south... FALSE   NULL [y]</span>
+<span class="co">#&gt; band    1   6      NA    NA                           NA    NA   NULL</span>
+x <span class="op">+</span><span class="st"> </span><span class="dv">2</span> <span class="op">*</span><span class="st"> </span><span class="kw">log</span>(x)
+<span class="co">#&gt; stars object with 3 dimensions and 1 attribute</span>
+<span class="co">#&gt; attribute(s):</span>
+<span class="co">#&gt;   L7_ETMs.tif   </span>
+<span class="co">#&gt;  Min.   :  1.0  </span>
+<span class="co">#&gt;  1st Qu.: 62.0  </span>
+<span class="co">#&gt;  Median : 77.5  </span>
+<span class="co">#&gt;  Mean   : 77.1  </span>
+<span class="co">#&gt;  3rd Qu.: 94.9  </span>
+<span class="co">#&gt;  Max.   :266.1  </span>
+<span class="co">#&gt; dimension(s):</span>
+<span class="co">#&gt;      from  to  offset delta                       refsys point values    </span>
+<span class="co">#&gt; x       1 349  288776  28.5 +proj=utm +zone=25 +south... FALSE   NULL [x]</span>
+<span class="co">#&gt; y       1 352 9120761 -28.5 +proj=utm +zone=25 +south... FALSE   NULL [y]</span>
+<span class="co">#&gt; band    1   6      NA    NA                           NA    NA   NULL</span></code></pre></div>
+<p>or even mask out certain values:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">x2 =<span class="st"> </span>x
+x2[x <span class="op">&lt;</span><span class="st"> </span><span class="dv">50</span>] =<span class="st"> </span><span class="ot">NA</span>
+x2
+<span class="co">#&gt; stars object with 3 dimensions and 1 attribute</span>
+<span class="co">#&gt; attribute(s):</span>
+<span class="co">#&gt;   L7_ETMs.tif    </span>
+<span class="co">#&gt;  Min.   : 50     </span>
+<span class="co">#&gt;  1st Qu.: 64     </span>
+<span class="co">#&gt;  Median : 75     </span>
+<span class="co">#&gt;  Mean   : 79     </span>
+<span class="co">#&gt;  3rd Qu.: 90     </span>
+<span class="co">#&gt;  Max.   :255     </span>
+<span class="co">#&gt;  NA&#39;s   :149170  </span>
+<span class="co">#&gt; dimension(s):</span>
+<span class="co">#&gt;      from  to  offset delta                       refsys point values    </span>
+<span class="co">#&gt; x       1 349  288776  28.5 +proj=utm +zone=25 +south... FALSE   NULL [x]</span>
+<span class="co">#&gt; y       1 352 9120761 -28.5 +proj=utm +zone=25 +south... FALSE   NULL [y]</span>
+<span class="co">#&gt; band    1   6      NA    NA                           NA    NA   NULL</span></code></pre></div>
+<p>or un-mask areas:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">x2[<span class="kw">is.na</span>(x2)] =<span class="st"> </span><span class="dv">0</span>
+x2
+<span class="co">#&gt; stars object with 3 dimensions and 1 attribute</span>
+<span class="co">#&gt; attribute(s):</span>
+<span class="co">#&gt;   L7_ETMs.tif </span>
+<span class="co">#&gt;  Min.   :  0  </span>
+<span class="co">#&gt;  1st Qu.: 54  </span>
+<span class="co">#&gt;  Median : 69  </span>
+<span class="co">#&gt;  Mean   : 63  </span>
+<span class="co">#&gt;  3rd Qu.: 86  </span>
+<span class="co">#&gt;  Max.   :255  </span>
+<span class="co">#&gt; dimension(s):</span>
+<span class="co">#&gt;      from  to  offset delta                       refsys point values    </span>
+<span class="co">#&gt; x       1 349  288776  28.5 +proj=utm +zone=25 +south... FALSE   NULL [x]</span>
+<span class="co">#&gt; y       1 352 9120761 -28.5 +proj=utm +zone=25 +south... FALSE   NULL [y]</span>
+<span class="co">#&gt; band    1   6      NA    NA                           NA    NA   NULL</span></code></pre></div>
+<p>Dimension-wise, we can apply functions to array dimensions of stars objects just like <code>apply</code> does this to matrices. For instance, to compute for each pixel the mean of the 6 band values we can do</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), mean)
+<span class="co">#&gt; stars object with 2 dimensions and 1 attribute</span>
+<span class="co">#&gt; attribute(s):</span>
+<span class="co">#&gt;   L7_ETMs.tif   </span>
+<span class="co">#&gt;  Min.   : 25.5  </span>
+<span class="co">#&gt;  1st Qu.: 53.3  </span>
+<span class="co">#&gt;  Median : 68.3  </span>
+<span class="co">#&gt;  Mean   : 68.9  </span>
+<span class="co">#&gt;  3rd Qu.: 82.0  </span>
+<span class="co">#&gt;  Max.   :255.0  </span>
+<span class="co">#&gt; dimension(s):</span>
+<span class="co">#&gt;   from  to  offset delta                       refsys point values    </span>
+<span class="co">#&gt; x    1 349  288776  28.5 +proj=utm +zone=25 +south... FALSE   NULL [x]</span>
+<span class="co">#&gt; y    1 352 9120761 -28.5 +proj=utm +zone=25 +south... FALSE   NULL [y]</span></code></pre></div>
+<p>A more meaningful function would e.g. compute the NDVI (normalized differenced vegetation index):</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ndvi =<span class="st"> </span><span class="cf">function</span>(x) (x[<span class="dv">4</span>]<span class="op">-</span>x[<span class="dv">3</span>])<span class="op">/</span>(x[<span class="dv">4</span>]<span class="op">+</span>x[<span class="dv">3</span>])
+<span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), ndvi)
+<span class="co">#&gt; stars object with 2 dimensions and 1 attribute</span>
+<span class="co">#&gt; attribute(s):</span>
+<span class="co">#&gt;   L7_ETMs.tif    </span>
+<span class="co">#&gt;  Min.   :-0.753  </span>
+<span class="co">#&gt;  1st Qu.:-0.203  </span>
+<span class="co">#&gt;  Median :-0.069  </span>
+<span class="co">#&gt;  Mean   :-0.064  </span>
+<span class="co">#&gt;  3rd Qu.: 0.187  </span>
+<span class="co">#&gt;  Max.   : 0.587  </span>
+<span class="co">#&gt; dimension(s):</span>
+<span class="co">#&gt;   from  to  offset delta                       refsys point values    </span>
+<span class="co">#&gt; x    1 349  288776  28.5 +proj=utm +zone=25 +south... FALSE   NULL [x]</span>
+<span class="co">#&gt; y    1 352 9120761 -28.5 +proj=utm +zone=25 +south... FALSE   NULL [y]</span></code></pre></div>
+<p>Alternatively, to compute for each band the mean of the whole image we can do</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">as.data.frame</span>(<span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;band&quot;</span>), mean))
+<span class="co">#&gt;   band L7_ETMs.tif</span>
+<span class="co">#&gt; 1    1        79.1</span>
+<span class="co">#&gt; 2    2        67.6</span>
+<span class="co">#&gt; 3    3        64.4</span>
+<span class="co">#&gt; 4    4        59.2</span>
+<span class="co">#&gt; 5    5        83.2</span>
+<span class="co">#&gt; 6    6        60.0</span></code></pre></div>
+<p>which is so small it can be printed here as a <code>data.frame</code>. In these two examples, entire dimensions disappear. Sometimes, this does not happen; we can for instance compute the three quartiles of each image</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;band&quot;</span>), quantile, <span class="kw">c</span>(.<span class="dv">25</span>, <span class="fl">.5</span>, <span class="fl">.75</span>))
+<span class="co">#&gt; stars object with 2 dimensions and 1 attribute</span>
+<span class="co">#&gt; attribute(s):</span>
+<span class="co">#&gt;   L7_ETMs.tif   </span>
+<span class="co">#&gt;  Min.   : 32.0  </span>
+<span class="co">#&gt;  1st Qu.: 60.8  </span>
+<span class="co">#&gt;  Median : 66.5  </span>
+<span class="co">#&gt;  Mean   : 69.8  </span>
+<span class="co">#&gt;  3rd Qu.: 78.8  </span>
+<span class="co">#&gt;  Max.   :112.0  </span>
+<span class="co">#&gt; dimension(s):</span>
+<span class="co">#&gt;          from to offset delta refsys point        values</span>
+<span class="co">#&gt; quantile    1  3     NA    NA     NA    NA 25%, ..., 75%</span>
+<span class="co">#&gt; band        1  6     NA    NA     NA    NA          NULL</span></code></pre></div>
+<p>and see that this <em>creates</em> a new dimension, <code>quantile</code>, with three values. Alternatively, the three quantiles over the 6 bands for each pixel are obtained by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), quantile, <span class="kw">c</span>(.<span class="dv">25</span>, <span class="fl">.5</span>, <span class="fl">.75</span>))
+<span class="co">#&gt; stars object with 3 dimensions and 1 attribute</span>
+<span class="co">#&gt; attribute(s):</span>
+<span class="co">#&gt;   L7_ETMs.tif   </span>
+<span class="co">#&gt;  Min.   :  4.0  </span>
+<span class="co">#&gt;  1st Qu.: 55.0  </span>
+<span class="co">#&gt;  Median : 69.2  </span>
+<span class="co">#&gt;  Mean   : 67.2  </span>
+<span class="co">#&gt;  3rd Qu.: 81.2  </span>
+<span class="co">#&gt;  Max.   :255.0  </span>
+<span class="co">#&gt; dimension(s):</span>
+<span class="co">#&gt;          from  to  offset delta                       refsys point</span>
+<span class="co">#&gt; quantile    1   3      NA    NA                           NA    NA</span>
+<span class="co">#&gt; x           1 349  288776  28.5 +proj=utm +zone=25 +south... FALSE</span>
+<span class="co">#&gt; y           1 352 9120761 -28.5 +proj=utm +zone=25 +south... FALSE</span>
+<span class="co">#&gt;                 values    </span>
+<span class="co">#&gt; quantile 25%, ..., 75%    </span>
+<span class="co">#&gt; x                 NULL [x]</span>
+<span class="co">#&gt; y                 NULL [y]</span></code></pre></div>
+</div>
+<div id="handling-large-raster-datasets" class="section level3">
+<h3><span class="header-section-number">4.2.4</span> Handling large raster datasets</h3>
+<p>A common challenge with raster datasets is not only that they come in large files (single Sentinel-2 tiles are around 1 Gb), but that many of these files, potentially thousands, are needed to address the area of interest and/or the time period of interest. This means that the basic pattern for R, to load all data in memory, is not going to work.</p>
+<p>Cloud-based Earth Observation processing platforms like Google Earth Engine <span class="citation">(Gorelick et al. <a href="#ref-gorelick">2017</a>)</span> or <a href="https://www.sentinel-hub.com/">Sentinel Hub</a> lets users work with datasets up to 20 petabyte rather easily and with a great deal of interactivity. They share the following properties:</p>
+<ul>
+<li>computations are posponed as long as possible (lazy evaluation),</li>
+<li>only the data you ask for are being returned, and nothing more,</li>
+<li>storing intermediate results is avoided in favour of on-the-fly computations,</li>
+<li>when working interactively, maps with useful results are generated and shown quickly.</li>
+</ul>
+<p>This carries some similarity with the <code>dbplyr</code> interface to databases and cloud-based analytics environments, but differs in the aspect of <em>what</em> we want to see quickly: not the first <span class="math inline">\(n\)</span> records, but a quick overview of the results, in the form of a map covering the whole area.</p>
+<p>If for instance we want to “see” results for the United States on screen with 1000 x 1000 pixels, we only need to compute results for this many pixels, which corresponds to data on a grid with 3000 m x 3000 m grid cells. If our Sentinel-2 data has a 10 m resolution, this means we can subsample this at a with a factor 300, giving 3 km x 3 km resolution. Processing, storage and network requirements then drop a factor <span class="math inline">\(10^5\)</span>, compared to working on the native 10 m x 10 m resolution. On the platforms mentioned, zooming in the map causes immediate recomputation on a finer resolution and smaller extent.</p>
+<p>A simple optimisation that follows these lines is how stars’ plot method works: in case of plotting large rasters, it subsamples the array before it plots, drastically saving time. The degree of subsampling is derived from the plotting region size and the plotting resolution (pixel density). For vector devices, such as pdf, R sets plot resolution to 75 dpi, or 0.3 mm per pixel. Enlarging plots may reveal this, but replotting to an enlarged devices will create a plot at target density.</p>
+</div>
+<div id="stars-proxy-objects" class="section level3">
+<h3><span class="header-section-number">4.2.5</span> <code>stars</code> proxy objects</h3>
+<p>To handle datasets that are too large to handle in memory, <code>stars</code> has the <code>stars_proxy</code> object. The <code>starsdata</code> packages is a largish R data package with example data that can be installed by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">install.packages</span>(<span class="st">&quot;starsdata&quot;</span>, <span class="dt">repos =</span> <span class="st">&quot;http://pebesma.staff.ifgi.de&quot;</span>, <span class="dt">type =</span> <span class="st">&quot;source&quot;</span>)</code></pre></div>
+<p>We can “load” a 1 Gb Sentinel-2 image by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">granule =<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;starsdata&quot;</span>)
+base_name =<span class="st"> </span><span class="kw">strsplit</span>(<span class="kw">basename</span>(granule), <span class="st">&quot;.zip&quot;</span>)[[<span class="dv">1</span>]]
+s2 =<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;SENTINEL2_L1C:/vsizip/&quot;</span>, granule, <span class="st">&quot;/&quot;</span>, base_name, <span class="st">&quot;.SAFE/MTD_MSIL1C.xml:10m:EPSG_32632&quot;</span>)
+(<span class="dt">p =</span> <span class="kw">read_stars</span>(s2, <span class="dt">proxy =</span> <span class="ot">TRUE</span>))
+<span class="co">#&gt; stars_proxy object with 1 attribute in file:</span>
+<span class="co">#&gt; $`MTD_MSIL1C.xml:10m:EPSG_32632`</span>
+<span class="co">#&gt; [1] &quot;SENTINEL2_L1C:/vsizip//home/edzer/R/x86_64-pc-linux-gnu-library/3.5/starsdata/sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.SAFE/MTD_MSIL1C.xml:10m:EPSG_32632&quot;</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; dimension(s):</span>
+<span class="co">#&gt;      from    to offset delta                       refsys point values    </span>
+<span class="co">#&gt; x       1 10980  3e+05    10 +proj=utm +zone=32 +datum...    NA   NULL [x]</span>
+<span class="co">#&gt; y       1 10980  6e+06   -10 +proj=utm +zone=32 +datum...    NA   NULL [y]</span>
+<span class="co">#&gt; band    1     4     NA    NA                           NA    NA   NULL</span></code></pre></div>
+<p>and we see that this does not actually load <em>any</em> of the pixel values, but keeps the reference to the dataset and fills the dimensions table.</p>
+<p>When we plot it,</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">plot</span>(p)</code></pre></div>
+<p><img src="sdsr_files/figure-html/unnamed-chunk-92-1.png" width="672" style="display: block; margin: auto;" /> the <code>plot</code> method will only fetch the pixels that can be seen on the plot device, rather than the 10980 x 10980 pixels that are available.</p>
+</div>
+<div id="operations-on-proxy-objects" class="section level3">
+<h3><span class="header-section-number">4.2.6</span> operations on proxy objects</h3>
+</div>
+</div>
+<div id="datacubes" class="section level2">
+<h2><span class="header-section-number">4.3</span> Datacubes</h2>
+<p>Data cubes are array data, where array dimensions are meaningfully related to categorical or continuous variables that may include space and time. A simple example would be demographic data, where we have population counts</p>
+<ul>
+<li>per region, for <span class="math inline">\(n\)</span> regions</li>
+<li>by age class, for <span class="math inline">\(m\)</span> age classes</li>
+<li>per year, for <span class="math inline">\(p\)</span> years.</li>
+</ul>
+<p>This forms an array of size <span class="math inline">\(n \cdot m \cdot p\)</span>. R has strong native support for arbitrarily dimensioned arrays, and we can get the value for year <span class="math inline">\(i\)</span>, age class <span class="math inline">\(j\)</span> and year <span class="math inline">\(k\)</span> by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">a[i,j,k]</code></pre></div>
+<p>and the sub-array for age class <span class="math inline">\(j\)</span> by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">a[,j,]</code></pre></div>
+<div id="the-flexibility-of-datacubes" class="section level3">
+<h3><span class="header-section-number">4.3.1</span> The flexibility of datacubes</h3>
+<p>Give examples; see stars/tests/?</p>
+</div>
+<div id="are-datacubes-tidy" class="section level3">
+<h3><span class="header-section-number">4.3.2</span> Are datacubes tidy?</h3>
+<p>Yes. The <em>tidy data</em> paper <span class="citation">(Wickham <a href="#ref-tidy">2014</a><a href="#ref-tidy">b</a>)</span> may suggest that such array data should be processed not as an array, but in a long data.frame where each row holds (region, class, year, value), and it is always good to be able to do this. For primary handling and storage however, this is often not an option, because</p>
+<ul>
+<li>a lot of array data are collected or generated as array data, e.g. by imagery or other sensory devices, or e.g. by climate models</li>
+<li>it is easier to derive the long table form from the array than vice versa</li>
+<li>the long table form takes much more space, since all dimension values occur <span class="math inline">\(nmp\)</span> times, rather than <span class="math inline">\(n\)</span>, <span class="math inline">\(m\)</span> or <span class="math inline">\(p\)</span> times</li>
+<li>the automatic index of the array is typically lost in the long table form</li>
+</ul>
+<p>To put this argument to the extreme, consider for instance that all image, video and sound data are stored in array form; few people would make a real case for storing them in a long table form instead.</p>
+</div>
+<div id="spatial-spatiotemporal-and-raster-datacubes-stars" class="section level3">
+<h3><span class="header-section-number">4.3.3</span> Spatial, spatiotemporal and raster datacubes: <code>stars</code></h3>
+<p>Matrices (two-dimensional arrays) and arrays form a very well understood and strongly supported element in scientific computing, and in R. Package <code>stars</code> builds upon them, but adds strong connections between spatial and temporal dimensions to other R infrastructure for space and time.</p>
+<p>Package <code>stars</code> follows the <a href="https://cran.r-project.org/web/packages/tidyverse/vignettes/manifesto.html">tidy manifesto</a> to handle array sets, and has particularly developed support for the case where one or more of the dimensions refer to space, and/or time. They somewhat resemble the <code>tbl_cube</code> structure found in <code>dplyr</code>, which labels array dimensions, but extends this with</p>
+<ul>
+<li>array dimensions referring to spatial geometries, including points, lines, polygons and rasters</li>
+<li>array dimensions referring to time values and time intervals</li>
+<li>support for spatial coordinate reference systems</li>
+<li>support for measurement units of array values</li>
+<li>support for out-of-memory handling of large datasets</li>
+</ul>
 
+</div>
+</div>
+</div>
+<h3>References</h3>
+<div id="refs" class="references">
+<div id="ref-gorelick">
+<p>Gorelick, Noel, Matt Hancher, Mike Dixon, Simon Ilyushchenko, David Thau, and Rebecca Moore. 2017. “Google Earth Engine: Planetary-Scale Geospatial Analysis for Everyone.” <em>Remote Sensing of Environment</em> 202: 18–27. doi:<a href="https://doi.org/https://doi.org/10.1016/j.rse.2017.06.031">https://doi.org/10.1016/j.rse.2017.06.031</a>.</p>
+</div>
+<div id="ref-tidy">
+<p>Wickham, Hadley. 2014b. “Tidy Data.” <em>Journal of Statistical Software</em> 59 (1).</p>
+</div>
 </div>
             </section>
 
