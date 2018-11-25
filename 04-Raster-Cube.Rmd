@@ -1,0 +1,420 @@
+# Raster data and datacubes {#raster}
+
+## Package `stars`
+
+```{r echo=FALSE}
+knitr::write_bib(c("sp", "raster", "spacetime", "stars", "tsibble"), "packages.bib", width = 60)
+
+```
+
+Athough package `sp` has always had limited support for raster data,
+over the last decade R package `raster` has clearly been dominant
+as the prime package for meaningful and scalable raster analysis.
+Its data model is that of a 2D raster, or a set of raster layers (a
+"raster stack"). This follows the classical static GIS world view,
+where the world is modelled as a set of layers, each representing
+a different theme. A lot of data available Today however is dynamic,
+and comes as time series of rasters for different themes. A raster
+stack does not meaningfully reflect this, requiring the user to
+do shadow book keeping of which layer represents what.  Also, the
+`raster` package does an excellent job in scaling computations up
+to datasizes no larger than the local storage (the computer's hard
+drives). Recent datasets however, including satellite imagery,
+climate model or wheather forecasting data, often no longer fit in
+local storage. Package `spacetime` addresses the analysis of time
+series of vector geometries or raster grid cells, but does not
+extend to higher-dimensional arrays.
+
+Here, we introduce a new package for raster analysis, called `stars`
+(for scalable, spatiotemporal tidy arrays) that
+
+* allows for representing dynamic raster stacks,
+* in addition to regular grids handles rotated, sheared, rectilinear and curvilinear rasters,
+* provides a tight integration with package `sf`,
+* follows the tidyverse design principles,
+* aims at being scalable, also beyond local disk size,
+* handles array data with non-raster spatial dimensions,
+called _vector datacubes_,
+* provides further integration with the GDAL library than other
+R packages have given so far.
+
+Vector data cubes include for instance time series for simple
+features, or spatial graph data such as origin-destination matrices.
+The wider concept of spatial vector and raster data cubes is
+explained in section \@ref(datacubes)
+
+## Raster data
+
+As introduced in section \@ref(geomraster), raster data are spatial
+datasets where observations are aligned on a regular grid usually
+with square grid cells (in some coordinate reference system, chapter
+\@ref{rs}). Raster datasets are used often to represent spatially
+continuously varying phenomena such as temperature or elevation,
+and also for observed imagery for instance obtained from satellites.
+
+### Reading and writing raster data
+
+Raster data typically are read from a file. We read an example
+file of a regular, non-rotated grid from the package `stars`:
+```{r}
+tif = system.file("tif/L7_ETMs.tif", package = "stars")
+x = read_stars(tif)
+```
+The dataset contains (a section of) a Landsat 7 scene, with the 6
+30m-resolution bands (bands 1-5 and 7) for a region covering the
+city of Olinda, Brazil. 
+A short summary of the data is given by
+```{r}
+x
+```
+where we see the offset, cellsize, coordinate reference system,
+and dimensions. The object `x` is a simple list of length one, holding
+a three-dimensional array:
+```{r}
+length(x)
+class(x[[1]])
+dim(x[[1]])
+```
+and in addition holds an attribute with a dimensions table with all the metadata
+required to know what the array values refer to, obtained by
+```{r}
+st_dimensions(x)
+```
+We can get the spatial extent of the array by
+```{r}
+st_bbox(x)
+```
+Raster data can be written to local disk using `st_write`:
+```{r}
+st_write(x, "x.tif")
+```
+where the format (in this case, GeoTIFF) is derived from the file
+extension. As for simple features, reading and writing uses the GDAL
+library; the list of available drivers for raster data is obtained
+by 
+```{r eval=FALSE}
+st_drivers("raster")
+```
+
+### Plotting raster data
+We can use the base plot method for `stars` objects:
+```{r}
+plot(x)
+```
+The default color scale uses grey tones, and stretches this such
+that color breaks correspond to data quantiles over all bands.
+A more familiar view is the rgb or false color composite:
+```{r out.width = '100%', fig = 3, fig.show = 'hold'}
+par(mfrow = c(1, 2))
+plot(x, rgb = c(3,2,1), reset = FALSE, main = "RGB") # rgb
+plot(x, rgb = c(4,3,2), main = "False color (NIR-R-G)") # false color
+```
+
+### Analysing raster data
+
+Element-wise mathematical operations on `stars` objects are just passed
+on to the arrays. This means that we can call functions and create
+expressions:
+```{r}
+log(x)
+x + 2 * log(x)
+```
+or even mask out certain values:
+```{r}
+x2 = x
+x2[x < 50] = NA
+x2
+```
+or un-mask areas:
+```{r}
+x2[is.na(x2)] = 0
+x2
+```
+
+Dimension-wise, we can apply functions to array dimensions of stars
+objects just like `apply` does this to matrices. For instance, to
+compute for each pixel the mean of the 6 band values we can do
+```{r}
+st_apply(x, c("x", "y"), mean)
+```
+A more meaningful function would e.g. compute the NDVI (normalized
+differenced vegetation index):
+```{r}
+ndvi = function(x) (x[4]-x[3])/(x[4]+x[3])
+st_apply(x, c("x", "y"), ndvi)
+```
+Alternatively, to compute for each band the mean of the whole image
+we can do
+```{r}
+as.data.frame(st_apply(x, c("band"), mean))
+```
+which is so small it can be printed here as a `data.frame`. In these
+two examples, entire dimensions disappear. Sometimes, this does not
+happen; we can for instance compute the three quartiles of each image
+```{r}
+st_apply(x, c("band"), quantile, c(.25, .5, .75))
+```
+and see that this _creates_ a new dimension, `quantile`, with three values.
+Alternatively, the three quantiles over the 6 bands for each pixel are
+obtained by
+```{r}
+st_apply(x, c("x", "y"), quantile, c(.25, .5, .75))
+```
+
+### Handling large raster datasets
+
+A common challenge with raster datasets is not only that they come
+in large files (single Sentinel-2 tiles are around 1 Gb), but that
+many of these files, potentially thousands, are needed to address
+the area and time period of interest. At time of
+writing this, the Copernicus program which runs all Sentinel
+satellites publishes 160 Tb of images per day.  This means that a
+classic pattern in using R, consisting of
+
+* downloading data to local disc, 
+* loading the data in memory, 
+* analysing it
+
+is not going to work.
+
+Cloud-based Earth Observation processing platforms like Google Earth
+Engine [@gorelick] or [Sentinel Hub](https://www.sentinel-hub.com/)
+recognize this and let users work with datasets up to 20 petabyte
+rather easily and with a great deal of interactivity. They share
+the following properties:
+
+* computations are posponed as long as possible (lazy evaluation),
+* only the data you ask for are being computed and returned, and nothing more,
+* storing intermediate results is avoided in favour of on-the-fly computations,
+* maps with useful results are generated and shown quickly to allow for interactive model development.
+
+This is similar to the `dbplyr` interface to databases
+and cloud-based analytics environments, but differs in the aspect of
+_what_ we want to see quickly: rather than the first $n$ records,
+we want a quick _overview_ of the results, in the form of a map
+covering the whole area, or part of it, but at screen resolution
+rather than native (observation) resolution.
+
+If for instance we want to "see" results for the United States on
+screen with 1000 x 1000 pixels, we only need to compute results
+for this many pixels, which corresponds roughly to data
+on a grid with 3000 m x 3000 m grid cells.  For Sentinel-2
+data with 10 m resolution, this means we can subsample with
+a factor 300, giving 3 km x 3 km resolution.  Processing,
+storage and network requirements then drop a factor $300^2 \approx 10^5$, compared
+to working on the native 10 m x 10 m resolution. On the platforms
+mentioned, zooming in the map triggers further computations on a
+finer resolution and smaller extent.
+
+A simple optimisation that follows these lines is how stars' plot
+method works:  in case of plotting large rasters, it subsamples
+the array before it plots, drastically saving time.  The degree
+of subsampling is derived from the plotting region size and the
+plotting resolution (pixel density). For vector devices, such as pdf,
+R sets plot resolution to 75 dpi, corresponding to 0.3 mm per pixel.
+Enlarging plots may reveal this, but replotting to an enlarged
+devices will create a plot at target density.
+
+### `stars` proxy objects
+
+To handle datasets that are too large to fit in memory, `stars`
+provides `stars_proxy` objects.  To demonstrate its use, we will
+use the `starsdata` package, an R data package with larger datasets
+(around 1 Gb total). It can be installed by
+```{r eval=FALSE}
+install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")
+```
+We can "load" a Sentinel-2 image from it by
+```{r}
+granule = system.file("sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip", package = "starsdata")
+file.size(granule)
+base_name = strsplit(basename(granule), ".zip")[[1]]
+s2 = paste0("SENTINEL2_L1C:/vsizip/", granule, "/", base_name, ".SAFE/MTD_MSIL1C.xml:10m:EPSG_32632")
+(p = read_stars(s2, proxy = TRUE))
+object.size(p)
+```
+and we see that this does not actually load _any_ of the pixel
+values, but keeps the reference to the dataset and fills the
+dimensions table. (The convoluted `s2` name is needed to point
+GDAL to the right file inside the `.zip` file containing 115 files
+in total).
+
+The idea of a proxy object is that we can build expressions like
+```{r}
+p2 = p * 2
+```
+but that these are not evaluated. Only when we really need
+the data, e.g. because we want to plot it, `p * 2` is evaluated.
+We need data when
+
+* we want to `plot` data
+* we want to write an object to disk, with `st_write`.
+* we want to explicitly load an object in memory, with `st_as_stars`
+
+In case the entire object does not fit in memory, `plot` and
+`st_write` each choose a strategy to deal with this:
+
+* `plot` fetches only the pixels that can be plotted, rather than the
+ones that are available, and 
+* `st_write` reads, processes, and writes data chunk by chunk.
+
+As an example,
+```{r}
+plot(p)
+```
+only fetches the pixels that can be seen on the plot device, rather
+than the 10980 x 10980 pixels available in each band. The downsampling
+ratio taken is
+```{r}
+floor(sqrt(prod(dim(p)) / prod(dev.size("px"))))
+```
+meaning that for every 19 x 19 sub-image in the original image,
+only one pixel is read, and plotted. This value is still a bit too
+high as it ignores the white space and space for the key on the
+plotting device.
+
+### Operations on proxy objects
+
+A few dedicated methods are available for `stars_proxy` objects:
+```{r}
+methods(class = "stars_proxy")
+```
+We have seen `plot` and `print` in action; `dim` reads out
+the dimension from the dimensions metadata table. 
+
+The three methods that actually fetch data are `st_as_stars`,
+`plot` and `st_write`.  `st_as_stars` reads the actual data into a
+`stars` object, its argument `downsample` controls the downsampling
+rate. `plot` does this too, choosing an appropriate `downsample`
+value from the device resolution, and plots the object. `st_write`
+writes a `star_proxy` object to disc.
+
+All other methods for `stars_proxy` objects do not actually operate
+on the raster data but add the operations to a _to do_ list,
+attached to the object. Only when actual raster data are fetched,
+e.g. by calling `plot` or `st_as_stars`, the commands in this list
+are executed.
+
+`st_crop` limits the extent (area) of the raster that will be
+read. `c` combines `stars_proxy` objects, but still doesn't read
+any data. `adrop` drops empty dimensions, `aperm` changes dimension
+order.
+
+`st_write` reads and processes its input chunk-wise; it has an
+argument `chunk_size` that lets users control the size of spatial
+chunks.
+
+## Datacubes {#datacubes}
+
+Data cubes are multi-dimensional array data, where array dimensions
+are meaningfully related to categorical or continuous variables
+that may include space and time [@lu2018multidimensional]. We have
+seen raster data cubes so far, e.g.
+
+* raster data naturally fit in two-dimensional arrays, 
+* multi-spectral raster data fit in three-dimensional arrays (cubes), and 
+* time series of multi-spectral raster data fit in four-dimensional arrays (hyper-cubes).
+
+Besides Earth Observation/satellite imagery data, a large class
+of datacubes come from modelling data, e.g. from oceanographic,
+meteorologic or climate models, where dimensions may include
+
+* latitude and longitude
+* altitude, or depth
+* pressure level (substituting altitude)
+* time 
+* time to forecast, in addition to time when a forecast was made
+
+we can add to this as an additional dimension
+
+* variable of interest (pressure, temperature, humidity, wind speed, ...)
+
+when we accept categorical variables to also "take" a dimension. The
+alternative would be to consider these as "fields", or "attributes"
+of array records. Being able to flexibly swap dimensions to
+attributes and vice-versa leads to powerful analysis, as e.g. shown
+by SciDB [@brown2010overview].
+
+We go from raster data cubes to _vector data cubes_ if we replace
+the two or three raster dimensions with one dimension listing a
+set of feature geometries (points, lines or polygons). One example
+would be air quality data, where we could have $PM_{10}$ measurements
+for
+
+* a set of monitoring stations, and
+* a sequence of time intervals
+
+aligned in a vector data cube.  Another example would be demographic
+or epidemiological data, where we have a time series of (population,
+disease) counts, with number of persons
+
+* by region, for $n$ regions
+* by age class, for $m$ age classes, and
+* by year, for $p$ years.
+
+which forms an array with $n m p$ elements. 
+
+R has strong native support for arbitrarily dimensioned arrays, and we can get
+the value for year $i$, age class $j$ and year $k$ from array `a` by
+```{r eval=FALSE}
+a[i,j,k]
+```
+and e.g. the sub-array for age class $j$ by
+```{r eval=FALSE}
+a[,j,]
+```
+
+For spatial data science, support of vector and raster data cubes
+is extremely useful, because many variables are both spatially and
+temporaly varying, and because we either want to change dimensions
+or aggregate them out. Examples of changing dimensions are
+
+* interpolating air quality measurements to values on a regular grid (raster)
+* estimating density maps from points or lines, e.g. with the number of flights passing by per week within a range of 1 km
+* aggregating climate model predictions to summary indicators for administrative regions
+* combining Earth observation data from different sensors, e.g. Modis (250 m pixels, every 16 days) with Sentinel-2 (10 m,
+every 5 days).
+
+Examples of aggregating one ore more full dimensions are assessments of
+
+* which air quality monitoring stations indicate unhealthy conditions
+* which region has the highest increase in disease incidence
+* global warming (e.g. in degrees per year)
+
+### Are datacubes tidy?
+
+Yes. The _tidy data_ paper [@tidy] may suggest that such array
+data should be processed not as an array, but in a long table where
+each row holds (region, class, year, value), and it is always good
+to be able to do this. For primary handling and storage however,
+this is often not an option, because
+
+* a lot of array data are collected or generated as array data, e.g.
+by imagery or other sensory devices, or e.g. by climate models
+* it is easier to derive the long table form from the array than
+vice versa
+* the long table form takes much more space, since all dimension
+values occur $nmp$ times, rather than $n$, $m$ or $p$ times
+* the automatic index of the array is typically lost in the long table form
+
+To put this argument to the extreme, consider for instance that
+all image, video and sound data are stored in array form; few
+people would make a real case for storing them in a long table
+form instead.  Nevertheless, R packages like `tsibble` take this
+approach, and have to deal with ambiguous ordering multiple records
+with identical time steps for different spatial features and index
+them, which is solved both _automatically_ by using the array form.
+
+Package `stars` tries to follow the [tidy
+manifesto](https://cran.r-project.org/web/packages/tidyverse/vignettes/manifesto.html)
+to handle array sets, and has particularly developed support for the
+case where one or more of the dimensions refer to space, and/or time.
+They somewhat resemble the `tbl_cube` structure found in `dplyr`,
+which labels array dimensions, but extends this with
+
+* array dimensions referring to spatial geometries, including points, lines, polygons and rasters
+* array dimensions referring to time values _or_ time intervals
+* support for spatial and temporal reference systems
+* support for measurement units of array values
+* support for regular and rectilinear space and time dimensions, and curvilinear spatial grids
+* support for out-of-memory handling of large datasets

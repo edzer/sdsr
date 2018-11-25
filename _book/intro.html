@@ -25,7 +25,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand">
 
 
-<meta name="date" content="2018-10-18">
+<meta name="date" content="2018-11-25">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -355,7 +355,7 @@ nc<span class="fl">.32119</span> <span class="op">%&gt;%</span><span class="st">
 </div>
 <div id="reading" class="section level2">
 <h2><span class="header-section-number">1.2</span> Reading and writing</h2>
-<p>Typical R data science tasks start with reading data from an external source; this may be a file, or a set of files like a “shapefile”, or a database, or a web service. Package <code>sf</code> can read from a large number of different data sources; the following command shows how many</p>
+<p>Typical R data science tasks start with reading data from an external source; this may be a file, or a set of files like a “shapefile”, or a database, or a web service. Package <code>sf</code> can read from a large number of different data source types, each having its own driver. The following commands show how many vector and raster drivers we have available:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_drivers</span>(<span class="st">&quot;vector&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">nrow</span>() <span class="co"># vector drivers</span>
 <span class="co">#&gt; [1] 80</span>
 <span class="kw">st_drivers</span>(<span class="st">&quot;raster&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">nrow</span>() <span class="co"># raster drivers</span>
@@ -363,15 +363,15 @@ nc<span class="fl">.32119</span> <span class="op">%&gt;%</span><span class="st">
 <p>(the output you see may differ because of different operating system and configuration.)</p>
 <div id="gdal" class="section level3">
 <h3><span class="header-section-number">1.2.1</span> GDAL</h3>
-<p><code>st_drivers</code> lists the drivers available to GDAL, the geospatial data abstraction library. This library can be seen as the swiss army knive of spatial data; besides for R it is used in Python, QGIS, PostGIS, <a href="https://trac.osgeo.org/gdal/wiki/SoftwareUsingGdal">and more than 100 other software projects</a>. The dependency of <code>sf</code> on other R libraries and system libraries is shown in figure <a href="intro.html#fig:gdal-fig">1.2</a>.</p>
+<p><code>st_drivers</code> lists the drivers available to GDAL, the geospatial data abstraction library. This library can be seen as the Swiss army knive of spatial data; besides for R it is being used in Python, QGIS, PostGIS, <a href="https://trac.osgeo.org/gdal/wiki/SoftwareUsingGdal">and more than 100 other software projects</a>. The dependency of <code>sf</code> on other R packages and system libraries is shown in figure <a href="intro.html#fig:gdal-fig">1.2</a>.</p>
 <div class="figure" style="text-align: center"><span id="fig:gdal-fig"></span>
-<img src="images/sf_deps.png" alt="sf and its dependencies"  />
+<img src="images/sf_deps.png" alt="sf and its dependencies; arrows indicate strong dependency, dashed arrows weak dependency"  />
 <p class="caption">
-Figure 1.2: sf and its dependencies
+Figure 1.2: sf and its dependencies; arrows indicate strong dependency, dashed arrows weak dependency
 </p>
 </div>
-<p>Note that the C/C++ libraries used (GDAL, GEOS, Proj, liblwgeom, udunits2) are all developed, maintained and used by (data) science communities that are much larger than the R community. By using these libraries, we share how we understand what we are doing with all the other communities that use these libraries. This is not only important for resolving problems, but also for establishing which findings are facts.</p>
-<p>GDAL is a “library of libraries” – in order to read all these data sources it needs a large number of other libraries. It typically links to over 100 other libraries. Binary packages distributed by CRAN contain only statically linked code: CRAN does not want to make any assumptions about presence of third-party libraries on the host system. As a consequence, when the binary <code>sf</code> package is installed from CRAN, it includes a copy of all the required external libraries as well as their dependencies, which may amount to 50 or 100 Mb.</p>
+<p>Note that the C/C++ libraries used (GDAL, GEOS, PROJ, liblwgeom, udunits2) are all developed, maintained and used by data science communities that are much larger than the R community. By using these libraries, we share how we understand what we are doing with these other communities. This is not only important for resolving problems, but also for reaching consensus on which findings are facts.</p>
+<p>GDAL is a “library of libraries” – in order to read all these data sources it needs a large number of other libraries. It typically links to over 100 other libraries. Binary packages distributed by CRAN contain only statically linked code: CRAN does not want to make any assumptions about presence of third-party libraries on the host system. As a consequence, when the <code>sf</code> package is installed in binary form from CRAN, it includes a copy of all the required external libraries as well as their dependencies, which may amount to 100 Mb.</p>
 </div>
 <div id="st_read-or-read_sf" class="section level3">
 <h3><span class="header-section-number">1.2.2</span> <code>st_read</code> or <code>read_sf</code>?</h3>
@@ -426,8 +426,8 @@ tif =<span class="st"> </span><span class="kw">system.file</span>(<span class="s
 <span class="co">#&gt; band    1   6      NA    NA                           NA    NA   NULL</span></code></pre></div>
 <p>Raster data analysis and its integration with vector data is explained in detail in chapter <a href="raster.html#raster">4</a>.</p>
 </div>
-<div id="reading-from-files-and-shapefiles" class="section level3">
-<h3><span class="header-section-number">1.2.4</span> Reading from files, and shapefiles</h3>
+<div id="reading-from-files-and-legacy-shapefiles" class="section level3">
+<h3><span class="header-section-number">1.2.4</span> Reading from files, and legacy shapefiles</h3>
 <p>We saw above that a spatial dataset can be read from a single file by</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">nc &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">read_sf</span>()</code></pre></div>
 <p>In some cases, spatial datasets are contained in <em>multiple</em> files, e.g. in the case of shapefiles. A “shapefile” should be really understood as a set of files with a common prefix, or even a directory with several of such sets.</p>
@@ -569,7 +569,7 @@ dbcon &lt;-<span class="st"> </span><span class="kw">dbConnect</span>(<span clas
 <span class="co">#&gt; 1     50 POINT (181072 333611)</span>
 <span class="co">#&gt; 2     30 POINT (181025 333558)</span>
 <span class="co">#&gt; 3    150 POINT (181165 333537)</span></code></pre></div>
-<p>An advantage of the former approach may be that any query can be passed, allowing for reading only parts of a table into R’s memory. A disadvantage is that it does not read the coordinate reference system; for other spatial databases, like PostGIS, this may work better.</p>
+<p>An advantage of the former approach may be that any query can be passed, allowing for reading only parts of a table into R’s memory.</p>
 </div>
 </div>
 <div id="exercises" class="section level2">

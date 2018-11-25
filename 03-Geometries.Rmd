@@ -1,7 +1,8 @@
 # Geometries {#geometries}
 
 ```{r echo=FALSE}
-knitr::write_bib(c("stplanr", "osmar"), "packages.bib", width = 60)
+knitr::write_bib(c("stplanr", "osmar", "xts", "sf"), "packages.bib", width = 60)
+
 ```
 
 Having learned how we describe spaces, we can define how geometries
@@ -20,8 +21,7 @@ by points, lines, or polygons. The "simple" adjective refers to
 the fact that the line or polygon geometries are represented by
 sequences of points connected with straight lines.
 
-_Simple features access_ is a standard 
-[@sfa, @sfa2, @iso].
+_Simple features access_ is a standard [@sfa, @sfa2, @iso]
 for describing simple feature geometries that includes
 
 * a class hierarchy
@@ -41,23 +41,25 @@ The most commonly used simple features geometries, used to represent a _single_ 
 |------|-------------------------|
 | `POINT` | single point geometry |
 | `MULTIPOINT` | set of points |
-| `LINESTRING` | single line |
-| `MULTILINESTRING` | set of lines |
+| `LINESTRING` | single linestring (two or more points connected by straight lines) |
+| `MULTILINESTRING` | set of linestrings |
 | `POLYGON` | exterior ring with zero or more inner rings, denoting holes |
 | `MULTIPOLYGON` | set of polygons |
-| `GEOMETRYCOLLECTION` | set of geometries  |
+| `GEOMETRYCOLLECTION` | set of the geometries above  |
 
 Points in a geometry contain at least two coordinates: x and y, in that order.
 
-### Constraints
+### Valid geometries
 
-The following constraints to simple feature geometries hold:
+Valid geometries obey the following properties:
 
-* lines shall not self-intersect
+* linestrings shall not self-intersect
 * polygon rings shall be closed (the last point equals the first)
 * polygon holes (inner rings) shall be inside their exterior ring
 * polygon inner rings shall maximally touch the exterior ring in single points, not over a line
 * a polygon ring shall not repeat its own path
+
+If this is not the case, the geometry concerned is not valid.
 
 ### Z and M
 
@@ -67,15 +69,13 @@ simple feature geometries can have
 * a `Z` coordinate, denoting altitude, and/or
 * an `M` value, denoting some "measure"
 
-but it should be noted that infrastructure for truly
-three-dimensional geometries is not available. Practically all
-functions available for simple feature geometries only operate on
-the XY dimensions.
-
 The `M` attribute shall be a property of the vertex. It sounds
 attractive to encode a time stamp in it, e.g. to pack trajectories
 in `LINESTRING`s. These become however invalid once the trajectory
 self-intersects.
+
+Both `Z` and `M` are found relatively rarely, and software support
+to do something useful with them is (still) rather rare.
 
 ### Ten further geometry types
 
@@ -100,7 +100,7 @@ are not described in the SFA standard, but in the [SQL-MM part
 descriptions above were copied from the [PostGIS
 manual](http://postgis.net/docs/using_postgis_dbmanagement.html).
 
-### Encodings: WKT, WKB
+### Encodings
 
 Part of the simple feature standard are two encodings: a text and a
 binary encoding.  The text strings `POINT (0 1)` and so on indicate
@@ -120,31 +120,36 @@ in data.frame objects, of class `sf`.
 
 ### `sfg`: simple feature geometry
 
-Individual simple feature geometry objects are implemented pretty much
-like the arguments to their constructor function, as a
+Point sets are stored as numeric matrix, with 2 (`XY`), 3 (`XYZ`
+or `XYM`) or 4 (`XYZM`) columns, with a points in each row.
+Individual simple feature geometry objects are implemented as:
 
 * numeric vector for `POINT`,
 * numeric matrix for `MULTIPOINT` and `LINESTRING`
 * list of numeric matrices for `MULTILINESTRING` and `POLYGON`
 * list of lists of numeric matrices for `MULTIPOLYGON`
-* list of typed geometries for `GEOMETRYCOLLECTION`
+* list of (typed) geometries for `GEOMETRYCOLLECTION`
 
 All other geometry types follow this, using the simplest possible option. 
+Note that matrices can have zero points, and lists can have zero
+elements, in which case we have _empty_ geometries; more about this
+in section \@ref(empty).
+
 Objects have a class indicating their dimension, type, and a
-superclass (`sfg` for simple feature geometry), and have no other
+superclass (`sfg`: simple feature geometry), and have no other
 attributes than their S3 class:
 
-The superclass that holds a single simple feature geometry is `sfg`:
 ```{r}
 (pt = st_point(c(0,1)))
 attributes(pt)
 ```
-We see that in addition to `sfg` it has two class attributes:
 
-* `XY` telling the dimension of the point(s)
-* `POINT` revealing the geomtry type.
+We see that in addition to `sfg` the `class` attribute has two values:
 
-Some examples of `XYZ` and `XYM` and `XYZM` geometries are found here:
+* `XY` telling the dimension of the point(s), can also be `XYZ`, `XYM` or `XYZM`
+* `POINT` revealing the geometry type.
+
+Examples of `XYZ` and `XYM` and `XYZM` geometries are found here:
 ```{r}
 system.file("shape/storms_xyz_feature.shp", package="sf") %>%
 	st_read()
@@ -153,7 +158,7 @@ system.file("shape/storms_xyzm_feature.shp", package="sf") %>% # badly named!
 (pzm = st_point(c(1,2,3,4)))
 ```
 
-Points and vertices in simple feature geometries represent XY coordinates, in that order.
+
 A `MULTIPOINT` or a `LINESTRING` can be created by a matrix
 ```{r}
 (m1 = rbind(c(8, 1), c(2, 5), c(3, 2)))
@@ -169,7 +174,7 @@ st_dimension(ls)
 A `MULTILINESTRING` can be constructed from a list of matrices, representing vertices:
 ```{r}
 m2 = rbind(c(22,20), c(18, 15))
-mls = st_multilinestring(list(m1, m2))
+(mls = st_multilinestring(list(m1, m2)))
 ```
 A `POLYGON` consists of an outer ring, followed by zero or more
 inner rings that denote holes in the outer ring:
@@ -215,7 +220,7 @@ and lossless. Whenever there is a choice, binary encoding should
 be prefered over text encoding.
 
 
-#### simple, valid, empty
+#### simple, valid, empty {#empty}
 
 Methods `st_is_simple` and `st_is_valid` help detect non-simple and non-valid geometries:
 ```{r}
@@ -225,7 +230,7 @@ st_is_valid(st_polygon(list(rbind(c(1,1), c(0,0), c(1,1), c(2,2), c(2,1), c(1,1)
 
 A very important concept in the feature geometry framework is that of the
 empty geometry. We can think of an empty geometry as similar to the
-`NA` value in vectors: it is a placeholder, but a usable value is
+`NA` value in R vectors: it is a placeholder, but a usable value is
 not available. Empty geometries arise naturally when we do geometrical
 operations (chapter \@ref(geommanip)), for instance when we want to
 know where two disjoint geometries coincide:
@@ -233,8 +238,8 @@ know where two disjoint geometries coincide:
 (e = st_intersection(st_point(c(0,0)), st_point(c(1,1))))
 ```
 
-It is not entirely clear what the benefit is of having empty
-geometries _typed_, but according to the simple feature standard
+It is not entirely clear what the benefit is of having _typed_
+empty geometries, but according to the simple feature standard
 they are. They are detected by
 ```{r}
 st_is_empty(e)
@@ -266,12 +271,11 @@ a new single geometry. We can convert to a `MULTIPOINT`
 ```{r}
 rbind(c(0,0), c(1,1), c(1,0), c(0,1)) %>% st_linestring() %>% st_cast("POINT")
 ```
-but if we want to have a set of points, we need to work with sets first, because
+but if we want to have a set of points, we need to work with sets (section \@(sfc)) first, because
 we want a set with another cardinality:
 ```{r}
 (p <- rbind(c(0,0), c(1,1), c(1,0), c(0,1)) %>% st_linestring() %>% st_sfc() %>% st_cast("POINT"))
 ```
-This is further explained in the next section.
 
 #### `GEOMETRYCOLLECTION` handling
 
@@ -300,14 +304,13 @@ st_collection_extract(j, "LINESTRING")
 ```
 which sometimes results in a geometry set, sometimes in single geometries.
 
-
-### `sfc`: sets of geometries
+### `sfc`: sets of geometries {#sfc}
 
 Rather than handling geometries individually, we typically handle
-them as sets. 
+them as sets.
 Package `sf` provides a dedicated class for this, called `sfc`
 (for **s**imple **f**eature geometry list **c**olumn). We can create such a
-list with `st_sfc`:
+list column with constructor function `st_sfc`:
 ```{r}
 (sfc = st_sfc(st_point(c(0,1)), st_point(c(-3,2)), crs = 4326))
 ```
@@ -364,7 +367,7 @@ p[[2]]
 ```
 and we will use these lists as _list columns_ in `data.frame` or
 `tibble` objects to represent simple features with geometries in
-a list column. These objects are of class `sf`.
+a list column. These objects are of class `sf` (section \@ref{sf}).
 
 #### Feature sets with mixed geometries
 
@@ -383,7 +386,7 @@ st_sf(g) %>% filter(st_is(., "LINESTRING"))
 ```
 
 
-### `sf`: geometries with attributes
+### `sf`: geometries with attributes {#sf}
 
 `sf` objects are `tibbles` or `data.frame`s with feature geometry
 in a list column, and an `sf` class added:
@@ -393,8 +396,8 @@ class(sf)
 ```
 Although there is nothing against simply using data.frames or tibbles
 with `sfc` list columns, a number of methods have been written for
-`sf` objects that should make life even more convenient, including
-plot methods that create maps.
+`sf` objects that make life even more convenient, including
+plot methods to create maps.
 
 In addition to the usual `data.frame` attributes, `sf` objects have two more attributes:
 ```{r}
@@ -410,8 +413,8 @@ as the ``active'' geometry.
 the attributes how it relates to the geometry (in case of a non-point
 geometry): is it constant throughout the geometry like a soil type,
 is it an aggregate over the geometry like a population count,
-or does it identify the geometry like a state name? Read more about
-this in section \@ref(agr).
+or does it identify the geometry like a state name? This is explained
+in more depth in section \@ref(agr).
 
 ## Tesselations: coverages, rasters {#geomraster}
 
@@ -425,14 +428,14 @@ between them.
 More fundamental ways of storing such polygons use a _topological_
 model, examples of this are found in geographic information systems
 like GRASS GIS or ArcGIS. Topological models store every boundary
-between polygons only once, and register which polygon is on each
+between polygons only once, and register which polygon is on either
 side of a boundary.
 
 A simpler approach, associated with the term _raster data_,
 is to tesselate each spatial dimension $d$ into regular cells,
-formed by left-closed and right-open intervals $d_i$:
+formed e.g. by left-closed and right-open intervals $d_i$:
 $$d_i = d_0 + [~ i \cdot \delta, (i+1) \cdot \delta~)$$
-with $d_0$ an offset, $\delta$ the interval (raster cell or
+with $d_0$ an offset, $\delta$ the interval (cell or
 pixel) size, and where the cell index $i$ is an arbitrary but
 consecutive set of integers.
 
@@ -441,12 +444,13 @@ when they fall on a boundary shared by two polygons is ambiguous.
 Using left-closed "[" and right-open ")" intervals in regular
 tesselations removes this ambiguity.
 
-Tesselating the time dimension in this way is very common, and the
-implicit assumption underlying most time series packages in R.
-Different models can be combined: one could use simple feature
-polygons to tesselate space, and combine this with a regular
-tesselation of time in order to cover a space-time vector datacube.
-Raster data and data cubes are discussed in chapter \@ref(raster).
+Tesselating the time dimension in this way is very common, and
+reflects the implicit assumption underlying time series packages
+such as `xts` in R.  Different models can be combined: one could
+use simple feature polygons to tesselate space, and combine this
+with a regular tesselation of time in order to cover a space-time
+_vector datacube_.  Raster data and data cubes are discussed in
+chapter \@ref(raster).
 
 ## Networks
 
@@ -459,11 +463,32 @@ start or end points, forming a set of nodes and edges
 * edges may be directed, and allow for connections (flow, transport)
 in only one way.
 
-Several R packages (osmar, stplanr) have (limited) functionality
+Several R packages (`osmar`, `stplanr`) have (limited) functionality
 available for constructing network objects, and working with them,
 e.g. computing shortest or fastest routes through a network.
 
 ## Geometries on the sphere
+
+Geometries on the sphere are geometries made from geodetic
+coordinates. The easiest of these concern small regions near the
+equator not covering the date line, because in that case we can
+ignore all problems and still do a good job. Reality is nastier.
+
+The concept of a bounding box, defined from the coordinate ranges
+breaks easily down, e.g. when crossing the date line:
+```{r}
+pts = rbind(c(-179,0), c(179,0), c(179,1), c(-179,1), c(-179,0))
+date_line = st_sfc(st_polygon(list(pts)), crs = 4326)
+st_bbox(date_line) %>% st_as_sfc()
+```
+or when a polygon contains one of the poles:
+```{r}
+pts = rbind(c(0,89), c(120,89), c(240,89), c(0,89))
+pole = st_sfc(st_polygon(list(pts)), crs = 4326)
+st_bbox(pole) %>% st_as_sfc()
+```
+where we see that in both cases the `st_bbox` implied polygon does
+not cover the area intended.
 
 ### Straight lines?
 
