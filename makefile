@@ -4,6 +4,7 @@ book:
 clean:
 	rm -fr _book/*
 	rm -fr _bookdown_files
+	Rscript -e "bookdown::clean_book(TRUE)"
 
 view:
 	google-chrome _book/index.html
