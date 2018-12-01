@@ -397,40 +397,56 @@ right before they are encoded as well-known binary, and passed on to
 the libraries where this may have an effect (GEOS, GDAL, liblwgeom).
 We demonstrate this by an R - WKB - R roundtrip.
 
-Rounding can be done by three different options. With a negative
+Rounding can be done in two different ways.  First, With a negative
 precision value, 8-byte doubles get converted to 4-byte floats and
 back again:
 ```{r}
-old = options(digits = 16)
-(p = st_sfc(st_point(c(1e6/3, 1e4/3))))
-p %>% st_set_precision(-1) %>% st_as_binary() %>% st_as_sfc() %>% `[[`(1)
+(p = st_sfc(st_point(c(1e6/3, 1e4/3)), crs = 3857))
+p %>% st_set_precision(-1) %>% st_as_binary() %>% st_as_sfc() %>% `[[`(1) %>% print(digits = 16)
 ```
-With a positive precision $p$, each coordinate value $c$ is replaced by
+Second, with a positive precision $p$, each coordinate value $c$
+is replaced by 
 $$c' = \mbox{round}(p \cdot c) / p$$
 This implies that for instance with a precision of 1000, the number
-of decimal placed to round to is 1/1000:
+of decimal places to round to is 1/1000, or to mm if the unit of
+coordinates is metre:
 ```{r}
 p %>% st_set_precision(1000) %>% st_as_binary() %>% st_as_sfc() %>% `[[`(1)
 ```
 With a precision of e.g. 0.001 or 0.05, rounding to the nearest `1/precision`,
-i.e. 1000 or 20, is obtained:
+i.e. if the unit is m to the nearest 1000 m or 20 m, is obtained:
 ```{r}
-p %>% st_set_precision(0.001) %>% st_as_binary() %>% st_as_sfc() %>% `[[`(1) # nearest 1000
-p %>% st_set_precision(0.05) %>% st_as_binary() %>% st_as_sfc()  %>% `[[`(1) # nearest 20
-options(digits = old$digits)
+p %>% st_set_precision(0.001) %>% st_as_binary() %>% st_as_sfc() %>% `[[`(1) # to nearest 1000
+p %>% st_set_precision(0.05) %>% st_as_binary() %>% st_as_sfc()  %>% `[[`(1) # to nearest 20
 ```
+As a convenience, precisions can also be specified as a `units` object, with
+the unit to round to, e.g. to the nearest 5 cm:
+```{r}
+p %>% st_set_precision(units::set_units(5, cm)) %>% 
+	st_as_binary() %>% 
+	st_as_sfc() %>% `[[`(1) %>% print(digits = 10)
+```
+but this requires that the object, `p`, has a coordinate reference
+system with known units.
 
 In essence, these rounding methods bring the coordinates to
 points on a regular grid, which is beneficial for geometric
 computations. Of course, it also affects all computations like
 areas and distances. Which precision values are best for which
-application is often a matter of trial and error. A reproducible
-example illustrating the need for setting precision is found
+application is often a matter of common sense
+combined with trial and error. A reproducible example
+illustrating the need for setting precision is found
 [here](https://github.com/r-spatial/sf/issues/275).
+
 
 ## Warnings for longitude/latitude geometries {#longlat}
 
-In st_centroid.sfc(st_geometry(x), of_largest_polygon = of_largest_polygon) :
-  st_centroid does not give correct centroids for longitude/latitude data
-
-How serious is this?
+When working on geodetic coordinates (degrees longitude/latitude), package `sf`
+gives warnings when it makes the assumption that coordinates are Cartesian, e.g. in
+```{r}
+i = st_intersects(nc[1,], nc[2,])
+```
+In many cases, making this assumption is not a problem. It might
+be a problem when we have polygons that cover very large areas,
+cover North or South pole, or have lines crossing or polygons
+covering the dateline.

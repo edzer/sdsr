@@ -1,3 +1,31 @@
 # Spatial Interpolation and geostatistics
 
-intro ; variograms; gstat (needs to be sf-ed)
+## Load meuse data
+```{r}
+# this reloads meuse as data.frame, so
+library(sp)
+demo(meuse, ask = FALSE, echo = FALSE)
+library(sf)
+meuse_sf = st_as_sf(meuse)
+```
+
+## fit variogram
+```{r}
+library(gstat)
+v = variogram(log(zinc)~1, meuse_sf)
+(v.fit = fit.variogram(v, vgm(1, "Sph", 900, 1)))
+```
+
+## kriging to point locations:
+```{r}
+(k_sf = krige(log(zinc)~1, meuse_sf, meuse_sf, v.fit))
+plot(k_sf[1], pch = 16)
+```
+
+## kriging to stars grid:
+```{r}
+library(stars)
+meuse_stars = st_as_stars(meuse.grid)
+k_st = krige(log(zinc)~1, meuse_sf, meuse_stars, v.fit)
+plot(k_st)
+```
