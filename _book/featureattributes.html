@@ -25,7 +25,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand">
 
 
-<meta name="date" content="2018-12-01">
+<meta name="date" content="2018-12-16">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -161,8 +161,9 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 </ul></li>
 <li class="chapter" data-level="7" data-path="rs.html"><a href="rs.html"><i class="fa fa-check"></i><b>7</b> Reference Systems</a><ul>
 <li class="chapter" data-level="7.1" data-path="rs.html"><a href="rs.html#units"><i class="fa fa-check"></i><b>7.1</b> Units of measurement</a></li>
-<li class="chapter" data-level="7.2" data-path="rs.html"><a href="rs.html#crs"><i class="fa fa-check"></i><b>7.2</b> Coordinate Reference Systems</a></li>
-<li class="chapter" data-level="7.3" data-path="rs.html"><a href="rs.html#transform"><i class="fa fa-check"></i><b>7.3</b> Coordinate transformation and conversion</a></li>
+<li class="chapter" data-level="7.2" data-path="rs.html"><a href="rs.html#temporal-reference-systems"><i class="fa fa-check"></i><b>7.2</b> Temporal Reference Systems</a></li>
+<li class="chapter" data-level="7.3" data-path="rs.html"><a href="rs.html#crs"><i class="fa fa-check"></i><b>7.3</b> Coordinate Reference Systems</a></li>
+<li class="chapter" data-level="7.4" data-path="rs.html"><a href="rs.html#transform"><i class="fa fa-check"></i><b>7.4</b> Coordinate transformation and conversion</a></li>
 </ul></li>
 <li class="part"><span><b>II Maps</b></span></li>
 <li class="chapter" data-level="8" data-path="plotting-spatial-data.html"><a href="plotting-spatial-data.html"><i class="fa fa-check"></i><b>8</b> Plotting spatial data</a></li>
@@ -308,19 +309,74 @@ nc1 &lt;-<span class="st"> </span>nc <span class="op">%&gt;%</span><span class="
 </div>
 <div id="spatial-join" class="section level2">
 <h2><span class="header-section-number">6.2</span> Spatial join</h2>
+<p>Spatial joins are similar to regular (left or inner) joins, where the join criterion is not equality of one or more fields, but a spatial predicate, such as that two records have intersecting geometries. As an example, we can create a join between two tables,</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">a =<span class="st"> </span><span class="kw">st_sf</span>(<span class="dt">a =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">2</span>, <span class="dt">geom =</span> <span class="kw">st_sfc</span>(<span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)), <span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>))))
+b =<span class="st"> </span><span class="kw">st_sf</span>(<span class="dt">b =</span> <span class="dv">3</span><span class="op">:</span><span class="dv">4</span>, <span class="dt">geom =</span> <span class="kw">st_sfc</span>(<span class="kw">st_linestring</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">2</span>))), <span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>))))
+<span class="kw">st_join</span>(a, b)
+<span class="co">#&gt; Simple feature collection with 3 features and 2 fields</span>
+<span class="co">#&gt; geometry type:  POINT</span>
+<span class="co">#&gt; dimension:      XY</span>
+<span class="co">#&gt; bbox:           xmin: 0 ymin: 0 xmax: 1 ymax: 1</span>
+<span class="co">#&gt; epsg (SRID):    NA</span>
+<span class="co">#&gt; proj4string:    NA</span>
+<span class="co">#&gt;     a  b        geom</span>
+<span class="co">#&gt; 1   1 NA POINT (0 0)</span>
+<span class="co">#&gt; 2   2  3 POINT (1 1)</span>
+<span class="co">#&gt; 2.1 2  4 POINT (1 1)</span>
+<span class="kw">st_join</span>(a, b, <span class="dt">left =</span> <span class="ot">FALSE</span>)
+<span class="co">#&gt; Simple feature collection with 2 features and 2 fields</span>
+<span class="co">#&gt; geometry type:  POINT</span>
+<span class="co">#&gt; dimension:      XY</span>
+<span class="co">#&gt; bbox:           xmin: 1 ymin: 1 xmax: 1 ymax: 1</span>
+<span class="co">#&gt; epsg (SRID):    NA</span>
+<span class="co">#&gt; proj4string:    NA</span>
+<span class="co">#&gt;     a b        geom</span>
+<span class="co">#&gt; 2   2 3 POINT (1 1)</span>
+<span class="co">#&gt; 2.1 2 4 POINT (1 1)</span>
+<span class="kw">st_join</span>(b, a)
+<span class="co">#&gt; Simple feature collection with 2 features and 2 fields</span>
+<span class="co">#&gt; geometry type:  GEOMETRY</span>
+<span class="co">#&gt; dimension:      XY</span>
+<span class="co">#&gt; bbox:           xmin: 0 ymin: 0 xmax: 2 ymax: 2</span>
+<span class="co">#&gt; epsg (SRID):    NA</span>
+<span class="co">#&gt; proj4string:    NA</span>
+<span class="co">#&gt;   b a                  geom</span>
+<span class="co">#&gt; 1 3 2 LINESTRING (2 0, 0 2)</span>
+<span class="co">#&gt; 2 4 2           POINT (1 1)</span></code></pre></div>
+<p>We see that unless <code>left = FALSE</code>, we get all elements (and geometries) from the first argument, augmented with fields of the second argument when geometries match. The example shows the case where there are two geometries matching to point (1,1). The spatial join predicate function can be freely chosen, e.g. from the binary predicates listed in section <a href="geommanip.html#de9im">5.1.2</a>.</p>
+<p>When we match two sets of polygons, it may be a bit of a mess to go through all the many matches. One way out of this is to only provide the match with the largest overlap with the target geometry, obtained by adding argument <code>largest = TRUE</code>. An example of this is shown (visually) in figure <a href="featureattributes.html#fig:largest">6.1</a>.</p>
+<div class="figure" style="text-align: center"><span id="fig:largest"></span>
+<img src="sdsr_files/figure-html/largest-1.png" alt="example of `st_join` with `largest = TRUE`: the label of the polygon in the top figure with the largest intersection with polygons in the bottom figure is assigned to the polygons of the bottom figure`" width="672" />
+<p class="caption">
+Figure 6.1: example of <code>st_join</code> with <code>largest = TRUE</code>: the label of the polygon in the top figure with the largest intersection with polygons in the bottom figure is assigned to the polygons of the bottom figure`
+</p>
+</div>
 </div>
 <div id="aggregate-and-summarise" class="section level2">
 <h2><span class="header-section-number">6.3</span> Aggregate and summarise</h2>
+<p>Package <code>sf</code> provides <code>sf</code> methods for <code>stats::aggregate</code> and <code>dplyr::summarise</code>. Both do essentially the same:</p>
+<ul>
+<li>given a grouping predicate (for <code>summarise</code>, obtained from <code>group_by</code>)</li>
+<li>given an aggregation function</li>
+<li>aggregate the selected attributes using this function, per group</li>
+<li>aggregate in addition the geometries.</li>
+<li>if <code>do_union</code> is <code>TRUE</code> (the default), union the aggregated geometries.</li>
+</ul>
+<p>Unioning aggregated geometries resolve for instance internal polygon boundaries, which otherwise would lead to invalid <code>MULTIPOLYGON</code> errors in subsequent analysis, or plotting of potentially unwanted internal polygon boundaries. Figure <a href="featureattributes.html#fig:union">6.2</a> illustrates this.</p>
+<div class="figure" style="text-align: center"><span id="fig:union"></span>
+<img src="sdsr_files/figure-html/union-1.png" alt="left: invalid `MULTIPOLYGON` with two external rings with common boundary, right: valid `POLYGON` obtained after unioning the geometry left" width="672" />
+<p class="caption">
+Figure 6.2: left: invalid <code>MULTIPOLYGON</code> with two external rings with common boundary, right: valid <code>POLYGON</code> obtained after unioning the geometry left
+</p>
+</div>
 </div>
 <div id="intersections" class="section level2">
 <h2><span class="header-section-number">6.4</span> Intersections</h2>
-<p>Suppose we have two datasets with different geometries and attributes, and we want to compute their intersections:</p>
+<p>Suppose we have two datasets with different geometries and attributes (left figure <a href="featureattributes.html#fig:intersection">6.3</a>), and we want to compute their intersections:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">p1 =<span class="st"> </span><span class="kw">st_polygon</span>(<span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))))
 d1 =<span class="st"> </span><span class="kw">st_sf</span>(<span class="dt">a =</span> <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">1</span>), <span class="dt">geom =</span> <span class="kw">st_sfc</span>(p1, p1 <span class="op">+</span><span class="st"> </span><span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">0</span>)))
-d2 =<span class="st"> </span><span class="kw">st_sf</span>(<span class="dt">b =</span> <span class="kw">c</span>(<span class="dv">4</span>), <span class="dt">geom =</span> <span class="kw">st_sfc</span>(p1 <span class="op">*</span><span class="st"> </span><span class="fl">.75</span> <span class="op">+</span><span class="st"> </span><span class="kw">c</span>(<span class="dv">3</span>, <span class="dv">2</span>)))
-<span class="kw">plot</span>(d1, <span class="dt">xlim =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">8</span>), <span class="dt">ylim =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">6</span>), <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="dv">1</span>, <span class="dt">reset =</span> <span class="ot">FALSE</span>)
-<span class="kw">plot</span>(d2, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</code></pre></div>
-<p><img src="sdsr_files/figure-html/unnamed-chunk-152-1.png" width="672" style="display: block; margin: auto;" /> What will the intersection of these two objects give?</p>
+d2 =<span class="st"> </span><span class="kw">st_sf</span>(<span class="dt">b =</span> <span class="kw">c</span>(<span class="dv">4</span>), <span class="dt">geom =</span> <span class="kw">st_sfc</span>(p1 <span class="op">*</span><span class="st"> </span><span class="fl">.75</span> <span class="op">+</span><span class="st"> </span><span class="kw">c</span>(<span class="dv">3</span>, <span class="dv">2</span>)))</code></pre></div>
+<p>What will the intersection of these two objects give?</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">(<span class="dt">i =</span> <span class="kw">st_intersection</span>(d1, d2))
 <span class="co">#&gt; Warning: attribute variables are assumed to be spatially constant</span>
 <span class="co">#&gt; throughout all geometries</span>
@@ -332,11 +388,19 @@ d2 =<span class="st"> </span><span class="kw">st_sf</span>(<span class="dt">b =<
 <span class="co">#&gt; proj4string:    NA</span>
 <span class="co">#&gt;   a b                           geom</span>
 <span class="co">#&gt; 1 3 4 POLYGON ((3 4, 4 4, 4 2, 3 ...</span>
-<span class="co">#&gt; 2 1 4 POLYGON ((4 2, 4 4, 6 4, 6 ...</span>
+<span class="co">#&gt; 2 1 4 POLYGON ((4 2, 4 4, 6 4, 6 ...</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">plot</span>(d1, <span class="dt">xlim =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">8</span>), <span class="dt">ylim =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">6</span>), <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="dv">1</span>, <span class="dt">reset =</span> <span class="ot">FALSE</span>)
+<span class="kw">plot</span>(d2, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)
 <span class="kw">plot</span>(d1, <span class="dt">xlim =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">8</span>), <span class="dt">ylim =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">6</span>), <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="dv">1</span>, <span class="dt">lwd =</span> <span class="dv">2</span>, <span class="dt">reset =</span> <span class="ot">FALSE</span>)
 <span class="kw">plot</span>(d2, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">lwd =</span> <span class="dv">3</span>)
 <span class="kw">plot</span>(<span class="kw">st_geometry</span>(i), <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> <span class="kw">grey</span>(<span class="kw">c</span>(.<span class="dv">7</span>,.<span class="dv">9</span>)), , <span class="dt">border =</span> <span class="st">&#39;green&#39;</span>, <span class="dt">lwd =</span> <span class="dv">1</span>)</code></pre></div>
-<p><img src="sdsr_files/figure-html/unnamed-chunk-153-1.png" width="672" style="display: block; margin: auto;" /> It gives the areas of intersection, along with the corresponding attributes of both objects, and a warning that attributes were assumed to be spatially constant.</p>
+<div class="figure" style="text-align: center"><span id="fig:intersection"></span>
+<img src="sdsr_files/figure-html/intersection-1.png" alt="left: overlapping geometries (d2: red); right: intersection areas (i: grey)" width="672" /><img src="sdsr_files/figure-html/intersection-2.png" alt="left: overlapping geometries (d2: red); right: intersection areas (i: grey)" width="672" />
+<p class="caption">
+Figure 6.3: left: overlapping geometries (d2: red); right: intersection areas (i: grey)
+</p>
+</div>
+<p>As we see, this gives the areas of intersection, along with the corresponding attributes for both contributing objects, and a warning that attributes were assumed to be spatially constant. Although this may be convenient in some cases, it may be entirely meaningless in others. For instance, in case attribute <code>b</code> in object <code>d2</code> represents the number of people living in <code>d2</code>, then after the intersection we end up with twice as many people living over a smaller area.</p>
 </div>
 <div id="area-weighted-interpolation" class="section level2">
 <h2><span class="header-section-number">6.5</span> Area-weighted interpolation</h2>

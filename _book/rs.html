@@ -25,7 +25,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand">
 
 
-<meta name="date" content="2018-12-01">
+<meta name="date" content="2018-12-16">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -161,8 +161,9 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 </ul></li>
 <li class="chapter" data-level="7" data-path="rs.html"><a href="rs.html"><i class="fa fa-check"></i><b>7</b> Reference Systems</a><ul>
 <li class="chapter" data-level="7.1" data-path="rs.html"><a href="rs.html#units"><i class="fa fa-check"></i><b>7.1</b> Units of measurement</a></li>
-<li class="chapter" data-level="7.2" data-path="rs.html"><a href="rs.html#crs"><i class="fa fa-check"></i><b>7.2</b> Coordinate Reference Systems</a></li>
-<li class="chapter" data-level="7.3" data-path="rs.html"><a href="rs.html#transform"><i class="fa fa-check"></i><b>7.3</b> Coordinate transformation and conversion</a></li>
+<li class="chapter" data-level="7.2" data-path="rs.html"><a href="rs.html#temporal-reference-systems"><i class="fa fa-check"></i><b>7.2</b> Temporal Reference Systems</a></li>
+<li class="chapter" data-level="7.3" data-path="rs.html"><a href="rs.html#crs"><i class="fa fa-check"></i><b>7.3</b> Coordinate Reference Systems</a></li>
+<li class="chapter" data-level="7.4" data-path="rs.html"><a href="rs.html#transform"><i class="fa fa-check"></i><b>7.4</b> Coordinate transformation and conversion</a></li>
 </ul></li>
 <li class="part"><span><b>II Maps</b></span></li>
 <li class="chapter" data-level="8" data-path="plotting-spatial-data.html"><a href="plotting-spatial-data.html"><i class="fa fa-check"></i><b>8</b> Plotting spatial data</a></li>
@@ -220,19 +221,57 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
             <section class="normal" id="section-">
 <div id="rs" class="section level1">
 <h1><span class="header-section-number">Chapter 7</span> Reference Systems</h1>
-<p>Units of measure, reference systems, coordinate transformation and conversion</p>
-<p><span class="citation">(Iliffe and Lott <a href="#ref-iliffelott">2008</a>)</span></p>
 <div id="units" class="section level2">
 <h2><span class="header-section-number">7.1</span> Units of measurement</h2>
-<p>Measurement units: <span class="citation">(Hand <a href="#ref-hand">2004</a>)</span>; quantities <span class="citation">(Flater <a href="#ref-flater">2018</a>)</span>, <span class="citation">(Flater <a href="#ref-nist">2016</a>)</span></p>
+<div id="quantities" class="section level3">
+<h3><span class="header-section-number">7.1.1</span> Quantities</h3>
+<p><span class="citation">Cobb and Moore (<a href="#ref-cobbmoore">1997</a>)</span> wrote that “Data are not just numbers, they are numbers with a context”, and “in data analysis, context provides meaning”.</p>
+<p>The VIM (International vocabulary of metrology, <span class="citation">BIPM et al. (<a href="#ref-vim">2012</a>)</span>) defines a <em>quantity</em> as a “property of a phenomenon, body, or substance, where the property has a magnitude that can be expressed as a number and a reference”, where “[a] reference can be a measurement unit, a measurement procedure, a reference material, or a combination of such.”</p>
+<p>One could argue whether all data is constitued of quantities, but there is no need to argue that proper data handling requires that numbers are accompanied by information on what the numbers mean, and what they are about.</p>
+<p>A measurement system consist of <em>base units</em> for base quantities, and <em>derived units</em> for derived quantities. The SI measurement system consist of the seven base units length (metre, m), mass (kilogram, kg), time (second, s), electric current (ampere, A), thermodynamic temperature (kelvin, K), amount of substance (mole, mol), and luminous intensity (candela, cd). Derived units are composed of products of integer powers of base units; exampes are speed (<span class="math inline">\(\mbox{m}~\mbox{s}^{-1}\)</span>) and density (<span class="math inline">\(\mbox{kg} \mbox{m}^{-3}\)</span>).</p>
+<p>Many data variables have units that are not expressed as SI base units or derived units; <span class="citation">Hand (<a href="#ref-hand">2004</a>)</span> discusses many measurement scales used in social sciences, e.g. to measure intelligence, in the context of measurement units.</p>
+</div>
+<div id="unitless-measures" class="section level3">
+<h3><span class="header-section-number">7.1.2</span> Unitless measures</h3>
+<p>The special case of unitless units can refer to either cases where units cancelled out (e.g. mass fraction: kg/kg, or angle measured in rad: m/m) or to cases where objects or events were counted. Adding an angle to a count of apples would not make sense; adding apples to oranges may make sense if the result in interpreted as <em>pieces of fruit</em>. <span class="citation">Flater (<a href="#ref-flater">2018</a>)</span> (and <span class="citation">Flater (<a href="#ref-nist">2016</a>)</span>) discuss systems for proper handling of unitless quantities; handling counts could for instance link to domain-specific ontologies pointing out which things were counted, and perhaps identifying super-classes, like <em>fruit</em>.</p>
+</div>
+<div id="units-in-r" class="section level3">
+<h3><span class="header-section-number">7.1.3</span> Units in R</h3>
+<p>The <code>units</code> R package <span class="citation">(Pebesma, Mailund, and Hiebert <a href="#ref-unitsrj">2016</a><a href="#ref-unitsrj">b</a>)</span> provides units of measurement support for R, by interfacing the <a href="https://www.unidata.ucar.edu/software/udunits/">udunits2</a> units database and C library. It allows for setting, converting and deriving units:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(units)
+(<span class="dt">a =</span> <span class="kw">set_units</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">3</span>, m))
+<span class="co">#&gt; Units: [m]</span>
+<span class="co">#&gt; [1] 1 2 3</span>
+a_km =<span class="st"> </span><span class="kw">set_units</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">3</span>, km)
+a <span class="op">+</span><span class="st"> </span>a_km
+<span class="co">#&gt; Units: [m]</span>
+<span class="co">#&gt; [1] 1001 2002 3003</span>
+b =<span class="st"> </span><span class="kw">set_units</span>(<span class="dv">4</span><span class="op">:</span><span class="dv">6</span>, s)
+a <span class="op">/</span><span class="st"> </span>b
+<span class="co">#&gt; Units: [m/s]</span>
+<span class="co">#&gt; [1] 0.25 0.40 0.50</span></code></pre></div>
+<p>and raises errors in case of meaningless operations</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">a <span class="op">+</span><span class="st"> </span>b
+<span class="co">#&gt; Error: cannot convert s into m</span></code></pre></div>
+</div>
+</div>
+<div id="temporal-reference-systems" class="section level2">
+<h2><span class="header-section-number">7.2</span> Temporal Reference Systems</h2>
+<div id="posixt-and-date" class="section level3">
+<h3><span class="header-section-number">7.2.1</span> POSIXt and Date</h3>
+</div>
+<div id="time-zones" class="section level3">
+<h3><span class="header-section-number">7.2.2</span> Time zones</h3>
+</div>
 </div>
 <div id="crs" class="section level2">
-<h2><span class="header-section-number">7.2</span> Coordinate Reference Systems</h2>
+<h2><span class="header-section-number">7.3</span> Coordinate Reference Systems</h2>
+<p><span class="citation">(Iliffe and Lott <a href="#ref-iliffelott">2008</a>)</span></p>
 <p>what is EPSG, what is proj4string; WKT, WKT2</p>
 <p>What is a datum?</p>
 </div>
 <div id="transform" class="section level2">
-<h2><span class="header-section-number">7.3</span> Coordinate transformation and conversion</h2>
+<h2><span class="header-section-number">7.4</span> Coordinate transformation and conversion</h2>
 <p>Geodesics: <span class="citation">(Karney <a href="#ref-karney2013algorithms">2013</a>)</span></p>
 
 </div>
@@ -242,8 +281,11 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h3>References</h3>
 <div id="refs" class="references">
-<div id="ref-iliffelott">
-<p>Iliffe, Jonathan, and Roger Lott. 2008. <em>Datums and Map Projections for Remote Sensing, Gis, and Surveying. Whittles Pub</em>. CRC Press, Scotland, UK.</p>
+<div id="ref-cobbmoore">
+<p>Cobb, George W., and David S. Moore. 1997. <em>The American Mathematical Monthly</em> 104 (9): 801–23. <a href=" http://www.jstor.org/stable/2975286 ">http://www.jstor.org/stable/2975286</a>.</p>
+</div>
+<div id="ref-vim">
+<p>BIPM, IEC, ILAC IFCC, IUPAP IUPAC, and OIML ISO. 2012. “The International Vocabulary of Metrology–Basic and General Concepts and Associated Terms (Vim), 3rd Edn. Jcgm 200: 2012.” <em>JCGM (Joint Committee for Guides in Metrology)</em>. <a href="https://www.bipm.org/en/publications/guides/" class="uri">https://www.bipm.org/en/publications/guides/</a>.</p>
 </div>
 <div id="ref-hand">
 <p>Hand, David J. 2004. <em>Measurement: Theory and Practice</em>. A Hodder Arnold Publication.</p>
@@ -253,6 +295,12 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 </div>
 <div id="ref-nist">
 <p>Flater, D. 2016. “Architecture for Software-Assisted Quantity Calculus.” NIST Technical Note 1943. <a href=" http://doi.org/10.6028/NIST.TN.1943 ">http://doi.org/10.6028/NIST.TN.1943</a>.</p>
+</div>
+<div id="ref-unitsrj">
+<p>Pebesma, Edzer, Thomas Mailund, and James Hiebert. 2016b. “Measurement Units in R.” <em>The R Journal</em> 8 (2): 486–94. <a href="https://journal.r-project.org/archive/2016/RJ-2016-061/" class="uri">https://journal.r-project.org/archive/2016/RJ-2016-061/</a>.</p>
+</div>
+<div id="ref-iliffelott">
+<p>Iliffe, Jonathan, and Roger Lott. 2008. <em>Datums and Map Projections for Remote Sensing, Gis, and Surveying. Whittles Pub</em>. CRC Press, Scotland, UK.</p>
 </div>
 <div id="ref-karney2013algorithms">
 <p>Karney, Charles FF. 2013. “Algorithms for Geodesics.” <em>Journal of Geodesy</em> 87 (1). Springer: 43–55. <a href="https://link.springer.com/content/pdf/10.1007/s00190-012-0578-z.pdf" class="uri">https://link.springer.com/content/pdf/10.1007/s00190-012-0578-z.pdf</a>.</p>
