@@ -19,8 +19,7 @@ system.file("gpkg/nc.gpkg", package="sf") %>%
 	select(BIR74) %>%
 	plot(graticule = TRUE, axes = TRUE)
 ```
-A lot went on, here. We will describe the steps in detail.
-First, we loaded two R packages:
+A lot went on, here. We will describe the steps in detail. First, we loaded two R packages:
 ```{r}
 library(tidyverse)
 library(sf)
@@ -64,7 +63,7 @@ used to have the result not only stored, but also printed.)
 
 Then, we read this file into R using `read_sf`:
 ```{r}
-(nc <- file %>% read_sf())
+(file %>% read_sf()  -> nc)
 ```
 which creates a "spatial tibble":
 ```{r}
@@ -72,17 +71,52 @@ class(nc)
 ```
 This object is transformed into a new coordinate reference system (North Carolina State Plane, with EPSG code 32119):
 ```{r}
-(nc.32119 <- nc %>% st_transform(32119))
+(nc %>% st_transform(32119) -> nc.32119)
 ```
 and a single attribute column is selected
 ```{r}
-(nc.32119.bir74 <- nc.32119 %>% select(BIR74))
+(nc.32119 %>% select(BIR74) -> nc.32119.bir74)
 ```
 Finally, the result is plotted, with the command:
 ```{r eval=FALSE}
 nc.32119.bir74 %>% plot(graticule = TRUE, axes = TRUE)
 ```
 as shown in figure \@ref(fig:first-map).
+
+Splitting up the steps lets us see what is happening, as errors from 
+combined steps can be hard to assign to the right step. Repeating the 
+same sequence, but with the wrong argument to `st_transform` gives:
+```{r first-mapa, fig.cap="a first map", eval=FALSE, fig=FALSE, echo=TRUE}
+system.file("gpkg/nc.gpkg", package="sf") %>%
+	read_sf() %>%
+	st_transform(32999) %>%
+	select(BIR74) %>%
+	plot(graticule = TRUE, axes = TRUE)
+```
+```{r first-mapb, fig.cap="a first map", eval=TRUE, fig=FALSE, echo=FALSE}
+try(system.file("gpkg/nc.gpkg", package="sf") %>%
+	read_sf() %>%
+	st_transform(32999) %>%
+	select(BIR74) %>%
+	plot(graticule = TRUE, axes = TRUE))
+```
+which is informative, but still needs more backtracking to find the cause 
+than taking things step-by-step in the first instance. Again, mistyping a 
+column name will cause an error:
+```{r first-mapc, fig.cap="a first map", eval=FALSE, fig=FALSE, echo=TRUE}
+system.file("gpkg/nc.gpkg", package="sf") %>%
+	read_sf() %>%
+	st_transform(32119) %>%
+	select(BIR75) %>%
+	plot(graticule = TRUE, axes = TRUE)
+```
+```{r first-mapd, fig.cap="a first map", eval=TRUE, fig=FALSE, echo=FALSE}
+try(system.file("gpkg/nc.gpkg", package="sf") %>%
+	read_sf() %>%
+	st_transform(32119) %>%
+	select(BIR75) %>%
+	plot(graticule = TRUE, axes = TRUE))
+```
 
 Where do these commands come from? `library` and `system.file` are base R. We
 can ask for help about a particular command by entering e.g.
@@ -91,10 +125,13 @@ can ask for help about a particular command by entering e.g.
 ```
 The command `read_sf` is an alternative to the `st_read`, which
 returns a spatial tibble instead of a spatial data frame, and will
-be discussed in section \@ref(reading). The `st_transform`
+be discussed in section \@ref(reading). It corresponds to `rgdal::readOGR`, 
+but differs in the representation of the returned object. 
+The `st_transform`
 method is used here to convert from the geographic coordinates
 (degrees longitude and latitude) into "flat" coordinates, meaning
-$x$ and $y$ coordinates in a planar system. It will be discussed
+$x$ and $y$ coordinates in a planar system (corresponding to 
+`rgdal::spTransform`). It will be discussed
 in section \@ref(transform). The `plot` method for `sf` objects
 chooses default colors and legends settings; we instructed it to
 add a graticule (the grey lines of equal longitude and latitude) and
@@ -111,6 +148,7 @@ and this method (`select.sf`) makes the geometry (`geom`) sticky:
 ```{r}
 nc %>% select(BIR74) %>% names()
 ```
+In **sp**, `select` methods using `[` were sticky.
 We get the "normal" `select` behaviour if we first coerce to a normal tibble:
 ```{r}
 nc %>% as_tibble(validate = TRUE) %>% select(BIR74) %>% names()
@@ -123,7 +161,7 @@ ggplot() + geom_sf(data = nc.32119) + aes(fill = BIR74) +
 ```
 and a facet plot for a pair of columns in `nc.32119` is obtained by gathering the columns:
 ```{r}
-nc2 <- nc.32119 %>% select(SID74, SID79) %>% gather(VAR, SID, -geom)
+nc.32119 %>% select(SID74, SID79) %>% gather(VAR, SID, -geom) -> nc2
 ggplot() + geom_sf(data = nc2, aes(fill = SID)) + facet_wrap(~VAR, ncol = 1) +
   scale_y_continuous(breaks = 34:36) +
   scale_fill_gradientn(colors = sf.colors(20)) +
@@ -147,7 +185,8 @@ st_drivers("vector") %>% nrow() # vector drivers
 st_drivers("raster") %>% nrow() # raster drivers
 ```
 (the output you see may differ because of different operating system
-and configuration.)
+and configuration; when the same version of GDAL is in use, the drivers available
+in **sf** are the same as in **rgdal**.)
 
 ### GDAL
 
@@ -165,11 +204,13 @@ knitr::include_graphics("images/sf_deps.png")
 
 Note that the C/C++ libraries used (GDAL, GEOS, PROJ, liblwgeom,
 udunits2) are all developed, maintained and used by data science
-communities that are much larger than the R community.  By using
+communities that are large but different from the R community.  By using
 these libraries, we share how we understand what we are doing with
-these other communities. This is not only important for resolving
-problems, but also for reaching consensus on which findings are
-facts.
+these other communities. Because R (and Python) provide interactive 
+interfaces to this software, many R users get closer to these libraries 
+than do users of other software based on these libraries. This is not only 
+important for resolving problems, but also for reaching consensus on which 
+findings are helpful.
 
 GDAL is a "library of libraries" -- in order to read all these data
 sources it needs a large number of other libraries. It typically
@@ -201,7 +242,9 @@ In the same fashion, compared to `st_write`, function `write_sf`,
 
 ### reading and writing raster data
 
-Raster data can be read with function `read_stars` from package `stars`:
+Raster data can be read with function `read_stars` from package `stars`
+(corresponding to `rgdal::readGDAL` but differing in the structure of the 
+returned object:
 ```{r}
 library(stars)
 tif = system.file("tif/L7_ETMs.tif", package = "stars")
@@ -227,7 +270,7 @@ Raster data analysis and its integration with vector data is explained in detail
 
 We saw above that a spatial dataset can be read from a single file by
 ```{r}
-nc <- system.file("gpkg/nc.gpkg", package="sf") %>% read_sf()
+system.file("gpkg/nc.gpkg", package="sf") %>% read_sf() -> nc
 ```
 
 In some cases, spatial datasets are contained in _multiple_
@@ -243,14 +286,14 @@ list.files(system.file("shape/", package = "sf"))
 
 We can read a single shapefile by
 ```{r}
-nc <- system.file("shape/nc.shp", package="sf") %>% read_sf()
+system.file("shape/nc.shp", package="sf") %>% read_sf() -> nc
 ```
 and it is important to know that in that case all four files starting
 with `nc` are read from this directory.
 
 We can also read the directory with shapefiles by
 ```{r}
-something <- system.file("shape", package="sf") %>% read_sf()
+system.file("shape", package="sf") %>% read_sf() -> something
 ```
 but we see some warnings now, indicating that we are reading only the first
 layer from a multi-layer dataset (and not `nc.shp`!).
