@@ -71,8 +71,6 @@ st_is_longlat(nc2)
 st_is_longlat(st_point(0:1))
 ```
 
-[comment]: FIXME should `st_is_longlat` reject st_point(0, 95)? It isn't just NA, it cannot be longlat.
-
 `st_is` is an easy way to check for the simple feature geometry type: 
 ```{r}
 st_is(st_point(0:1), "POINT")
@@ -440,6 +438,32 @@ combined with trial and error. A reproducible example
 illustrating the need for setting precision is found
 [here](https://github.com/r-spatial/sf/issues/275).
 
+## Generating invalid geometries {#invalid}
+
+It is rather easy to have `st_intersection` generate invalid
+geometries, resulting in an error. Consider the graph constructed and
+shown in figure \@ref(fig:invalid). In this case, _not_ setting the precision
+would have led to the error message
+```
+Error in CPL_nary_intersection(x) :
+  Evaluation error: TopologyException: found non-noded intersection between LINESTRING (0.329035 -0.0846201, 0.333671 -0.0835073) and LINESTRING (0.330465 -0.0842769, 0.328225 -0.0848146) at 0.32965918719530368 -0.084470389572422672.
+Calls: st_intersection ... st_intersection -> st_intersection.sfc -> CPL_nary_intersection
+```
+but in addition decreasing `buf_size` to 0.7 would also not have generated
+an error.
+
+```{r invalid, fig.cap="n-ary intersection that may lead to invalid geometries", echo=TRUE, eval=TRUE, fig=TRUE}
+n = 12 # n points, equally spread along unit circle:
+pts = (1:n)/n * 2 * pi 
+xy = st_as_sf(data.frame(x = cos(pts), y = sin(pts)), coords = c("x", "y"))
+buf_size = 0.8
+precision = 1000
+b = st_buffer(xy, buf_size)
+i = st_intersection(st_set_precision(b, precision))
+par(mar = rep(0, 4))
+plot(i[1], col = sf.colors(nrow(i), categorical = TRUE))
+all(st_is_valid(i))
+```
 
 ## Warnings for longitude/latitude geometries {#longlat}
 
