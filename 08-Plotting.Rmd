@@ -14,18 +14,266 @@ point out challenges along the way and ways to mitigate them.
 How we plot lines, symbols, polygons (choroplets; overlapping
 polygons), rasters
 
-## Projections {#transform}
+## Every plot is a projection {#transform}
 
+The world is round, but plotting devices are flat.  As mentioned
+in section \@ref(projections), any time we visualise, in any
+way, the world on a flat device, we project: we convert angular,
+geodetic coordinates into Cartesian coordinates. This includes
+the cases where we think we "do nothing" (figure \@ref(fig:world),
+left), or where show the world "as it is", e.g. as seen from space
+(figure \@ref(fig:world), right).
 
+```{r world,fig.cap="Earth country boundaries; left: mapping long/lat to x and y; right: as seen from space", fig=TRUE,echo=FALSE,message=FALSE}
+library(sf)
+library(rnaturalearth)
+w <- ne_countries(scale = "medium", returnclass = "sf")
+layout(matrix(1:2, 1, 2), c(2,1))
+plot(st_geometry(w))
 
-## Poles and datelines
+circ = function(l = c(-180:180), lon0 = 0, lat0 = 30) {
+	deg2rad = pi / 180
+	lat = atan(-cos((l - lon0) * deg2rad)/tan(lat0 * deg2rad)) / deg2rad
+	xy = if (lat0 == 0) {
+		l1 = lon0 - 90
+		l2 = lon0 + 90
+		rbind(c(l1,-90), c(l2,-90), c(l2,0), c(l2,90), c(l1,90), c(l1,0), c(l1,-90))
+	} else if (lat0 > 0) {
+		xy = cbind(lon = l, lat = lat)
+		rbind(c(-180,90),xy,c(180,90),c(-180,90))
+	} else {
+		xy = cbind(lon = l, lat = lat)[length(l):1,]
+		rbind(c(180,-90), xy, c(-180,-90),c(180,-90))
+	}
+	st_sfc(st_polygon(list(xy)), crs = st_crs(4326))
+	# TODO: break at dateline, guarantee within -180,180
+}
 
-trick with cutting stuff that crosses the dateline
+m = st_make_grid()
+m = st_segmentize(m, 4e5)
 
-## Bounding box revisited 
+i = 0
+par(mar = rep(0,4))
+lat=30+(i/2)
+lon=-10-(i/2)
+p4s=paste0("+proj=ortho +lat_0=", lat, " +lon_0=", lon)
+plot(st_transform(m, st_crs(p4s), check = TRUE), col = 'lightblue', border = 'grey')
+crc = circ(lat0 = lat, lon0 = lon)
+w0 = suppressWarnings(st_intersection(w, crc))
+w0 = st_cast(w0, "MULTIPOLYGON")
+plot(st_transform(st_geometry(w0), st_crs(p4s), check = TRUE), add = TRUE)
+```
 
-bbox crossing the dateline
+The left plot of figure \@ref(fig:world) was obtained by
+```{r eval=FALSE}
+library(sf)
+library(rnaturalearth)
+w <- ne_countries(scale = "medium", returnclass = "sf")
+plot(st_geometry(w))
+```
+and we see that this is the default projection for data with geodetic coordinates, as indicated by
+```{r}
+st_crs(w)
+```
+
+The projection taken here is the equirectangular (or equidistant
+cylindrical) projection, which maps longitude and latitude linear
+to the x and y axis, keeping an aspect ratio of 1. Were we to do
+this for smaller areas not on the equator, it makes sense to choose
+a plot ratio such that one distance unit E-W equals one distance
+unit N-S on the center of the plotted area.
+
+We can also carry out this projection before plotting. Say we want to
+do this for Germany, then after loading the (rough) country outline,
+we use `st_transform` to project:
+```{r}
+DE = st_geometry(ne_countries(country = "germany", returnclass = "sf"))
+DE.eqc = st_transform(DE, "+proj=eqc +lat_ts=51.14 +lon_0=90w")
+```
+`st_transform` takes an `sf` or `sfc` object, and as second
+argument the projection. This can either be a number of a known EPSG
+projection, e.g. listed at http://spatialreference.org/ref/epsg/ ,
+or a string describing the projection (`+proj=...`) with further
+parameters. The parameter here is `lat_ts`, the latitude of true
+scale (i.e., one length unit N-S equals one length unit E-W),
+which was here chosen as the middle of the bounding box latitudes
+```{r}
+mean(st_bbox(DE)[c("ymin", "ymax")])
+```
+When we now plot both maps (figure \@ref(fig:eqc)), they look the
+same up to their values along the axes: degrees for geodetic (left),
+and metres for Cartesian coordinates.
+
+```{r eqc,fig.cap="Germany in equidistant cylindrical projection: left with degrees, right with metres along the axes"}
+par(mfrow = c(1, 2))
+plot(DE, axes = TRUE)
+plot(DE.eqc, axes = TRUE)
+```
+
+### What is a good projection for my data?
+
+There is unfortunately no silver bullet here. Projections that
+maintain all distances do not exist; only globes do. The mostly
+used projections try to preserve
+
+* areas (equal area),
+* directions (conformal, e.g. Mercator),
+* some properties of distances (e.g. equirectangular preserves distances along meridians, azimuthal equidistant preserves distances to a central point)
+
+or some compromise of these. Parameters of projections decide what
+is shown in the center of a map and what on the fringes, which
+areas are up and which are down, and which areas are most enlarged.
+All these choices are in the end political decisions.
+
+It is often entertaining and at times educational to play around with
+the different projections and understand their consequences. When
+the primary purpose of the map however is not to entertain or educate
+projection varieties, it may be preferrable to choose a well-known or
+less surprising projection, and move the discussion which projection
+should be preferred to a decision process on its own.
+
+### Does projection always work?
+
+No. Look for instance at the figure \@ref(fig:eqc), left. Countries
+like the USA are half out-of-sight. Where is the California coast
+line drawn?
+
+The PROJ string used here was `"+proj=ortho +lat_0=30 +lon_0=-10"`
+and we can easily check what happens to a polygon that crosses the
+visible area by setting both parameters to 0:
+```{r error=TRUE}
+sq = rbind(c(-89,0), c(-89,1), c(-91,1), c(-91,0), c(-89,0))
+pol = st_sfc(st_polygon(list(sq)), crs = 4326)
+(pol.o = st_transform(pol, "+proj=ortho +lat_0=0 +lon_0=0"))[[1]]
+st_is_valid(pol.o, NA_on_exception=FALSE)
+```
+where we see that the polygon is not nicely cut along the visibility
+line, but that the invisible points are simply dropped. This
+leads in this case to an invalid geometry, and may in the case of
+\@ref(fig:eqc) lead to straight lines that do not follow the map
+border circle.
+
+How was figure \@ref(fig:eqc) created? By using a rather ugly
+script that used a projected half-sphere circle to first cooky-cut
+the part of the countries that would
+remain visible on this projection. The
+[script](https://github.com/r-spatial/sf/blob/master/demo/twitter.R)
+is available, and so is its
+[output](https://gist.github.com/edzer/9c5c24434ffcaf42917796a98c4dd9a6).
+
+## Plotting points, lines, polygons, grid cells
+
+Since maps are just a special form of plots of statistical data,
+the usual rules hold. Frequently occuring challenges include:
+
+* polygons may be very small, and vanish when plotted
+* depending on the data, polygons for different features may well
+overlap, and be visible only partially; using transparent fill
+colors may help indentify them
+* when points are plotted with symbols, they may easily overlap and be hidden; density maps (chapter \@ref(pp)) may be more helpful
+* lines may be hard to read when coloured and may overlap regardless line width
+
+When plotting polygons filled with colors, one has the choice to plot
+polygon boundaries, or to suppress these. If polygon boundaries draw
+too much attention, an alternative is to colour them in a grey tone,
+or another color that doesn't interfere with the fill colors. When
+suppressing boundaries entirely, polygons with (nearly) identical
+colors will melt together.  If the property indicating the fill
+color is constant over the region, such as land cover type, this is
+OK. If the property is an aggregation, the region over which it was
+aggregated gets lost. Especially for extensive variables, e.g. the
+amount of people living in a polygon, this strongly misleads. But
+even with polygon boundaries, using filled polygons for such
+variables may not be a good idea.
+
+The use of continuous color scales for continuously varying variables
+may look attractive, but is often more fancy than useful: 
+
+* it impracticle to match a color on the map with a legend value
+* colors ramps often stretch non-linearly over the value range
+
+Only for cases where the identification of values is less important
+than the continuity of the map, such as the coloring of a high
+resolution digital terrain model, it does serve its goal.
 
 ## Class intervals
 
-using color
+When plotting continuous geometry attributes using a limited set
+of colors (or symbols), classes need to be made from the data. The
+R package `classInt` [@R-classInt] provides a number of methods to
+do so. Using it is quite simple:
+```{r}
+library(classInt)
+r = rnorm(100)
+classIntervals(r)
+classIntervals(r)$brks
+```
+and it takes argument `n` for the number of intervals, and a `style`
+that can be one of "fixed", "sd", "equal", "pretty", "quantile",
+"kmeans", "hclust", "bclust", "fisher", or "jenks".  Style "pretty"
+may not obey `n`; if if `n` is missing, ‘nclass.Sturges’ is used;
+two other methods are available for choosing `n` automatically.
+
+## Poles and datelines
+
+```{r}
+(ls = st_sfc(st_linestring(rbind(c(-179.5, 52), c(179.5, 52))), crs = 4326))
+```
+How long is this linestring? Let's see:
+```{r}
+st_length(ls)
+```
+Pfew. But does `ls` actually intersect with the dateline?
+```{r}
+dateline = st_sfc(st_linestring(rbind(c(180, 51), c(180, 53))), crs = 4326)
+st_intersects(ls, dateline)
+```
+... it seems not!? How can this be? The warning sayd it all: if `ls`
+is not spherical, it means it follows the 52th parallel, crossing
+`(0, 52)` half way. As if we drew a straight line between the two
+points on the left figure of \@ref(fig:world).
+
+Why all these inconsistencies? The software `sf` is built upon
+(see the C/C++ libraries box in figure \@ref(fig:gdal-fig)) is a
+GIS stack, which originally was (and still is!) dominantly about
+flat, 2D geometries. The simple feature standard assumes straight
+lines between points, but great circle segments are not straight.
+The functions that deal with spherical geometry, such as `st_length`,
+use PostGIS extensions in liblwgeom that were added later on, without
+rewriting the entire core for geodetic coordinates.  More recent
+systems, including as Google's S2^[http://s2geometry.io/], BigQuery
+GIS^[https://cloud.google.com/bigquery/docs/gis-intro] and Uebers
+H3^[https://eng.uber.com/h3/] were written with global data in mind
+from scratch, and only work with geodetic coordinates.
+
+The `st_wrap_dateline` function can be convenient,
+```{r}
+(ls.w = st_wrap_dateline(ls))[[1]]
+```
+as it cuts any geometry crossing the dateline into MULTI-geometries
+of which the sub-geometries touch on, but no longer cross the
+dateline. Also note that bounding boxes
+```{r}
+st_bbox(ls.w)
+```
+simply take the coordinate ranges, and are pretty much meaningless
+for geometries that cross the dateline. 
+
+Similar notions hold for the poles; a polygon enclosing the North pole
+```{r}
+pole = st_sfc(st_polygon(list(rbind(c(0,80), c(120,80), c(240,80), c(0,80)))), crs = 4326)
+```
+does not include the pole
+```{r}
+st_intersects(pole, st_sfc(st_point(c(0,90)), crs = 4326))
+```
+(Cartesian interpretation) but has a positive area
+```{r}
+st_area(pole)
+```
+indicating again a geodetic interpretation.
+
+
+## Graticules and other navigation aids
+
+TBD
