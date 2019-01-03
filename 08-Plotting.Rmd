@@ -213,35 +213,41 @@ two other methods are available for choosing `n` automatically.
 
 ## Poles and datelines
 
+Given the linestring
 ```{r}
 (ls = st_sfc(st_linestring(rbind(c(-179.5, 52), c(179.5, 52))), crs = 4326))
 ```
-How long is this linestring? Let's see:
+How long a distance does it span? Let's see:
 ```{r}
 st_length(ls)
 ```
-Pfew. But does `ls` actually intersect with the dateline?
+which seems sensible. But does `ls` actually intersect with the dateline?
 ```{r}
 dateline = st_sfc(st_linestring(rbind(c(180, 51), c(180, 53))), crs = 4326)
 st_intersects(ls, dateline)
 ```
-... it seems not!? How can this be? The warning sayd it all: if `ls`
-is not spherical, it means it follows the 52th parallel, crossing
-`(0, 52)` half way. As if we drew a straight line between the two
-points on the left figure of \@ref(fig:world).
+... it seems not? How can this be? The warning said it all: if
+`ls` is not in spherical coordinates, it means it follows the 52th
+parallel, crossing `(0, 52)` half way. This is as if we drew a straight
+line between the two points on the left figure of \@ref(fig:world),
+almost across the complete 52N parallel.
 
-Why all these inconsistencies? The software `sf` is built upon
-(see the C/C++ libraries box in figure \@ref(fig:gdal-fig)) is a
-GIS stack, which originally was (and still is!) dominantly about
-flat, 2D geometries. The simple feature standard assumes straight
-lines between points, but great circle segments are not straight.
-The functions that deal with spherical geometry, such as `st_length`,
-use PostGIS extensions in liblwgeom that were added later on, without
-rewriting the entire core for geodetic coordinates.  More recent
-systems, including Google's S2^[http://s2geometry.io/], BigQuery
-GIS^[https://cloud.google.com/bigquery/docs/gis-intro] and Uebers
+Where do these inconsistencies come from? The software `sf` is built
+upon (see the C/C++ libraries box in figure \@ref(fig:gdal-fig)) is a
+GIS software stack that originally targeted flat, 2D geometries. The
+simple feature standard assumes straight lines between points,
+but great circle segments are not straight.  
+
+The functions that deal with spherical geometry, such as
+`st_length`, use PostGIS extensions in liblwgeom that were
+added later on to PostGIS, without rewriting the entire
+geometry core for geodetic coordinates.  More recent systems,
+including Google's S2^[http://s2geometry.io/], BigQuery
+GIS^[https://cloud.google.com/bigquery/docs/gis-intro] and Ubers
 H3^[https://eng.uber.com/h3/] were written from scratch with global
 data in mind, and work exclusively with geodetic coordinates.
+
+### `st_wrap_dateline`
 
 The `st_wrap_dateline` function can be convenient,
 ```{r}
@@ -249,12 +255,23 @@ The `st_wrap_dateline` function can be convenient,
 ```
 as it cuts any geometry crossing the dateline into MULTI-geometries
 of which the sub-geometries touch on, but no longer cross the
-dateline. Also note that bounding boxes
+dateline. This is in particular convenient for plotting geodetic
+coordinates using naive approaches such as that of figure
+\@ref(fig:world) left, where they would have crossed the entire
+plotting area. Note that by cutting the line at `(180,52)`,
+`st_wrap_dateline` does not follow a great circle; for this, it
+should be preceded by `st_segmentize`, as e.g. in
+```{r}
+(ls.w2 = st_wrap_dateline(st_segmentize(ls, units::set_units(30, km))))[[1]]
+```
+
+Also note that bounding boxes like
 ```{r}
 st_bbox(ls.w)
 ```
 simply take the coordinate ranges, and are pretty much meaningless
-for geometries that cross the dateline. 
+as descriptors of the extent of a geometry for geometries that
+cross the dateline.
 
 Similar notions hold for the poles; a polygon enclosing the North pole
 ```{r}
@@ -273,4 +290,23 @@ indicating again a geodetic interpretation.
 
 ## Graticules and other navigation aids
 
-TBD
+Graticules are lines on a map that follow constant latitude or
+longitude values. On figure \@ref(fig:world) left they are drawn
+in grey. Graticules are often drawn in maps to give reference where
+something is. In our first map in figure \@ref(fig:first-map) we can
+read that the area plotted is near 35$^o$ North and 80$^o$ West.
+Had we plotted the lines in the projected coordinate system, they
+would have been straight and their actual numbers would not have
+been very informative, apart from giving an interpretation of size
+or distances when the unit is known, and familiar to the map reader.
+Graticules, by that, also give a slight hint of which projection
+was used: equirectangular or Mercator projections will have straight
+vertical and horizontal lines, conic projections have straight but
+diverging meridians, equal area may have curved meridians
+
+The real navigation aid on figure \@ref(fig:world) and most other
+maps are geographical features like the state outline, country
+outlines, coast lines, rivers, roads, railways and so on. If these
+are added sparsely and sufficiently, graticules can as well be
+omitted. In such cases, maps look good without axes tics and labels,
+leaving up a lot of plotting space to be filled with actual map data.
