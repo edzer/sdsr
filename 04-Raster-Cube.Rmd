@@ -403,13 +403,20 @@ library(spacetime)
 data(air) # this loads several datasets in .GlobalEnv
 dim(air)
 d = st_dimensions(station = st_as_sfc(stations), time = dates)
-aq = st_as_stars(list(PM10 = air), dimensions = d)
+(aq = st_as_stars(list(PM10 = air), dimensions = d))
 ```
 We can see from figure \@ref(fig:airst) that the time series are
 quite long, but also have large missing value gaps.
+Figure \@ref(fig:airmap) shows the spatial distribution measurement stations and
+mean PM$_{10}$ values.
 
 ```{r airst, fig.cap="space-time diagram of PM$_{10}$ measurements by time and station", echo=TRUE, eval=TRUE, fig=TRUE}
 image(aperm(log(aq), 2:1), main = "NA pattern (white) in PM10 station time series")
+```
+
+```{r airmap, fig.cap="locations of PM$_{10}$ measurement stations, showing mean values", echo=TRUE, eval=TRUE, fig=TRUE}
+plot(st_as_sf(st_apply(aq, 1, mean, na.rm = TRUE)), reset = FALSE, pch = 16)
+plot(DE, add=TRUE)
 ```
 
 We can now aggregate these station time series to area means,
@@ -420,12 +427,18 @@ method for `stars` objects
 (a = aggregate(aq, st_as_sf(DE_NUTS1), mean, na.rm = TRUE))
 ```
 
-and we can show the resulting maps for six arbitrarily chosen days
-(figure \@ref{fig:airagg}).
+and we can now for instance show the maps for six arbitrarily chosen days
+(figure \@ref(fig:airagg)),
 
 ```{r airagg, fig.cap="areal mean PM$_{10}$ values, for six days"}
 library(tidyverse)
 a %>% filter(time >= "2008-01-01", time < "2008-01-07") %>% plot(key.pos = 4)
+```
+or a time series of mean values for a single state 
+(figure \@ref(fig:airts)).
+```{r airts, fig.cap="areal mean PM$_{10}$ values, for six days"}
+suppressPackageStartupMessages(library(xts))
+plot(as.xts(a)[,4], main = DE_NUTS1$NAME_1[4])
 ```
 
 ### Example: Bristol origin-destination datacube
@@ -433,7 +446,7 @@ a %>% filter(time >= "2008-01-01", time < "2008-01-07") %>% plot(key.pos = 4)
 The data used for this example come from [@geocomp], and concern
 origin-destination (OD) counts: the number of persons going from
 region A to region B, by transportation mode.  We have feature
-geometries for the 102 origin and destination regions, shown in figure \@{fig:bristol1}.
+geometries for the 102 origin and destination regions, shown in figure \@ref(fig:bristol1).
 ```{r bristol1, fig.cap="Origin destination data zones for Bristol, UK, with zone 33 (E02003043) colored red"}
 library(spDataLarge)
 plot(st_geometry(bristol_zones), axes = TRUE, graticule = TRUE)
