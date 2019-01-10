@@ -6,6 +6,11 @@ clean:
 	rm -fr _bookdown_files
 	Rscript -e "bookdown::clean_book(TRUE)"
 
+pdf0:
+	Rscript -e 'bookdown::render_book("index.Rmd", "bookdown::pdf_book")'
+
+# bookdown::gitbook
+
 view:
 	google-chrome _book/index.html
 
@@ -17,6 +22,6 @@ pdf:
 
 push:
 	make
-	git add _book/*html _book/sdsr_files/figure-html/* #_book/images/*png
+	git add _book/*html _book/sds_files/figure-html/* #_book/images/*png
 	git commit -a -m 'commit'
 	git push
