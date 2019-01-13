@@ -25,7 +25,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand">
 
 
-<meta name="date" content="2019-01-12">
+<meta name="date" content="2019-01-13">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -177,9 +177,11 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li class="chapter" data-level="9.1" data-path="plot.html"><a href="plot.html#base-plots"><i class="fa fa-check"></i><b>9.1</b> Base plots</a></li>
 <li class="chapter" data-level="9.2" data-path="plot.html"><a href="plot.html#combining-base-plots"><i class="fa fa-check"></i><b>9.2</b> Combining base plots</a></li>
 <li class="chapter" data-level="9.3" data-path="plot.html"><a href="plot.html#grid-plots-and-viewports"><i class="fa fa-check"></i><b>9.3</b> Grid plots and viewports</a></li>
-<li class="chapter" data-level="9.4" data-path="plot.html"><a href="plot.html#combining-base-and-grid-plots"><i class="fa fa-check"></i><b>9.4</b> Combining base and grid plots</a></li>
 </ul></li>
-<li class="chapter" data-level="10" data-path="ggplot2.html"><a href="ggplot2.html"><i class="fa fa-check"></i><b>10</b> ggplot2</a></li>
+<li class="chapter" data-level="10" data-path="ggplot2.html"><a href="ggplot2.html"><i class="fa fa-check"></i><b>10</b> ggplot2</a><ul>
+<li class="chapter" data-level="10.1" data-path="ggplot2.html"><a href="ggplot2.html#geom_sf"><i class="fa fa-check"></i><b>10.1</b> <code>geom_sf</code></a></li>
+<li class="chapter" data-level="10.2" data-path="ggplot2.html"><a href="ggplot2.html#using-stars-objects-with-ggplot2"><i class="fa fa-check"></i><b>10.2</b> using <code>stars</code> objects with <code>ggplot2</code></a></li>
+</ul></li>
 <li class="chapter" data-level="11" data-path="interactive-maps.html"><a href="interactive-maps.html"><i class="fa fa-check"></i><b>11</b> Interactive Maps</a></li>
 <li class="part"><span><b>III Spatial Analysis</b></span></li>
 <li class="chapter" data-level="12" data-path="summarizing-geometries.html"><a href="summarizing-geometries.html"><i class="fa fa-check"></i><b>12</b> Summarizing Geometries</a></li>
@@ -232,8 +234,72 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
             <section class="normal" id="section-">
 <div id="ggplot2" class="section level1">
 <h1><span class="header-section-number">Chapter 10</span> ggplot2</h1>
-<p><code>geom_sf</code> examples; useful annotations and manipulations</p>
+<p>Function <code>ggplot</code> from package <code>ggplot2</code> <span class="citation">(Wickham <a href="#ref-wickham2016ggplot2">2016</a>)</span> provides a high-level interface to creating graphs, essentially by composing all their ingredients and constraints in a single expression. It implements the “grammar for graphics” by <span class="citation">Wilkinson (<a href="#ref-wilkinson2006grammar">2006</a>)</span>, and is the plotting package of choice in the <code>tidyverse</code>.</p>
+<p>Before <code>ggplot</code> 3.0.0 came out, the approach to plotting spatial data was to <em>fortify</em> it, meaning encode all the geometries as atomic vectors in a <code>data.frame</code>, keeping an <code>ID</code> column to register which coordinate belonged to which geometry, and repeating all non-geometry attributes for each geometry <em>coordinate</em>. This worked reasonably well for points and lines, but not very well for polygons with holes.</p>
+<p>Since <code>ggplot</code> 3.0.0 and package <code>sf</code>, this runs much smoother; <code>ggplot</code> has received a <code>geom_sf</code> function that could take an <code>sf</code> object and calls <code>st_as_grob</code> on each feature geometry to get an object that can directly be added to the plot. In addition to that, it takes care of automated datum transformations or projections if different objects have differing coordinate reference systems, and adds by default a graticule and degree axis tic labels.</p>
+<p><span class="citation">Moreno and Basille (<a href="#ref-moreno1">2018</a><a href="#ref-moreno1">a</a>)</span>, <span class="citation">Moreno and Basille (<a href="#ref-moreno2">2018</a><a href="#ref-moreno2">b</a>)</span> and <span class="citation">Moreno and Basille (<a href="#ref-moreno3">2018</a><a href="#ref-moreno3">c</a>)</span> published three guest blogs on r-spatial.org explaining the capabilities of ggplot for making beautiful maps with <code>sf</code> and <code>ggplot2</code>.</p>
+<div id="geom_sf" class="section level2">
+<h2><span class="header-section-number">10.1</span> <code>geom_sf</code></h2>
+<p>We will introduce the affordances of <code>geom_sf</code> here step by step. We use a projected version of <code>nc</code></p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(tidyverse)
+<span class="kw">library</span>(sf)
+<span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">read_sf</span>() <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">st_transform</span>(<span class="dv">32119</span>) -&gt;<span class="st"> </span>nc<span class="fl">.32119</span></code></pre></div>
+<p>and create a first <code>ggplot</code> by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> nc<span class="fl">.32119</span>) </code></pre></div>
+<p><img src="sds_files/figure-html/unnamed-chunk-193-1.png" width="672" style="display: block; margin: auto;" /> It is attractive to think that</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>(nc<span class="fl">.32119</span>) <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>()</code></pre></div>
+<p>would also work, but it doesn’t – it only works if the geometry column is named <code>geometry</code>, which is not always the case (<code>sf</code> objects may have more than one geometry column).</p>
+<p>If we want to get rid of the axis tics and grid lines, we could use</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> nc<span class="fl">.32119</span>) <span class="op">+</span><span class="st"> </span><span class="kw">theme_void</span>() <span class="op">+</span>
+<span class="st">  </span><span class="kw">theme</span>(<span class="dt">panel.grid.major =</span> <span class="kw">element_line</span>(<span class="dt">color =</span> <span class="st">&quot;white&quot;</span>))</code></pre></div>
+<p><img src="sds_files/figure-html/unnamed-chunk-195-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>A first ggplot2 plot with polygons colored by attributes (as in figure <a href="intro.html#fig:firstggplot">1.2</a>) is created by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> nc<span class="fl">.32119</span>) <span class="op">+</span><span class="st"> </span><span class="kw">aes</span>(<span class="dt">fill =</span> BIR74) <span class="op">+</span>
+<span class="st">    </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> viridis<span class="op">::</span><span class="kw">viridis</span>(<span class="dv">20</span>))</code></pre></div>
+<p><img src="sds_files/figure-html/unnamed-chunk-196-1.png" width="672" style="display: block; margin: auto;" /></p>
+<div id="facet-plots" class="section level3">
+<h3><span class="header-section-number">10.1.1</span> facet plots</h3>
+</div>
+<div id="multiple-geometries-in-a-single-map" class="section level3">
+<h3><span class="header-section-number">10.1.2</span> multiple geometries in a single map</h3>
+</div>
+<div id="graticule-control" class="section level3">
+<h3><span class="header-section-number">10.1.3</span> graticule control</h3>
+</div>
+</div>
+<div id="using-stars-objects-with-ggplot2" class="section level2">
+<h2><span class="header-section-number">10.2</span> using <code>stars</code> objects with <code>ggplot2</code></h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(stars)
+<span class="kw">library</span>(viridis)
+<span class="co">#&gt; Loading required package: viridisLite</span>
+<span class="kw">system.file</span>(<span class="st">&quot;tif/L7_ETMs.tif&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;stars&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">read_stars</span>() -&gt;<span class="st"> </span>x
+<span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_tile</span>(<span class="dt">data =</span> <span class="kw">as.data.frame</span>(x), <span class="kw">aes</span>(<span class="dt">x =</span> x,<span class="dt">y =</span> y, <span class="dt">fill =</span> L7_ETMs.tif)) <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">coord_equal</span>() <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">scale_fill_viridis</span>() <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">facet_wrap</span>(<span class="op">~</span>band) <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">theme_void</span>()</code></pre></div>
+<p><img src="sds_files/figure-html/unnamed-chunk-197-1.png" width="672" style="display: block; margin: auto;" /></p>
 
+</div>
+</div>
+<h3>References</h3>
+<div id="refs" class="references">
+<div id="ref-wickham2016ggplot2">
+<p>Wickham, Hadley. 2016. <em>Ggplot2: Elegant Graphics for Data Analysis</em>. Springer.</p>
+</div>
+<div id="ref-wilkinson2006grammar">
+<p>Wilkinson, Leland. 2006. <em>The Grammar of Graphics</em>. Springer Science &amp; Business Media.</p>
+</div>
+<div id="ref-moreno1">
+<p>Moreno, Mel, and Mathieu Basille. 2018a. <em>Drawing Beautiful Maps Programmatically with R, Sf and Ggplot2 - Part 1: Basics</em>. r-spatial.org. <a href="https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html" class="uri">https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html</a>.</p>
+</div>
+<div id="ref-moreno2">
+<p>Moreno, Mel, and Mathieu Basille. 2018b. <em>Drawing Beautiful Maps Programmatically with R, Sf and Ggplot2 — Part 2: Layers</em>. r-spatial.org. <a href=" https://www.r-spatial.org/r/2018/10/25/ggplot2-sf-2.html">https://www.r-spatial.org/r/2018/10/25/ggplot2-sf-2.html</a>.</p>
+</div>
+<div id="ref-moreno3">
+<p>Moreno, Mel, and Mathieu Basille. 2018c. <em>Drawing Beautiful Maps Programmatically with R, Sf and Ggplot2 — Part 3: Layouts</em>. https://www.r-spatial.org. <a href=" https://www.r-spatial.org/r/2018/10/25/ggplot2-sf-3.html">https://www.r-spatial.org/r/2018/10/25/ggplot2-sf-3.html</a>.</p>
+</div>
 </div>
             </section>
 

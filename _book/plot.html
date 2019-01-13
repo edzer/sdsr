@@ -25,7 +25,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand">
 
 
-<meta name="date" content="2019-01-12">
+<meta name="date" content="2019-01-13">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -177,9 +177,11 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li class="chapter" data-level="9.1" data-path="plot.html"><a href="plot.html#base-plots"><i class="fa fa-check"></i><b>9.1</b> Base plots</a></li>
 <li class="chapter" data-level="9.2" data-path="plot.html"><a href="plot.html#combining-base-plots"><i class="fa fa-check"></i><b>9.2</b> Combining base plots</a></li>
 <li class="chapter" data-level="9.3" data-path="plot.html"><a href="plot.html#grid-plots-and-viewports"><i class="fa fa-check"></i><b>9.3</b> Grid plots and viewports</a></li>
-<li class="chapter" data-level="9.4" data-path="plot.html"><a href="plot.html#combining-base-and-grid-plots"><i class="fa fa-check"></i><b>9.4</b> Combining base and grid plots</a></li>
 </ul></li>
-<li class="chapter" data-level="10" data-path="ggplot2.html"><a href="ggplot2.html"><i class="fa fa-check"></i><b>10</b> ggplot2</a></li>
+<li class="chapter" data-level="10" data-path="ggplot2.html"><a href="ggplot2.html"><i class="fa fa-check"></i><b>10</b> ggplot2</a><ul>
+<li class="chapter" data-level="10.1" data-path="ggplot2.html"><a href="ggplot2.html#geom_sf"><i class="fa fa-check"></i><b>10.1</b> <code>geom_sf</code></a></li>
+<li class="chapter" data-level="10.2" data-path="ggplot2.html"><a href="ggplot2.html#using-stars-objects-with-ggplot2"><i class="fa fa-check"></i><b>10.2</b> using <code>stars</code> objects with <code>ggplot2</code></a></li>
+</ul></li>
 <li class="chapter" data-level="11" data-path="interactive-maps.html"><a href="interactive-maps.html"><i class="fa fa-check"></i><b>11</b> Interactive Maps</a></li>
 <li class="part"><span><b>III Spatial Analysis</b></span></li>
 <li class="chapter" data-level="12" data-path="summarizing-geometries.html"><a href="summarizing-geometries.html"><i class="fa fa-check"></i><b>12</b> Summarizing Geometries</a></li>
@@ -332,23 +334,34 @@ xs =<span class="st"> </span><span class="kw">adrop</span>(x[,<span class="dv">1
 <span class="kw">plot</span>(<span class="kw">st_as_sf</span>(xs, <span class="dt">as_points =</span> <span class="ot">TRUE</span>, <span class="dt">merge =</span> <span class="ot">FALSE</span>), <span class="dt">key.pos =</span> <span class="ot">NULL</span>, 
     <span class="dt">pal =</span> viridis<span class="op">::</span>viridis, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">reset =</span> <span class="ot">FALSE</span>)</code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:rastersheared"></span>
-<img src="sds_files/figure-html/rastersheared-1.png" alt="sheared rasters, plotted as simple features" width="672" />
+<img src="sds_files/figure-html/rastersheared-1.png" alt="sheared rasters, plotted as simple features; left: with merged polygon features, middle: with seperate polygons, right: as point features" width="672" />
 <p class="caption">
-Figure 9.6: sheared rasters, plotted as simple features
+Figure 9.6: sheared rasters, plotted as simple features; left: with merged polygon features, middle: with seperate polygons, right: as point features
 </p>
 </div>
 </div>
 </div>
 <div id="combining-base-plots" class="section level2">
 <h2><span class="header-section-number">9.2</span> Combining base plots</h2>
+<p>Figure <a href="plot.html#fig:rastersheared">9.6</a> is an exmaple of multiple plots of <code>stars</code> and <code>sf</code> objects in one plot. They could be combined because they lack the automatic legend key.</p>
 <p>The explanation about the need for parameter <code>reset</code> and the examples above with multiple subplots setting it to <code>FALSE</code> already show the limitations of this approach: if we want a key next to each map, we cannot easily combine maps in subplots, using <code>sf</code>‘s or <code>stars</code>’ <code>plot</code> methods. If we can do without the automatic legend, all is fine.</p>
-<p>A better approach to combine maps into a composite is using facet plots, as will be shown in chapter <a href="ggplot2.html#ggplot2">10</a> about <code>ggplot2</code>.</p>
+<p>A more flexible approach to combine maps and map elements into a composite is using package <code>grid</code> as shown in the next section, or <code>ggplot</code> facet plots (which also use <code>grid</code>) as will be shown in chapter <a href="ggplot2.html#ggplot2">10</a> about <code>ggplot2</code>.</p>
 </div>
 <div id="grid-plots-and-viewports" class="section level2">
 <h2><span class="header-section-number">9.3</span> Grid plots and viewports</h2>
+<p>Package <code>grid</code>, one of the R base packages, takes a more structured approach to building plots than base <code>plot</code> does. It allows the creation of graphic objects (objects of class <code>grob</code>, or grobs) that contain all the information for plotting, and the definition of <em>viewports</em>, plotting subregions within which coordinate systems can easily be redefined. Packages like <code>ggplot2</code> (chapter <a href="ggplot2.html#ggplot2">10</a>) and <code>lattice</code> are built upon the logic provided by <code>grid</code>.</p>
+<p>Package <code>sf</code> contains <code>st_as_grob</code> methods for all feature geometry classes. Figure <a href="plot.html#fig:griddraw">9.7</a> shows a simple plot of all the <code>nc</code> counties drawn using grid functions.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(grid)
+<span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>read_sf -&gt;<span class="st"> </span>nc
+<span class="kw">st_viewport</span>(nc) <span class="op">%&gt;%</span><span class="st"> </span>pushViewport
+<span class="kw">st_geometry</span>(nc) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">lapply</span>(st_as_grob) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">lapply</span>(grid.draw) -&gt;<span class="st"> </span>x</code></pre></div>
+<div class="figure" style="text-align: center"><span id="fig:griddraw"></span>
+<img src="sds_files/figure-html/griddraw-1.png" alt="simple plot created with grid functions" width="384" />
+<p class="caption">
+Figure 9.7: simple plot created with grid functions
+</p>
 </div>
-<div id="combining-base-and-grid-plots" class="section level2">
-<h2><span class="header-section-number">9.4</span> Combining base and grid plots</h2>
+<p>The <code>st_as_grob</code> methods are exported by <code>sf</code> and used by <code>ggplot2::geom_sf</code> to convert geometries into plot-able objects; this way, <code>ggplot2</code> needs no knowledge on how geometries are stored in R objects.</p>
 
 </div>
 </div>

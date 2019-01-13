@@ -1,4 +1,84 @@
 # ggplot2 {#ggplot2}
 
-`geom_sf` examples; useful annotations and manipulations
+Function `ggplot` from package `ggplot2` [@wickham2016ggplot2]
+provides a high-level interface to creating graphs, essentially
+by composing all their ingredients and constraints in a
+single expression. It implements the "grammar for graphics" by
+@wilkinson2006grammar, and is the plotting package of choice in the
+`tidyverse`.
+
+Before `ggplot` 3.0.0 came out, the approach to plotting spatial
+data was to _fortify_ it, meaning encode all the geometries as atomic
+vectors in a `data.frame`, keeping an `ID` column to register which
+coordinate belonged to which geometry, and repeating all non-geometry
+attributes for each geometry _coordinate_.  This worked reasonably
+well for points and lines, but not very well for polygons with holes.
+
+Since `ggplot` 3.0.0 and package `sf`, this runs much smoother;
+`ggplot` has received a `geom_sf` function that could take an `sf`
+object and calls `st_as_grob` on each feature geometry to get an
+object that can directly be added to the plot. In addition to that,
+it takes care of automated datum transformations or projections
+if different objects have differing coordinate reference systems,
+and adds by default a graticule and degree axis tic labels.
+
+@moreno1, @moreno2 and @moreno3 published three guest blogs on
+r-spatial.org explaining the capabilities of ggplot for making
+beautiful maps with `sf` and `ggplot2`.
+
+## `geom_sf`
+
+We will introduce the affordances of `geom_sf` here step by step.
+We use a projected version of `nc` 
+```{r}
+library(tidyverse)
+library(sf)
+system.file("gpkg/nc.gpkg", package="sf") %>% read_sf() %>% 
+    st_transform(32119) -> nc.32119
+```
+and create a first `ggplot` by
+```{r}
+ggplot() + geom_sf(data = nc.32119) 
+```
+It is attractive to think that
+```{r eval=FALSE}
+ggplot(nc.32119) + geom_sf()
+```
+would also work, but it doesn't -- it only works if the geometry
+column is named `geometry`, which is not always the case (`sf`
+objects may have more than one geometry column).
+
+If we want to get rid of the axis tics and grid lines, we could use
+```{r}
+ggplot() + geom_sf(data = nc.32119) + theme_void() +
+  theme(panel.grid.major = element_line(color = "white"))
+```
+
+A first ggplot2 plot with polygons colored by attributes 
+(as in figure \@ref(fig:firstggplot)) is created by
+```{r}
+ggplot() + geom_sf(data = nc.32119) + aes(fill = BIR74) +
+    scale_fill_gradientn(colors = viridis::viridis(20))
+```
+
+### facet plots
+
+### multiple geometries in a single map
+
+### graticule control
+
+## using `stars` objects with `ggplot2`
+
+```{r}
+library(stars)
+library(viridis)
+system.file("tif/L7_ETMs.tif", package = "stars") %>% read_stars() -> x
+ggplot() + geom_tile(data = as.data.frame(x), aes(x = x,y = y, fill = L7_ETMs.tif)) + 
+	coord_equal() + 
+	scale_fill_viridis() + 
+	facet_wrap(~band) + 
+	theme_void()
+```
+
+
 
