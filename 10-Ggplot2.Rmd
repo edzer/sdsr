@@ -69,16 +69,51 @@ ggplot() + geom_sf(data = nc.32119) + aes(fill = BIR74) +
 
 ## using `stars` objects with `ggplot2`
 
-```{r}
+Package `stars` comes with a `geom_stars` function that is much
+more limited in scope than `geom_sf`. In essence, it creates a call
+to `geom_raster` in case of raster data with a regular grid, to
+`geom_tile` for other raster data, or to `geom_sf` if the `stars`
+object has simple feature geometries. It also creates the mapping
+of dimension names to x and y-coordinates and set the first array
+name as the `fill` variable. This means that the aspect ratio still
+needs to be controlled (`coord_equal()`) and that a `facet_wrap`
+is needed to display multiple rasters. An example is shown in
+figure \@ref(fig:geomraster).
+
+```{r geomraster,fig.cap="example of geom_stars"}
 library(stars)
+library(ggplot2)
 library(viridis)
 system.file("tif/L7_ETMs.tif", package = "stars") %>% read_stars() -> x
-ggplot() + geom_tile(data = as.data.frame(x), aes(x = x,y = y, fill = L7_ETMs.tif)) + 
+ggplot() + geom_stars(data = x) + 
 	coord_equal() + 
-	scale_fill_viridis() + 
 	facet_wrap(~band) + 
-	theme_void()
+	scale_fill_viridis() + 
+	theme_void() +
+    scale_x_discrete(expand=c(0,0))+
+    scale_y_discrete(expand=c(0,0))
 ```
 
+`geom_stars` has a parameter, `downsample`, which can be used to downsample
+particular dimensions. Here we downsample a 90m x 90m raster to a 900m x 900m
+raster:
+```{r}
+ggplot() + geom_stars(data = x, downsample = c(10,10,1)) + 
+	coord_equal() + 
+	facet_wrap(~band) + 
+	scale_fill_viridis() + 
+	theme_void() +
+    scale_x_discrete(expand=c(0,0))+
+    scale_y_discrete(expand=c(0,0))
+```
 
+<!--
+```{r}
+library(spacetime)
+data(air) # this loads several datasets in .GlobalEnv
+d = st_dimensions(station = st_as_sfc(stations), time = dates)
+aq = st_as_stars(list(PM10 = air), dimensions = d)
+ggplot() + geom_stars(data = aq[,,1:9])
+```
+-->
 

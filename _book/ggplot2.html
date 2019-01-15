@@ -25,7 +25,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand">
 
 
-<meta name="date" content="2019-01-13">
+<meta name="date" content="2019-01-15">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -270,16 +270,45 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 </div>
 <div id="using-stars-objects-with-ggplot2" class="section level2">
 <h2><span class="header-section-number">10.2</span> using <code>stars</code> objects with <code>ggplot2</code></h2>
+<p>Package <code>stars</code> comes with a <code>geom_stars</code> function that is much more limited in scope than <code>geom_sf</code>. In essence, it creates a call to <code>geom_raster</code> in case of raster data with a regular grid, to <code>geom_tile</code> for other raster data, or to <code>geom_sf</code> if the <code>stars</code> object has simple feature geometries. It also creates the mapping of dimension names to x and y-coordinates and set the first array name as the <code>fill</code> variable. This means that the aspect ratio still needs to be controlled (<code>coord_equal()</code>) and that a <code>facet_wrap</code> is needed to display multiple rasters. An example is shown in figure <a href="ggplot2.html#fig:geomraster">10.1</a>.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(stars)
+<span class="kw">library</span>(ggplot2)
 <span class="kw">library</span>(viridis)
-<span class="co">#&gt; Loading required package: viridisLite</span>
 <span class="kw">system.file</span>(<span class="st">&quot;tif/L7_ETMs.tif&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;stars&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">read_stars</span>() -&gt;<span class="st"> </span>x
-<span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_tile</span>(<span class="dt">data =</span> <span class="kw">as.data.frame</span>(x), <span class="kw">aes</span>(<span class="dt">x =</span> x,<span class="dt">y =</span> y, <span class="dt">fill =</span> L7_ETMs.tif)) <span class="op">+</span><span class="st"> </span>
+<span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> x) <span class="op">+</span><span class="st"> </span>
 <span class="st">    </span><span class="kw">coord_equal</span>() <span class="op">+</span><span class="st"> </span>
-<span class="st">    </span><span class="kw">scale_fill_viridis</span>() <span class="op">+</span><span class="st"> </span>
 <span class="st">    </span><span class="kw">facet_wrap</span>(<span class="op">~</span>band) <span class="op">+</span><span class="st"> </span>
-<span class="st">    </span><span class="kw">theme_void</span>()</code></pre></div>
+<span class="st">    </span><span class="kw">scale_fill_viridis</span>() <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">theme_void</span>() <span class="op">+</span>
+<span class="st">    </span><span class="kw">scale_x_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))<span class="op">+</span>
+<span class="st">    </span><span class="kw">scale_y_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))</code></pre></div>
+<div class="figure" style="text-align: center"><span id="fig:geomraster"></span>
+<img src="sds_files/figure-html/geomraster-1.png" alt="example of geom_stars" width="672" />
+<p class="caption">
+Figure 10.1: example of geom_stars
+</p>
+</div>
+<p><code>geom_stars</code> has a parameter, <code>downsample</code>, which can be used to downsample particular dimensions. Here we downsample a 90m x 90m raster to a 900m x 900m raster:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> x, <span class="dt">downsample =</span> <span class="kw">c</span>(<span class="dv">10</span>,<span class="dv">10</span>,<span class="dv">1</span>)) <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">coord_equal</span>() <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">facet_wrap</span>(<span class="op">~</span>band) <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">scale_fill_viridis</span>() <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">theme_void</span>() <span class="op">+</span>
+<span class="st">    </span><span class="kw">scale_x_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))<span class="op">+</span>
+<span class="st">    </span><span class="kw">scale_y_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))</code></pre></div>
 <p><img src="sds_files/figure-html/unnamed-chunk-197-1.png" width="672" style="display: block; margin: auto;" /></p>
+<!--
+
+```r
+library(spacetime)
+data(air) # this loads several datasets in .GlobalEnv
+d = st_dimensions(station = st_as_sfc(stations), time = dates)
+aq = st_as_stars(list(PM10 = air), dimensions = d)
+ggplot() + geom_stars(data = aq[,,1:9])
+```
+
+<img src="sds_files/figure-html/unnamed-chunk-198-1.png" width="672" style="display: block; margin: auto;" />
+-->
 
 </div>
 </div>
