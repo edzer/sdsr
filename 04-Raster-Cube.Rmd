@@ -161,6 +161,61 @@ obtained by
 st_apply(x, c("x", "y"), quantile, c(.25, .5, .75))
 ```
 
+### Raster varieties: rectilinear, curvilinear
+
+Besides the regular raster with square cells and axes aligned with
+$x$ and $y$, several other raster types exist. The ones supported
+by package `stars` are shown in figure \@ref(fig:rastertypes).
+
+```{r rastertypes, echo=FALSE,fig.cap="raster types supported by the stars package"}
+x = 1:5
+y = 1:4
+d = st_dimensions(x = x, y = y, .raster = c("x", "y"))
+m = matrix(runif(20),5,4)
+r1 = st_as_stars(r = m, dimensions = d)
+
+r = attr(d, "raster")
+r$affine = c(0.2, -0.2)
+attr(d, "raster") = r
+r2 = st_as_stars(r = m, dimensions = d)
+
+r = attr(d, "raster")
+r$affine = c(0.1, -0.3)
+attr(d, "raster") = r
+r3 = st_as_stars(r = m, dimensions = d)
+
+x = c(1, 2, 3.5, 5, 6)
+y = c(1, 1.5, 3, 3.5)
+d = st_dimensions(x = x, y = y, .raster = c("x", "y"))
+r4 = st_as_stars(r = m, dimensions = d)
+
+grd = st_make_grid(cellsize = c(10,10), offset = c(-130,10), n= c(8,5), crs=st_crs(4326))
+r5 = st_transform(grd, "+proj=laea +lon_0=-70 +lat_0=35")
+
+par(mfrow = c(2,3), mar = c(0.1, 1, 1.1, 1))
+r1 = st_make_grid(cellsize = c(1,1), n = c(5,4), offset = c(0,0))
+plot(r1, main = "regular")
+plot(st_geometry(st_as_sf(r2)), main = "rotated")
+plot(st_geometry(st_as_sf(r3)), main = "sheared")
+plot(st_geometry(st_as_sf(r4, as_points = FALSE)), main = "rectilinear")
+plot(st_geometry((r5)), main = "curvilinear")
+```
+The [data
+model](https://r-spatial.github.io/stars/articles/data_model.html)
+vignette of the package explains the models in detail, and points
+out how they can be constructed.
+
+There are several reasons why non-regular rasters occur. For one,
+when the data is Earth-bound, a regular raster does not fit the Earth
+surface, which is curved. Other reasons are:
+* when we convert or transform a regular raster data into another coordinate reference system,
+it will become curvilinear unless we resample; resampling always
+goes at the cost of some data loss and is not reversible.
+* observation may lead to irregular rasters; e.g. for satellite swaths, we
+may have a regular raster in the direction of the satellite (not
+aligned with $x$ or $y$), and rectilinear perpendicular to that
+(e.g. if the sensor discretizes the viewing angle in equal parts)
+
 ### Handling large raster datasets
 
 A common challenge with raster datasets is not only that they come
