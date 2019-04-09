@@ -287,51 +287,51 @@ nb_k6s <- knn2nb(knn_k6, sym=TRUE)
 nb_k6s
 ```
 
-Here the size of `k=` is sufficient to ensure connectedness, although the graph is not planar as edges cross at locations other than nodes:
+Here the size of `k=` is sufficient to ensure connectedness, although the graph is not planar as edges cross at locations other than nodes, which is not the case for contiguous or graph-based neighbours.
 ```{r}
 n_comp <- n.comp.nb(nb_k6s)
 n_comp$nc
 ```
 
-### Weights standardization
+### Weights specification
 
-
+Once neighbour objects are available, further choices need to made in specifying the weights objects. The `nb2listw()` function is used to create a `listw` weights object with an `nb` object, a matching list of weights vectors, and a style specification. Because handling no-neighbour observations now begins to matter, the `zero.policy=` argument is introduced. By default, this is `FALSE`, indicating that no-neighbour observations will cause an error, as the spatially lagged value for an observation with no neighbours is not available. By convention, zero is substituted for the lagged value, as the cross product of a vector of zero-valued weights and a data vector, hence the name of `zero.policy`.
 
 ```{r}
 args(nb2listw)
 ```
+We will be using the helper function `spweights.constants()` below to show some consequences of varing style choices. It returns constants for a `listw` object, $n$ is the number of observations, `n1` to `n3` are $n-1, \ldots$, `nn` is $n^2$ and $S_0$, $S_1$ and $S_2$ are constants, $S_0$ being the sum of the weights. There is a full discussion of the constants in Bivand and Wong [-@Bivand2018].
+
 ```{r}
 args(spweights.constants)
 ```
+The `"B"` binary style gives a weight of unity to each neighbour relationship, and typically upweights units with no boundaries on the edge of the study area.
 
 ```{r}
 lw_q_B <- nb2listw(nb_q, style="B")
 unlist(spweights.constants(lw_q_B))
 ```
+The `"W"` row-standardized style upweights units around the edge of the study area that necessarily have fewer neighbours. This style first gives a weight of unity to each neighbour relationship, then divides these weights by the per unit sums of weights. Naturally this leads to division by zero where there are no neighbours, a not-a-number result, unless the chosen policy is to permit no-neighbour observations. We can see that $S_0$ is now equal to $n$.
 
 ```{r}
 lw_q_W <- nb2listw(nb_q, style="W")
 unlist(spweights.constants(lw_q_W))
 ```
-
-[@tiefelsdorfatal:99]
-
+An `"S"` style attempts to balance the tendencies of the `"B"` and `"W"` styles to downweight or upweight units on the edge of the study area [@tiefelsdorfatal:99]. Other styles are variants of `"B"`, `"C"` sets the weights such that they sum ($S_0$) to $n$, and `"U"` to unity. The main change in the `"S"` style is to $S_1$ for this configuration of contiguities.
 
 ```{r}
 lw_q_S <- nb2listw(nb_q, style="S")
 unlist(spweights.constants(lw_q_S))
 ```
 
-```{r}
-lw_d183_B <- nb2listw(nb_d183, style="B")
-unlist(spweights.constants(lw_d183_B))
-```
 
 ```{r}
 gwts <- lapply(nbdists(nb_d183, coords), function(x) 1/(x/250))
 lw_d183_idw_B <- nb2listw(nb_d183, glist=gwts, style="B")
 unlist(spweights.constants(lw_d183_idw_B))
 ```
+
+
 
 ```{r}
 try(lw_d16_B <- nb2listw(nb_d16, style="B"))
@@ -341,6 +341,14 @@ try(lw_d16_B <- nb2listw(nb_d16, style="B"))
 lw_d16_B <- nb2listw(nb_d16, style="B", zero.policy=TRUE)
 unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE))
 ```
+
+```{r}
+zO <- set.ZeroPolicyOption(TRUE)
+lw_d16_B <- nb2listw(nb_d16, style="B")
+unlist(spweights.constants(lw_d16_B))
+invisible(set.ZeroPolicyOption(zO))
+```
+
 
 ```{r}
 unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE, adjust.n=FALSE))
