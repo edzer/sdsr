@@ -39,7 +39,7 @@ data(pol_pres15, package="spDataLarge")
 head(pol_pres15[, c(1, 4, 6)])
 ```
 
-```{r}
+```{r plotpolpres15, out.width='100%', fig.cap="Polish municipality types 2015", fig=TRUE}
 library(tmap)
 tm_shape(pol_pres15) + tm_fill("types")
 ```
@@ -127,6 +127,11 @@ Much of the work involved in finding contiguous neighbours is spent on finding c
 
 Most of the **spdep** functions for constructing neighbour objects take a `row.names=` argument, the value of which is stored as a `region.id` attribute. If not given, the values are taken from `row.names()` of the first argument. These can be used to check that the neighbours object is in the same order as data. If `nb` objects are subsetted, the indices change to continue to be within `1:length(subsetted_nb)`, but the `region.id` attribute values point back to the object from which it was constructed.
 
+We can also check that this undirected graph is connected using the `n.comp.nb()` function:
+```{r}
+n.comp.nb(nb_q)$nc
+```
+
 ### Graph-based neighbours
 
 If areal units are an appropriate representation, but only points have been observed, contiguity relationships may be approximated using graph-based neighbours. In this case, the imputed boundaries tesselate the plane such that points closer to one observation than any other fall within its polygon. The simplest form is by using triangulation, here using the `deldir()` function in the **deldir** package. Because the function returns from and to identifiers, it is easy to construct a long representation of a `listw` object, as used in the S-Plus SpatialStats module and the `sn2listw()` function internally to construct an `nb` object (ragged wide representation). Alternatives often fail to return sufficient information to permit the neighbours to be identified.
@@ -159,48 +164,123 @@ The average number of neighbours is similar to the Queen boundary contiguity cas
 ```{r}
 summary(unlist(nbdists(nb_tri, coords)))
 ```
+Using the `card()` function to return a vector of neighbour counts by observation, we see that there are relatively many such surrounded urban municipalities with only one neighbour.
+
 ```{r}
-table(card(nb_q))
-```
-```{r}
-table(card(nb_tri))
+table(pol_pres15$types, card(nb_q))
 ```
 
+For obvious reasons, triangulated units seldom have few neighbours, not only because they are located on the convex hull:
+```{r}
+table(pol_pres15$types, card(nb_tri))
+```
+Triangulated neighbours also yield a connected graph:
+```{r}
+n.comp.nb(nb_tri)$nc
+```
+
+The sphere of influence graph trims a neighbour object such as `nb_tri` to remove edges that seem long in relation to typical neighbours [@avis+horton:1985].
 ```{r}
 nb_soi <- graph2nb(soi.graph(nb_tri, coords))
 nb_soi
 ```
+Unpicking the triangulated neighbours does however remove the connected character of the underlying graph:
+
 ```{r}
-is.symmetric.nb(nb_soi)
+n_comp <- n.comp.nb(nb_soi)
+n_comp$nc
 ```
+The SoI algorithm has stripped out longer edges leading to urban and rural municpalities where their centroids are very close to each other, giving 15 pairs of neighours unconnected to the main graph:
+
+```{r}
+table(n_comp$comp.id)
+```
+
+The largest length edges along the convex hull have been removed, but "holes" have appeared where the unconnected pairs of neighbours have appeared. The differences between `nb_tri` and `nb_soi` are shown in orange in the figure.
 ```{r}
 summary(unlist(nbdists(nb_soi, coords)))
 ```
-```{r}
-table(card(nb_soi))
+
+```{r plotnbdiff, out.width='100%', fig.cap="Triangulated and sphere of influence neighbours", fig=TRUE}
+opar <- par(mar=c(0,0,0,0)+0.5)
+plot(st_geometry(pol_pres15), border="grey", lwd=0.5)
+plot(nb_soi, coords=st_coordinates(coords), add=TRUE, points=FALSE, lwd=0.5)
+plot(diffnb(nb_tri, nb_soi), coords=st_coordinates(coords), col="orange", add=TRUE, points=FALSE, lwd=0.5)
+par(opar)
 ```
 
 ### Distance-based neighbours
+
+Distance-based neighbours can be constructed using `dnearneigh()`, with a distance band with lower `d1=` and upper `d2=` bounds controlled by the `bounds=` argument. If unprojected coordinates are used and either specified in the coordinates object `x` or with `x` as a two column matrix and `longlat=TRUE`, great circle distances in km will be calculated assuming the WGS84 reference ellipsoid.
 
 ```{r}
 args(dnearneigh)
 ```
 
+The `knearneigh()` function for $k$-nearest neighbours returns a `knn` object, converted to an `nb` object using `knn2nb()`. It can also use great circle distances, not least because nearest neighbours may differ when uprojected coordinates are treated as planar. `k=` should be a small number. For projected coordinates, the **RANN** package is used to compute nearest neighbours more efficiently. Note that `nb` objects constructed in this way are most unlikely to be symmetric, hence `knn2nb()` has a `sym=` argument to permit the imposition of symmetry, which will mean that all units have at least `k=` neighbours, not that all units will have exactly `k=` neighbours.
 ```{r}
 args(knearneigh)
 ```
-
-
 ```{r}
 args(knn2nb)
 ```
 
+The `nbdists()` function returns the length of neighbour relationship edges in the units of the coordinates if the coordinates are projected, in km otherwise.
 ```{r}
+args(nbdists)
+```
+In order to set the upper limit for distance bands, one may first find the maximum first nearest neighbour distance, using `unlist()` to remove the list structure of the returned object.
 
+```{r}
+k1 <- knn2nb(knearneigh(coords))
+k1dists <- unlist(nbdists(k1, coords))
+summary(k1dists)
+```
+Here the largest first nearest neighbour distance is just under 18 km, so using this as the upper threshold gives certainty that all units will have at least one neighbour:
+
+```{r}
+nb_d18 <- dnearneigh(coords, 0, 18000)
+nb_d18
+```
+However, even though there are no no-neighbour observations (their presence is reported by the print method for `nb` objects), the graph is not connected, as a pair of observations are each others' only neighbours.
+```{r}
+n_comp <- n.comp.nb(nb_d18)
+n_comp$nc
+```
+```{r}
+table(n_comp$comp.id)
+```
+Adding 300 m to the threshold gives us a neighbour object with no no-neighbour units, and all units can be reached from all others across the graph.
+```{r}
+nb_d183 <- dnearneigh(coords, 0, 18300)
+nb_d183
+```
+```{r}
+n_comp <- n.comp.nb(nb_d183)
+n_comp$nc
 ```
 
 
-### Weight standardization
+```{r}
+table(pol_pres15$types, card(nb_d183))
+```
+
+```{r}
+knn_k6 <- knearneigh(coords, k=6)
+knn2nb(knn_k6)
+```
+
+```{r}
+nb_k6s <- knn2nb(knn_k6, sym=TRUE)
+nb_k6s
+```
+
+```{r}
+n_comp <- n.comp.nb(nb_k6s)
+n_comp$nc
+```
+
+### Weights standardization
 
 [@tiefelsdorfatal:99]
 
