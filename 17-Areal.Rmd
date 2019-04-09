@@ -260,11 +260,23 @@ n_comp <- n.comp.nb(nb_d183)
 n_comp$nc
 ```
 
-
+One characteristic of distance-based neighbours is that more densely settled areas, with units which are smaller in terms of area (Warsaw boroughs are much smaller on average, but have almost 30 neighbours). Having many neighbours smoothes the neighbour relationship across more neighbours:
 ```{r}
 table(pol_pres15$types, card(nb_d183))
 ```
+```{r}
+arha <- units::set_units(st_area(pol_pres15), hectare)
+aggregate(arha, list(pol_pres15$types), mean)
+```
 
+For use later, we also construct a neighbour object with no-neighbour units, using a threshold of 16 km:
+```{r}
+nb_d16 <- dnearneigh(coords, 0, 16000)
+nb_d16
+```
+
+
+It is possible to control the numbers of neighbours directly using $k$-nearest neighbours, either accepting asymmetric neighbours or imposing symmetry:
 ```{r}
 knn_k6 <- knearneigh(coords, k=6)
 knn2nb(knn_k6)
@@ -275,6 +287,7 @@ nb_k6s <- knn2nb(knn_k6, sym=TRUE)
 nb_k6s
 ```
 
+Here the size of `k=` is sufficient to ensure connectedness, although the graph is not planar as edges cross at locations other than nodes:
 ```{r}
 n_comp <- n.comp.nb(nb_k6s)
 n_comp$nc
@@ -282,12 +295,56 @@ n_comp$nc
 
 ### Weights standardization
 
-[@tiefelsdorfatal:99]
+
 
 ```{r}
 args(nb2listw)
 ```
+```{r}
+args(spweights.constants)
+```
 
+```{r}
+lw_q_B <- nb2listw(nb_q, style="B")
+unlist(spweights.constants(lw_q_B))
+```
+
+```{r}
+lw_q_W <- nb2listw(nb_q, style="W")
+unlist(spweights.constants(lw_q_W))
+```
+
+[@tiefelsdorfatal:99]
+
+
+```{r}
+lw_q_S <- nb2listw(nb_q, style="S")
+unlist(spweights.constants(lw_q_S))
+```
+
+```{r}
+lw_d183_B <- nb2listw(nb_d183, style="B")
+unlist(spweights.constants(lw_d183_B))
+```
+
+```{r}
+gwts <- lapply(nbdists(nb_d183, coords), function(x) 1/(x/250))
+lw_d183_idw_B <- nb2listw(nb_d183, glist=gwts, style="B")
+unlist(spweights.constants(lw_d183_idw_B))
+```
+
+```{r}
+try(lw_d16_B <- nb2listw(nb_d16, style="B"))
+```
+
+```{r}
+lw_d16_B <- nb2listw(nb_d16, style="B", zero.policy=TRUE)
+unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE))
+```
+
+```{r}
+unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE, adjust.n=FALSE))
+```
 
 ## Measures of spatial autcorrelation
 
