@@ -135,7 +135,7 @@ If areal units are an appropriate representation, but only points have been obse
 args(tri2nb)
 ```
 
-The `soi.graph()` function takes triangulated neighbours and prunes off neighbour relationships represented by unusually long edges, but may render the output object asymmetric. Other graph-based approaches include `relativeneigh()` and `gabrielneigh()`.
+The `soi.graph()` function takes triangulated neighbours and prunes off neighbour relationships represented by unusually long edges, especially around the convex hull, but may render the output object asymmetric. Other graph-based approaches include `relativeneigh()` and `gabrielneigh()`.
 
 ```{r}
 args(soi.graph)
@@ -146,9 +146,38 @@ The output of these functions is then converted to the `nb` representation using
 args(graph2nb)
 ```
 
+We take the centroids of the largest component polygon for each observation as the point representation; population-weighted centroids might have been a better choice if they were available:
 
 ```{r}
 coords <- st_centroid(st_geometry(pol_pres15), of_largest_polygon=TRUE)
+nb_tri <- tri2nb(coords)
+nb_tri
+```
+
+The average number of neighbours is similar to the Queen boundary contiguity case, but if we look at the distribution of edge lengths using `nbdists()`, we can see that although the upper quartile is about 15 km, the maximum is almost 300 km, an edge along much of one side of the convex hull. The short minimum distance is also of interest, as many centroids of urban municipalities are very close to the centroids of their surrounding rural counterparts.
+
+```{r}
+summary(unlist(nbdists(nb_tri, coords)))
+```
+```{r}
+table(card(nb_q))
+```
+```{r}
+table(card(nb_tri))
+```
+
+```{r}
+nb_soi <- graph2nb(soi.graph(nb_tri, coords))
+nb_soi
+```
+```{r}
+is.symmetric.nb(nb_soi)
+```
+```{r}
+summary(unlist(nbdists(nb_soi, coords)))
+```
+```{r}
+table(card(nb_soi))
 ```
 
 ### Distance-based neighbours
