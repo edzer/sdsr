@@ -315,56 +315,182 @@ The `"W"` row-standardized style upweights units around the edge of the study ar
 
 ```{r}
 lw_q_W <- nb2listw(nb_q, style="W")
-unlist(spweights.constants(lw_q_W))
+unlist(spweights.constants(lw_q_W))[c(1,6:8)]
 ```
 An `"S"` style attempts to balance the tendencies of the `"B"` and `"W"` styles to downweight or upweight units on the edge of the study area [@tiefelsdorfatal:99]. Other styles are variants of `"B"`, `"C"` sets the weights such that they sum ($S_0$) to $n$, and `"U"` to unity. The main change in the `"S"` style is to $S_1$ for this configuration of contiguities.
 
 ```{r}
 lw_q_S <- nb2listw(nb_q, style="S")
-unlist(spweights.constants(lw_q_S))
+unlist(spweights.constants(lw_q_S))[c(1,6:8)]
 ```
-
+Inverse distance weights are used in a number of scientific fields. Some use dense inverse distance matrices, but many of the inverse distances are close to zero, so have little practical contribution, especially as the spatial process matrix is itself dense. Inverse distance weights may be constructed by taking the lengths of edges, changing units to avoid most weights being too large or small (here from m to km), taking the inverse, and passing through the `glist=` argument to `nb2listw()`:
 
 ```{r}
-gwts <- lapply(nbdists(nb_d183, coords), function(x) 1/(x/250))
+gwts <- lapply(nbdists(nb_d183, coords), function(x) 1/(x/1000))
 lw_d183_idw_B <- nb2listw(nb_d183, glist=gwts, style="B")
-unlist(spweights.constants(lw_d183_idw_B))
+unlist(spweights.constants(lw_d183_idw_B))[c(1,6:8)]
 ```
-
-
+No-neighbour handling is by default to prevent the construction of a weights object, making the analyst take a position on how to proceed.
 
 ```{r}
 try(lw_d16_B <- nb2listw(nb_d16, style="B"))
 ```
+Use can be made of the `zero.policy=` argument to many functions used with `nb` and `listw` objects.
 
 ```{r}
 lw_d16_B <- nb2listw(nb_d16, style="B", zero.policy=TRUE)
-unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE))
+unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE))[c(1,6:8)]
 ```
+It is also possible to store the chosen zero policy for the running session using `set.ZeroPolicyOption()`; the function returns the value it held before being set. If the `zero.policy=` argument takes its default value of `NULL`, the stored option value is used, initialized to `FALSE` at the beginning of the session.
 
 ```{r}
 zO <- set.ZeroPolicyOption(TRUE)
 lw_d16_B <- nb2listw(nb_d16, style="B")
-unlist(spweights.constants(lw_d16_B))
+unlist(spweights.constants(lw_d16_B))[c(1,6:8)]
 invisible(set.ZeroPolicyOption(zO))
 ```
-
+Note that by default the `adjust.n=` argument is set by default to `TRUE`, subtracting the count of no-neighbour observations from the observation count, so $n$ is smaller with possible consequences for inference. The complete count can be retrieved by changing the argument.
 
 ```{r}
-unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE, adjust.n=FALSE))
+unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE, adjust.n=FALSE))[c(1,6:8)]
 ```
 
 ## Measures of spatial autcorrelation
 
-[@WallerGotway:2004; @McMillen:2003]
+Measures of spatial autcorrelation unfortunately pick up other mis-specifications in the way that we model data [@WallerGotway:2004; @McMillen:2003]. First we test a random variable using the Moran test, here under the normality assumption (argument `randomisation=FALSE`, default `TRUE`):
 
-[@Bivand2018]
+```{r}
+set.seed(1)
+x <- rnorm(nrow(pol_pres15))
+moran.test(x, lw_q_B, randomisation=FALSE)$estimate
+```
+It however fails to detect a missing trend in the data as a missing variable problem, finding spatial autocorrelation instead:
 
-[@tiefelsdorf:02; @bivandetal:09]
+```{r}
+beta <- 0.5e-02
+t <- st_coordinates(coords)[,1]/1000
+x_t <- x + beta*t
+moran.test(x_t, lw_q_B, randomisation=FALSE)$estimate
+```
+If we test the residuals of a linear model including the trend, the apparent spatial autocorrelation disappears:
+
+```{r}
+lm.morantest(lm(x_t ~ t), lw_q_B)$estimate
+```
+
+A comparison of implementations of measures of spatial autocorrelation shows that a wide range of measures is available in R in a number of packages, chiefly in the **spdep** package, and that differences from other implementations can be attributed to design decisions [@Bivand2018]. The **spdep** package also includes the only implementations of exact and Saddlepoint approximations to global and local Moran's I for regression residuals [@tiefelsdorf:02; @bivandetal:09].
 
 ### Global measures
 
+We will begin by examining join count statistics, where `joincount.test()` takes a `factor` vector of values `fx=` and a `listw` object, and returns a list of `htest` (hypothesis test) objects defined in the **stats** package, one `htest` object for each level of the `fx=` argument. The observed counts are of neighbours with the same factor levels, known as same-colour joins.
+
+```{r}
+args(joincount.test)
+```
+The function takes an `alternative=` argument for hypothesis testing, a `sampling=` argument showing the basis for the construction of the variance of the measure, where the default `"nonfree"` choice corresponds to analytical permutation; the `spChk=` argument is retained for backward compatibility. For reference, the counts of factor levels for the type of municipality or Warsaw borough are:
+
+```{r}
+table(pol_pres15$types)
+```
+Since there are four levels, we re-arrange the list of `htest` objects to give a matrix of estimated results. The observed same-colour join counts are tabulated with their expectations based on the counts of levels of the input factor, so that few joins would be expected between for example Warsaw Boroughs, because there are very few of them. The variance calculation uses the underlying constants of the chosen `listw` object and the counts of levels of the input factor. The z-value is obtained in the usual way by dividing the difference between the observed and expected join counts by the square root of the variance.
+
+```{r}
+jcl <- joincount.test(pol_pres15$types, listw=lw_q_B)
+do.call("rbind", lapply(jcl, function(t) {
+  x <- matrix(c(t$estimate, unname(t$statistic)), nrow=1)
+  colnames(x) <- c("Joincount", names(t$estimate)[2:3], "z-value")
+  nm <- substring(names(t$statistic), 18)
+  rownames(x) <- paste0(nm, ":", nm)
+  x
+}))
+```
+
+The join count test was subsequently adapted for multi-colour join counts [@upton+fingleton:85]. The implementation as `joincount.mult()` in **spdep** returns a table based on nonfree sampling, and does not report p-values.
+
+```{r}
+args(joincount.multi)
+```
+The first four lines of results for same-colour join counts are the same as those from `jointcount.test()` above, also under nonfree sampling. The remaining lines report results for multi-colour join counts on the same basis, and finally the "Jtot" statistic summarising the totality of join counts for the variable and `listw` object chosen.
+
+```{r}
+joincount.multi(pol_pres15$types, listw=lw_q_B)
+```
+So far, we have used binary weights, so the sum of join counts multiplied by the weight on that join remains integer. If we change to row standardised weights, where the weights are not unity in all cases, the counts, expectations and variances change, but there are few major changes in the z-values.
+
+```{r}
+joincount.multi(pol_pres15$types, listw=lw_q_W)
+```
+Using an inverse distance based `listw` object does, however, change the z-values markedly, because closer centroids are upweighted relatively strongly:
+
+```{r}
+joincount.multi(pol_pres15$types, listw=lw_d183_idw_B)
+```
+
+```{r}
+args(moran.test)
+```
+
+```{r}
+moran.test(pol_pres15$I_turnout, listw=lw_q_B, randomisation=FALSE)
+```
+
+
+```{r}
+args(lm.morantest)
+```
+
+
+```{r}
+ols <- lm(I_turnout ~ 1, pol_pres15)
+lm.morantest(ols, listw=lw_q_B)
+```
+
+
+```{r}
+args(lm.morantest.exact)
+```
+
 [@TiefelsdorfBoots1995; @TiefelsdorfBoots1997; @Hepple1998]
+
+```{r, cache=TRUE}
+lm.morantest.exact(ols, listw=lw_q_B)
+```
+
+
+```{r}
+args(geary.test)
+```
+
+
+```{r}
+geary.test(pol_pres15$I_turnout, listw=lw_q_B)
+```
+
+```{r}
+args(globalG.test)
+```
+```{r}
+globalG.test(pol_pres15$I_turnout, listw=lw_q_B)
+```
+
+```{r}
+args(moran.mc)
+```
+
+```{r}
+moran.mc(pol_pres15$I_turnout, listw=lw_q_B, nsim=999, return_boot = TRUE)
+```
+
+
+```{r}
+args(sp.mantel.mc)
+```
+
+
+```{r}
+sp.mantel.mc(pol_pres15$I_turnout, listw=lw_q_B, nsim=999, type="sokal", return_boot = TRUE)
+```
+
 
 [@assuncao+reis:99]
 
