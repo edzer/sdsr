@@ -63,24 +63,74 @@ ggplot() + geom_sf(data = nc.32119) + aes(fill = BIR74) +
 
 ### facet plots
 
+Facet plots are a powerful means to compare maps, because they
+keep all the plotting parameters constant (spatial extent, scale,
+color breaks).  One would perhaps wish that it were possible to
+directly plot multiple attribute columns over facet maps.  For this,
+we first have to reorganise the data such that the target variable is
+a single column, another column indicates the facet, and geometries
+are repeated accordingly.  For this, `tidyr::gather` can be used; an
+example is given in figure \@ref(fig:firstgather).
+
 ### multiple geometries in a single map
 
-### graticule control
+Multiple geometries with `geom_sf` can be created by adding consecutive
+`geom_sf` geometries; we can add for instance the county centroids to
+a plot by
+```{r}
+ggplot() + geom_sf(data = nc.32119) + geom_sf(data = st_centroid(nc.32119))
+```
 
-## using `stars` objects with `ggplot2`
+When subsequent `sf` objects have a different coordinate reference
+system from the first object, `geom_sf` will transform them to the
+reference system of the first object.
+
+### Fine tuning
+
+In case `sf` objects have multiple geometry list-columns, the
+"active" list column is selected by default. This can be overriden
+by supplying another column name in `aes(geometry = my_column)` `
+
+To add labels to geometries, one can use `geom_sf_label`. From the examples of `geom_sf`:
+```{r}
+nc <- sf::st_read(system.file("gpkg/nc.gpkg", package = "sf"), quiet = TRUE)
+nc_3857 <- sf::st_transform(nc, "+init=epsg:3857")
+ggplot() + 
+    geom_sf(data = nc_3857[1:3, ], aes(fill = AREA)) + 
+	geom_sf_label(data = nc_3857[1:3, ], aes(label = NAME))
+```
+`geom_sf_text` can be used to add simple text annotations without decoration.
+
+Graticules are drawn by default. Since they are different for
+every projection, it is hard to anticipate how strongly they will
+be curved. `geom_sf` takes a parameter `ndiscr`, by default set to
+100, which can be increased when graticulas show up unexpectedly
+as non-smooth lines.
+
+`label_graticules` can be used to control which graticules are
+labeled. In addition, `label_axes` controls on which axes particular
+graticules will be labeled.
+
+## `geom_stars`
 
 Package `stars` comes with a `geom_stars` function that is much
 more limited in scope than `geom_sf`. In essence, it creates a call
-to `geom_raster` in case of raster data with a regular grid, to
-`geom_tile` for other raster data, or to `geom_sf` if the `stars`
-object has simple feature geometries. It also creates the mapping
-of dimension names to x and y-coordinates and set the first array
-name as the `fill` variable. This means that the aspect ratio still
-needs to be controlled (`coord_equal()`) and that a `facet_wrap`
-is needed to display multiple rasters. An example is shown in
-figure \@ref(fig:geomraster).
+to 
 
-```{r geomraster,fig.cap="example of geom_stars"}
+* `geom_raster` in case of raster data with a regular grid, 
+* to `geom_tile` for other raster data, or 
+* to `geom_sf` if the `stars` object has a simple feature geometry dimension rather than raster dimensions, or has a curvilinear raster
+
+`geom_raster` also creates the mapping of dimension names to x
+and y-coordinates and set the first attribute name as the `fill`
+variable. This means that the aspect ratio still needs to be
+controlled (`coord_equal()`) and that a `facet_wrap` is needed
+to display multiple rasters. An example is shown in figure
+\@ref(fig:geomraster).
+
+(ref:geomstars) example of `geom_stars`
+
+```{r geomraster,fig.cap='(ref:geomstars)'}
 library(stars)
 library(ggplot2)
 library(viridis)
@@ -90,7 +140,7 @@ ggplot() + geom_stars(data = x) +
 	facet_wrap(~band) + 
 	scale_fill_viridis() + 
 	theme_void() +
-    scale_x_discrete(expand=c(0,0))+
+    scale_x_discrete(expand=c(0,0)) +
     scale_y_discrete(expand=c(0,0))
 ```
 
@@ -107,13 +157,16 @@ ggplot() + geom_stars(data = x, downsample = c(10,10,1)) +
     scale_y_discrete(expand=c(0,0))
 ```
 
-<!--
 ```{r}
 library(spacetime)
 data(air) # this loads several datasets in .GlobalEnv
 d = st_dimensions(station = st_as_sfc(stations), time = dates)
 aq = st_as_stars(list(PM10 = air), dimensions = d)
-ggplot() + geom_stars(data = aq[,,1:9])
+# ggplot() + geom_stars(data = aq[,,3000])
+aq.sf = st_as_sf(aq[,,3000], long=TRUE)
+ggplot() + 
+   geom_sf(data = st_as_sf(DE_NUTS1)) + 
+   geom_sf(data = aq.sf, mapping = aes(col = PM10)) + 
+   ggtitle(aq.sf$time[1])
 ```
--->
 

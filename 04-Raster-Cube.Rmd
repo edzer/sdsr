@@ -84,9 +84,9 @@ We can get the spatial extent of the array by
 ```{r}
 st_bbox(x)
 ```
-Raster data can be written to local disk using `st_write`:
+Raster data can be written to local disk using `write_stars`:
 ```{r}
-st_write(x, "x.tif")
+write_stars(x, "x.tif")
 ```
 where the format (in this case, GeoTIFF) is derived from the file
 extension. As for simple features, reading and writing uses the GDAL
@@ -160,6 +160,61 @@ obtained by
 ```{r}
 st_apply(x, c("x", "y"), quantile, c(.25, .5, .75))
 ```
+
+### Raster varieties: rectilinear, curvilinear
+
+Besides the regular raster with square cells and axes aligned with
+$x$ and $y$, several other raster types exist. The ones supported
+by package `stars` are shown in figure \@ref(fig:rastertypes).
+
+```{r rastertypes, echo=FALSE,fig.cap="raster types supported by the stars package"}
+x = 1:5
+y = 1:4
+d = st_dimensions(x = x, y = y, .raster = c("x", "y"))
+m = matrix(runif(20),5,4)
+r1 = st_as_stars(r = m, dimensions = d)
+
+r = attr(d, "raster")
+r$affine = c(0.2, -0.2)
+attr(d, "raster") = r
+r2 = st_as_stars(r = m, dimensions = d)
+
+r = attr(d, "raster")
+r$affine = c(0.1, -0.3)
+attr(d, "raster") = r
+r3 = st_as_stars(r = m, dimensions = d)
+
+x = c(1, 2, 3.5, 5, 6)
+y = c(1, 1.5, 3, 3.5)
+d = st_dimensions(x = x, y = y, .raster = c("x", "y"))
+r4 = st_as_stars(r = m, dimensions = d)
+
+grd = st_make_grid(cellsize = c(10,10), offset = c(-130,10), n= c(8,5), crs=st_crs(4326))
+r5 = st_transform(grd, "+proj=laea +lon_0=-70 +lat_0=35")
+
+par(mfrow = c(2,3), mar = c(0.1, 1, 1.1, 1))
+r1 = st_make_grid(cellsize = c(1,1), n = c(5,4), offset = c(0,0))
+plot(r1, main = "regular")
+plot(st_geometry(st_as_sf(r2)), main = "rotated")
+plot(st_geometry(st_as_sf(r3)), main = "sheared")
+plot(st_geometry(st_as_sf(r4, as_points = FALSE)), main = "rectilinear")
+plot(st_geometry((r5)), main = "curvilinear")
+```
+The [data
+model](https://r-spatial.github.io/stars/articles/data_model.html)
+vignette of the package explains the models in detail, and points
+out how they can be constructed.
+
+There are several reasons why non-regular rasters occur. For one,
+when the data is Earth-bound, a regular raster does not fit the Earth
+surface, which is curved. Other reasons are:
+* when we convert or transform a regular raster data into another coordinate reference system,
+it will become curvilinear unless we resample; resampling always
+goes at the cost of some data loss and is not reversible.
+* observation may lead to irregular rasters; e.g. for satellite swaths, we
+may have a regular raster in the direction of the satellite (not
+aligned with $x$ or $y$), and rectilinear perpendicular to that
+(e.g. if the sensor discretizes the viewing angle in equal parts)
 
 ### Handling large raster datasets
 
@@ -248,15 +303,15 @@ the data, e.g. because we want to plot it, is `p * 2` evaluated.
 We need data when
 
 * we want to `plot` data
-* we want to write an object to disk, with `st_write`.
+* we want to write an object to disk, with `write_stars`.
 * we want to explicitly load an object in memory, with `st_as_stars`
 
 In case the entire object does not fit in memory, `plot` and
-`st_write` each choose a strategy to deal with this:
+`write_stars` each choose a strategy to deal with this:
 
 * `plot` fetches only the pixels that can be plotted, rather than the
 ones that are available, and 
-* `st_write` reads, processes, and writes data chunk by chunk.
+* `write_stars` reads, processes, and writes data chunk by chunk.
 
 As an example,
 ```{r}
@@ -283,10 +338,10 @@ We have seen `plot` and `print` in action; `dim` reads out
 the dimension from the dimensions metadata table. 
 
 The three methods that actually fetch data are `st_as_stars`,
-`plot` and `st_write`.  `st_as_stars` reads the actual data into a
+`plot` and `write_stars`.  `st_as_stars` reads the actual data into a
 `stars` object, its argument `downsample` controls the downsampling
 rate. `plot` does this too, choosing an appropriate `downsample`
-value from the device resolution, and plots the object. `st_write`
+value from the device resolution, and plots the object. `write_stars`
 writes a `star_proxy` object to disc.
 
 All other methods for `stars_proxy` objects do not actually operate
@@ -300,7 +355,7 @@ read. `c` combines `stars_proxy` objects, but still doesn't read
 any data. `adrop` drops empty dimensions, `aperm` changes dimension
 order.
 
-`st_write` reads and processes its input chunk-wise; it has an
+`write_stars` reads and processes its input chunk-wise; it has an
 argument `chunk_size` that lets users control the size of spatial
 chunks.
 
