@@ -394,15 +394,35 @@ table(pol_pres15$types)
 ```
 Since there are four levels, we re-arrange the list of `htest` objects to give a matrix of estimated results. The observed same-colour join counts are tabulated with their expectations based on the counts of levels of the input factor, so that few joins would be expected between for example Warsaw Boroughs, because there are very few of them. The variance calculation uses the underlying constants of the chosen `listw` object and the counts of levels of the input factor. The z-value is obtained in the usual way by dividing the difference between the observed and expected join counts by the square root of the variance.
 
+The global tests in **spdep** return `htest` objects with a `print()` method in the **stats** package. To save space here, we'll use a glance function if the `broom::tidy()` method has not been updated to use estimate names.
+
+```{r}
+glance_htest <- function(ht) c(ht$estimate, "Std deviate"=unname(ht$statistic))
+```
+
 ```{r}
 jcl <- joincount.test(pol_pres15$types, listw=lw_q_B)
-do.call("rbind", lapply(jcl, function(t) {
-  x <- matrix(c(t$estimate, unname(t$statistic)), nrow=1)
-  colnames(x) <- c("Joincount", names(t$estimate)[2:3], "z-value")
+broom_ok <- FALSE
+if (names(broom::tidy(jcl[[1]]))[1] == "Same colour statistic") broom_ok <- TRUE
+if (broom_ok) {
+nm <- tibble::enframe(sapply(jcl, function(t) {
   nm <- substring(names(t$statistic), 18)
-  rownames(x) <- paste0(nm, ":", nm)
-  x
+  paste0(nm, ":", nm)
 }))
+mat <- cbind(nm, do.call("rbind", (lapply(jcl, broom::tidy))))
+names(mat)[3] <- "Joincount"
+names(mat)[6] <- "Std.deviate"
+names(mat)[2] <- ""
+mat[,2:6]
+} else {
+mat <- t(sapply(jcl, glance_htest))
+colnames(mat)[1] <- "Joincount"
+rownames(mat) <- sapply(jcl, function(t) {  
+  nm <- substring(names(t$statistic), 18)
+  paste0(nm, ":", nm)
+})
+mat
+}
 ```
 
 The join count test was subsequently adapted for multi-colour join counts [@upton+fingleton:85]. The implementation as `joincount.mult()` in **spdep** returns a table based on nonfree sampling, and does not report p-values.
@@ -426,34 +446,75 @@ Using an inverse distance based `listw` object does, however, change the z-value
 joincount.multi(pol_pres15$types, listw=lw_d183_idw_B)
 ```
 
+The implementation of Moran's $I$ in **spdep** in the `moran.test()` function has similar arguments to those of `joincount.test()`, but `sampling=` is replaced by `randomisation=` to indicate the underlying analytical approach used for calculating the variance of the measure. It is also possible to use ranks rather than numerical values [@cliff+ord:81, p. 46]. The `drop.EI2=` agrument may be used to reproduce results where the final component of the variance term is omitted.
+
 ```{r}
 args(moran.test)
 ```
 
+The default for the `randomisation=` argument is `TRUE`, but here we will simply show that the test under normality is the same as a test of least squares residuals with only the intercept used in the mean model. The spelling of randomisation is that of Cliff and Ord [-@cliff+ord:73].
+
 ```{r}
-moran.test(pol_pres15$I_turnout, listw=lw_q_B, randomisation=FALSE)
+mt <- moran.test(pol_pres15$I_turnout, listw=lw_q_B, randomisation=FALSE)
+if (broom_ok) broom::tidy(mt)[,1:4] else glance_htest(mt)
 ```
 
+The `lm.morantest()` function also takes a `resfun=` argument to set the function used to extract the residuals used for testing, and clearly lets us model other salient features of the response variable [@cliff+ord:81, p. 203].
 
 ```{r}
 args(lm.morantest)
 ```
-
+To compare with the standard test, we are only using the intercept here, and as can be seen, the results are the same.
 
 ```{r}
 ols <- lm(I_turnout ~ 1, pol_pres15)
-lm.morantest(ols, listw=lw_q_B)
+lmt <- lm.morantest(ols, listw=lw_q_B)
+if (broom_ok) broom::tidy(lmt)[,1:4] else glance_htest(lmt)
 ```
-
+Following the elaboration of the global Moran's I test for least squares residuals, further work was done to develop an exact test [@TiefelsdorfBoots1995; @TiefelsdorfBoots1997; @Hepple1998]. The `lm.morantest.sad()` function implements a Saddlepoint approximation, and `lm.morantest.exact()` the exact test, using dense matrix calculations unsuitable for large $n$ [@tiefelsdorf:02; @bivandetal:09]. The additional arguments are used in the computation of the exact standard deviate.
 
 ```{r}
 args(lm.morantest.exact)
 ```
-
-[@TiefelsdorfBoots1995; @TiefelsdorfBoots1997; @Hepple1998]
+We can easily see that the exact standard deviate is an order of magnitude smaller for this response, mean model and spatial weights specification, compared to the standard deviate based on the variance calculated using the normality assumption.
 
 ```{r, cache=TRUE}
-lm.morantest.exact(ols, listw=lw_q_B)
+suppressWarnings(lmte <- lm.morantest.exact(ols, listw=lw_q_B))
+names(lmte$estimate) <- "Moran I statistic"
+class(lmte) <- c(class(lmte), "htest")
+if (broom_ok) broom::tidy(lmte)[,1:2] else glance_htest(lmte)
+```
+The only difference between tests under normality and randomisation is that an extra term is added if the kurtosis of the variable of interest indicates a flatter or more peaked distribution, where the measure used is the classical measure of kurtosis.
+
+```{r}
+all.equal(3+e1071::kurtosis(pol_pres15$I_turnout, type=1), moran(pol_pres15$I_turnout, listw=lw_q_B, n=nrow(pol_pres15), S0=Szero(lw_q_B))$K)
+```
+Under the default randomisation assumption of analytical randomisation, the results are largely unchanged.
+
+```{r}
+mtr <- moran.test(pol_pres15$I_turnout, listw=lw_q_B)
+if (broom_ok) broom::tidy(mtr)[,1:4] else glance_htest(mtr)
+```
+Of course, from the very beginning, interest was shown in Monte Carlo testing, also known as a Hope-type test and as a permutation bootstrap. By default, `moran.mc()` retrurns a `"htest"` object, but may simply use `boot::boot()` internally and return a `"boot"` object when `return_boot=TRUE`.
+
+```{r}
+args(moran.mc)
+```
+In addition the number of simulations of the variable of interest by permutation, that is shuffling the values across the observations at random, needs to be given as `nsim=`.
+
+```{r}
+mmc <- moran.mc(pol_pres15$I_turnout, listw=lw_q_B, nsim=999, return_boot = TRUE)
+```
+The bootstrap permutation retains the outcomes of each of the random permutations, reporting the observed value of the statistic, here Moran's $I$, the difference between this value and the mean of the simulations under randomisation (equivalent to $E(I)$), and the standard deviation of the simulations under randomisation. 
+
+```{r}
+glance_boot <- function(bt) c(original=bt$t0, bias=mean(bt$t)-bt$t0, std.error=sd(bt$t), zvalue=(bt$t0-mean(bt$t))/sd(bt$t))
+if (broom_ok) broom::tidy(mmc) else glance_boot(mmc)
+```
+If we compare the Monte Carlo and analytical variances of $I$ under randomisation, we typically see few differences, arguably rendering Monte Carlo testing unnecessary.
+
+```{r}
+c("Permutation bootstrap"=var(mmc$t), "Analytical randomisation"=unname(mtr$estimate[3]))
 ```
 
 
@@ -463,24 +524,18 @@ args(geary.test)
 
 
 ```{r}
-geary.test(pol_pres15$I_turnout, listw=lw_q_B)
+gt <- geary.test(pol_pres15$I_turnout, listw=lw_q_B)
+if (broom_ok) broom::tidy(gt)[,1:4] else glance_htest(gt)
 ```
 
 ```{r}
 args(globalG.test)
 ```
-```{r}
-globalG.test(pol_pres15$I_turnout, listw=lw_q_B)
-```
 
 ```{r}
-args(moran.mc)
+ggt <- globalG.test(pol_pres15$I_turnout, listw=lw_q_B)
+if (broom_ok) broom::tidy(ggt)[,1:4] else glance_htest(ggt)
 ```
-
-```{r}
-moran.mc(pol_pres15$I_turnout, listw=lw_q_B, nsim=999, return_boot = TRUE)
-```
-
 
 ```{r}
 args(sp.mantel.mc)
@@ -488,11 +543,34 @@ args(sp.mantel.mc)
 
 
 ```{r}
-sp.mantel.mc(pol_pres15$I_turnout, listw=lw_q_B, nsim=999, type="sokal", return_boot = TRUE)
+mamc <- sp.mantel.mc(pol_pres15$I_turnout, listw=lw_q_B, nsim=999, type="sokal", return_boot = TRUE)
+if (broom_ok) broom::tidy(mamc) else glance_boot(mamc)
+```
+
+
+```{r}
+leemc <- lee.mc(pol_pres15$I_turnout, pol_pres15$II_turnout, listw=lw_q_B, nsim=999, return_boot = TRUE)
+if (broom_ok) broom::tidy(leemc) else glance_boot(leemc)
+```
+
+
+```{r}
+suppressMessages(ebimc <- EBImoran.mc(n=pol_pres15$I_valid_votes, x=pol_pres15$I_entitled_to_vote, listw=lw_q_B, nsim=999, return_boot=TRUE))
+if (broom_ok) broom::tidy(ebimc) else glance_boot(ebimc)
 ```
 
 
 [@assuncao+reis:99]
+
+```{r moran_plot, out.width='100%', fig.cap="Moran plot of I round turnout, row standardised neighbours", fig=TRUE}
+infl_W <- moran.plot(pol_pres15$I_turnout, listw=lw_q_W, labels=as.character(pol_pres15$TERYT), cex=1, pch=".", xlab="I round turnout", ylab="lagged turnout")
+```
+
+```{r moran_hat, out.width='100%', fig.cap="Moran plot hat values, row standardised neighbours", fig=TRUE}
+pol_pres15$hat_value <- infl_W$infmat[,6]
+tm_shape(pol_pres15) + tm_fill("hat_value")
+```
+
 
 [@anselin:96]
 
