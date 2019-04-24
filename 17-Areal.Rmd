@@ -503,6 +503,7 @@ args(moran.mc)
 In addition the number of simulations of the variable of interest by permutation, that is shuffling the values across the observations at random, needs to be given as `nsim=`.
 
 ```{r}
+set.seed(1)
 mmc <- moran.mc(pol_pres15$I_turnout, listw=lw_q_B, nsim=999, return_boot = TRUE)
 ```
 The bootstrap permutation retains the outcomes of each of the random permutations, reporting the observed value of the statistic, here Moran's $I$, the difference between this value and the mean of the simulations under randomisation (equivalent to $E(I)$), and the standard deviation of the simulations under randomisation. 
@@ -527,45 +528,50 @@ Because $C$ is based on the similarity of neighbouring values, small values of $
 gt <- geary.test(pol_pres15$I_turnout, listw=lw_q_B)
 if (broom_ok) broom::tidy(gt)[,1:4] else glance_htest(gt)
 ```
-The Getis-Ord test includes extra arguments to accommodate differences between implementations
+The Getis-Ord $G$ test includes extra arguments to accommodate differences between implementations, as Bivand and Wong [-@Bivand2018] found multiple diveregences from the original definitions, often to omit no-neighbour observations generated when using distance band neighbours.
 
 ```{r}
 args(globalG.test)
 ```
+With contiguity neighbours, global $G$ yields a much smaller standard deviate than when using a 16 km distance band neighbour definition:
 
 ```{r}
 ggt <- globalG.test(pol_pres15$I_turnout, listw=lw_q_B)
 if (broom_ok) broom::tidy(ggt)[,1:4] else glance_htest(ggt)
 ```
+Because this neighbour definition leaves a few observations without neighbours, we need to use the `zero.policy=` argument.
 
 ```{r}
-args(sp.mantel.mc)
+ggt <- globalG.test(pol_pres15$I_turnout, listw=lw_d16_B, zero.policy=TRUE)
+if (broom_ok) broom::tidy(ggt)[,1:4] else glance_htest(ggt)
 ```
-
+The Mantel test is implemented without its analytical variance as `sp.mantel.mc()`, rather using permutation bootstrap like `moran.mc()`. It takes a `type=` argument, which can be set to `"moran"`, `"geary"` or `"sokal"`. The output is scaled differently, but gives similar inferences.
 
 ```{r}
-mamc <- sp.mantel.mc(pol_pres15$I_turnout, listw=lw_q_B, nsim=999, type="sokal", return_boot = TRUE)
+set.seed(1)
+mamc <- sp.mantel.mc(pol_pres15$I_turnout, listw=lw_q_B, nsim=999, type="moran", return_boot = TRUE)
 if (broom_ok) broom::tidy(mamc) else glance_boot(mamc)
 ```
-
-
-```{r}
-leemc <- lee.mc(pol_pres15$I_turnout, pol_pres15$II_turnout, listw=lw_q_B, nsim=999, return_boot = TRUE)
-if (broom_ok) broom::tidy(leemc) else glance_boot(leemc)
-```
-
+Finally, the empirical Bayes Moran's $I$ takes account of the denominator in assessing spatial autocorrelation in rates data [@assuncao+reis:99]. Until now, we have considered the proportion of valid votes cast in relation to the numbers entitled to vote by spatial entity, but using `EBImoran.mc()` we can try to accommodate uncertainty in extreme rates in entities with small numbers entitled to vote. There is, however, little impact on the outcome in this case.
 
 ```{r}
+set.seed(1)
 suppressMessages(ebimc <- EBImoran.mc(n=pol_pres15$I_valid_votes, x=pol_pres15$I_entitled_to_vote, listw=lw_q_B, nsim=999, return_boot=TRUE))
 if (broom_ok) broom::tidy(ebimc) else glance_boot(ebimc)
 ```
+A similar measure may also be achieved using global empirical Bayes estimators with `EBest()` to calculate a numerical vector of empirical Bayes estimates, but both are only limited ways of handling mis-specification in the mean model. 
+
+Global measures of spatial autocorrelation using spatial weights objects based on graphs of neighbours are, as we have seen, rather blunt tools, which for interpretation depend critically on a reasoned mean model of the variable in question. If the mean model is just the intercept, the global measures will respond to all kinds of mis-specification, not only spatial autocorrelation. A key source of mis-specification will typically also include the choice of entities for aggregation of data.
 
 
-[@assuncao+reis:99]
+### Local measures
 
-```{r moran_plot, out.width='100%', fig.cap="Moran plot of I round turnout, row standardised neighbours", fig=TRUE}
-infl_W <- moran.plot(pol_pres15$I_turnout, listw=lw_q_W, labels=as.character(pol_pres15$TERYT), cex=1, pch=".", xlab="I round turnout", ylab="lagged turnout")
+Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s [@anselin:95; @getis+ord:92; @getis+ord:96]. In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable [@anselin:96]. The `moran.plot()` function also returns an influence measures object used to label observations exerting more than propotional influence on the slope of the line representing global Moran's $I$. In this case, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. 
+
+```{r moran_plot, out.width='100%', fig.cap="Moran plot of I round turnout, row standardised weights", fig=TRUE}
+infl_W <- moran.plot(pol_pres15$I_turnout, listw=lw_q_W, labels=pol_pres15$TERYT, cex=1, pch=".", xlab="I round turnout", ylab="lagged turnout")
 ```
+If we extract the hat value influence measure
 
 ```{r moran_hat, out.width='100%', fig.cap="Moran plot hat values, row standardised neighbours", fig=TRUE}
 pol_pres15$hat_value <- infl_W$infmat[,6]
@@ -573,11 +579,9 @@ tm_shape(pol_pres15) + tm_fill("hat_value")
 ```
 
 
-[@anselin:96]
 
-### Local measures
 
-[@anselin:95; @getis+ord:92; @getis+ord:96]
+
 
 [@ord+getis:01; @tiefelsdorf:02; @bivandetal:09]
 
