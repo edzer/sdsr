@@ -517,6 +517,12 @@ If we compare the Monte Carlo and analytical variances of $I$ under randomisatio
 ```{r}
 c("Permutation bootstrap"=var(mmc$t), "Analytical randomisation"=unname(mtr$estimate[3]))
 ```
+There is also a permutation bootstrap approach to the approximate profile likelihood estimator (APLE) measure [@Lietal07; @Lietal12] using row-standardised weights, in which the variable of interest must be centred on zero first:
+
+```{r}
+apmc <- aple.mc(c(scale(pol_pres15$I_turnout, scale=FALSE)), listw=lw_q_W, nsim=999)
+if (broom_ok) broom::tidy(apmc) else glance_boot(apmc)
+```
 Geary's global $C$ is implemented in `geary.test()` largely following the same argument structure as `moran.test()`.
 
 ```{r}
@@ -528,7 +534,7 @@ Because $C$ is based on the similarity of neighbouring values, small values of $
 gt <- geary.test(pol_pres15$I_turnout, listw=lw_q_B)
 if (broom_ok) broom::tidy(gt)[,1:4] else glance_htest(gt)
 ```
-The Getis-Ord $G$ test includes extra arguments to accommodate differences between implementations, as Bivand and Wong [-@Bivand2018] found multiple diveregences from the original definitions, often to omit no-neighbour observations generated when using distance band neighbours.
+The Getis-Ord $G$ test includes extra arguments to accommodate differences between implementations, as Bivand and Wong [-@Bivand2018] found multiple divergences from the original definitions, often to omit no-neighbour observations generated when using distance band neighbours.
 
 ```{r}
 args(globalG.test)
@@ -571,16 +577,33 @@ Building on insights from the weaknesses of global measures, local indicators of
 ```{r moran_plot, out.width='100%', fig.cap="Moran plot of I round turnout, row standardised weights", fig=TRUE}
 infl_W <- moran.plot(pol_pres15$I_turnout, listw=lw_q_W, labels=pol_pres15$TERYT, cex=1, pch=".", xlab="I round turnout", ylab="lagged turnout")
 ```
-If we extract the hat value influence measure
+If we extract the hat value influence measure from the returned object, a map suggests that some edge entities exert more than proportional influence, as do entities in or near larger urban areas.
 
 ```{r moran_hat, out.width='100%', fig.cap="Moran plot hat values, row standardised neighbours", fig=TRUE}
 pol_pres15$hat_value <- infl_W$infmat[,6]
 tm_shape(pol_pres15) + tm_fill("hat_value")
 ```
+Bivand and Wong [-@Bivand2018] discuss issues impacting the use of local indicators, such as local Moran's $I$ and local Getis-Ord $G$. Some issues affect the calculation of the local indicators, others inference from their values. Because $n$ statistics may be being calculated from the same number of observations, there are multiple comparison problems that need to be addressed. Although the apparent detection of hotspots from values of local indicators has been quite widely adopted, it remains fraught with difficulty because adjustment of the inferential basis to accommodate multiple comparisons is not often chosen, and as in the global case, mis-specification also remains a source of confusion. Further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging.
+
+```{r}
+args(localmoran)
+```
 
 
+```{r}
+locm <- localmoran(pol_pres15$I_turnout, listw=lw_q_B, alternative="two.sided")
+pvs <- cbind(locm[,5], p.adjust(locm[,5], "bonferroni"), p.adjust(locm[,5], "fdr"), p.adjust(locm[,5], "BY"))
+colnames(pvs) <- c("none", "bonferroni", "fdr", "BY")
+apply(pvs, 2, function(x) sum(x < 0.05))
+```
 
-
+```{r}
+locms <- localmoran.sad(ols, nb=nb_q, style="B", alternative="two.sided")
+locms <- as.data.frame(locms)
+pvs <- cbind(locms[,5], p.adjust(locms[,5], "bonferroni"), p.adjust(locms[,5], "fdr"), p.adjust(locms[,5], "BY"))
+colnames(pvs) <- c("none", "bonferroni", "fdr", "BY")
+apply(pvs, 2, function(x) sum(x < 0.05))
+```
 
 
 [@ord+getis:01; @tiefelsdorf:02; @bivandetal:09]
@@ -599,6 +622,5 @@ tm_shape(pol_pres15) + tm_fill("hat_value")
 
 
 
-## Spatially structured random effects
 
 
