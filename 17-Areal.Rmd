@@ -597,12 +597,29 @@ colnames(pvs) <- c("none", "bonferroni", "fdr", "BY")
 apply(pvs, 2, function(x) sum(x < 0.05))
 ```
 
+
 ```{r}
+args(localmoran.sad)
+```
+
+
+```{r, cache=TRUE}
 locms <- localmoran.sad(ols, nb=nb_q, style="B", alternative="two.sided")
 locms <- as.data.frame(locms)
-pvs <- cbind(locms[,5], p.adjust(locms[,5], "bonferroni"), p.adjust(locms[,5], "fdr"), p.adjust(locms[,5], "BY"))
-colnames(pvs) <- c("none", "bonferroni", "fdr", "BY")
-apply(pvs, 2, function(x) sum(x < 0.05))
+pvss <- cbind(locms[,5], p.adjust(locms[,5], "bonferroni"), p.adjust(locms[,5], "fdr"), p.adjust(locms[,5], "BY"))
+colnames(pvss) <- c("none", "bonferroni", "fdr", "BY")
+apply(pvss, 2, function(x) sum(x < 0.05))
+```
+
+```{r, cache=TRUE}
+SEM <- spatialreg::errorsarlm(I_turnout ~ 1, data=pol_pres15, listw=lw_q_B)
+lm.target <- lm(SEM$tary ~ SEM$tarX - 1)
+Omega <- invIrW(lw_q_B, rho=SEM$lambda)
+locmsO <- localmoran.sad(lm.target, nb=nb_q, style="B", alternative="two.sided", Omega=Omega)
+locmsO <- as.data.frame(locmsO)
+pvssO <- cbind(locmsO[,5], p.adjust(locmsO[,5], "bonferroni"), p.adjust(locmsO[,5], "fdr"), p.adjust(locmsO[,5], "BY"))
+colnames(pvssO) <- c("none", "bonferroni", "fdr", "BY")
+apply(pvssO, 2, function(x) sum(x < 0.05))
 ```
 
 
