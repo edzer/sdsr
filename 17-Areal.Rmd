@@ -357,7 +357,7 @@ Note that by default the `adjust.n=` argument is set by default to `TRUE`, subtr
 unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE, adjust.n=FALSE))[c(1,6:8)]
 ```
 
-## Measures of spatial autcorrelation
+## Measures of spatial autocorrelation
 
 Measures of spatial autcorrelation unfortunately pick up other mis-specifications in the way that we model data [@WallerGotway:2004; @McMillen:2003]. First we test a random variable using the Moran test, here under the normality assumption (argument `randomisation=FALSE`, default `TRUE`):
 
@@ -479,7 +479,7 @@ Following the elaboration of the global Moran's I test for least squares residua
 args(lm.morantest.exact)
 ```
 We can easily see that the exact standard deviate is an order of magnitude smaller for this response, mean model and spatial weights specification, compared to the standard deviate based on the variance calculated using the normality assumption.
-```{r}
+```{r, echo=FALSE}
 load("rsb_rda/globalmoran_exact.rda")
 ```
 ```{r, eval=FALSE}
@@ -608,10 +608,19 @@ args(localmoran)
 ```{r, echo=FALSE}
 load("rsb_rda/localmoran_ch17.rda")
 ```
-
+Taking `"two.sided"` p-values because these local indicators when summed and divided by the sum of the spatial weights, and thus positive and negative local spatial autocorrelation may be present, we obtain:
 
 ```{r, eval=FALSE}
 locm <- localmoran(pol_pres15$I_turnout, listw=lw_q_B, alternative="two.sided")
+```
+```{r}
+all.equal(sum(locm[,1])/Szero(lw_q_B), 
+          unname(moran.test(pol_pres15$I_turnout, lw_q_B)$estimate[1]))
+```
+Using `stats::p.adjust()` to adjust for multiple comparisons, we see that 
+almost 29\% of the local measures have p-values of less than $0.05$ if no adjustment is applied, but only 12\% using Bonferroni correction.
+
+```{r, eval=FALSE}
 pvs <- cbind(locm[,5], p.adjust(locm[,5], "bonferroni"), 
              p.adjust(locm[,5],"fdr"), p.adjust(locm[,5], "BY"))
 colnames(pvs) <- c("none", "bonferroni", "fdr", "BY")
@@ -619,12 +628,12 @@ colnames(pvs) <- c("none", "bonferroni", "fdr", "BY")
 ```{r}
 apply(pvs, 2, function(x) sum(x < 0.05))
 ```
-
+The `localmoran.sad()` and `localmoran.exact()` functions take a fitted linear model, a `select=` argument to specify which observations to test (choosing only one removes the need to adjust for multiple comparisons), arguments like `nb2listw()` to build single observation star graphs of neighbours and their weights, and arguments needed for numerical estimation internally. They return lists of objects like `"htest"` objects, which may be coerced to `data.frame` objects.
 
 ```{r}
 args(localmoran.sad)
 ```
-
+If we use `localmoran.sad()` to make saddlepoint approximations of the standard deviates of the local measures, and make the same corrections, we drop from 26\% of the p-values under $0.05$ with no correction to under 2\% using Bonferroni correction:
 
 ```{r, eval=FALSE}
 locms <- localmoran.sad(ols, nb=nb_q, style="B", alternative="two.sided")
@@ -636,24 +645,27 @@ colnames(pvss) <- c("none", "bonferroni", "fdr", "BY")
 ```{r}
 apply(pvss, 2, function(x) sum(x < 0.05))
 ```
+Should we think it appropriate to take possible global spatial autocorrelation into account, we may fit a spatial regression model first. We can find the interval for the line search for the spatial coefficient $\lambda$ from the inverse of the extreme eigenvalues of the spatial weights, here using `spatialreg::lextrB()`:
 
 ```{r}
 ints <- 1/c(spatialreg::lextrB(lw_q_B))
 ints
 ```
-
+From the output of a simultaneous autoregressive spatial error model, we see that the coefficient is close to its upper bound:
 
 ```{r, eval=FALSE}
 SEM <- spatialreg::errorsarlm(I_turnout ~ 1, data=pol_pres15, listw=lw_q_B,
                               method="Matrix", interval=ints)
 ```
 ```{r}
-spatialreg::LR1.sarlm(SEM)
-```
-```{r}
 spatialreg::coef.sarlm(SEM)
 ```
+The spatial error model is clearly a better description of the data than a mean model with just the intercept using a likelihood ratio test for comparison:
 
+```{r}
+spatialreg::LR1.sarlm(SEM)
+```
+Reconstructing a linear model after filtering out the global spatial autocorrelation $(I - \lambda W)$ as `lm.target`, we can also construct $(I - \lambda W)^{-1}$ representing the global spatial process as input to the `Omega=` argument. This is used internally to re-balance the matrix products of the per-observation star weights matrices, so involves substantial amounts of numerical linear algebra, including solving a dense matrix eigeneproblem, for each chosen observation. So if we take global autocorrelation into account, in this case the no-adjustment count of observations with p-values of less than $0.05$ is under 7\%, and using Bonferroni correction, we drop to 0.2\%.
 
 ```{r, eval=FALSE}
 lm.target <- lm(SEM$tary ~ SEM$tarX - 1)
@@ -668,38 +680,45 @@ colnames(pvssO) <- c("none", "bonferroni", "fdr", "BY")
 ```{r}
 apply(pvssO, 2, function(x) sum(x < 0.05))
 ```
+In the global measure case, bootstrap permutations could be used as an alternative to analytical methods for possible inference. In the local case, conditional permutation may be used, retaining the value at observation $i$ and randomly sampling from the remaining $n-1$ values to find randomised values at neighbours. 
 
-
-```{r}
+```{r, echo=FALSE}
 load("rsb_rda/localmoran_perm.rda")
 ```
 ```{r, eval=FALSE}
 x <- pol_pres15$I_turnout
-loc_moran <- function(x, listw) { 
-  xx <- mean(x); 
-  z <- x - xx; 
-  lz <- lag.listw(listw, z); 
-  s2 <- sum(z^2)/length(x); 
-  (z/s2)*lz 
-}
-nsim <- 999
-res <- matrix(0, nrow=length(x), ncol=nsim)
-thisx <- numeric(length(x))
-idx <- 1:length(x)
 lw <- lw_q_B
-system.time(
-for (j in 1:nsim) {
-  for (i in seq(along=x)) {
-    thisx[i] <- x[i]
-    thisx[!idx %in% i] <- sample(x[-i])
-    res[i, j] <- loc_moran(thisx, lw)[i]
+xx <- mean(x)
+z <- x - xx
+s2 <- sum(z^2)/length(x)
+crd <- card(lw$neighbours)
+nsim <- 999
+res_p <- numeric(nsim)
+mns <- numeric(length(x))
+sds <- numeric(length(x))
+set.seed(1)
+for (i in seq(along=x)) {
+  wtsi <- lw$weights[[i]]
+  zi <- z[i]
+  z_i <- z[-i]
+  crdi <- crd[i]
+  if (crdi > 0) {
+    for (j in 1:nsim) {
+      sz_i <- sample(z_i, size=crdi)
+      lz_i <- sum(sz_i*wtsi)
+      res_p[j] <- (zi/s2)*lz_i
+    }
+    mns[i] <- mean(res_p)
+    sds[i] <- sd(res_p)
+  } else {
+    mns[i] <- as.numeric(NA)
+    sds[i] <- as.numeric(NA)
   }
 }
-)
 ```
+This approach is not provided as a function in **spdep**. The outcome is that almost 32\% of observations have two sided p-values under $0.05$ without multiple comparison correction, and under 3\% with Bonferroni correction. Since it is not advisable to use conditional permutation with regression residuals in the presence of spatial autocorrelation, `localmoran.sad()` and `localmoran.exact()` provide wys of calculating more robust standard deviates with the added flexibility of a possibly richer mean model.
+
 ```{r}
-mns <- apply(res, 1, mean)
-sds <- apply(res, 1, sd)
 perm_Zi <- (locm[,1] - mns)/sds
 pv <- 2 * pnorm(abs(perm_Zi), lower.tail = FALSE)
 pvsp <- cbind(pv, p.adjust(pv, "bonferroni"), p.adjust(pv, "fdr"), 
@@ -707,8 +726,20 @@ pvsp <- cbind(pv, p.adjust(pv, "bonferroni"), p.adjust(pv, "fdr"),
 colnames(pvsp) <- c("none", "bonferroni", "fdr", "BY")
 apply(pvsp, 2, function(x) sum(x < 0.05))
 ```
+The figure shows the breadth of the density distribution of the standard deviates calculated using the analytical randomisation approach, compared with those of Saddlepoint approximation with and without the accommodation of global spatial autocorrelation, and with conditional permutation. 
 
-
+```{r localmoran_Zi, out.width='100%', fig.cap="Local Moran's I dtandard deviates", fig=TRUE}
+plot(density(locm[,4]), lwd=1.5, ylim=c(0, 0.75), xlab="standard deviates",
+  main="")
+lines(density(locms[,4]), lwd=1.5, col="darkblue", lty=2)
+lines(density(locmsO[,4]), lwd=1.5, col="red", lty=3)
+lines(density(perm_Zi), lwd=1.5, col="brown", lty=4)
+abline(v=0, h=0)
+legend("topright", legend=c("Analytical randomisation", 
+  "Saddlepoint approximation", "Saddlepoint approximation (Omega)", 
+  "Conditional permutation"), 
+  col=c("black", "darkblue", "red", "brown"), lwd=1.5, lty=1:4, bty="n")
+```
 
 
 ## Spatial heterogeneity
