@@ -133,6 +133,26 @@ We can also check that this undirected graph is connected using the `n.comp.nb()
 n.comp.nb(nb_q)$nc
 ```
 
+Neighbour objects may be exported and imported in GAL format for exchange with other software, using `write.nb.gal()` and `read.gal()`:
+
+```{r}
+tf <- tempfile(fileext=".gal")
+write.nb.gal(nb_q, tf)
+```
+
+Using **reticulate**, it is possible to interoperate with the PySAL family of Python packages, first **libpysal** providing the basic weights handling infrastructure. As we can see, the percentage of non-zero neighbours is the same in both software systems.
+
+```{r}
+library(reticulate)
+use_python(python='/usr/bin/python3')
+np <- import("numpy")
+libpysal <- import("libpysal")
+nb_gal_ps <- libpysal$io$open(tf)$read()
+nb_gal_ps$pct_nonzero
+```
+
+
+
 ### Graph-based neighbours
 
 If areal units are an appropriate representation, but only points have been observed, contiguity relationships may be approximated using graph-based neighbours. In this case, the imputed boundaries tesselate the plane such that points closer to one observation than any other fall within its polygon. The simplest form is by using triangulation, here using the `deldir()` function in the **deldir** package. Because the function returns from and to identifiers, it is easy to construct a long representation of a `listw` object, as used in the S-Plus SpatialStats module and the `sn2listw()` function internally to construct an `nb` object (ragged wide representation). Alternatives often fail to return sufficient information to permit the neighbours to be identified.
@@ -501,8 +521,19 @@ Under the default randomisation assumption of analytical randomisation, the resu
 
 ```{r}
 mtr <- moran.test(pol_pres15$I_turnout, listw=lw_q_B)
-if (broom_ok) broom::tidy(mtr)[,1:4] else glance_htest(mtr)
+if (broom_ok) (tmtr <- broom::tidy(mtr)[,1:4]) else (tmtr <- glance_htest(mtr))
 ```
+
+The PySAL **esda** package contains the `Moran` function reporting the same results, here under randomisation. The function returns results under normality, randomisation and by permutation simulation. Similar compatisons may be made for other global measures; for details see Bivand and Wong [-@Bivand2018].
+
+```{r}
+esda <- import("esda")
+np$random$seed(1L)
+mi <- esda$Moran(pol_pres15$I_turnout, nb_gal_ps, transformation="B",
+                 permutations=999L, two_tailed=FALSE)
+all.equal(c(mi$I, mi$EI, mi$VI_rand, mi$z_rand), unname(do.call("c", tmtr)))
+```
+
 Of course, from the very beginning, interest was shown in Monte Carlo testing, also known as a Hope-type test and as a permutation bootstrap. By default, `moran.mc()` retrurns a `"htest"` object, but may simply use `boot::boot()` internally and return a `"boot"` object when `return_boot=TRUE`.
 
 ```{r}
@@ -522,6 +553,12 @@ glance_boot <- function(bt) c(original=bt$t0, bias=mean(bt$t)-bt$t0,
                               zvalue=(bt$t0-mean(bt$t))/sd(bt$t))
 if (broom_ok) broom::tidy(mmc) else glance_boot(mmc)
 ```
+We can extract the equivalent results from object returned by the PySAL `Moran()` object, with the Numpy random number generator:
+
+```{r}
+c(statistic=mi$I, bias=mi$EI_sim-mi$I, std.error=mi$seI_sim)
+```
+
 If we compare the Monte Carlo and analytical variances of $I$ under randomisation, we typically see few differences, arguably rendering Monte Carlo testing unnecessary.
 
 ```{r}
@@ -618,7 +655,7 @@ all.equal(sum(locm[,1])/Szero(lw_q_B),
           unname(moran.test(pol_pres15$I_turnout, lw_q_B)$estimate[1]))
 ```
 Using `stats::p.adjust()` to adjust for multiple comparisons, we see that 
-almost 29\% of the local measures have p-values of less than $0.05$ if no adjustment is applied, but only 12\% using Bonferroni correction.
+almost 29\% of the local measures have p-values $\lt 0.05$ if no adjustment is applied, but only 12\% using Bonferroni correction.
 
 ```{r, eval=FALSE}
 pvs <- cbind(locm[,5], p.adjust(locm[,5], "bonferroni"), 
@@ -633,7 +670,7 @@ The `localmoran.sad()` and `localmoran.exact()` functions take a fitted linear m
 ```{r}
 args(localmoran.sad)
 ```
-If we use `localmoran.sad()` to make saddlepoint approximations of the standard deviates of the local measures, and make the same corrections, we drop from 26\% of the p-values under $0.05$ with no correction to under 2\% using Bonferroni correction:
+If we use `localmoran.sad()` to make saddlepoint approximations of the standard deviates of the local measures, and make the same corrections, we drop from 26\% of the p-values $\lt 0.05$ with no correction to under 2\% using Bonferroni correction:
 
 ```{r, eval=FALSE}
 locms <- localmoran.sad(ols, nb=nb_q, style="B", alternative="two.sided")
@@ -665,7 +702,7 @@ The spatial error model is clearly a better description of the data than a mean 
 ```{r}
 spatialreg::LR1.sarlm(SEM)
 ```
-Reconstructing a linear model after filtering out the global spatial autocorrelation $(I - \lambda W)$ as `lm.target`, we can also construct $(I - \lambda W)^{-1}$ representing the global spatial process as input to the `Omega=` argument. This is used internally to re-balance the matrix products of the per-observation star weights matrices, so involves substantial amounts of numerical linear algebra, including solving a dense matrix eigeneproblem, for each chosen observation. So if we take global autocorrelation into account, in this case the no-adjustment count of observations with p-values of less than $0.05$ is under 7\%, and using Bonferroni correction, we drop to 0.2\%.
+Reconstructing a linear model after filtering out the global spatial autocorrelation $(I - \lambda W)$ as `lm.target`, we can also construct $(I - \lambda W)^{-1}$ representing the global spatial process as input to the `Omega=` argument. This is used internally to re-balance the matrix products of the per-observation star weights matrices, so involves substantial amounts of numerical linear algebra, including solving a dense matrix eigeneproblem, for each chosen observation. So if we take global autocorrelation into account, in this case the no-adjustment count of observations with p-values $\lt 0.05$ is under 7\%, and using Bonferroni correction, we drop to 0.2\%.
 
 ```{r, eval=FALSE}
 lm.target <- lm(SEM$tary ~ SEM$tarX - 1)
@@ -716,7 +753,7 @@ for (i in seq(along=x)) {
   }
 }
 ```
-This approach is not provided as a function in **spdep**. The outcome is that almost 32\% of observations have two sided p-values under $0.05$ without multiple comparison correction, and under 3\% with Bonferroni correction. Since it is not advisable to use conditional permutation with regression residuals in the presence of spatial autocorrelation, `localmoran.sad()` and `localmoran.exact()` provide wys of calculating more robust standard deviates with the added flexibility of a possibly richer mean model.
+This approach is not provided as a function in **spdep**. The outcome is that almost 32\% of observations have two sided p-values $\lt 0.05$ without multiple comparison correction, and under 3\% with Bonferroni correction. Since it is not advisable to use conditional permutation with regression residuals in the presence of spatial autocorrelation, `localmoran.sad()` and `localmoran.exact()` provide wys of calculating more robust standard deviates with the added flexibility of a possibly richer mean model.
 
 ```{r}
 perm_Zi <- (locm[,1] - mns)/sds
@@ -726,21 +763,150 @@ pvsp <- cbind(pv, p.adjust(pv, "bonferroni"), p.adjust(pv, "fdr"),
 colnames(pvsp) <- c("none", "bonferroni", "fdr", "BY")
 apply(pvsp, 2, function(x) sum(x < 0.05))
 ```
-The figure shows the breadth of the density distribution of the standard deviates calculated using the analytical randomisation approach, compared with those of Saddlepoint approximation with and without the accommodation of global spatial autocorrelation, and with conditional permutation. 
+In order to compare the results from `localmoran()` with the PySAL function in **esda**, we need first to re-run dividing by $n-1$ instead of $n$ in parts of the calculation, by setting the argument `mlvar=FALSE`.
 
-```{r localmoran_Zi, out.width='100%', fig.cap="Local Moran's I dtandard deviates", fig=TRUE}
-plot(density(locm[,4]), lwd=1.5, ylim=c(0, 0.75), xlab="standard deviates",
-  main="")
-lines(density(locms[,4]), lwd=1.5, col="darkblue", lty=2)
-lines(density(locmsO[,4]), lwd=1.5, col="red", lty=3)
-lines(density(perm_Zi), lwd=1.5, col="brown", lty=4)
-abline(v=0, h=0)
-legend("topright", legend=c("Analytical randomisation", 
-  "Saddlepoint approximation", "Saddlepoint approximation (Omega)", 
-  "Conditional permutation"), 
-  col=c("black", "darkblue", "red", "brown"), lwd=1.5, lty=1:4, bty="n")
+```{r}
+locm_nml <- localmoran(pol_pres15$I_turnout, listw=lw_q_B, alternative="two.sided", mlvar=FALSE)
+```
+Once this is done, the local estimates of Moran's $I$ agree within machine precision.
+
+```{r}
+np$random$seed(1L)
+loc_I_ps <- esda$Moran_Local(pol_pres15$I_turnout, nb_gal_ps, transformation="B", permutations=999L)
+all.equal(unname(locm_nml[,1]), c(loc_I_ps$Is))
+```
+The PySAL outcomes after adjusting for multiple comparisons are also similar to those shown above:
+
+```{r}
+pv <- 2 * pnorm(abs(loc_I_ps$z_sim), lower.tail = FALSE)
+pvsp <- cbind(pv, p.adjust(pv, "bonferroni"), p.adjust(pv, "fdr"), 
+              p.adjust(pv, "BY"))
+colnames(pvsp) <- c("none", "bonferroni", "fdr", "BY")
+apply(pvsp, 2, function(x) sum(x < 0.05))
 ```
 
+The figure shows the breadth of the density distribution of the standard deviates calculated using the analytical randomisation approach, compared with those of Saddlepoint approximation with and without the accommodation of global spatial autocorrelation, and with conditional permutation. 
+
+```{r localmoran_Zi, out.width='100%', fig.cap="Local Moran's I standard deviates by method", fig=TRUE}
+df <- data.frame(std_deviate=c(locm[,4], locms[,4], locmsO[,4], perm_Zi,
+        loc_I_ps$z_sim), method=rep(c("Analytical randomisation", 
+        "Saddlepoint approximation", "Saddlepoint approximation (Omega)", 
+        "Conditional permutation", "Conditional permutation (PySAL)"), each=2495))
+library(ggplot2)
+ggplot(df) + geom_density(aes(x=std_deviate, fill=method), alpha=0.2) + xlim(c(-6, 12))
+```
+
+The figure and the tabulated summaries of the standard deviates by method show that in this case the conditional permutations shift the medians and third quartiles of the distributions rightwards compared to the analytical standard deviates, yielding larger numbers of apparently "significantly" locally autocorelated areal units than, say, the Saddlepoint approximation.
+
+```{r}
+print(do.call("rbind", tapply(df$std_deviate, list(df$method), summary)), digits=3)
+```
+Taking global spatial autocorrelation into account leaves most of the areal units with "significant" local residual spatial autocorrelation below zero, indicating negative dependencies probably associated with urban/rural contrasts. The figure shows the dominance of positive local autocorrelation before the removal of global autocorrelation, and the speckled appearance of the local indocators after its removal using Omega, the global process model.
+
+```{r localmoran_Zi_map, out.width='100%', fig.cap="Local Moran's I standard deviates", fig=TRUE}
+pol_pres15$loc_I_SA <- locms[,4]
+pol_pres15$loc_I_Omega <- locmsO[,4]
+tm_shape(pol_pres15) + tm_fill(c("loc_I_SA", "loc_I_Omega"), midpoint=0, title="Std. deviate") + tm_facets(free.scales=FALSE) + tm_borders(lwd=0.3, alpha=0.4) + tm_layout(panel.labels=c("Saddlepoint approximation", "Omega"))
+```
+The local Getis-Ord $G$ measure is reported as a standard deviate, and may also take the $G^*$ form where self-neighbours are inserted into the neighbour object using `include.self()`. The observed and expected values of local $G$ with their analytical variances may also be returned if `return_internals=TRUE`. The `GeoDa=` argument changes summation behaviour when no-neighbour observations are present, dropping values of `x` from sums.
+
+```{r}
+args(localG)
+```
+```{r, echo=FALSE}
+load("rsb_rda/localG_perm.rda")
+```
+```{r, eval=FALSE}
+locG <- localG(pol_pres15$I_turnout, lw_q_B, return_internals=TRUE)
+```
+Once again we face the problem of multiple comparisons, with the count of areal unit p-values $\lt 0.5$ being reduced by an order of magnitude when employing Bonferroni correction:
+
+```{r}
+pv <- 2 * pnorm(abs(c(locG)), lower.tail = FALSE)
+pvsp <- cbind(pv, p.adjust(pv, "bonferroni"), p.adjust(pv, "fdr"), 
+              p.adjust(pv, "BY"))
+colnames(pvsp) <- c("none", "bonferroni", "fdr", "BY")
+apply(pvsp, 2, function(x) sum(x < 0.05))
+```
+The PySAL **esda** `G_Local()` function returns the same basic values, resulting in the same local standard deviates:
+  
+```{r}
+np$random$seed(1L)
+loc_G_ps <- esda$G_Local(pol_pres15$I_turnout, nb_gal_ps, transform="B", permutations=999L)
+all.equal(c(locG), c(loc_G_ps$Zs))
+```
+Code for conditional permutation is not included in **spdep**, but is not difficult to construct:
+
+```{r, eval=FALSE}
+x <- pol_pres15$I_turnout
+lw <- lw_q_B
+crd <- card(lw$neighbours)
+nsim <- 999
+res <- matrix(nrow=length(x), ncol=nsim)
+set.seed(1)
+x_star <- sum(x[crd > 0])
+for (i in seq(along=x)) {
+  wtsi <- lw$weights[[i]]
+  xi <- x[i]
+  x_i <- x[-i]
+  crdi <- crd[i]
+  if (crdi > 0) {
+    for (j in 1:nsim) {
+      sx_i <- sample(x_i, size=crdi)
+      lx_i <- sum(sx_i*wtsi)
+      res[i, j] <- lx_i/(x_star-xi)
+    }
+  }
+}
+```
+If we follow `esda$G_Local()` and construct the permutation standard deviates from the average and standard deviation of the complete set of simulated local $G$ values, it seems that the distribution of values is much closer to zero; the R case:
+
+```{r}
+G_obs <- attr(locG, "internals")[,1]
+G_Zi <- (G_obs - mean(res))/sd(res) # code follows PySAL esda$G_Local()
+pv <- 2 * pnorm(abs(c(G_Zi)), lower.tail = FALSE)
+pvsp <- cbind(pv, p.adjust(pv, "bonferroni"), p.adjust(pv, "fdr"), 
+              p.adjust(pv, "BY"))
+colnames(pvsp) <- c("none", "bonferroni", "fdr", "BY")
+apply(pvsp, 2, function(x) sum(x < 0.05))
+```
+and the PySAL case:
+
+```{r}
+pv <- 2 * pnorm(abs(c(loc_G_ps$z_sim)), lower.tail = FALSE)
+pvsp <- cbind(pv, p.adjust(pv, "bonferroni"), p.adjust(pv, "fdr"), 
+              p.adjust(pv, "BY"))
+colnames(pvsp) <- c("none", "bonferroni", "fdr", "BY")
+apply(pvsp, 2, function(x) sum(x < 0.05))
+```
+If however we take the by entity local permutation outputs, averages and standard deviations by row of the simulation matrix, we get back to the relative proportions seen in the analytical standard deviates in the R case:
+
+```{r}
+G_Zi_1 <- (G_obs - apply(res, 1, mean))/apply(res, 1, sd)
+pv <- 2 * pnorm(abs(c(G_Zi_1)), lower.tail = FALSE)
+pvsp <- cbind(pv, p.adjust(pv, "bonferroni"), p.adjust(pv, "fdr"), 
+              p.adjust(pv, "BY"))
+colnames(pvsp) <- c("none", "bonferroni", "fdr", "BY")
+apply(pvsp, 2, function(x) sum(x < 0.05))
+```
+and the PySAL case:
+
+```{r}
+z_sim_1 <- (loc_G_ps$Gs - apply(loc_G_ps$rGs, 1, mean))/apply(loc_G_ps$rGs, 1, sd)
+pv <- 2 * pnorm(abs(z_sim_1), lower.tail = FALSE)
+pvsp <- cbind(pv, p.adjust(pv, "bonferroni"), p.adjust(pv, "fdr"), 
+              p.adjust(pv, "BY"))
+colnames(pvsp) <- c("none", "bonferroni", "fdr", "BY")
+apply(pvsp, 2, function(x) sum(x < 0.05))
+```
+(https://github.com/pysal/esda/issues/53).
+
+
+```{r local_Gi_map, out.width='100%', fig.cap="Local G standard deviates", fig=TRUE}
+pol_pres15$loc_G_Zi_perm <- G_Zi_1
+pol_pres15$loc_G_Zi <- c(locG)
+tm_shape(pol_pres15) + tm_fill(c("loc_G_Zi", "loc_G_Zi_perm"), midpoint=0, title="Std. deviate") + tm_facets(free.scales=FALSE) + tm_borders(lwd=0.3, alpha=0.4) + tm_layout(panel.labels=c("Analytical", "Permutation"))
+```
 
 ## Spatial heterogeneity
 
