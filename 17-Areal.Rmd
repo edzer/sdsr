@@ -915,15 +915,57 @@ tm_shape(pol_pres15) + tm_fill(c("loc_G_Zi", "loc_G_Zi_perm"), midpoint=0, title
 
 ## Spatial heterogeneity
 
-[@McMillen:2003]
+Over and above local and global spatial autocorrelation, areal data are affected by heterogeneity. In some cases, this heterogeneity may be modelled in the mean model through included covariates, or possibly using unstructured random effects, which may also reflect the differing scales of spatial process footprints. Here we will only mention two specifically spatial approaches, the local spatial heteroscedasticity (LOSH) statistic and Moran eigenvectors.
 
-### Local spatial heteroscedasticity ({LOSH}) statistic
+### Local spatial heteroscedasticity (LOSH) statistic
 
-[@ord+getis12; @xuetal14; @westerholtetal18; @westerholtetal15]
+Local spatial heteroscedasticity (LOSH) statistics were introduced fairly recently, and an implementation was contributed to **spdep** even more recently, so there is as yet little experience with the approach [@ord+getis12]. It has been extended to provide bootstrap p-values for the measures of heterogeneity [@xuetal14]. The `a=` argument takes a default value of $2$, giving a Chi-squared interpretation to output.
+
+```{r}
+args(LOSH)
+```
+
+```{r}
+lh <- LOSH(pol_pres15$I_turnout, listw=lw_q_B)
+```
+It is also possible to map local spatially weighted mean values derived from the local measures, showing a smoothing effect
+
+```{r local_Hi_map, out.width='100%', fig.cap="Local spatially weighted mean values", fig=TRUE}
+pol_pres15$x_bar_i <- lh[,5]
+tm_shape(pol_pres15) + tm_fill(c("I_turnout", "x_bar_i"), title="Turnout", n=6, style="fisher") + tm_facets(free.scales=FALSE) + tm_borders(lwd=0.3, alpha=0.4) + tm_layout(panel.labels=c("Turnout", "Weighted means"))
+```
+
+
+These approaches have been further extended but as yet without implementations in R [@westerholtetal15; @westerholtetal18].
 
 ### Moran eigenvectors
 
+There is a close connection between Moran's $I$ and the eigenproblem of the doubly centred weights matrix, and again with the spatial pattern of a variable of interest and combinations of eigenvectors of the same matrix [@griffith03; @griffith10; @chun+griffith:13]. There is a literature in numerical ecology using the term of principle coordinates of neighbour matrices for the same approach. The value of global Moran's $I$ can be calculated using the `hat` matrix to centre the variable of interest in taking the cross products which yield Moran's $I$.
 
+```{r, eval=FALSE}
+n <- nrow(pol_pres15)
+ones <- rep(1, n)
+hat <- (diag(n) - tcrossprod(ones) / n)
+Cmat <- hat %*% listw2mat(lw_q_B) %*% hat
+x <- pol_pres15$I_turnout
+I_MCM <- c((n/Szero(lw_q_B) * crossprod(x, Cmat %*% x)/crossprod(x, hat %*% x)))
+```
+```{r, echo=FALSE}
+load("rsb_rda/EVa.rda")
+```
+```{r}
+I_MCM
+```
+The solution to the eigenproblem of matrix product gives us the eigenvectors, providing key information about the linkage structure of the graph of neighbours.
 
+```{r, eval=FALSE}
+EV <- eigen(Cmat)$vectors
+```
 
-
+```{r EV_map, out.width='100%', fig.cap="Local spatially weighted mean values", fig=TRUE}
+pol_pres15$EV1 <- EVa[,1]
+pol_pres15$EV2 <- EVa[,2]
+pol_pres15$EV3 <- EVa[,3]
+pol_pres15$EV4 <- EVa[,4]
+tm_shape(pol_pres15) + tm_fill(c("EV1", "EV2", "EV3", "EV4"), midpoint=0, title="Eigenvectors", n=6, style="fisher") + tm_facets(free.scales=FALSE) + tm_borders(lwd=0.3, alpha=0.4) + tm_layout(panel.labels=c("EV 1", "EV 2", "EV 3", "EV 4"))
+```
