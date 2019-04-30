@@ -766,7 +766,8 @@ apply(pvsp, 2, function(x) sum(x < 0.05))
 In order to compare the results from `localmoran()` with the PySAL function in **esda**, we need first to re-run dividing by $n-1$ instead of $n$ in parts of the calculation, by setting the argument `mlvar=FALSE`.
 
 ```{r}
-locm_nml <- localmoran(pol_pres15$I_turnout, listw=lw_q_B, alternative="two.sided", mlvar=FALSE)
+locm_nml <- localmoran(pol_pres15$I_turnout, listw=lw_q_B, 
+                       alternative="two.sided", mlvar=FALSE)
 ```
 Once this is done, the local estimates of Moran's $I$ agree within machine precision.
 
@@ -793,13 +794,15 @@ df <- data.frame(std_deviate=c(locm[,4], locms[,4], locmsO[,4], perm_Zi,
         "Saddlepoint approximation", "Saddlepoint approximation (Omega)", 
         "Conditional permutation", "Conditional permutation (PySAL)"), each=2495))
 library(ggplot2)
-ggplot(df) + geom_density(aes(x=std_deviate, fill=method), alpha=0.2) + xlim(c(-6, 12))
+ggplot(df) + geom_density(aes(x=std_deviate, fill=method), alpha=0.2) + 
+  xlim(c(-6, 12))
 ```
 
 The figure and the tabulated summaries of the standard deviates by method show that in this case the conditional permutations shift the medians and third quartiles of the distributions rightwards compared to the analytical standard deviates, yielding larger numbers of apparently "significantly" locally autocorelated areal units than, say, the Saddlepoint approximation.
 
 ```{r}
-print(do.call("rbind", tapply(df$std_deviate, list(df$method), summary)), digits=3)
+print(do.call("rbind", tapply(df$std_deviate, list(df$method), summary)), 
+      digits=3)
 ```
 Taking global spatial autocorrelation into account leaves most of the areal units with "significant" local residual spatial autocorrelation below zero, indicating negative dependencies probably associated with urban/rural contrasts. The figure shows the dominance of positive local autocorrelation before the removal of global autocorrelation, and the speckled appearance of the local indocators after its removal using Omega, the global process model.
 
@@ -892,7 +895,9 @@ apply(pvsp, 2, function(x) sum(x < 0.05))
 and the PySAL case:
 
 ```{r}
-z_sim_1 <- (loc_G_ps$Gs - apply(loc_G_ps$rGs, 1, mean))/apply(loc_G_ps$rGs, 1, sd)
+mns_1 <- apply(loc_G_ps$rGs, 1, mean)
+sds_1 <- apply(loc_G_ps$rGs, 1, sd)
+z_sim_1 <- (loc_G_ps$Gs - mns_1) / sds_1
 pv <- 2 * pnorm(abs(z_sim_1), lower.tail = FALSE)
 pvsp <- cbind(pv, p.adjust(pv, "bonferroni"), p.adjust(pv, "fdr"), 
               p.adjust(pv, "BY"))

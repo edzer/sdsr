@@ -25,7 +25,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand">
 
 
-<meta name="date" content="2019-04-29">
+<meta name="date" content="2019-04-30">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -367,7 +367,8 @@ required to know what the array values refer to, obtained by</p>
 <span class="co">#&gt;    xmin    ymin    xmax    ymax </span>
 <span class="co">#&gt;  288776 9110729  298723 9120761</span></code></pre>
 <p>Raster data can be written to local disk using <code>write_stars</code>:</p>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">write_stars</span>(x, <span class="st">&quot;x.tif&quot;</span>)</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r">tf =<span class="st"> </span><span class="kw">tempfile</span>(<span class="dt">fileext=</span><span class="st">&quot;.tif&quot;</span>)
+<span class="kw">write_stars</span>(x, tf)</code></pre>
 <p>where the format (in this case, GeoTIFF) is derived from the file
 extension. As for simple features, reading and writing uses the GDAL
 library; the list of available drivers for raster data is obtained
@@ -474,7 +475,7 @@ compute for each pixel the mean of the 6 band values we can do</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), mean)
 <span class="co">#&gt; stars object with 2 dimensions and 1 attribute</span>
 <span class="co">#&gt; attribute(s):</span>
-<span class="co">#&gt;   L7_ETMs.tif   </span>
+<span class="co">#&gt;      mean       </span>
 <span class="co">#&gt;  Min.   : 25.5  </span>
 <span class="co">#&gt;  1st Qu.: 53.3  </span>
 <span class="co">#&gt;  Median : 68.3  </span>
@@ -491,7 +492,7 @@ differenced vegetation index):</p>
 <span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), ndvi)
 <span class="co">#&gt; stars object with 2 dimensions and 1 attribute</span>
 <span class="co">#&gt; attribute(s):</span>
-<span class="co">#&gt;   L7_ETMs.tif    </span>
+<span class="co">#&gt;      ndvi        </span>
 <span class="co">#&gt;  Min.   :-0.753  </span>
 <span class="co">#&gt;  1st Qu.:-0.203  </span>
 <span class="co">#&gt;  Median :-0.069  </span>
@@ -505,13 +506,13 @@ differenced vegetation index):</p>
 <p>Alternatively, to compute for each band the mean of the whole image
 we can do</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">as.data.frame</span>(<span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;band&quot;</span>), mean))
-<span class="co">#&gt;   band L7_ETMs.tif</span>
-<span class="co">#&gt; 1    1        79.1</span>
-<span class="co">#&gt; 2    2        67.6</span>
-<span class="co">#&gt; 3    3        64.4</span>
-<span class="co">#&gt; 4    4        59.2</span>
-<span class="co">#&gt; 5    5        83.2</span>
-<span class="co">#&gt; 6    6        60.0</span></code></pre>
+<span class="co">#&gt;   band mean</span>
+<span class="co">#&gt; 1    1 79.1</span>
+<span class="co">#&gt; 2    2 67.6</span>
+<span class="co">#&gt; 3    3 64.4</span>
+<span class="co">#&gt; 4    4 59.2</span>
+<span class="co">#&gt; 5    5 83.2</span>
+<span class="co">#&gt; 6    6 60.0</span></code></pre>
 <p>which is so small it can be printed here as a <code>data.frame</code>. In these
 two examples, entire dimensions disappear. Sometimes, this does not
 happen; we can for instance compute the three quartiles for each band</p>
@@ -677,7 +678,10 @@ ones that are available, and</li>
 <li><code>write_stars</code> reads, processes, and writes data chunk by chunk.</li>
 </ul>
 <p>As an example,</p>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">plot</span>(p)</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">plot</span>(p)
+<span class="co">#&gt; Warning in classInt::classIntervals(na.omit(values), min(nbreaks - 1,</span>
+<span class="co">#&gt; n.unq), : N is large, and some styles will run very slowly; sampling</span>
+<span class="co">#&gt; imposed</span></code></pre>
 <p><img src="sds_files/figure-html/unnamed-chunk-90-1.png" width="672" style="display: block; margin: auto;" />
 only fetches the pixels that can be seen on the plot device, rather
 than the 10980 x 10980 pixels available in each band. The downsampling
@@ -693,10 +697,11 @@ plotting device.</p>
 <h3><span class="header-section-number">4.2.7</span> Operations on proxy objects</h3>
 <p>A few dedicated methods are available for <code>stars_proxy</code> objects:</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">methods</span>(<span class="dt">class =</span> <span class="st">&quot;stars_proxy&quot;</span>)
-<span class="co">#&gt;  [1] [              adrop          aperm          c             </span>
-<span class="co">#&gt;  [5] dim            Math           Ops            plot          </span>
-<span class="co">#&gt;  [9] print          st_apply       st_as_stars    st_crop       </span>
-<span class="co">#&gt; [13] st_redimension write_stars   </span>
+<span class="co">#&gt;  [1] [              adrop          aggregate      aperm         </span>
+<span class="co">#&gt;  [5] c              dim            Math           merge         </span>
+<span class="co">#&gt;  [9] Ops            plot           predict        print         </span>
+<span class="co">#&gt; [13] split          st_apply       st_as_stars    st_crop       </span>
+<span class="co">#&gt; [17] st_redimension write_stars   </span>
 <span class="co">#&gt; see &#39;?methods&#39; for accessing help and source code</span></code></pre>
 <p>We have seen <code>plot</code> and <code>print</code> in action; <code>dim</code> reads out
 the dimension from the dimensions metadata table.</p>
@@ -806,6 +811,9 @@ stations in Germany, 1998-2009.</p>
 <p>We can create a <code>stars</code> object from the <code>air</code> matrix, the <code>dates</code>
 Date vector and the <code>stations</code> <code>SpatialPoints</code> objects by</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(spacetime)
+<span class="co">#&gt; Registered S3 method overwritten by &#39;xts&#39;:</span>
+<span class="co">#&gt;   method     from</span>
+<span class="co">#&gt;   as.zoo.xts zoo</span>
 <span class="kw">data</span>(air) <span class="co"># this loads several datasets in .GlobalEnv</span>
 <span class="kw">dim</span>(air)
 <span class="co">#&gt; space  time </span>
@@ -865,12 +873,12 @@ method for <code>stars</code> objects</p>
 <span class="co">#&gt;  Max.   :172    </span>
 <span class="co">#&gt;  NA&#39;s   :25679  </span>
 <span class="co">#&gt; dimension(s):</span>
-<span class="co">#&gt;      from   to     offset  delta                       refsys point</span>
-<span class="co">#&gt; aggr    1   16         NA     NA +proj=longlat +datum=WGS8...    NA</span>
-<span class="co">#&gt; time    1 4383 1998-01-01 1 days                         Date FALSE</span>
-<span class="co">#&gt;                                                                 values</span>
-<span class="co">#&gt; aggr MULTIPOLYGON (((9.65 49.8, ...,...,MULTIPOLYGON (((10.8 51.6, ...</span>
-<span class="co">#&gt; time                                                              NULL</span></code></pre>
+<span class="co">#&gt;          from   to     offset  delta                       refsys point</span>
+<span class="co">#&gt; geometry    1   16         NA     NA +proj=longlat +datum=WGS8... FALSE</span>
+<span class="co">#&gt; time        1 4383 1998-01-01 1 days                         Date FALSE</span>
+<span class="co">#&gt;                                                                     values</span>
+<span class="co">#&gt; geometry MULTIPOLYGON (((9.65 49.8, ...,...,MULTIPOLYGON (((10.8 51.6, ...</span>
+<span class="co">#&gt; time                                                                  NULL</span></code></pre>
 <p>and we can now for instance show the maps for six arbitrarily chosen days
 (figure <a href="raster.html#fig:airagg">4.6</a>),</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(tidyverse)
@@ -1013,7 +1021,7 @@ by OD (102 x 102):</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_apply</span>(odm, <span class="dv">1</span><span class="op">:</span><span class="dv">2</span>, sum)
 <span class="co">#&gt; stars object with 2 dimensions and 1 attribute</span>
 <span class="co">#&gt; attribute(s):</span>
-<span class="co">#&gt;        N       </span>
+<span class="co">#&gt;       sum      </span>
 <span class="co">#&gt;  Min.   :   0  </span>
 <span class="co">#&gt;  1st Qu.:   0  </span>
 <span class="co">#&gt;  Median :   0  </span>
@@ -1031,7 +1039,7 @@ by OD (102 x 102):</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_apply</span>(odm, <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>), sum)
 <span class="co">#&gt; stars object with 2 dimensions and 1 attribute</span>
 <span class="co">#&gt; attribute(s):</span>
-<span class="co">#&gt;        N       </span>
+<span class="co">#&gt;       sum      </span>
 <span class="co">#&gt;  Min.   :   1  </span>
 <span class="co">#&gt;  1st Qu.:  58  </span>
 <span class="co">#&gt;  Median : 214  </span>
@@ -1049,7 +1057,7 @@ by OD (102 x 102):</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">st_apply</span>(odm, <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>), sum)
 <span class="co">#&gt; stars object with 2 dimensions and 1 attribute</span>
 <span class="co">#&gt; attribute(s):</span>
-<span class="co">#&gt;        N        </span>
+<span class="co">#&gt;       sum       </span>
 <span class="co">#&gt;  Min.   :    0  </span>
 <span class="co">#&gt;  1st Qu.:   13  </span>
 <span class="co">#&gt;  Median :  104  </span>
