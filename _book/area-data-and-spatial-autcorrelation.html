@@ -278,7 +278,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <div id="spatial-autocorrelation" class="section level2">
 <h2><span class="header-section-number">17.1</span> Spatial autocorrelation</h2>
 <p>When analysing areal data, it has long been recognised that, if present, spatial autocorrelation changes how we may infer, relative to the default position of independent observations. In the presence of spatial autocorrelation, we can predict the values of observation <span class="math inline">\(i\)</span> from the values observed at <span class="math inline">\(j \in N_i\)</span>, the set of its proximate neighbours. Early results <span class="citation">(Moran <a href="#ref-moran48">1948</a>; Geary <a href="#ref-geary:54">1954</a>)</span>, entered into research practice gradually, for example the social sciences <span class="citation">(Duncan, Cuzzort, and Duncan <a href="#ref-duncanetal61">1961</a>)</span>. These results were then collated and extended to yield a set of basic tools of analysis <span class="citation">(Cliff and Ord <a href="#ref-cliff+ord:73">1973</a>, <a href="#ref-cliff+ord:81">1981</a>)</span>.</p>
-<p>Cliff and Ord <span class="citation">(<a href="#ref-cliff+ord:73">1973</a>)</span> generalised and extended the expression of the spatial weights matrix representation as part of the framework for establishing the distribution theory for join count, Moran’s <span class="math inline">\(I\)</span> and Geary’s <span class="math inline">\(C\)</span> statistics. This development of what have become known as global measures, returning a single value of autocorrelation for the total study area, has been supplemented by local measures returning values for each areal unit <span class="citation">(getis+ord:92; Anselin, <a href="#ref-anselin:95">n.d.</a>)</span>.</p>
+<p>Cliff and Ord <span class="citation">(<a href="#ref-cliff+ord:73">1973</a>)</span> generalised and extended the expression of the spatial weights matrix representation as part of the framework for establishing the distribution theory for join count, Moran’s <span class="math inline">\(I\)</span> and Geary’s <span class="math inline">\(C\)</span> statistics. This development of what have become known as global measures, returning a single value of autocorrelation for the total study area, has been supplemented by local measures returning values for each areal unit <span class="citation">(getis+ord:92; Anselin <a href="#ref-anselin:95">1995</a>)</span>.</p>
 </div>
 <div id="spatial-weights-matrices" class="section level2">
 <h2><span class="header-section-number">17.2</span> Spatial weights matrices</h2>
@@ -313,7 +313,13 @@ Figure 17.1: Polish municipality types 2015
 </p>
 </div>
 <p>Between early 2002 and April 2019, <strong>spdep</strong> contained functions for constructing and handling neighbour and spatial weights objects, tests for spatial autocorrelation, and model fitting functions. The latter have been split out into <strong>spatialreg</strong>, and will be discussed in the next chapter. <strong>spdep</strong> now accommodates objects represented using <strong>sf</strong> classes and <strong>sp</strong> classes directly, going beyond the explorations made in <a href="https://cran.r-project.org/web/packages/spdep/vignettes/nb_sf.html">this vignette</a>.</p>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(spdep)</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(spdep)
+<span class="co">#&gt; Loading required package: spData</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Attaching package: &#39;spData&#39;</span>
+<span class="co">#&gt; The following objects are masked _by_ &#39;.GlobalEnv&#39;:</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;     x, y</span></code></pre>
 <div id="contiguous-neighbours" class="section level3">
 <h3><span class="header-section-number">17.2.1</span> Contiguous neighbours</h3>
 <p>The <code>poly2nb()</code> function in <strong>spdep</strong> takes the boundary points making up the polygon boundaries in the object passed as the <code>pl=</code> argument, and for each observation checks whether at least one (<code>queen=TRUE</code>, default), or at least two (rook, <code>queen=FALSE</code>) points are within <code>snap=</code> distance units of each other. The distances are planar in the raw coordinate units, ignoring geographical projections. Once the required number of sufficiently close points is found, the search is stopped.</p>
@@ -330,7 +336,7 @@ Figure 17.1: Polish municipality types 2015
 <span class="co">#&gt;         2495</span></code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">system.time</span>(nb_q &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>))
 <span class="co">#&gt;    user  system elapsed </span>
-<span class="co">#&gt;   1.128   0.002   1.154</span></code></pre>
+<span class="co">#&gt;   1.100   0.007   1.120</span></code></pre>
 <pre class="sourceCode r"><code class="sourceCode r">nb_q
 <span class="co">#&gt; Neighbour list object:</span>
 <span class="co">#&gt; Number of regions: 2495 </span>
@@ -343,7 +349,7 @@ Figure 17.1: Polish municipality types 2015
   nb_q1 &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>, <span class="dt">foundInBox=</span>fB)
 })
 <span class="co">#&gt;    user  system elapsed </span>
-<span class="co">#&gt;   0.881   0.000   0.886</span></code></pre>
+<span class="co">#&gt;   0.833   0.001   0.843</span></code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">all.equal</span>(nb_q, nb_q1, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)
 <span class="co">#&gt; [1] TRUE</span></code></pre>
 <p>We might consider using the contiguity of the polygon boundaries, the fifth element of the DE-9IM vector, setting the first element to FALSE, to find Queen neighbours using GEOS functions in <strong>sf</strong>, but it takes longer than simply treating the boundaries as points:</p>
@@ -357,7 +363,7 @@ as.nb.sgbp &lt;-<span class="st"> </span><span class="cf">function</span>(x, ...
 }
 <span class="kw">system.time</span>(nb_sf_q &lt;-<span class="st"> </span><span class="kw">as.nb.sgbp</span>(<span class="kw">st_queen</span>(pol_pres15)))
 <span class="co">#&gt;    user  system elapsed </span>
-<span class="co">#&gt;    3.47    0.00    3.49</span></code></pre>
+<span class="co">#&gt;   3.816   0.004   3.861</span></code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">all.equal</span>(nb_q, nb_sf_q, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)
 <span class="co">#&gt; [1] TRUE</span></code></pre>
 <p>The same effect as using <code>rgeos::gUnarySTRtreeQuery</code> can be obtained without the overhead of converting to the equivalent <strong>sp</strong> class and using <strong>rgeos</strong> to make the equivalent tree search using <strong>sf</strong>, by finding intersecting bounding boxes, removing self-intersections and duplicate intersections (contiguities are by definition symmetric, if <code>i</code> is a neighbour of <code>j</code>, then <code>j</code> is a neighbour of <code>i</code>).</p>
@@ -373,7 +379,7 @@ as.nb.sgbp &lt;-<span class="st"> </span><span class="cf">function</span>(x, ...
   nb_sf_q1 &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>, <span class="dt">foundInBox=</span>fB1a)
 })
 <span class="co">#&gt;    user  system elapsed </span>
-<span class="co">#&gt;   0.663   0.000   0.667</span></code></pre>
+<span class="co">#&gt;   0.636   0.000   0.641</span></code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">all.equal</span>(nb_q, nb_sf_q1, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)
 <span class="co">#&gt; [1] TRUE</span></code></pre>
 <p>Much of the work involved in finding contiguous neighbours is spent on finding candidate neighbours with intersecting bounding boxes. Note that <code>nb</code> objects record both symmetric neighbour relationships, because these objects admit asymmetric relationships as well, but these duplications are not needed for object construction.</p>
@@ -952,7 +958,7 @@ mamc &lt;-<span class="st"> </span><span class="kw">sp.mantel.mc</span>(pol_pres
 </div>
 <div id="local-measures" class="section level3">
 <h3><span class="header-section-number">17.3.2</span> Local measures</h3>
-<p>Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s <span class="citation">(Anselin, <a href="#ref-anselin:95">n.d.</a>; Getis and Ord <a href="#ref-getis+ord:92">1992</a>, <a href="#ref-getis+ord:96">1996</a>)</span>. In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable <span class="citation">(Anselin <a href="#ref-anselin:96">1996</a>)</span>. The <code>moran.plot()</code> function also returns an influence measures object used to label observations exerting more than propotional influence on the slope of the line representing global Moran’s <span class="math inline">\(I\)</span>. In this case, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants.</p>
+<p>Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s <span class="citation">(Anselin <a href="#ref-anselin:95">1995</a>; Getis and Ord <a href="#ref-getis+ord:92">1992</a>, <a href="#ref-getis+ord:96">1996</a>)</span>. In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable <span class="citation">(Anselin <a href="#ref-anselin:96">1996</a>)</span>. The <code>moran.plot()</code> function also returns an influence measures object used to label observations exerting more than propotional influence on the slope of the line representing global Moran’s <span class="math inline">\(I\)</span>. In this case, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants.</p>
 <pre class="sourceCode r"><code class="sourceCode r">infl_W &lt;-<span class="st"> </span><span class="kw">moran.plot</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, 
                      <span class="dt">labels=</span>pol_pres15<span class="op">$</span>TERYT, <span class="dt">cex=</span><span class="dv">1</span>, <span class="dt">pch=</span><span class="st">&quot;.&quot;</span>, 
                      <span class="dt">xlab=</span><span class="st">&quot;I round turnout&quot;</span>, <span class="dt">ylab=</span><span class="st">&quot;lagged turnout&quot;</span>)</code></pre>
@@ -1267,9 +1273,9 @@ pol_pres15<span class="op">$</span>EV3 &lt;-<span class="st"> </span>EVa[,<span 
 pol_pres15<span class="op">$</span>EV4 &lt;-<span class="st"> </span>EVa[,<span class="dv">4</span>]
 <span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;EV1&quot;</span>, <span class="st">&quot;EV2&quot;</span>, <span class="st">&quot;EV3&quot;</span>, <span class="st">&quot;EV4&quot;</span>), <span class="dt">midpoint=</span><span class="dv">0</span>, <span class="dt">title=</span><span class="st">&quot;Eigenvectors&quot;</span>, <span class="dt">n=</span><span class="dv">6</span>, <span class="dt">style=</span><span class="st">&quot;fisher&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_facets</span>(<span class="dt">free.scales=</span><span class="ot">FALSE</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_borders</span>(<span class="dt">lwd=</span><span class="fl">0.3</span>, <span class="dt">alpha=</span><span class="fl">0.4</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_layout</span>(<span class="dt">panel.labels=</span><span class="kw">c</span>(<span class="st">&quot;EV 1&quot;</span>, <span class="st">&quot;EV 2&quot;</span>, <span class="st">&quot;EV 3&quot;</span>, <span class="st">&quot;EV 4&quot;</span>))</code></pre>
 <div class="figure" style="text-align: center">
-<img src="sds_files/figure-html/EV_map-1.png" alt="Local spatially weighted mean values" width="100%" />
+<img src="sds_files/figure-html/EV_map-1.png" alt="First four eigenvectors" width="100%" />
 <p class="caption">
-(#fig:EV_map)Local spatially weighted mean values
+(#fig:EV_map)First four eigenvectors
 </p>
 </div>
 
@@ -1303,7 +1309,7 @@ pol_pres15<span class="op">$</span>EV4 &lt;-<span class="st"> </span>EVa[,<span 
 <p>Cliff, A. 1981. <em>Spatial Processes</em>. London: Pion.</p>
 </div>
 <div id="ref-anselin:95">
-<p>Anselin, L. n.d. “Local indicators of spatial association - LISA.” <em>Geographical Analysis</em> 27 (2): 93–115.</p>
+<p>Anselin, L. 1995. “Local indicators of spatial association - LISA.” <em>Geographical Analysis</em> 27 (2): 93–115.</p>
 </div>
 <div id="ref-wall:04">
 <p>Wall, M. M. 2004. “A Close Look at the Spatial Structure Implied by the CAR and SAR Models.” <em>Journal of Statistical Planning and Inference</em> 121: 311–24.</p>
