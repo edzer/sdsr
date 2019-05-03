@@ -1,16 +1,10 @@
 # Spatial Regression
 
+Even though it may be tempting to focus on interpreting the map pattern of a response variable of interest, the pattern may largely derive from covariates (and their functional forms), as well as the respective spatial footprints of the variables in play. Spatial autoregressive models in two dimensions began without covariates and with clear links to time series [@whittle:54]. Extensions included tests for spatial autocorrelation in linear model residuals, and models applying the autoregressive component to the response or the residuals, where the latter matched the tests for residuals [@CliffOrd:72; @cliff+ord:73]. These "lattice" models of areal data typically express the dependence between observations using a graph of neighbours in the form of a contiguity matrix. 
 
+A division has grown up, possibly unhelpfully, between scientific fields using conditional autoregressive (CAR) models [@besag:74], and simultaneous autoregressive models (SAR) [@ord:75; hepple:76]. Although CAR and SAR models are closely related, these fields have found it difficult to share experience of applying similar models, often despite referring to key work summarising the models [@ripley:81; @ripley:88; @Cressie:1993]. More recent books expounding the theoretical bases for modelling with areal data simply point out the similarities in relevant chapters [gaetan+guyon:10; @vanlieshout:19]; the interested reader is invited to consult these sources for background information and examples using the functions described below.
 
-[@whittle:54]
-
-[@CliffOrd:72; @cliff+ord:73]
-
-[@besag:74]
-[@ord:75; hepple:76]
-
-[@ripley:81; @ripley:88; @Cressie:1993]
-
+Of course, handling a spatial correlation structure in a generalised least squares model or a (generalised) linear or nonlinear mixed effects model such as those provided in the **nlme** and many other packages does not have to use a graph of neighbours [@R:Pinheiro+Bates:2000]. These models are also spatial regression models, using functions of the distance between observations, and fitted variograms to model the spatial autocorrelation present; such models have been held to yield a clearer picture of the underlying processes [@wall:04], building on geostatistics. For example, the **glmmTMB** package successfully uses this approach to spatial regression [@brookesetal:17]. Here we will only consider spatial regression using spatial weights, chiefly as implemented in the **spatialreg** package recently split out of the **spdep** package which had grown unnecessarily large, covering too many aspects of spatial dependence.
 
 ## Spatial regression with spatial weights
 
@@ -18,8 +12,6 @@
 
 [@WallerGotway:2004]
 
-
-[@wall:04]
 
 
 [@bivand17]
@@ -32,15 +24,22 @@ boston_506 <- st_read(system.file("shapes/boston_tracts.shp", package="spData")[
 ```
 
 
-[@brookesetal:17]
-
 ```{r}
 nb_q <- spdep::poly2nb(boston_506)
 lw_q <- spdep::nb2listw(nb_q, style="W")
 ```
 
+```{r}
+summary(boston_506$median)
+```
+```{r}
+boston_489 <- boston_506[!is.na(boston_506$median),]
+nb_q_489 <- spdep::poly2nb(boston_489)
+lw_q_489 <- spdep::nb2listw(nb_q_489, style="W", zero.policy=TRUE)
+```
 
-```{r, echo=FALSE}
+
+```{r}
 agg_96 <- list(as.character(boston_506$NOX_ID))
 boston_96 <- aggregate(boston_506[, "NOX_ID"], by=agg_96, unique)
 boston_96 <- st_cast(boston_96, "MULTIPOLYGON")
@@ -48,24 +47,42 @@ nb_q_96 <- spdep::poly2nb(boston_96)
 lw_q_96 <- spdep::nb2listw(nb_q_96)
 ```
 
+```{r, echo=FALSE}
+nms <- names(boston_506)
+boston_96$NOX <- aggregate(boston_506$NOX, agg_96, mean)$x
+ccounts <- 23:31
+for (nm in nms[c(22, ccounts, 36)]) boston_96[[nm]] <- aggregate(boston_506[[nm]], agg_96, sum)$x
+library(matrixStats)
+br2 <- c(3.50,  6.25,  8.75, 12.50, 17.50, 22.50, 30.00, 42.50, 60.00)*1000
+counts <- as.data.frame(boston_96)[, nms[ccounts]]
+f <- function(x) weightedMedian(x=br2, w=x, interpolate=TRUE)
+boston_96$median <- apply(counts, 1, f)
+is.na(boston_96$median) <- boston_96$median > 50000
+summary(boston_96$median)
+```
+
+```{r, echo=FALSE}
+boston_96$CHAS <- aggregate(as.integer(boston_506$CHAS)-1, agg_96, max)$x
+POP <- boston_506$POP
+f <- function(x) weightedMean(x[,1], x[,2])
+for (nm in nms[c(9:11, 14:19, 21, 33)]) {
+  s0 <- split(data.frame(boston_506[[nm]], POP), agg_96)
+  boston_96[[nm]] <- sapply(s0, f)
+}
+```
+
 ```{r}
-boston_96$units <- aggregate(boston_506$units, agg_96, sum)$x
-boston_96$cu5k <- aggregate(boston_506$cu5k, agg_96, sum)$x
-boston_96$c5_7_5 <- aggregate(boston_506$c5_7_5, agg_96, sum)$x
-boston_96$C7_5_10 <- aggregate(boston_506$C7_5_10, agg_96, sum)$x
-boston_96$C10_15 <- aggregate(boston_506$C10_15, agg_96, sum)$x
-boston_96$C15_20 <- aggregate(boston_506$C15_20, agg_96, sum)$x
-boston_96$C20_25 <- aggregate(boston_506$C20_25, agg_96, sum)$x
-boston_96$C25_35 <- aggregate(boston_506$C25_35, agg_96, sum)$x
-boston_96$C35_50 <- aggregate(boston_506$C35_50, agg_96, sum)$x
-boston_96$co50k <- aggregate(boston_506$co50k, agg_96, sum)$x
+boston_94 <- boston_96[!is.na(boston_96$median),]
+nb_q_94 <- spdep::poly2nb(boston_94)
+lw_q_94 <- spdep::nb2listw(nb_q_94, style="W")
 ```
 
 
-[@lee:13]
+```{r}
+form <- formula(log(median) ~ CRIM + ZN + INDUS + CHAS + I((NOX*10)^2) + I(RM^2) + AGE + log(DIS) + log(RAD) + TAX + PTRATIO + I(BB/100) + log(I(LSTAT/100)))
+```
 
-[@umlaufetal:15]
-[@wood:17]
+[@kelejian+piras:17]
 
 [@smith:09] [@smith+lee12]
 
@@ -92,9 +109,18 @@ boston_96$co50k <- aggregate(boston_506$co50k, agg_96, sum)$x
 
 ## Estimators
 
+Cross-sectional ML
+
 [@ord:75]
 
+Cross-sectional GMM
+
 [@piras:10]
+
+Cross-sectional MCMC
+
+Panel ML and GMM
+
 [@millo+piras:12]
 
 [@bivand+piras:15]
@@ -113,7 +139,20 @@ boston_96$co50k <- aggregate(boston_506$co50k, agg_96, sum)$x
 [@bivand:12]
 [@halleck-vega+elhorst:15]
 
-## Multilevel models with spatial weights
+## Markov random field and multilevel models with spatial weights
+
+https://github.com/paul-buerkner/brms/issues/6
+https://www.rdocumentation.org/packages/brms/versions/2.8.0/topics/cor_sar
+[@buerkner:17; @buerkner:18]
+
+cor_car
+cor_sar
+
+[@lee:13]
+
+[@umlaufetal:15]
+[@wood:17]
+
 
 [@bivandetal17a]
 [@alam-ronnegard-shen:2015]
