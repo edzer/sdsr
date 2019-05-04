@@ -8,13 +8,9 @@ Of course, handling a spatial correlation structure in a generalised least squar
 
 ## Spatial regression with spatial weights
 
-[@cliff+ord:73; @cliff+ord:81; @a88]
+Spatial autoregression models using spatial weights matrices were described in some detail using maximum likelihood estimation some time ago [@cliff+ord:73; @cliff+ord:81]. A family of models were elaborated in spatial econometric terms extending earlier work, and in many cases using the simultaneous autoregressive framework and row standardization of spatial weights [@a88]. The simultaneous  and conditional autoregressive frameworks can be compared, and both can be supplemented using case weights to reflect the relative importance of different observations [@WallerGotway:2004].
 
-[@WallerGotway:2004]
-
-
-
-[@bivand17]
+Here we shall use the Boston housing data set, which has been restructured and furnished with census tract boundaries [@bivand17]. The original data set used 506 census tracts and a hedonic model to try to estimate willingness to pay for clean air. The response was constructed from counts of ordinal answers to a 1970 census question about house value; the response is left and right censored in the census source. The key covariate was created from a calibrated meteorological model showing the annual nitrogen oxides (NOX) level for a smaller number of model output zones. The numbers of houses responding also varies by tract and model output zone. There are several other covariates, some measured at the tract level, some by town only, where towns broadly correspond to the air pollution model output zones.
 
 ```{r}
 library(sf)
@@ -22,22 +18,26 @@ library(sf)
 ```{r}
 boston_506 <- st_read(system.file("shapes/boston_tracts.shp", package="spData")[1])
 ```
-
-
 ```{r}
 nb_q <- spdep::poly2nb(boston_506)
 lw_q <- spdep::nb2listw(nb_q, style="W")
 ```
+We can start by reading in the 506 tract data set from **spData**, and creating a contiguity neighbour object and from that again a row standardized spatial weights object. If we examine the median house values, we find that they have been assigned as missing values, and that 17 tracts are affected.
 
+```{r}
+table(boston_506$censored)
+```
 ```{r}
 summary(boston_506$median)
 ```
+Next, we can subset to the remaining 489 tracts with non-censored house values, and the neighbour object to match. The neighbour object now has one observation with no neighbours.
+
 ```{r}
 boston_489 <- boston_506[!is.na(boston_506$median),]
-nb_q_489 <- spdep::poly2nb(boston_489)
+nb_q_489 <- spdep::subset.nb(nb_q, !is.na(boston_506$median))
 lw_q_489 <- spdep::nb2listw(nb_q_489, style="W", zero.policy=TRUE)
 ```
-
+The `NOX_ID` variable specifies the upper level aggregation, letting us aggregate the tracts to air pollution model output zones. We can create aggregate neighbour and row standardized spatial weights objects, and aggregate the `NOX` variable taking means, and the `CHAS` Charles River dummy variable for observations on the river.
 
 ```{r}
 agg_96 <- list(as.character(boston_506$NOX_ID))
@@ -45,99 +45,125 @@ boston_96 <- aggregate(boston_506[, "NOX_ID"], by=agg_96, unique)
 boston_96 <- st_cast(boston_96, "MULTIPOLYGON")
 nb_q_96 <- spdep::poly2nb(boston_96)
 lw_q_96 <- spdep::nb2listw(nb_q_96)
-```
-
-```{r, echo=FALSE}
-nms <- names(boston_506)
 boston_96$NOX <- aggregate(boston_506$NOX, agg_96, mean)$x
+boston_96$CHAS <- aggregate(as.integer(boston_506$CHAS)-1, agg_96, max)$x
+```
+The response is aggregated using the `weightedMedian()` function in **matrixStats**, and midpoint values for the house value classes. Counts of houses by value class were punched to check the published census values, which can be replicated using `weightedMedian()` at the tract level. Here we find two output zones with calculated weighted medians over the upper census question limit of USD 50,000, and remove them subsequently as they also are affected by not knowing the appropriate value to insert for the top class by value.
+
+```{r}
+nms <- names(boston_506)
 ccounts <- 23:31
-for (nm in nms[c(22, ccounts, 36)]) boston_96[[nm]] <- aggregate(boston_506[[nm]], agg_96, sum)$x
-library(matrixStats)
+for (nm in nms[c(22, ccounts, 36)]) {
+  boston_96[[nm]] <- aggregate(boston_506[[nm]], agg_96, sum)$x
+}
 br2 <- c(3.50,  6.25,  8.75, 12.50, 17.50, 22.50, 30.00, 42.50, 60.00)*1000
 counts <- as.data.frame(boston_96)[, nms[ccounts]]
-f <- function(x) weightedMedian(x=br2, w=x, interpolate=TRUE)
+f <- function(x) matrixStats::weightedMedian(x=br2, w=x, interpolate=TRUE)
 boston_96$median <- apply(counts, 1, f)
 is.na(boston_96$median) <- boston_96$median > 50000
 summary(boston_96$median)
 ```
+Before subsetting, we aggregate the remaining covariates by weighted mean using the tract population counts punched from the census [@bivand17].
 
 ```{r, echo=FALSE}
-boston_96$CHAS <- aggregate(as.integer(boston_506$CHAS)-1, agg_96, max)$x
 POP <- boston_506$POP
-f <- function(x) weightedMean(x[,1], x[,2])
+f <- function(x) matrixStats::weightedMean(x[,1], x[,2])
 for (nm in nms[c(9:11, 14:19, 21, 33)]) {
   s0 <- split(data.frame(boston_506[[nm]], POP), agg_96)
   boston_96[[nm]] <- sapply(s0, f)
 }
 ```
-
 ```{r}
 boston_94 <- boston_96[!is.na(boston_96$median),]
-nb_q_94 <- spdep::poly2nb(boston_94)
+nb_q_94 <- spdep::subset.nb(boston_94, !is.na(boston_96$median))
 lw_q_94 <- spdep::nb2listw(nb_q_94, style="W")
 ```
 
+We now have two data sets each at the lower, census tract level and the upper, air pollution model output zone level, one including the censored observations, the other excluding them.
+
+The original model related the log of median house values by tract to the square of NOX values, including other covariates usually related to house value by tract, such as aggregate room counts, aggregate age, ethnicity, social status, distance to downtown and to the nearest radial road, a crime rate, and town-level variables reflecting land use (zoning, industry), taxation and education [@bivand17]. This structure will be used here to exercise issues raised in fitting spatial regression models, including the presence of multiple levels.
 
 ```{r}
 form <- formula(log(median) ~ CRIM + ZN + INDUS + CHAS + I((NOX*10)^2) + I(RM^2) + AGE + log(DIS) + log(RAD) + TAX + PTRATIO + I(BB/100) + log(I(LSTAT/100)))
 ```
 
-[@kelejian+piras:17]
+Before moving to presentations of issues raised in fitting spatial regression models, it is worth making a few further points. A recent review of spatial regression in a spatial econometrics setting is given by Kelejian and Piras [-@kelejian+piras:17]; note that their usage is to call the spatial coefficient of the lagged response $\lambda$ and that of the lagged residuals $\rho$, the reverse of other usage  [@a88; @lesage+pace:09]. One interesting finding is that relatively dense spatial weights matrices may downweight model estimates, suggesting that sparser weights are preferable [@smith:09]. Another useful finding is that the presence of residual spatial autocorrelation need not bias the estimates of variance of regression coefficients, provided that the covariates themselves do not exhibit spatial autocorrelation [@smith+lee12]. In general, however, the footprints of the spatial processes of the response and covariates may not be aligned, and if covariates and the residual are autocorrelated, it is likely that the estimates of variance of regression coefficients will be biassed downwards if attempts are not made to model the spatial processes.
 
-[@smith:09] [@smith+lee12]
+In trying to model these spatial processes, we may choose to model the spatial autocorrelation in the residual with a spatial error model (SEM). If the processes in the covariates and the response match, we should find little difference between the coefficients of a least squares and a SEM, but very often they diverge, suggesting that a Hausman test for this condition should be employed [@pace+lesage:08]. This may be related to earlier discussions of a spatial equivalent to the unit root and cointegration where spatial processes match [@fingleton:99].
 
+Work reviewed by Mur and Angulo [-@mur+angulo:06] on the Durbin model, including the spatially lagged covariates in the model, permits a shared spatial process to be viewed and tested for as a Common Factor [@burridge:81; @bivand:84]. The inclusion of spatially lagged covariates lets us check whether the same spatial process is manifest in the response and the covariates (SEM), whether they are different processes, or whether no process is detected. A model with a spatial process in the response only is termed a spatial lag model (SLM, often SAR - spatial autoregressive), and with different processes in the response and covariates a spatial Durbin model (SDM) [@lesage+pace:09].
 
+If we extend this family with processes in the covariates and the residual, we get  a spatial error Durbin model (SDEM). If it is chosen to admit a spatial process in the residuals in addition to a spatial process in the response, again two models are formed, a general nested model (GNM) nesting all the others, and a model without spatially lagged covariates (SAC, also known as SARAR). If neither the residuals nor the residual are modelled with spatial processes, spatially lagged covariates may be added to a linear model, as a spatially lagged X model (SLX) [@elhorst:10; @bivand:12; @halleck-vega+elhorst:15].
 
-[@mur+angulo:06]
-[@burridge:81; @bivand:84]
+Although making predictions for new locations for which covariates are observed was raised as an issue some time ago, it has many years to make progress in reviewing the possibilities [@bivand:02; @goulardetal:17]. The prediction method for SLM, SDM, SEM, SDEM, SAC and GNM models fitted with maximum likelihood were contributed as a Google Summer of Coding project by Martin Gubri. This work, and work on similar models with missing data [@suesse:18] is also relevant for exploring censored median house values in the Boston data set. Work on prediction also exposed the importance of the reduced form of these models, in which the spatial process in the response interacts with the regression coefficients in the SLM, SDM, SAC and GNM models. 
 
-[@bivand:02; @goulardetal:17]
-[@suesse:18]
+The consequence of these interactions is that a unit change in a covariate will only impact the response as the value of the regression coefficient if the spatial coefficient of the lagged response is zero. Where it is non-zero, global spillovers, impacts, come into play, and these impacts should be reported rather than the regression coefficients [@lesage+pace:09; @elhorst:10; @bivand:12; @halleck-vega+elhorst:15]. Local impacts may be reported for SDEM and SLX models, using linear combination to calculate standard errors for the total impacts of each covariate (sums of coefficients on the covariates and their spatial lags).
 
+Current work in the **spatialreg** package is focused on refining the handling of spatially lagged covariates using a consistent `Durbin=` argument taking either a logical value or a formula giving the subset of covariates to add in spatially lagged form. There is a speculation that some covariates, for example some dummy variables, should not be added in spatially lagged form. This then extends to handling these included spatially lagged covariates appropriately in calculating impacts. This work applies to cross-sectional models fitted using MCMC or maximum likelihood, and will offer facilities to spatial panel models.
 
-[@fingleton:99]
-
-[@pace+lesage:08]
-
-[@lesage+pace:09]
-[@elhorst:10]
-[@bivand:12]
-[@halleck-vega+elhorst:15]
-
-[@mcmillen:13]
+It is worth mentioning the almost unexplored issues of functional form assumptions, for which flexible structures are useful, including spatial quantile regression presented in the **McSpatial** package [@mcmillen:13]. There are further issues with discrete response variables, covered by some functions in **McSpatial**, and in the **spatialprobit** and **ProbitSpatial** packages [@RJ-2013-013; @MARTINETTI201730]; the MCMC implementations of the former are based on LeSage and Pace [-@lesage+pace:09]. Finally, Wagner and Zeileis [-@wagner+zeileis:19] show how an SLM model may be used in the setting of recursive partitioning, with an implementation using `spatialreg::lagsarlm()` in the **lagsarlmtree** package.
 
 
 ## Estimators
 
-Cross-sectional ML
+The review of cross-sectional maximum likelihood and generalized method of moments (GMM) estimators in **spatialreg** and **sphet** for spatial econometrics style spatial regression models by Bivand and Piras [-@bivand+piras:15] is still largely valid. In the review, estimators in these R packages were compared with alternative implementations available in other programming languages elsewhere. The review did not cover Bayesian spatial econometrics style spatial regression. More has changed with respect to spatial panel estimators described in Millo and Piras [-@millo+piras:12], but will not be covered here.
 
-[@ord:75]
+### Maximum likelihood
 
-Cross-sectional GMM
+For models with single spatial coefficients (SEM and SDEM using `errorsarlm()`, SLM and SDM using `lagsarlm()`), the methods initially described by Ord [-@ord:75] are used. Both estimating functions take similar arguments, where the first two, `formula=` and `data=` are shared by most model estimating functions. The third argument is a `listw` spatial weights object, while `na.action=` behaves as in other model estimating functions if the spatial weights can reasonably be subsetted to avoid observations with missing values. The `weights=` argument may be used to provide weights indicating the known degree of per-observation variability in the variance term - this is not available for `lagsarlm()`.
+
+```{r}
+suppressWarnings(library(spatialreg))
+args(errorsarlm)
+```
+```{r}
+args(lagsarlm)
+```
+The `Durbin=` argument replaces the earlier `type=` and `etype=` arguments, and if not given is taken as `FALSE`. If given, it may be `FALSE`, `TRUE` in which case all spatially lagged covariates are included, or a one-sided formula specifying which spatially lagged covariates should be included. The `method=` argument gives the method for calculating the log determinant term in the log likelihood function, and defaults to `"eigen"`, suitable for moderate sized data sets. The `interval=` argument gives the bounds of the domain for the line search using `stats::optimize()` used for finding the spatial coefficient. The `tol.solve()` argument is needed to handle data sets with differing numerical scales among the coefficients which may hinder inversion of the variance-covariance matrix. The `control=` argument takes a list of control values to permit more careful adjustment of the running of the estimation function.
+
+The `spautolm()` function also fits spatial regressions with the spatial process in the residuals, and takes a possibly poorly named `family=` argument, taking the values of `"SAR"` for the simultaneous autoregressive model (like `errorsarlm()`), `"CAR"` for the conditional autoregressive model, and `"SMA"` for the spatial moving average model.
+
+```{r}
+args(spautolm)
+```
+The `sacsarlm()` function may take second spatial weights and interval arguments if the spatial weights used to model the two spatial processes in the SAC and GNM specifications differ. By default, the same spatial weights are used. By default, `stats::nlminb()` is used for numerical optimization, using a heuristic to choose starting values.
+
+```{r}
+args(sacsarlm)
+```
+
+
+
+
+Where larger data sets are used, a numerical Hessian approach is used to calculate the variance-covariance matrix of coefficients rather than an analytical approach. 
+
+### Generalized method of moments
 
 [@piras:10]
 
-Cross-sectional MCMC
+### Markov chain Monte Carlo 
 
-Panel ML and GMM
 
-[@millo+piras:12]
 
-[@bivand+piras:15]
+## Implementation details
 
-## Handling the log determinant term
+### Handling the log determinant term
 
 [@bivandetal13]
 
 [@pace+barry:97a; @pace+barry:97b; @pace+barry:97c; @pace+barry:97d]
 
 
-## Impacts
+### Impacts
 
 [@lesage+pace:09]
 [@elhorst:10]
 [@bivand:12]
 [@halleck-vega+elhorst:15]
+
+### Predictions
+
+
 
 ## Markov random field and multilevel models with spatial weights
 
@@ -156,3 +182,4 @@ cor_sar
 
 [@bivandetal17a]
 [@alam-ronnegard-shen:2015]
+
