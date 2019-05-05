@@ -34,7 +34,7 @@ Next, we can subset to the remaining 489 tracts with non-censored house values, 
 
 ```{r}
 boston_489 <- boston_506[!is.na(boston_506$median),]
-nb_q_489 <- spdep::subset.nb(nb_q, !is.na(boston_506$median))
+nb_q_489 <- spdep::poly2nb(boston_489)
 lw_q_489 <- spdep::nb2listw(nb_q_489, style="W", zero.policy=TRUE)
 ```
 The `NOX_ID` variable specifies the upper level aggregation, letting us aggregate the tracts to air pollution model output zones. We can create aggregate neighbour and row standardized spatial weights objects, and aggregate the `NOX` variable taking means, and the `CHAS` Charles River dummy variable for observations on the river.
@@ -75,7 +75,7 @@ for (nm in nms[c(9:11, 14:19, 21, 33)]) {
 ```
 ```{r}
 boston_94 <- boston_96[!is.na(boston_96$median),]
-nb_q_94 <- spdep::subset.nb(boston_94, !is.na(boston_96$median))
+nb_q_94 <- spdep::subset.nb(nb_q_96, !is.na(boston_96$median))
 lw_q_94 <- spdep::nb2listw(nb_q_94, style="W")
 ```
 
@@ -113,13 +113,13 @@ The review of cross-sectional maximum likelihood and generalized method of momen
 For models with single spatial coefficients (SEM and SDEM using `errorsarlm()`, SLM and SDM using `lagsarlm()`), the methods initially described by Ord [-@ord:75] are used. Both estimating functions take similar arguments, where the first two, `formula=` and `data=` are shared by most model estimating functions. The third argument is a `listw` spatial weights object, while `na.action=` behaves as in other model estimating functions if the spatial weights can reasonably be subsetted to avoid observations with missing values. The `weights=` argument may be used to provide weights indicating the known degree of per-observation variability in the variance term - this is not available for `lagsarlm()`.
 
 ```{r}
-suppressWarnings(library(spatialreg))
+library(spatialreg)
 args(errorsarlm)
 ```
 ```{r}
 args(lagsarlm)
 ```
-The `Durbin=` argument replaces the earlier `type=` and `etype=` arguments, and if not given is taken as `FALSE`. If given, it may be `FALSE`, `TRUE` in which case all spatially lagged covariates are included, or a one-sided formula specifying which spatially lagged covariates should be included. The `method=` argument gives the method for calculating the log determinant term in the log likelihood function, and defaults to `"eigen"`, suitable for moderate sized data sets. The `interval=` argument gives the bounds of the domain for the line search using `stats::optimize()` used for finding the spatial coefficient. The `tol.solve()` argument is needed to handle data sets with differing numerical scales among the coefficients which may hinder inversion of the variance-covariance matrix. The `control=` argument takes a list of control values to permit more careful adjustment of the running of the estimation function.
+The `Durbin=` argument replaces the earlier `type=` and `etype=` arguments, and if not given is taken as `FALSE`. If given, it may be `FALSE`, `TRUE` in which case all spatially lagged covariates are included, or a one-sided formula specifying which spatially lagged covariates should be included. The `method=` argument gives the method for calculating the log determinant term in the log likelihood function, and defaults to `"eigen"`, suitable for moderate sized data sets. The `interval=` argument gives the bounds of the domain for the line search using `stats::optimize()` used for finding the spatial coefficient. The `tol.solve()` argument, passed through to `base::solve()`, was needed to handle data sets with differing numerical scales among the coefficients which hindered inversion of the variance-covariance matrix; the default value in `base::solve()` used to be much larger. The `control=` argument takes a list of control values to permit more careful adjustment of the running of the estimation function. 
 
 The `spautolm()` function also fits spatial regressions with the spatial process in the residuals, and takes a possibly poorly named `family=` argument, taking the values of `"SAR"` for the simultaneous autoregressive model (like `errorsarlm()`), `"CAR"` for the conditional autoregressive model, and `"SMA"` for the spatial moving average model.
 
@@ -131,27 +131,155 @@ The `sacsarlm()` function may take second spatial weights and interval arguments
 ```{r}
 args(sacsarlm)
 ```
+Where larger data sets are used, a numerical Hessian approach is used to calculate the variance-covariance matrix of coefficients, rather than an analytical asymptotic approach. 
 
+Apart from `spautolm()` which returns an `"spautolm"` object, the model fitting functions return `"sarlm"` objects. Standard methods for fitted models are provided, such as `summary()`:
 
+```{r}
+args(summary.sarlm)
+```
+The `Nagelkerke=` argument permits the return of a value approximately corresponding to a coefficient of determination, although the summary method anyway provides the value of `stats::AIC()` because a `stats::logLik()` method is provided for `"sarlm"` and `"spautolm"` objects. If the `"sarlm"` object is a SEM or SDEM, the Hausman test may be performed by setting `Hausman=TRUE` to see whether the regression coefficients are sufficiently like least squares coefficients, indicating absence of mis-specification from that source. As an example, we may fit SEM and SDEM to the 94 and 489 observation Boston data sets, and present the Hausman test results:
 
+```{r}
+eigs_489 <- eigenw(lw_q_489)
+SDEM_489 <- errorsarlm(form, data=boston_489, listw=lw_q_489, Durbin=TRUE, zero.policy=TRUE, control=list(pre_eig=eigs_489))
+SEM_489 <- errorsarlm(form, data=boston_489, listw=lw_q_489, zero.policy=TRUE, control=list(pre_eig=eigs_489))
+cbind(data.frame(model=c("SEM", "SDEM")), rbind(broom::tidy(Hausman.test(SEM_489)), broom::tidy(Hausman.test(SDEM_489))))[,1:4]
+```
+Here we are using the `control=` list argument to pass through pre-computed eigenvalues for the default `"eigen"` method. Both test results for the 489 tract data set suggest that the regression coefficients do differ, perhaps that the footprints of the spatial processes do not match. Likelihood ratio tests of the spatial models against their least squares equivalents show that spatial process(es) are present, but we find that neither SEM not SDM are adequate representations.
 
-Where larger data sets are used, a numerical Hessian approach is used to calculate the variance-covariance matrix of coefficients rather than an analytical approach. 
+```{r}
+cbind(data.frame(model=c("SEM", "SDEM")), rbind(broom::tidy(LR1.sarlm(SEM_489)), broom::tidy(LR1.sarlm(SDEM_489))))[,c(1, 4:6)]
+```
+For the 94 air pollution model output zones, the Hausman tests find little difference between coefficients, but this is related to the fact that the SEM and SDEM models add little to least squares or SLX using likelihood ratio tests.
+
+```{r}
+eigs_94 <- eigenw(lw_q_94)
+SDEM_94 <- errorsarlm(form, data=boston_94, listw=lw_q_94, Durbin=TRUE, control=list(pre_eig=eigs_94))
+SEM_94 <- errorsarlm(form, data=boston_94, listw=lw_q_94, control=list(pre_eig=eigs_94))
+cbind(data.frame(model=c("SEM", "SDEM")), rbind(broom::tidy(Hausman.test(SEM_94)), broom::tidy(Hausman.test(SDEM_94))))[, 1:4]
+```
+```{r}
+cbind(data.frame(model=c("SEM", "SDEM")), rbind(broom::tidy(LR1.sarlm(SEM_94)), broom::tidy(LR1.sarlm(SDEM_94))))[,c(1, 4:6)]
+```
+We can use `spatialreg::LR.sarlm()` to apply a likelihood ratio test between nested models, but here choose `lmtest::lrtest()`, which gives the same results, preferring models including spatially lagged covariates.
+
+```{r}
+broom::tidy(lmtest::lrtest(SEM_489, SDEM_489))
+```
+```{r}
+broom::tidy(lmtest::lrtest(SEM_94, SDEM_94))
+```
+The SLX model is fitted using least squares, and also returns a log likelihood value, letting us test whether we need a spatial process in the residuals. 
+
+```{r}
+args(lmSLX)
+```
+In the tract data set we obviously do:
+
+```{r}
+SLX_489 <- lmSLX(form, data=boston_489, listw=lw_q_489, zero.policy=TRUE)
+broom::tidy(lmtest::lrtest(SLX_489, SDEM_489))
+```
+but in the output zone case we do not.
+
+```{r}
+SLX_94 <- lmSLX(form, data=boston_94, listw=lw_q_94)
+broom::tidy(lmtest::lrtest(SLX_94, SDEM_94))
+```
+This outcome is sustained also when we use the counts of house units by tract and output zones as weights:
+
+```{r}
+SLX_94w <- lmSLX(form, data=boston_94, listw=lw_q_94, weights=units)
+SDEM_94w <- errorsarlm(form, data=boston_94, listw=lw_q_94, Durbin=TRUE, weights=units, control=list(pre_eig=eigs_94))
+broom::tidy(lmtest::lrtest(SLX_94w, SDEM_94w))
+```
+
 
 ### Generalized method of moments
 
-[@piras:10]
+The estimation methods used for fitting SLM and the spatially lagged response part of SARAR models are based on instrumental variables, using the spatially lagged covariates (usually including lags of lags too) as instruments for the spatially lagged response [@piras:10]. This, and the use of spatially lagged covariates in the moment conditions for models including a spatial process in the residuals, means that including the spatially lagged covariates in the initial model is challenging, and functions in the **sphet** package do not provide a `Durbin=` argument. This makes it harder to accommodate data with multiple spatial process footprints. However, as Kelejian and Piras show in their recent review [-@kelejian+piras:17], these approaches have other benefits, such as being able to instrument variables suspected of suffering from endogeneity or measurement error. 
+Let us first compare the ML and GMM estimates of the SEM regression coefficients for rescaled squared NOX values. We use the `sphet::spreg()` wrapper function, and fit a SEM model. Extracting the matching rows from the summary objects for these models, we can see that the values are not dissimilar, despite the difference in estimation methods.
+
+```{r}
+library(sphet)
+SEM1_94 <- spreg(form, data=boston_94, listw=lw_q_94, model="error")
+res <- rbind(summary(SEM_94)$Coef["I((NOX * 10)^2)",], summary(SEM1_94)$CoefTable["I((NOX * 10)^2)",])
+rownames(res) <- c("ML", "GMM")
+res
+```
+Using `sphet::spreg()`, we can instrument the rescaled squared NOX variable, dropping it first from the formula, next creating the rescaled squared NOX variable as a column in the `"sf"` object, extracting a matrix of coordinates from the centroids of the output zones, and creating a one-sided instrument formula from a second order polynomial in the coordinates (here improperly, as they are not projected) and mean distances to downtown and radial roads. The `endog=` argument takes a one-sided formula for the variables to be modelled in the first stage of the model. Had we re-run the original air pollution model many times under slightly varying scenarios, we could have used an ensemble of NOX loadings to yield its distribution by output zone. Because this is not possible, we assume that the measurement error can be captured by using selected instruments. Unfortunately, the NOX regression coefficient estimate from the second stage has fallen substantially in absolute size, although the sign is unchanged.
+
+```{r}
+formiv <- update(form, . ~ . - I((NOX*10)^2))
+boston_94$NOX2 <- (boston_94$NOX*10)^2
+suppressWarnings(ccoords <- st_coordinates(st_centroid(st_geometry(boston_94))))
+iform <- formula(~poly(ccoords, degree=2) + DIS + RAD)
+SEM1_94iv <- spreg(formiv, data=boston_94, listw=lw_q_94, endog = ~NOX2, instruments=iform, model="error")
+summary(SEM1_94iv)$CoefTable["NOX2",]
+```
+Handling measurement error in this or similar ways is one of the benefits of GMM estimation methods, although here the choice of instruments was somewhat arbitrary.
 
 ### Markov chain Monte Carlo 
 
+(draft - a comparative piece is being written for submission in about two months)
+
+The Spatial Econometrics Library is part of the extensive Matlab code repository at https://www.spatial-econometrics.com/ and documented in LeSage and Pace [-@lesage+pace:09]. The Google Summer of Coding project in 2011 by Abhirup Mallik mentored by Virgilio Gómez-Rubio yielded translations of some of the model fitting functions for SEM, SDEM, SLM, SDM, SAC and GNM from the Matlab code. These have now been added to **spatialreg** as `spBreg_err()`, `spBreg_lag()` and `spBreg_sac()` with `Durbin=` arguments to handle the inclusion of spatially lagged covariates. As yet, heteroskedastic disturbances are not accommodated. The functions return `"mcmc"` objects as specified in the **coda** package, permitting the use of tools from **coda** for handling model output. The default burnin is 500 draws, followed by default 2000 draws returned, but these values and many others may be set through the `control=` list argument. Fitting the SDEM model for the output zones takes about an order of magnitude longer than using ML, but there is more work to do subsequently, and this difference scales more in the number of covariates than observations.
+
+```{r}
+system.time(SDEM_94B <- spBreg_err(form, data=boston_94, listw=lw_q_94, Durbin=TRUE))
+```
+Most time in the ML case using eigenvalues is taken by log determinant setup and optimization:
+
+```{r}
+t(errorsarlm(form, data=boston_94, listw=lw_q_94, Durbin=TRUE)$timings[,2])
+```
+while in the MCMC case, the default use of Spatial Econometric Toolbox gridded log determinants and obviously sampling takes most time:
+
+```{r}
+t(attr(SDEM_94B, "timings")[ , 3])
+```
+However, as we will see shortly, inference from model impacts may need sampling (where the spatially lagged response is included in the model), and in the case of MCMC models, the samples have already been drawn.
 
 
 ## Implementation details
 
+We will briefly touch on selected implementation details that applied users of spatial regression models would be wise to review. The handling of the log determinant term applies to all such users, while impacts are restricted to those employing spatial econometrics style models either including the spatially lagged response or including spatially lagged covariates.
+
 ### Handling the log determinant term
 
-[@bivandetal13]
+It has been known for over twenty years that the sparse matrix representation of spatial weights overcomes the difficulties of fitting models with larger numbers of observations using maximum likelihood and MCMC where the log determinant term comes into play [@pace+barry:97a; @pace+barry:97b; @pace+barry:97c; @pace+barry:97d]. During the development of these approaches in model fitting functions in **spatialreg**, use was first made of C code also used in the S-PLUS SpatialStats module (FIXME ref), then **SparseM** which used a compressed sparse row form very similar to `"nb"` and `"listw"` objects. This was followed by the use of **spam** and **Matrix** methods, both of which mainly use compressed sparse column representations. Details are provided in Bivand, Hauke and Kossowski [-@bivandetal13]. 
 
-[@pace+barry:97a; @pace+barry:97b; @pace+barry:97c; @pace+barry:97d]
+The domain of the spatial coefficient(s) is given by the `interval=` argument to model fitting functions, and returned in the fitted object:
+
+```{r}
+SEM_94$interval
+```
+This case is trivial, because the upper bound is unity by definition, because of the use of row standardization. The interval is the inverse of the range of the eigenvalues of the weights matrix:
+
+```{r}
+1/range(eigs_94)
+```
+Finding the interval within which to search for the spatial coefficient is trivial for smaller data sets, but more complex for larger ones. It is possible to use heuristics implemented in `lextrW()` [@GRIFFITH2015119]:
+
+```{r}
+1/c(lextrW(lw_q_94))
+```
+or `RSpectra::eigs()` after coercion to a **Matrix** package compressed sparse column representation:
+
+```{r}
+W <- as(lw_q_94, "CsparseMatrix")
+1/Re(c(RSpectra::eigs(W, k=1, which="SR")$values, RSpectra::eigs(W, k=1, which="LR")$values))
+```
+Why are we extracting the real part of the values returned by `eigs()`? Since `nb_q_94` is symmetric, the row-standardized object `lw_q_94` is symmetric by similarity, a result known since Ord [-@ord:75]; consequently, we can take the real part without concern. Had the underlying neighbour relationships not been symmetric, we should be more careful.
+
+The baseline log determinant term as given by Ord [@ord:75] for a coefficient value proposed in sampling or during numerical optimization is:
+
+```{r}
+coef <- 0.5
+sum(log(1 - coef * eigs_94))
+```
+
 
 
 ### Impacts
@@ -163,7 +291,7 @@ Where larger data sets are used, a numerical Hessian approach is used to calcula
 
 ### Predictions
 
-
+[@goulardetal:17]
 
 ## Markov random field and multilevel models with spatial weights
 
