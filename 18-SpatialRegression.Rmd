@@ -317,12 +317,90 @@ As yet the Bayesian models are limited to control argument `ldet_method="SE_clas
 
 ### Impacts
 
-[@lesage+pace:09]
-[@elhorst:10]
-[@bivand:12]
-[@halleck-vega+elhorst:15]
+Global impacts have been seen as crucial for reporting results from fitting models including the spatially lagged response (SLM, SDM, SAC. GNM) for over ten years [@lesage+pace:09]. Extension to other models including spatially lagged covariates (SLX, SDEM) has followed [@elhorst:10; @bivand:12; @halleck-vega+elhorst:15]. In order to infer from the impacts, linear combination may be used for SLX and SDEM models. For SLM, SDM, SAC and GNM models fitted with maximum likelihood or GMM, the variance-covariance matrix of the coefficients is available, and can be used to make random draws from a multivariate Normal distribution with mean set to coefficient values and variance to the estimated variance-covariance matrix. For these models fitted using Bayesian methods, draws are already available. In the SDEM case, the draws on the regression coefficients of the unlagged covariates represent direct impacts, and draws on the coefficients of the spatially lagged covariates represent indirect impacts, and their by-draw sums the total impacts.
+
+```{r}
+args(impacts.sarlm)
+```
+
+```{r}
+args(summary.lagImpact)
+```
+
+
+```{r}
+sum_imp_94_SDEM <- summary(impacts(SDEM_94))
+rbind(Impacts=sum_imp_94_SDEM$mat[5,], SE=sum_imp_94_SDEM$semat[5,])
+```
+
+```{r}
+sum_imp_94_SDEM_B <- summary(impacts(SDEM_94B))
+rbind(Impacts=sum_imp_94_SDEM_B$mat[5,], SE=sum_imp_94_SDEM_B$semat[5,])
+```
+
+```{r}
+sum_imp_94_SLX <- summary(impacts(SLX_94))
+rbind(Impacts=sum_imp_94_SLX$mat[5,], SE=sum_imp_94_SLX$semat[5,])
+```
+
+```{r}
+SLM_489 <- lagsarlm(form, data=boston_489, listw=lw_q_489, zero.policy=TRUE)
+```
+
+```{r}
+W <- as(lw_q_489, "CsparseMatrix")
+tr_489 <- trW(W)
+SLM_489_imp <- impacts(SLM_489, tr=tr_489, R=2000)
+t(attr(SLM_489_imp, "timings")[,2])
+```
+
+
+```{r}
+SLM_489_imp_sum <- summary(SLM_489_imp, short=TRUE, zstats=TRUE)
+res <- rbind(Impacts=sapply(SLM_489_imp$res, "[", 5), SE=SLM_489_imp_sum$semat[5,])
+colnames(res) <- c("Direct", "Indirect", "Total")
+res
+```
+
+```{r}
+coef_SLM_489 <- coef(SLM_489)
+IrW <- Diagonal(489) - coef_SLM_489[1] * W
+S_W <- solve(IrW)
+S_NOX_W <- S_W %*% (diag(489) * coef_SLM_489[7])
+c(Direct=mean(diag(S_NOX_W)), Total=sum(S_NOX_W)/489)
+```
+
+
 
 ### Predictions
+
+```{r}
+args(predict.sarlm)
+```
+
+```{r}
+nd_489 <- boston_489
+nd_489$PTRATIO <- nd_489$PTRATIO + 1
+OLS_489 <- lm(form, data=boston_489)
+fitted <- predict(OLS_489)
+nd_fitted <- predict(OLS_489, newdata=nd_489)
+c(Prediction=unname(coef(OLS_489)[12]), "Unit increment PTRATIO prediction"=mean(nd_fitted - fitted))
+```
+
+
+```{r}
+fitted <- predict(SLM_489)
+nd_fitted <- predict(SLM_489, newdata=nd_489, listw=lw_q_489, zero.policy=TRUE, legacy=FALSE)
+c(Prediction=unname(coef_SLM_489[13]), "Unit increment PTRATIO prediction"=mean(nd_fitted - fitted))
+```
+```{r}
+nd <- boston_506[is.na(boston_506$median),]
+t0 <- exp(predict(SDEM_489, newdata=nd, listw=lw_q, pred.type="TS", zero.policy=TRUE))
+suppressWarnings(t1  <- exp(predict(SDEM_489, newdata=nd, listw=lw_q, pred.type="KP2", zero.policy=TRUE)))
+suppressWarnings(t2  <- exp(predict(SDEM_489, newdata=nd, listw=lw_q, pred.type="KP5", zero.policy=TRUE)))
+data.frame(fit_TS=t0[,1], fit_KP2=c(t1), fit_KP5=c(t2), censored=boston_506$censored[as.integer(attr(t0, "region.id"))])
+```
+
 
 [@goulardetal:17]
 
