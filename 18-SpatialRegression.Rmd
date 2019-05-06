@@ -224,20 +224,31 @@ Handling measurement error in this or similar ways is one of the benefits of GMM
 
 (draft - a comparative piece is being written for submission in about two months)
 
-The Spatial Econometrics Library is part of the extensive Matlab code repository at https://www.spatial-econometrics.com/ and documented in LeSage and Pace [-@lesage+pace:09]. The Google Summer of Coding project in 2011 by Abhirup Mallik mentored by Virgilio Gómez-Rubio yielded translations of some of the model fitting functions for SEM, SDEM, SLM, SDM, SAC and GNM from the Matlab code. These have now been added to **spatialreg** as `spBreg_err()`, `spBreg_lag()` and `spBreg_sac()` with `Durbin=` arguments to handle the inclusion of spatially lagged covariates. As yet, heteroskedastic disturbances are not accommodated. The functions return `"mcmc"` objects as specified in the **coda** package, permitting the use of tools from **coda** for handling model output. The default burnin is 500 draws, followed by default 2000 draws returned, but these values and many others may be set through the `control=` list argument. Fitting the SDEM model for the output zones takes about an order of magnitude longer than using ML, but there is more work to do subsequently, and this difference scales more in the number of covariates than observations.
+The Spatial Econometrics Library is part of the extensive Matlab code repository at https://www.spatial-econometrics.com/ and documented in LeSage and Pace [-@lesage+pace:09]. The Google Summer of Coding project in 2011 by Abhirup Mallik mentored by Virgilio Gómez-Rubio yielded translations of some of the model fitting functions for SEM, SDEM, SLM, SDM, SAC and GNM from the Matlab code. These have now been added to **spatialreg** as `spBreg_err()`, `spBreg_lag()` and `spBreg_sac()` with `Durbin=` arguments to handle the inclusion of spatially lagged covariates. As yet, heteroskedastic disturbances are not accommodated. The functions return `"mcmc"` objects as specified in the **coda** package, permitting the use of tools from **coda** for handling model output. The default burnin is 500 draws, followed by default 2000 draws returned, but these values and many others may be set through the `control=` list argument. Fitting the SDEM model for the output zones takes about an order of magnitude longer than using ML, but there is more work to do subsequently, and this difference scales more in the number of samples than covariates or observations.
 
 ```{r}
 system.time(SDEM_94B <- spBreg_err(form, data=boston_94, listw=lw_q_94, Durbin=TRUE))
 ```
-Most time in the ML case using eigenvalues is taken by log determinant setup and optimization:
+
+```{r}
+system.time(SDEM_489B <- spBreg_err(form, data=boston_489, listw=lw_q_489, Durbin=TRUE, zero.policy=TRUE))
+```
+Most time in the ML case using eigenvalues is taken by log determinant setup and optimization, and by dense matrix asymptotic standard errors if chosen (always chosen with default `"eigen"` log determinant method):
 
 ```{r}
 t(errorsarlm(form, data=boston_94, listw=lw_q_94, Durbin=TRUE)$timings[,2])
+```
+```{r}
+t(errorsarlm(form, data=boston_489, listw=lw_q_489, Durbin=TRUE, zero.policy=TRUE)$timings[,2])
 ```
 while in the MCMC case, the default use of Spatial Econometric Toolbox gridded log determinants and obviously sampling takes most time:
 
 ```{r}
 t(attr(SDEM_94B, "timings")[ , 3])
+```
+
+```{r}
+t(attr(SDEM_489B, "timings")[ , 3])
 ```
 However, as we will see shortly, inference from model impacts may need sampling (where the spatially lagged response is included in the model), and in the case of MCMC models, the samples have already been drawn.
 
@@ -273,14 +284,36 @@ W <- as(lw_q_94, "CsparseMatrix")
 ```
 Why are we extracting the real part of the values returned by `eigs()`? Since `nb_q_94` is symmetric, the row-standardized object `lw_q_94` is symmetric by similarity, a result known since Ord [-@ord:75]; consequently, we can take the real part without concern. Had the underlying neighbour relationships not been symmetric, we should be more careful.
 
-The baseline log determinant term as given by Ord [@ord:75] for a coefficient value proposed in sampling or during numerical optimization is:
+The baseline log determinant term as given by Ord [@ord:75] for a coefficient value proposed in sampling or during numerical optimization; this extract matches the `"eigen"` method (with or without `control=list(pre_eig=...)"`):
 
 ```{r}
 coef <- 0.5
 sum(log(1 - coef * eigs_94))
 ```
+Using sparse matrix functions from **Matrix**, the LU decomposition can be used for asymmetric matrices; this extract matches the `"LU"` method:
 
+```{r}
+I <- Diagonal(nrow(boston_94))
+LU <- lu(I - coef * W)
+dU <- abs(diag(slot(LU, "U")))
+sum(log(dU))
+```
+and Cholesky decomposition for symmetric matrices, with `similar.listw()` used to handle asymmetric weights that are similar to symmetric. The default value od `super` allows the underlying **Matrix** code to choose between supernodal or simplicial decomposition; this extract matches the `"Matrix_J"` method:
 
+```{r}
+W <- as(similar.listw(lw_q_94), "CsparseMatrix")
+super <- as.logical(NA)
+cch <- Cholesky((I - coef * W), super=super)
+c(2 * determinant(cch, logarithm = TRUE)$modulus)
+```
+The `"Matrix"` and `"spam_update"` methods are to be preferred as they pre-compute the fill-reducing permutation of the decomposition since the weights do not change for different values of the coefficient. 
+
+Maximum likelihood model fitting functions in **spatialreg** and **splm** use `jacobianSetup()` to populate `env=` environment with intermediate objects needed to find log determinants during optimization. Passing environments to objective functions is efficient because they are passed by reference rather than value. The `con=` argument passes through the populated control list, containing default values unless the key-value pairs were given in the function call (`pre_eig=` is extracted separately). The `which=` argument is `1` by default, but will also take `2` in SAC and GNM models.
+
+```{r}
+args(jacobianSetup)
+```
+As yet the Bayesian models are limited to control argument `ldet_method="SE_classic"` at present, using `"LU"` to generate a coarse grid of control argument `nrho=200L` log determinant values in the interval, spline interpolated to a finer grid of length control argument `interpn=2000L`, from which griddy Gibbs samples are drawn. It is hoped to add facilities to choose alternative methods in the future. This would offer possibilities to move beyond griddy Gibbs, but using gridded log determinant values seems reasonable at present.
 
 ### Impacts
 
