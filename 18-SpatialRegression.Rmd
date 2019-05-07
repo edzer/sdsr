@@ -434,28 +434,40 @@ data.frame(fit_TS=t0[,1], fit_KP2=c(t1), fit_KP5=c(t2), censored=boston_506$cens
 
 There is a large literature in spatial epidemiology using CAR and ICAR models in spatially structured random effects. These extend to multilevel models, in which the spatially structured random effects may apply at different levels of the model [@bivandetal17a]. 
 
+
+```{r, echo = TRUE, mysize=TRUE, size='\\tiny'}
+boston_94a <- st_cast(aggregate(boston_489[,"NOX_ID"], list(boston_489$NOX_ID), unique), "MULTIPOLYGON")
+nb_q_94a <- poly2nb(boston_94a)
+NOX_ID_no_neighs <- boston_94a$NOX_ID[which(card(nb_q_94a) == 0)]
+boston_487 <- boston_489[is.na(match(boston_489$NOX_ID, NOX_ID_no_neighs)),]
+boston_93 <- st_cast(aggregate(boston_487[, "NOX_ID"], list(ids = boston_487$NOX_ID), unique), "MULTIPOLYGON")
+row.names(boston_93) <- as.character(boston_93$NOX_ID)
+nb_q_93 <- poly2nb(boston_93, row.names=unique(as.character(boston_93$NOX_ID)))
+```
+
+
 ```{r}
 library(lme4)
-MLM <- lmer(update(form, . ~ . + (1 | NOX_ID)), data=boston_489, REML=FALSE)
+MLM <- lmer(update(form, . ~ . + (1 | NOX_ID)), data=boston_487, REML=FALSE)
 ```
 
 ```{r}
-boston_94$MLM_re <- ranef(MLM)[[1]][,1]
+boston_93$MLM_re <- ranef(MLM)[[1]][,1]
 ```
 
 
 ```{r}
 library(Matrix)
 suppressMessages(library(MatrixModels))
-Delta <- as(model.Matrix(~ -1 + as.factor(NOX_ID), data=boston_489, sparse=TRUE), "dgCMatrix")
-M <- as(nb2listw(nb_q_94, style="B"), "CsparseMatrix")
+Delta <- as(model.Matrix(~ -1 + as.factor(NOX_ID), data=boston_487, sparse=TRUE), "dgCMatrix")
+M <- as(nb2listw(nb_q_93, style="B"), "CsparseMatrix")
 ```
 
 
 ```{r}
 suppressPackageStartupMessages(library(hglm))
-y_hglm <- log(boston_489$median)
-X_hglm <- model.matrix(OLS_489)
+y_hglm <- log(boston_487$median)
+X_hglm <- model.matrix(lm(form, data=boston_487))
 suppressWarnings(HGLM_iid <- hglm(y=y_hglm, X=X_hglm, Z=Delta))
 ```
 
@@ -464,20 +476,41 @@ suppressWarnings(HGLM_sar <- hglm(y=y_hglm, X=X_hglm, Z=Delta, rand.family=SAR(D
 ```
 
 ```{r}
-boston_94$HGLM_re <- unname(HGLM_iid$ranef)
-boston_94$HGLM_ss <- HGLM_sar$ranef[,1]
+boston_93$HGLM_re <- unname(HGLM_iid$ranef)
+boston_93$HGLM_ss <- HGLM_sar$ranef[,1]
 ```
 
 
 ```{r}
 library(HSAR)
-HSAR <- hsar(form, data=boston_489, W=NULL, M=M, Delta=Delta, burnin=500, Nsim=2500, thinning=1)
+suppressWarnings(HSAR <- hsar(form, data=boston_487, W=NULL, M=M, Delta=Delta, burnin=500, Nsim=2500, thinning=1))
 ```
 
 ```{r echo = TRUE, mysize=TRUE, size='\\tiny'}
-boston_94$HSAR_ss <- HSAR$Mus[1,]
+boston_93$HSAR_ss <- HSAR$Mus[1,]
 ```
 
+
+```{r}
+suppressPackageStartupMessages(library(R2BayesX))
+BX_iid <- bayesx(update(form, . ~ . + sx(NOX_ID, bs="re")), family="gaussian",
+data=boston_487, method="MCMC", iterations=12000, burnin=2000, step=2, seed=123)
+```
+
+```{r}
+boston_93$BX_re <- BX_iid$effects["sx(NOX_ID):re"][[1]]$Mean
+```
+
+```{r}
+RBX_gra <- nb2gra(nb_q_93)
+BX_mrf <- bayesx(update(form, . ~ . + sx(NOX_ID, bs="mrf", map=RBX_gra)), 
+family="gaussian", data=boston_487, method="MCMC", iterations=12000, burnin=2000, 
+step=2, seed=123)
+```
+
+```{r echo = TRUE, mysize=TRUE, size='\\tiny'}
+boston_93$BX_ss <- BX_mrf$effects["sx(NOX_ID):mrf"][[1]]$Mean
+```
 
 
 
