@@ -319,48 +319,59 @@ As yet the Bayesian models are limited to control argument `ldet_method="SE_clas
 
 Global impacts have been seen as crucial for reporting results from fitting models including the spatially lagged response (SLM, SDM, SAC. GNM) for over ten years [@lesage+pace:09]. Extension to other models including spatially lagged covariates (SLX, SDEM) has followed [@elhorst:10; @bivand:12; @halleck-vega+elhorst:15]. In order to infer from the impacts, linear combination may be used for SLX and SDEM models. For SLM, SDM, SAC and GNM models fitted with maximum likelihood or GMM, the variance-covariance matrix of the coefficients is available, and can be used to make random draws from a multivariate Normal distribution with mean set to coefficient values and variance to the estimated variance-covariance matrix. For these models fitted using Bayesian methods, draws are already available. In the SDEM case, the draws on the regression coefficients of the unlagged covariates represent direct impacts, and draws on the coefficients of the spatially lagged covariates represent indirect impacts, and their by-draw sums the total impacts.
 
+Impacts are calculated using model object class specific `impacts()` methods, here taking the method for `"sarlm"` objects as an example. In the **sphet** package, the impacts method for `"gstsls"` uses the **spatialreg** `impacts()` framework, as does the **splm** package for `"splm"` fitted model objects. `impacts()` methods require either a `tr=` - a vector of traces of the power series of the weights object typically computed with `trW()` or a `listw=` argument. If `listw=` is given, dense matrix methods are used. The `evalues=` argument is experimental, does not yet work for all model types, and takes the eigenvalues of the weights matrix. The `R=` argument gives the number of samples to be taken from the fitted model. The `Q=` permits the decomposition of impacts to components of the power series of the weights matrix [@lesage+pace:09].
+
 ```{r}
 args(impacts.sarlm)
 ```
+The summary method for the output of `impacts()` methods where inference from samples was requested by default uses the `summary()` method for `"mcmc"` objects defined in the **coda** package. It can instead report just matrices of standard errors, z-values and p-values by setting `zstats=` and `short=` to `TRUE`.
 
 ```{r}
 args(summary.lagImpact)
 ```
-
+Since sampling is not required for inference for SLX and SDEM models, linear combination is used for models fitted using maximum likelihood; results are shown here for the air pollution variable only. The literature has not yet resolved the question of how to report model output, as each covariate is now represented by three impacts. Where spatially lagged covariates are included, two coefficients are replaced by three impacts.
 
 ```{r}
 sum_imp_94_SDEM <- summary(impacts(SDEM_94))
 rbind(Impacts=sum_imp_94_SDEM$mat[5,], SE=sum_imp_94_SDEM$semat[5,])
 ```
+The impacts from the same model fitted by MCMC are very similar:
 
 ```{r}
 sum_imp_94_SDEM_B <- summary(impacts(SDEM_94B))
 rbind(Impacts=sum_imp_94_SDEM_B$mat[5,], SE=sum_imp_94_SDEM_B$semat[5,])
 ```
+as also are those from the SLX model. In the SLX and SDEM models, the direct impacts are the consequences for the response of changes in air pollution in the same observational entity, and the indirect (local) impacts are the consequences for the response of changes in air pollution in neighbouring observational entities.
 
 ```{r}
 sum_imp_94_SLX <- summary(impacts(SLX_94))
 rbind(Impacts=sum_imp_94_SLX$mat[5,], SE=sum_imp_94_SLX$semat[5,])
 ```
+In contrast to local indirect impacts in SLX and SDEM models, global indirect impacts are found in models including the spatially lagged response. For purposes of exposition, let us fit an SLM:
 
 ```{r}
 SLM_489 <- lagsarlm(form, data=boston_489, listw=lw_q_489, zero.policy=TRUE)
 ```
+Traces of the first `m=` matrices of the power series in the spatial weights are pre-computed to speed up inference from samples from the fitted model, and from existing MCMC samples [@lesage+pace:09]. The traces can also be used in other contexts too, so their pre-computation may be worthwhile anyway. The `type=` argument is `"mult"` by default, but may also ne set to `"MC"` for Monte Carlo simulation or `"moments"` using a space-saving looping algorithm.
 
+```{r}
+args(trW)
+```
 ```{r}
 W <- as(lw_q_489, "CsparseMatrix")
 tr_489 <- trW(W)
-SLM_489_imp <- impacts(SLM_489, tr=tr_489, R=2000)
-t(attr(SLM_489_imp, "timings")[,2])
+str(tr_489)
 ```
-
+In this case, the spatial process in the response is not strong, so the global indirect impacts (here for the air pollution variable) are weak. 
 
 ```{r}
+SLM_489_imp <- impacts(SLM_489, tr=tr_489, R=2000)
 SLM_489_imp_sum <- summary(SLM_489_imp, short=TRUE, zstats=TRUE)
 res <- rbind(Impacts=sapply(SLM_489_imp$res, "[", 5), SE=SLM_489_imp_sum$semat[5,])
 colnames(res) <- c("Direct", "Indirect", "Total")
 res
 ```
+Of more interest is trying to reconstruct the direct and total impacts using dense matrix methods; the direct global impacts are the mean of the diagonal of the dense impacts matrix, and the total global impacts are the sum of all matrix elements divided by the number of observations. The direct impacts agree, but the total impacts differ slightly.
 
 ```{r}
 coef_SLM_489 <- coef(SLM_489)
@@ -369,14 +380,26 @@ S_W <- solve(IrW)
 S_NOX_W <- S_W %*% (diag(489) * coef_SLM_489[7])
 c(Direct=mean(diag(S_NOX_W)), Total=sum(S_NOX_W)/489)
 ```
+This bare-bones approach corresponds to using the `listw=` argument, and as expected gives the same output.
 
+```{r}
+sapply(impacts(SLM_489, listw=lw_q_489), "[", 5)
+```
+The experimental `evalues=` approach which is known to be numerically exact by definition gives the same results as the matrix power series trace approach, so the sight difference may be attributed to the consequences of inverting the spatial process matrix.
 
+```{r}
+sapply(impacts(SLM_489, evalues=eigs_489), "[", 5)
+```
+Impacts are crucial to the interpretation of Durbin models including spatially lagged covariates and models including the spatially lagged response. Tools to calculate impacts and their inferential bases are now available, and should be employed, but as yet some implementation details are under development and ways of presenting results in tabular form have not reached maturity.
 
 ### Predictions
+
+We'll use a `predict()` method for `"sarlm"` objects to double-check impacts, here for the pupil-teacher ratio (`PTRATIO`). The method was re-written by Martin Gubri based on Goulard, Laurent and Thomas-Agnan [-@goulardetal:17]. The `pred.type=` argument specifies the prediction strategy among those presented in the article.
 
 ```{r}
 args(predict.sarlm)
 ```
+First we'll increment `PTRATIO` by one to show that, using least squares, the mean difference between predictions from the incremented new data and fitted values is equal to the regression coefficient.
 
 ```{r}
 nd_489 <- boston_489
@@ -384,15 +407,19 @@ nd_489$PTRATIO <- nd_489$PTRATIO + 1
 OLS_489 <- lm(form, data=boston_489)
 fitted <- predict(OLS_489)
 nd_fitted <- predict(OLS_489, newdata=nd_489)
-c(Prediction=unname(coef(OLS_489)[12]), "Unit increment PTRATIO prediction"=mean(nd_fitted - fitted))
+all.equal(unname(coef(OLS_489)[12]), mean(nd_fitted - fitted))
 ```
-
+In models including the spatially lagged response, and when the spatial coefficient in different from zero, this is not the case in general, and is why we need `impacts()` methods. The difference here is not great, but neither is it zero, and needs to be handled.
 
 ```{r}
 fitted <- predict(SLM_489)
-nd_fitted <- predict(SLM_489, newdata=nd_489, listw=lw_q_489, zero.policy=TRUE, legacy=FALSE)
-c(Prediction=unname(coef_SLM_489[13]), "Unit increment PTRATIO prediction"=mean(nd_fitted - fitted))
+nd_fitted <- predict(SLM_489, newdata=nd_489, listw=lw_q_489, pred.type="TS", zero.policy=TRUE)
+all.equal(unname(coef_SLM_489[13]), mean(nd_fitted - fitted))
 ```
+In the Boston tracts data set, 17 observations of median house values, the response, are censored. Using these as an example and comparing some `pred.type=` variants for the SDEM model and predicting out-of-sample, we can see that there are differences, suggesting that this is a fruitful area for study. There have been a number of alternative proposals for handling missing variables [@GOMEZRUBIO2015116; @suesse:18]. Another reason for increasing attention on prediction is that it is fundamental for machine learning approaches, in which prediction for validation and test data sets drives model specification choice. The choice of training and other data sets with dependent spatial data remains an open question, and is certainly not as simple as with independent data.
+
+Here, we'll list the predictions for the censored tract observations using three different precistion types, taking the exponent to get back to the USD median house values.
+
 ```{r}
 nd <- boston_506[is.na(boston_506$median),]
 t0 <- exp(predict(SDEM_489, newdata=nd, listw=lw_q, pred.type="TS", zero.policy=TRUE))
@@ -400,9 +427,21 @@ suppressWarnings(t1  <- exp(predict(SDEM_489, newdata=nd, listw=lw_q, pred.type=
 suppressWarnings(t2  <- exp(predict(SDEM_489, newdata=nd, listw=lw_q, pred.type="KP5", zero.policy=TRUE)))
 data.frame(fit_TS=t0[,1], fit_KP2=c(t1), fit_KP5=c(t2), censored=boston_506$censored[as.integer(attr(t0, "region.id"))])
 ```
+```{r}
+SDEM_489w <- errorsarlm(form, data=boston_489, listw=lw_q_489, weights=units, Durbin=TRUE, zero.policy=TRUE, control=list(pre_eig=eigs_489))
+t0w <- exp(predict(SDEM_489w, newdata=nd, listw=lw_q, pred.type="TS", zero.policy=TRUE))
+t0w[,1]
+```
+
+```{r}
+SEM_t0 <- exp(predict(SEM_489, newdata=nd, listw=lw_q, pred.type="TS", zero.policy=TRUE))
+SEM_t0[,1]
+```
 
 
-[@goulardetal:17]
+
+
+
 
 ## Markov random field and multilevel models with spatial weights
 
