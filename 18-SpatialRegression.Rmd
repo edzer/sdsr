@@ -437,12 +437,12 @@ There is a large literature in spatial epidemiology using CAR and ICAR models in
 
 ```{r, echo = TRUE, mysize=TRUE, size='\\tiny'}
 boston_94a <- st_cast(aggregate(boston_489[,"NOX_ID"], list(boston_489$NOX_ID), unique), "MULTIPOLYGON")
-nb_q_94a <- poly2nb(boston_94a)
-NOX_ID_no_neighs <- boston_94a$NOX_ID[which(card(nb_q_94a) == 0)]
+nb_q_94a <- spdep::poly2nb(boston_94a)
+NOX_ID_no_neighs <- boston_94a$NOX_ID[which(spdep::card(nb_q_94a) == 0)]
 boston_487 <- boston_489[is.na(match(boston_489$NOX_ID, NOX_ID_no_neighs)),]
 boston_93 <- st_cast(aggregate(boston_487[, "NOX_ID"], list(ids = boston_487$NOX_ID), unique), "MULTIPOLYGON")
 row.names(boston_93) <- as.character(boston_93$NOX_ID)
-nb_q_93 <- poly2nb(boston_93, row.names=unique(as.character(boston_93$NOX_ID)))
+nb_q_93 <- spdep::poly2nb(boston_93, row.names=unique(as.character(boston_93$NOX_ID)))
 ```
 
 
@@ -460,9 +460,11 @@ boston_93$MLM_re <- ranef(MLM)[[1]][,1]
 library(Matrix)
 suppressMessages(library(MatrixModels))
 Delta <- as(model.Matrix(~ -1 + as.factor(NOX_ID), data=boston_487, sparse=TRUE), "dgCMatrix")
-M <- as(nb2listw(nb_q_93, style="B"), "CsparseMatrix")
+M <- as(spdep::nb2listw(nb_q_93, style="B"), "CsparseMatrix")
 ```
 
+
+[@alam-ronnegard-shen:2015]
 
 ```{r}
 suppressPackageStartupMessages(library(hglm))
@@ -481,15 +483,20 @@ boston_93$HGLM_ss <- HGLM_sar$ranef[,1]
 ```
 
 
+[@dong15; @dongetal15]
+
 ```{r}
 library(HSAR)
 suppressWarnings(HSAR <- hsar(form, data=boston_487, W=NULL, M=M, Delta=Delta, burnin=500, Nsim=2500, thinning=1))
 ```
 
-```{r echo = TRUE, mysize=TRUE, size='\\tiny'}
+```{r}
 boston_93$HSAR_ss <- HSAR$Mus[1,]
 ```
 
+
+
+[@umlaufetal:15]
 
 ```{r}
 suppressPackageStartupMessages(library(R2BayesX))
@@ -508,25 +515,46 @@ family="gaussian", data=boston_487, method="MCMC", iterations=12000, burnin=2000
 step=2, seed=123)
 ```
 
-```{r echo = TRUE, mysize=TRUE, size='\\tiny'}
+```{r}
 boston_93$BX_ss <- BX_mrf$effects["sx(NOX_ID):mrf"][[1]]$Mean
 ```
 
 
-
-(Unsure how much to add here)
-
-[@umlaufetal:15]
-
 [@wood:17]
 
+```{r}
+library(mgcv)
+names(nb_q_93) <- as.character(boston_93$NOX_ID)
+boston_487$NOX_ID <- as.factor(boston_487$NOX_ID)
+GAM_MRF <- gam(update(form, . ~ . + s(NOX_ID, bs="mrf", xt=list(nb=nb_q_93))), data=boston_487, method="REML")
+```
 
-(https://github.com/paul-buerkner/brms/issues/6
-https://www.rdocumentation.org/packages/brms/versions/2.8.0/topics/cor_sar)
-[@buerkner:17; @buerkner:18]
+```{r}
+boston_93$GAM_ss <- aggregate(predict(GAM_MRF, type="terms", se=FALSE)[,14], list(boston_487$NOX_ID), mean)$x
+```
 
-(cor_car, cor_sar)
 
-[@alam-ronnegard-shen:2015]
+```{r}
+res <- rbind(iid_lmer=summary(MLM)$coefficients[6, 1:2], iid_hglm=summary(HGLM_iid)$FixCoefMat[6, 1:2], iid_BX=BX_iid$fixed.effects[6, 1:2], sar_hsar=c(HSAR$Mbetas[1, 6], HSAR$SDbetas[1, 6]), mrf_BX=BX_mrf$fixed.effects[6, 1:2], mrf_GAM=c(summary(GAM_MRF)$p.coeff[6], summary(GAM_MRF)$se[6]))
+```
 
-[@dong15; @dongetal15]
+```{r multi-level_coefs, out.width='100%', fig.cap="Polish municipality types 2015", fig=TRUE}
+suppressPackageStartupMessages(library(ggplot2))
+df_res <- as.data.frame(res)
+names(df_res) <- c("mean", "sd")
+limits <- aes(ymax = mean + qnorm(0.975)*sd, ymin=mean + qnorm(0.025)*sd)
+df_res$model <- row.names(df_res)
+p <- ggplot(df_res, aes(y=mean, x=model)) + geom_point() + geom_errorbar(limits) + geom_hline(yintercept = 0, col="#EB811B") + coord_flip()
+p + ggtitle("NOX coefficients and error bars") + theme(plot.background = element_rect(fill = "transparent",colour = NA), legend.background = element_rect(colour = NA, fill = "transparent"))
+```
+
+```{r multi-level_maps_1, out.width='100%', fig.cap="IID random effects", fig=TRUE}
+library(tmap)
+tm_shape(boston_93) + tm_fill(c("MLM_re", "HGLM_re", "BX_re"), midpoint=0, title="IID")  + tm_facets(free.scales=FALSE) + tm_borders(lwd=0.3, alpha=0.4) + tm_layout(panel.labels=c("MLM", "HGLM", "BX"))
+```
+
+
+```{r multi-level_maps_2, out.width='100%', fig.cap="Spatially structured random effects", fig=TRUE}
+tm_shape(boston_93) + tm_fill(c("HGLM_ss", "HSAR_ss", "BX_ss", "GAM_ss"), midpoint=0, title="SS")  + tm_facets(free.scales=FALSE) + tm_borders(lwd=0.3, alpha=0.4) + tm_layout(panel.labels=c("HGLM SAR", "HSAR SAR", "BX MRF", "GAM MRF"))
+```
+
