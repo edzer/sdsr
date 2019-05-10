@@ -10,7 +10,9 @@ so we have to predict it for unobserved locations.
 In this chapter we will show simple approaches for handling
 geostatistical data, will demonstrate simple interpolation methods,
 explore modelling spatial correlation, spatial prediction and
-simulation.
+simulation. We will use package `gstat` [@R-gstat, @gstatcg],
+which offers a fairly wide palette of models and options for
+geostatistical analysis.
 
 ## Preparing the air quality dataset
 
@@ -60,7 +62,7 @@ library(xts)
 r = lapply(r, function(f) xts(f$Concentration, f$t))
 aq = do.call(cbind, r)
 ```
-We can now select those stations for which we have 75\% of the hourly values measured, i.e. drop those with more than 25\% hourly missing values:
+We can now select those stations for which we have 75\% of the hourly values measured, i.e. drop those with more than 25\% hourly values missing:
 ```{r}
 # remove stations with more than 75% missing values:
 sel = apply(aq, 2, function(x) sum(is.na(x)) < 0.75 * 365 * 24)
@@ -91,13 +93,13 @@ aqsel = aqsel[, sel]
 
 We can compute station means, and join these to stations locations by
 ```{r}
-tb = tibble(no2 = apply(aqsel, 2, mean, na.rm = TRUE), station_european_code = colnames(aqsel))
+tb = tibble(NO2 = apply(aqsel, 2, mean, na.rm = TRUE), station_european_code = colnames(aqsel))
 crs = 32632
 right_join(a2.sf, tb) %>% st_transform(crs) -> no2.sf 
 # load German boundaries
 data(air, package = "spacetime")
 de <- st_transform(st_as_sf(DE_NUTS1), crs)
-ggplot() + geom_sf(data = de) +  geom_sf(data = no2.sf, mapping = aes(col = no2))
+ggplot() + geom_sf(data = de) +  geom_sf(data = no2.sf, mapping = aes(col = NO2))
 ```
 
 ## Sample variogram 
@@ -113,16 +115,16 @@ with $N(h_i)$ the number of sample pairs available for distance interval $h_i$.
 Function `gstat::variogram` computes sample variograms.
 ```{r}
 library(gstat)
-v = variogram(no2~1, no2.sf)
+v = variogram(NO2~1, no2.sf)
 plot(v, plot.numbers = TRUE)
 ```
 This chooses default maximum distance (`cutoff`: one third of the length of the bounding box diagonal) and (constant) interval widths (`width`: cutoff divided by 15). These defaults can be changed, e.g. by
 ```{r}
 library(gstat)
-v0 = variogram(no2~1, no2.sf, cutoff = 100000, width = 10000)
+v0 = variogram(NO2~1, no2.sf, cutoff = 100000, width = 10000)
 plot(v0, plot.numbers = TRUE)
 ```
-Note that the formula `no2~1` is used to select the variable of interest from the data file (`no2.sf`), and to specify the mean model: `~1` refers to an intercept-only (unknown, constant mean) model.
+Note that the formula `NO2~1` is used to select the variable of interest from the data file (`NO2`), and to specify the mean model: `~1` refers to an intercept-only (unknown, constant mean) model.
 
 ## Fitting variogram models
 
@@ -151,6 +153,7 @@ dy = seq(bb[4], bb[2], -10000) # decreases!
 st_as_stars(matrix(0, length(dx), length(dy))) %>%
   st_set_dimensions(1, dx) %>%
   st_set_dimensions(2, dy) %>%
+  st_set_dimensions(names = c("x", "y")) %>%
   st_set_crs(crs) -> grd
 i = st_intersects(grd, de)
 grd[[1]][lengths(i)==0] = NA
@@ -161,7 +164,7 @@ grd
 Then, we can krige by using `gstat::krige`, with the model for the trend, the data,
 the prediction grid, and the variogram model:
 ```{r}
-k = krige(no2~1, no2.sf, grd, v.m)
+k = krige(NO2~1, no2.sf, grd, v.m)
 ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) + 
 	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
 	geom_sf(data = no2.sf)
@@ -169,22 +172,22 @@ ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) +
 
 ## Areal means: block kriging
 ```{r}
-a = aggregate(no2.sf["no2"], de, mean)
-b = krige(no2~1, no2.sf, de, v.m)
-b$sample = a$no2
+a = aggregate(no2.sf["NO2"], de, mean)
+b = krige(NO2~1, no2.sf, de, v.m)
+b$sample = a$NO2
 b$kriging = b$var1.pred
-b %>% select(sample, kriging) %>% gather(var, no2, -geometry) -> b2
-ggplot() + geom_sf(data = b2, mapping = aes(fill = no2)) + facet_wrap(~var) +
+b %>% select(sample, kriging) %>% gather(var, NO2, -geometry) -> b2
+ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +
 	 scale_fill_gradientn(colors = sf.colors(20))
 ```
 
 ```{r}
 SE = function(x) sqrt(var(x)/length(x))
-a = aggregate(no2.sf["no2"], de, SE)
-b$sample = a$no2
+a = aggregate(no2.sf["NO2"], de, SE)
+b$sample = a$NO2
 b$kriging = sqrt(b$var1.var)
-b %>% select(sample, kriging) %>% gather(var, no2, -geometry) -> b2
-ggplot() + geom_sf(data = b2, mapping = aes(fill = no2)) + facet_wrap(~var) +
+b %>% select(sample, kriging) %>% gather(var, NO2, -geometry) -> b2
+ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +
 	 scale_fill_gradientn(colors = sf.colors(20))
 ```
 
@@ -192,13 +195,13 @@ ggplot() + geom_sf(data = b2, mapping = aes(fill = no2)) + facet_wrap(~var) +
 
 ```{r}
 library(viridis)
-s = krige(no2~1, no2.sf, grd, v.m, nmax = 30, nsim = 10)
-ggplot() + geom_stars(data = s[,,,1:6]) + facet_wrap(~sample) +
-	coord_equal() +   scale_fill_viridis() + 
+s = krige(NO2~1, no2.sf, grd, v.m, nmax = 30, nsim = 10)
+g = ggplot() + coord_equal() +
+	scale_fill_viridis() +
     theme_void() +
-    scale_x_discrete(expand=c(0,0)) +
-    scale_y_discrete(expand=c(0,0))
-
+	scale_x_discrete(expand=c(0,0)) +
+	scale_y_discrete(expand=c(0,0))
+g + geom_stars(data = s[,,,1:6]) + facet_wrap(~sample)
 ```
 
 ## Trend models
@@ -236,20 +239,23 @@ Now we have the population counts per grid cell in `a`. To get to
 population density, we need to find the area of each cell; for cells
 crossing the country border, this will be less than 10 x 10 km:
 ```{r}
-grd$ID = 1:prod(dim(grd))
+grd$ID = 1:prod(dim(grd)) # so we can find out later which grid cell we have
 ii = st_intersects(grd["ID"], st_cast(st_union(de), "MULTILINESTRING"))
 grd_sf = st_as_sf(grd["ID"], na.rm = FALSE)[lengths(ii) > 0,]
 iii = st_intersection(grd_sf, st_union(de))
 grd$area = st_area(grd)[[1]] + units::set_units(grd$A1, m^2) # NA's
 grd$area[iii$ID] = st_area(iii)
 ```
+Instead of doing the two-stage procedure above: first finding cells that
+have a border crossing it, then computing its area, we could also directly
+use `st_intersection` on all cells, but that takes considerably longer.
 From the counts and areas we can compute densities, and verify totals:
 ```{r}
 grd$pop_dens = a$Einwohner / grd$area
-mean(grd$pop_dens, na.rm = TRUE) * sum(st_area(de)) # verify:
+sum(grd$pop_dens * grd$area, na.rm = TRUE) # verify
 sum(b$Einwohner)
-ggplot() + geom_stars(data = grd, aes(fill = sqrt(pop_dens), x = x, y = y))
-``
+g + geom_stars(data = grd, aes(fill = sqrt(pop_dens), x = x, y = y))
+```
 We need to divide the number of inhabitants by the number of 100
 m grid points contributing to it, in order to convert population
 counts into population density.
@@ -259,32 +265,103 @@ we can use
 ```{r}
 (a = aggregate(grd["pop_dens"], no2.sf, mean))
 no2.sf$pop_dens = st_as_sf(a)[[1]]
-plot(no2~sqrt(pop_dens), no2.sf)
-abline(lm(no2~sqrt(pop_dens), no2.sf))
-summary(lm(no2~sqrt(pop_dens), no2.sf))
+summary(lm(NO2~sqrt(pop_dens), no2.sf))
+```
+and the corresponding scatterplot is shown in \@ref(fig:no2scat).
+```{r no2scat, out.width = '50%', fig.cap="Scatter plot of 2017 annual mean NO2 concentration against population density, for rural background air quality stations", eval=TRUE, fig=TRUE, echo=FALSE}
+plot(NO2~sqrt(pop_dens), no2.sf)
+abline(lm(NO2~sqrt(pop_dens), no2.sf))
 ```
 
 Prediction under this new model involves first modelling a residual
 variogram, by
 ```{r}
 no2.sf = no2.sf[!is.na(no2.sf$pop_dens),]
-vr = variogram(no2~sqrt(pop_dens), no2.sf)
+vr = variogram(NO2~sqrt(pop_dens), no2.sf)
 vr.m = fit.variogram(vr, vgm(1, "Exp", 50000, 1))
 plot(vr, vr.m, plot.numbers = TRUE)
 ```
-and subsequently, kriging is done by
+and subsequently, kriging prediction is done by
 ```{r}
-kr = krige(no2~sqrt(pop_dens), no2.sf, grd["pop_dens"], vr.m)
-k$kriging     = k$var1.pred
-k$kriging_res = kr$var1.pred
-km = merge(k[c("kriging", "kriging_res")])
-ggplot() + geom_stars(data = km, aes(fill = X, x = x, y = y)) + 
+kr = krige(NO2~sqrt(pop_dens), no2.sf, grd["pop_dens"], vr.m)
+k$kr1 = k$var1.pred
+k$kr2 = kr$var1.pred
+st_redimension(k[c("kr1", "kr2")], 
+	along = list(what = c("kriging", "residual kriging"))) %>%
+	setNames("NO2") -> km
+g + geom_stars(data = km, aes(fill = NO2, x = x, y = y)) + 
 	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
-	geom_sf(data = no2.sf) + facet_wrap(~X1)
+	geom_sf(data = no2.sf) + facet_wrap(~what)
 ```
 where, critically, the `pop_dens` values are now available for
-prediction locations in object `grd`.
+prediction locations in object `grd`.  We see some clear differences:
+the map with population density in the trend follows the extremes of
+the population density rather than those of the measurement stations,
+and has a range that extends that of the former. It should be taken
+with a large grain of salt however, since the stations used were
+filtered for the category "rural background", indicating that they
+represent conditions of lower populations density. The scatter plot
+of Figure \@ref(fig:no2scat) reveals that the the population density
+at the locations of stations is much more limited than that in the
+population density map, and hence the right-hand side map is based on
+strongly extrapolating the relationship shown in \@ref(fig:no2scat).
 
 ## Multivariable geostatistics
 
+Multivariable geostatics involves the _joint_ modelling, prediction
+and simulation of multiple variables, 
+$$Z_1(s) = X_1 \beta_1 + e_1(s)$$
+$$...$$
+$$Z_n(s) = X_n \beta_n + e_n(s).$$
+In addition to having observations, trend models, and variograms
+for each variable, the _cross_ variogram for each pair of residual
+variables, describing the covariance of $e_i(s), e_j(s+h)$,
+is required. If this cross covariance is non-zero, knowledge of
+$e_j(s+h)$ may help predict (or simulate) $e_i(s)$.  This is
+especially true if $Z_j(s)$ is more densely sample than $Z_i(s)$.
+Prediction and simulation under this model are called cokriging
+and cosimulation. Examples using gstat are found when running the
+demo scripts
+```{r eval=FALSE}
+library(gstat)
+demo(cokriging)
+demo(cosimulation)
+```
+
+In case the different variables considered are observed at
+the same set of locations, for instance different air quality
+parameters, then the statistical _gain_ of using cokriging
+as opposed to direct (univariable) kriging is often modest,
+when not negligible. A gain may however be that the prediction
+is truly multivariable: in addition to the prediction vector
+$\hat{Z(s_0)}=(\hat{Z}_1(s_0),...,\hat{Z}_n(s_0))$ we get the full
+covariance matrix of the prediction error [@ver1993multivariable].
+This means for instance that if we are interested in some
+linear combination of $\hat{Z}(s_0)$, such as $\hat{Z}_2(s_0)
+- \hat{Z}_1(s_0)$, that we can get the standard error of that
+combination because we have the correlations between the prediction
+errors.
+
+Although sets of direct and cross variograms can be computed
+and fitted automatically, multivariable geostatistical modelling
+becomes quickly hard to manage when the number of variables gets
+large, because the number of direct and cross variograms required
+is $n(n+1)/2$.
+
+In case different variables refer to the same variable take at
+different time steps, one could use a multivariable (cokriging)
+prediction approach, but this would not allow for e.g. interpolation
+between two time steps. For this, and for handling the case of
+having data observed at many time instances, one can also model
+its variation as a function of continuous space _and_ time, as of
+$Z(s,t)$, which we will do in the next section.
+
 ## Spatiotemporal interpolation
+
+[@RJ-2016-014]
+
+- predict missing values -> multivariate arima would have been enough/better?
+- predict a sequence of hours
+- smooth in between, e.g. by 10-min interpolations
+
+
