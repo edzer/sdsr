@@ -1,36 +1,290 @@
-# Spatial Interpolation and geostatistics
+# Interpolation and Geostatistics
 
-## Load meuse data
+Geostatistics is concerned with the modelling, prediction and
+simulation of spatially continuous phenomena. The typical problem
+is a missing value problem: we observe a property of a phenomenon
+$Z(s)$ at a limited number of sample locations $s_i, i = 1,...,n$, 
+and are interested in the property value at all locations $s_0$, 
+so we have to predict it for unobserved locations.
+
+In this chapter we will show simple approaches for handling
+geostatistical data, will demonstrate simple interpolation methods,
+explore modelling spatial correlation, spatial prediction and
+simulation.
+
+## Preparing the air quality dataset
+
+The dataset we work with is an air quality dataset obtained from
+the European Environmental Agency (EEA). European member states report
+air quality measurements to this Agency. So-called _validated_
+data are quality controlled by member states, and are reported on a
+yearly basis. They form the basis for policy compliancy evaluations.
+
+The EEA's [air quality
+e-reporting](https://www.eea.europa.eu/data-and-maps/data/aqereporting-8)
+website gives access to the data reported by European member states.
+We decided to download hourly (time series) data, which is the data primarily measured.
+A web form helps convert simple selection criteria into an http request. The following URL
+```
+https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&CityName=&Pollutant=8&Year_from=2017&Year_to=2017&Station=&Samplingpoint=&Source=E1a&Output=TEXT&UpdateDate=
+```
+was created to select all validated (`Source=E1a`) $NO_2$
+(`Pollutant=8`) data for 2017 (`Year_from`, `Year_to`) from Germany
+(`CountryCode=DE`).  It returns a text file with a set of URLs to CSV
+files, each containing the hourly values for the whole period for a
+single measurement station. These files were downloaded and converted
+to the right encoding using the `dos2unix` command line utility.
+
+In the following, we will read all the files into a list,
 ```{r}
-# this reloads meuse as data.frame, so
-library(sp)
-demo(meuse, ask = FALSE, echo = FALSE)
-library(sf)
-meuse_sf = st_as_sf(meuse)
+files = list.files("aq", pattern = "*.csv", full.names = TRUE)
+r = lapply(files[-1], function(f) read.csv(f))
+```
+then convert the time variable into a `POSIXct` variable, and time order them
+```{r}
+r = lapply(r, function(f) {
+		f$t = as.POSIXct(f$DatetimeBegin) 
+		f[order(f$t), ] 
+	}
+) 
+```
+and we deselect smaller datasets that do not contain hourly data:
+```{r}
+r = r[sapply(r, nrow) > 1000]
+names(r) =  sapply(r, function(f) unique(f$AirQualityStationEoICode))
+length(r) == length(unique(names(r)))
+```
+and then combine all files using `xts::cbind`, so that they are matched based on time:
+```{r}
+library(xts)
+r = lapply(r, function(f) xts(f$Concentration, f$t))
+aq = do.call(cbind, r)
+```
+We can now select those stations for which we have 75\% of the hourly values measured, i.e. drop those with more than 25\% hourly missing values:
+```{r}
+# remove stations with more than 75% missing values:
+sel = apply(aq, 2, function(x) sum(is.na(x)) < 0.75 * 365 * 24)
+aqsel = aq[, sel] # stations are in columns
 ```
 
-## fit variogram
+Next, the [station metadata](http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_statistics.zip) was read 
+and filtered for rural background stations in Germany by
+```{r}
+library(tidyverse)
+read.csv("aq/AirBase_v8_stations.csv", sep = "\t", stringsAsFactors = FALSE) %>% 
+	as_tibble  %>% 
+	filter(country_iso_code == "DE", station_type_of_area == "rural", 
+				 type_of_station == "Background") -> a2
+```
+These stations contain coordinates, and an `sf` object with (static) station metadata is created by
+```{r}
+library(sf)
+library(stars)
+a2.sf = st_as_sf(a2, coords = c("station_longitude_deg", "station_latitude_deg"), crs = 4326)
+```
+
+We now subset the air quality data to stations that are of type rural background:
+```{r}
+sel =  colnames(aqsel) %in% a2$station_european_code
+aqsel = aqsel[, sel]
+```
+
+We can compute station means, and join these to stations locations by
+```{r}
+tb = tibble(no2 = apply(aqsel, 2, mean, na.rm = TRUE), station_european_code = colnames(aqsel))
+crs = 32632
+right_join(a2.sf, tb) %>% st_transform(crs) -> no2.sf 
+# load German boundaries
+data(air, package = "spacetime")
+de <- st_transform(st_as_sf(DE_NUTS1), crs)
+ggplot() + geom_sf(data = de) +  geom_sf(data = no2.sf, mapping = aes(col = no2))
+```
+
+## Sample variogram 
+
+In order to make spatial predictions using geostatistical methods, we first need to identify a model for the mean and for the spatial correlation. In the simplest model, $Z(s) = m + e(s)$, the mean is an unknown constant $m$, and in this case the spatial correlation can be modelled using the variogram, $\gamma(h) = 0.5 E (Z(s)-Z(s+h))^2$. For processes with a finite variance $C(0)$, the variogram is related to the covariogram or covariance function through $\gamma(h) = C(0)-C(h)$.
+
+The sample variogram is obtained by computing estimates of $\gamma(h)$ for distance intervals, $h_i = [h_{i,0},h_{i,1}]$:
+$$
+\hat{\gamma}(h_i) = \frac{1}{2N(h_i)}\sum_{j=1}^{N(h_i)}(z(s_i)-z(s_i+h'))^2, \ \ h_{i,0} \le h' < h_{i,1}
+$$
+
+with $N(h_i)$ the number of sample pairs available for distance interval $h_i$.
+Function `gstat::variogram` computes sample variograms.
 ```{r}
 library(gstat)
-v = variogram(log(zinc)~1, meuse_sf)
-(v.fit = fit.variogram(v, vgm(1, "Sph", 900, 1)))
+v = variogram(no2~1, no2.sf)
+plot(v, plot.numbers = TRUE)
 ```
-
-## kriging to point locations:
+This chooses default maximum distance (`cutoff`: one third of the length of the bounding box diagonal) and (constant) interval widths (`width`: cutoff divided by 15). These defaults can be changed, e.g. by
 ```{r}
-(k_sf = krige(log(zinc)~1, meuse_sf, meuse_sf, v.fit))
-plot(k_sf[1], pch = 16)
+library(gstat)
+v0 = variogram(no2~1, no2.sf, cutoff = 100000, width = 10000)
+plot(v0, plot.numbers = TRUE)
 ```
+Note that the formula `no2~1` is used to select the variable of interest from the data file (`no2.sf`), and to specify the mean model: `~1` refers to an intercept-only (unknown, constant mean) model.
 
-## kriging to stars grid:
+## Fitting variogram models
+
+In order to progress toward spatial predictions, we need a variogram _model_ $\gamma(h)$ for (potentially) all distances $h$, rather than the set of estimates derived above: in case we would for instance connect these estimates with straight lines, or assume they reflect constant values over their respective distance intervals, this would lead to statisical models with non-positive covariance matrices, which is a complicated way of expressing that you are in a lot of trouble.
+
+To avoid these troubles we fit parametric models $\gamma(h)$ to the estimates $\hat{\gamma}(h_i)$, where we take $h_i$ as the mean value of all the $h'$ values involved in estimating $\hat{\gamma}(h_i)$. For this, when we fit a model like the exponential variogram,
 ```{r}
-library(stars)
-meuse_stars = st_as_stars(meuse.grid)
-k_st = krige(log(zinc)~1, meuse_sf, meuse_stars, v.fit)
-plot(k_st, breaks = "equal", col = sf.colors())
+v.m = fit.variogram(v, vgm(1, "Exp", 50000, 1))
+plot(v, v.m, plot.numbers = TRUE)
+```
+the fitting is done by minimizing $\sum_{i=1}^{n}w_i(\gamma(h_i)-\hat{\gamma}(h_i))^2$, with $w_i$ by default equal to $N(h_i)/h^2$, other fitting schemes are available through argument `fit.method`.
+
+## Kriging interpolation
+
+Kriging involves the prediction of $Z(s_0)$ at arbitrary locations $s_0$. Typically, when
+we interpolate a variable, we do that on points on a regular grid covering the target area.
+When we take the grid points such that they align with the points of our graphics device (screen), 
+then nobody will notice as long as the graphic device is not resized.
+
+We first create a `stars` object with a raster covering the target area, and NA's outside it:
+```{r}
+# build a grid over Germany:
+bb = st_bbox(de)
+dx = seq(bb[1], bb[3], 10000)
+dy = seq(bb[4], bb[2], -10000) # decreases!
+st_as_stars(matrix(0, length(dx), length(dy))) %>%
+  st_set_dimensions(1, dx) %>%
+  st_set_dimensions(2, dy) %>%
+  st_set_crs(crs) -> grd
+i = st_intersects(grd, de)
+grd[[1]][lengths(i)==0] = NA
+#grd %>% st_dimensions()
+grd
 ```
 
-## Spatio-temporal
+Then, we can krige by using `gstat::krige`, with the model for the trend, the data,
+the prediction grid, and the variogram model:
+```{r}
+k = krige(no2~1, no2.sf, grd, v.m)
+ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) + 
+	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
+	geom_sf(data = no2.sf)
+```
 
-see gstat/tests/windst.R
-see gstat/tests/stars.R
+## Areal means: block kriging
+```{r}
+a = aggregate(no2.sf["no2"], de, mean)
+b = krige(no2~1, no2.sf, de, v.m)
+b$sample = a$no2
+b$kriging = b$var1.pred
+b %>% select(sample, kriging) %>% gather(var, no2, -geometry) -> b2
+ggplot() + geom_sf(data = b2, mapping = aes(fill = no2)) + facet_wrap(~var) +
+	 scale_fill_gradientn(colors = sf.colors(20))
+```
+
+```{r}
+SE = function(x) sqrt(var(x)/length(x))
+a = aggregate(no2.sf["no2"], de, SE)
+b$sample = a$no2
+b$kriging = sqrt(b$var1.var)
+b %>% select(sample, kriging) %>% gather(var, no2, -geometry) -> b2
+ggplot() + geom_sf(data = b2, mapping = aes(fill = no2)) + facet_wrap(~var) +
+	 scale_fill_gradientn(colors = sf.colors(20))
+```
+
+## Conditional and unconditional simulation
+
+```{r}
+library(viridis)
+s = krige(no2~1, no2.sf, grd, v.m, nmax = 30, nsim = 10)
+ggplot() + geom_stars(data = s[,,,1:6]) + facet_wrap(~sample) +
+	coord_equal() +   scale_fill_viridis() + 
+    theme_void() +
+    scale_x_discrete(expand=c(0,0)) +
+    scale_y_discrete(expand=c(0,0))
+
+```
+
+## Trend models
+
+Kriging and conditional simulation, as used so far in this
+chapter, assume that all spatial variability is a random process,
+characterized by a spatial covariance model. In case we have other
+variables that are meaningfully correlated with the target variable,
+we can use them in a linear regression model for the trend,
+$$
+Z(s) = \sum_{j=0}^p \beta_j X_p(s) + e(s)
+$$
+with $X_0(s) = 1$ and $\beta_0$ an intercept, but with the other
+$\beta_j$ regression coefficients. This typically reduces both the
+spatial correlation in the residual $e(s)$, as well as its variance,
+and leads to more accurate predictions and more similar conditional
+simulations.
+
+### A population grid
+
+As a potential predictor for NO2 in the air, we use population
+density. NO2 is mostly caused by traffic, and traffic is stronger
+in more densely populated areas.
+Population density is obtained from the [2011 census](https://www.zensus2011.de/DE/Home/Aktuelles/DemografischeGrunddaten.html), and is downloaded as a csv file with the number of inhabitants per 100 m grid cell. We can aggregate these data to the target grid cells by summing the inhabitants:
+```{r}
+library(vroom)
+v = vroom("aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv")
+v %>% filter(Einwohner > 0) %>% 
+	select(-Gitter_ID_100m) %>%
+	st_as_sf(coords = c("x_mp_100m", "y_mp_100m"), crs = 3035) %>%
+	st_transform(st_crs(grd)) -> b
+a = aggregate(b, st_as_sf(grd, na.rm = FALSE), sum)
+```
+Now we have the population counts per grid cell in `a`. To get to
+population density, we need to find the area of each cell; for cells
+crossing the country border, this will be less than 10 x 10 km:
+```{r}
+grd$ID = 1:prod(dim(grd))
+ii = st_intersects(grd["ID"], st_cast(st_union(de), "MULTILINESTRING"))
+grd_sf = st_as_sf(grd["ID"], na.rm = FALSE)[lengths(ii) > 0,]
+iii = st_intersection(grd_sf, st_union(de))
+grd$area = st_area(grd)[[1]] + units::set_units(grd$A1, m^2) # NA's
+grd$area[iii$ID] = st_area(iii)
+```
+From the counts and areas we can compute densities, and verify totals:
+```{r}
+grd$pop_dens = a$Einwohner / grd$area
+mean(grd$pop_dens, na.rm = TRUE) * sum(st_area(de)) # verify:
+sum(b$Einwohner)
+ggplot() + geom_stars(data = grd, aes(fill = sqrt(pop_dens), x = x, y = y))
+``
+We need to divide the number of inhabitants by the number of 100
+m grid points contributing to it, in order to convert population
+counts into population density.
+
+To obtain population density values at monitoring network stations,
+we can use
+```{r}
+(a = aggregate(grd["pop_dens"], no2.sf, mean))
+no2.sf$pop_dens = st_as_sf(a)[[1]]
+plot(no2~sqrt(pop_dens), no2.sf)
+abline(lm(no2~sqrt(pop_dens), no2.sf))
+summary(lm(no2~sqrt(pop_dens), no2.sf))
+```
+
+Prediction under this new model involves first modelling a residual
+variogram, by
+```{r}
+no2.sf = no2.sf[!is.na(no2.sf$pop_dens),]
+vr = variogram(no2~sqrt(pop_dens), no2.sf)
+vr.m = fit.variogram(vr, vgm(1, "Exp", 50000, 1))
+plot(vr, vr.m, plot.numbers = TRUE)
+```
+and subsequently, kriging is done by
+```{r}
+kr = krige(no2~sqrt(pop_dens), no2.sf, grd["pop_dens"], vr.m)
+k$kriging     = k$var1.pred
+k$kriging_res = kr$var1.pred
+km = merge(k[c("kriging", "kriging_res")])
+ggplot() + geom_stars(data = km, aes(fill = X, x = x, y = y)) + 
+	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
+	geom_sf(data = no2.sf) + facet_wrap(~X1)
+```
+where, critically, the `pop_dens` values are now available for
+prediction locations in object `grd`.
+
+## Multivariable geostatistics
+
+## Spatiotemporal interpolation
