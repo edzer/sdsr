@@ -1,11 +1,15 @@
-# Interpolation and Geostatistics
+# Interpolation and Geostatistics {#interpolation}
 
 Geostatistics is concerned with the modelling, prediction and
-simulation of spatially continuous phenomena. The typical problem
+simulation of spatially continuous phenomena.  The typical problem
 is a missing value problem: we observe a property of a phenomenon
-$Z(s)$ at a limited number of sample locations $s_i, i = 1,...,n$, 
-and are interested in the property value at all locations $s_0$, 
-so we have to predict it for unobserved locations.
+$Z(s)$ at a limited number of sample locations $s_i, i = 1,...,n$,
+and are interested in the property value at all locations $s_0$,
+so we have to predict it for unobserved locations. This is also
+called _kriging_, or Gaussian process prediction.  In case
+$Z(s)$ contains a white noise component $\epsilon$, as in
+$Z(s)=S(s)+\epsilon(s)$, an alternative but similar goal is to
+predict $S(s)$, which may be called filtering or smoothing.
 
 In this chapter we will show simple approaches for handling
 geostatistical data, will demonstrate simple interpolation methods,
@@ -44,6 +48,7 @@ r = lapply(files[-1], function(f) read.csv(f))
 ```
 then convert the time variable into a `POSIXct` variable, and time order them
 ```{r}
+Sys.setenv(TZ = "UTC") # make sure times are not interpreted as DST
 r = lapply(r, function(f) {
 		f$t = as.POSIXct(f$DatetimeBegin) 
 		f[order(f$t), ] 
@@ -137,7 +142,7 @@ plot(v, v.m, plot.numbers = TRUE)
 ```
 the fitting is done by minimizing $\sum_{i=1}^{n}w_i(\gamma(h_i)-\hat{\gamma}(h_i))^2$, with $w_i$ by default equal to $N(h_i)/h^2$, other fitting schemes are available through argument `fit.method`.
 
-## Kriging interpolation
+## Kriging interpolation {#kriging}
 
 Kriging involves the prediction of $Z(s_0)$ at arbitrary locations $s_0$. Typically, when
 we interpolate a variable, we do that on points on a regular grid covering the target area.
@@ -157,7 +162,6 @@ st_as_stars(matrix(0, length(dx), length(dy))) %>%
   st_set_crs(crs) -> grd
 i = st_intersects(grd, de)
 grd[[1]][lengths(i)==0] = NA
-#grd %>% st_dimensions()
 grd
 ```
 
@@ -327,6 +331,7 @@ library(gstat)
 demo(cokriging)
 demo(cosimulation)
 ```
+and are illustrated and discussed in [@asdar].
 
 In case the different variables considered are observed at
 the same set of locations, for instance different air quality
@@ -358,10 +363,126 @@ $Z(s,t)$, which we will do in the next section.
 
 ## Spatiotemporal interpolation
 
-[@RJ-2016-014]
+Spatiotemporal geostatistical processes are modelled as variables
+having a value everywhere in space and time, $Z(s,t)$, with $s$ and
+$t$ the continuously indext space and time index. Given observations
+$Z(s_i,t_j)$ and a variogram (covariance) model $\gamma(s,t)$ we can
+predict $Z(s_0,t_0)$ at arbitrary space/time locations $(s_0,t_0)$
+using standard Gaussian process theory.
 
-- predict missing values -> multivariate arima would have been enough/better?
+Several books have been written recently about modern approaches
+to handling and modelling spatiotemporal geostatistical data,
+including [@wikle2019spatio] and [@blangiardo2015spatial]. Here,
+we will use [@RJ-2016-014] and give some simple examples building
+upon the dataset used throughout this chapter.
+
+### A spatiotemporal variogram model
+Starting with the spatiotemporal matrix of NO$_2$ data in `aq`
+constructed at the beginning of this chapter, we will first select
+the rural background stations:
+
+```{r}
+aqx = aq[,colnames(aq) %in% a2$station_european_code]
+sfc = st_geometry(a2.sf)[match(colnames(aqx), a2.sf$station_european_code)]
+st_as_stars(NO2 = as.matrix(aqx)) %>%
+	st_set_dimensions(names = c("time", "station")) %>%
+	st_set_dimensions("time", index(aqx)) %>%
+	st_set_dimensions("station", sfc) -> no2.st
+v.st = variogramST(NO2~1, no2.st[,1:(24*31)], tlags = 0:48)
+```
+
+```{r}
+v1 = plot(v.st)
+v2 = plot(v.st, map = FALSE)
+print(v1, split = c(1,1,2,1), more = TRUE)
+print(v2, split = c(2,1,2,1), more = FALSE)
+```
+
+```{r}
+# product-sum
+prodSumModel <- vgmST("productSum",
+	space=vgm(150, "Exp", 200, 0),
+	time= vgm(20, "Sph",   40, 0),
+	k=2)
+StAni = estiStAni(v.st, c(0,200000))
+(fitProdSumModel <- fit.StVariogram(v.st, prodSumModel, fit.method = 7,
+	stAni = StAni, method = "L-BFGS-B",
+	control = list(parscale = c(1,10,1,1,0.1,1,10)),
+	lower = rep(0.0001, 7)))
+plot(v.st, fitProdSumModel, wireframe=FALSE, all=TRUE, scales=list(arrows=FALSE), zlim=c(0,150))
+```
+which can also be plotted as wireframes, by
+```{r}
+plot(v.st, model=fitProdSumModel, wireframe=TRUE, all=TRUE, scales=list(arrows=FALSE), zlim=c(0,185))
+```
+
+Hints about the fitting strategy and alternative models for
+spatiotemporal variograms are given in [@RJ-2016-014].  
+
+With this fitted model, and given the observations, we can
+carry out kriging or simulation at arbitrary points in space and
+time. For instance, we could estimate (or simulate) values in the
+time series that are now missing: this occurs regularly, and in
+section \@ref(kriging) we used means over time series based on
+simply ignoring up to 25% of the observations: substituting these
+with estimated or simulated values based on neigbouring (in space
+and time) observations before computing yearly mean values seems
+a more reasonable approach.
+
+More in general, we can estimate at arbitrary locations and time
+points, and we will illustrate this with predicting time series at
+particular locations, and and predicting spatial slices. We can create
+a `stars` object to denote two points and all time instances with
+
+```{r}
+set.seed(123)
+pt = st_sample(de, 2)
+t = st_get_dimension_values(no2.st, 1)
+st_as_stars(list(pts = matrix(1, length(t), length(pt)))) %>%
+	st_set_dimensions(names = c("time", "station")) %>%
+	st_set_dimensions("time", t) %>%
+	st_set_dimensions("station", pt) -> new_pt
+```
+
+
+```{r}
+no2.st <- st_transform(no2.st, crs)
+new_ts <- krigeST(NO2~1, data = no2.st["NO2"], newdata = new_pt,
+	     nmax = 50, stAni = StAni, modelList = fitProdSumModel,
+		 progress = FALSE)
+plot(xts(t(new_ts[[2]]), t), type = 'l')
+```
+
+```{r}
+t4 = t[(1:4 - 0.5) * (3*24*30)]
+
+d = dim(grd)
+st_as_stars(pts = array(1, c(d[1], d[2], time=length(t4)))) %>%
+	st_set_dimensions("time", t4) %>%
+	st_set_dimensions("x", st_get_dimension_values(grd, "x")) %>%
+	st_set_dimensions("y", st_get_dimension_values(grd, "y")) %>%
+	st_set_crs(crs) -> grd.st
+new_int <- krigeST(NO2~1, data = no2.st["NO2"], newdata = grd.st,
+	     nmax = 50, stAni = StAni, modelList = fitProdSumModel,
+		 progress = FALSE)
+plot(new_int[2,,,1], reset = FALSE)
+plot(de, col = NA, border = 'red', add = TRUE)
+plot(st_geometry(no2.sf), col = 'green', add = TRUE, pch = 16)
+```
+
+We can estimate 
+
+- have a single model for all correlations 
+
+- predict, or simulate, missing values; better approach than taking averages while
+   ignoring if 0-25% are missing
+   alternative multivariate arima would have been enough/better?
+
+   Alternative: pkg gapfill (remote sensing oriented; Florian Gerber)
+   https://cran.r-project.org/web/packages/gapfill/
+
 - predict a sequence of hours
-- smooth in between, e.g. by 10-min interpolations
+
+- smooth in between, e.g. by 10-min interpolations, but note that measurements are hourly integrals, not values at time instances, which is what we assume
 
 
