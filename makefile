@@ -27,4 +27,5 @@ push:
 	git push
 
 purl:
-	Rscript -e 'knitr::purl("16-Geostatistics.Rmd")'
+	#Rscript -e 'knitr::purl("16-Geostatistics.Rmd")'
+	Rscript -e 'knitr::purl("17-Areal.Rmd")'
