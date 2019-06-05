@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2019-06-04" />
+<meta name="date" content="2019-06-05" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -315,7 +315,7 @@ Figure 17.1: Polish municipality types 2015
 <span class="co">#&gt;         2495</span></code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">system.time</span>(nb_q &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>))
 <span class="co">#&gt;    user  system elapsed </span>
-<span class="co">#&gt;    1.11    0.00    1.13</span></code></pre></div>
+<span class="co">#&gt;    1.08    0.00    1.09</span></code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">nb_q
 <span class="co">#&gt; Neighbour list object:</span>
 <span class="co">#&gt; Number of regions: 2495 </span>
@@ -328,7 +328,7 @@ Figure 17.1: Polish municipality types 2015
   nb_q1 &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>, <span class="dt">foundInBox=</span>fB)
 })
 <span class="co">#&gt;    user  system elapsed </span>
-<span class="co">#&gt;   0.920   0.000   0.929</span></code></pre></div>
+<span class="co">#&gt;   0.893   0.000   0.903</span></code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">all.equal</span>(nb_q, nb_q1, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)
 <span class="co">#&gt; [1] TRUE</span></code></pre></div>
 <p>We might consider using the contiguity of the polygon boundaries, the fifth element of the DE-9IM vector, setting the first element to FALSE, to find Queen neighbours using GEOS functions in <strong>sf</strong>, but it takes longer than simply treating the boundaries as points:</p>
@@ -342,7 +342,7 @@ as.nb.sgbp &lt;-<span class="st"> </span><span class="cf">function</span>(x, ...
 }
 <span class="kw">system.time</span>(nb_sf_q &lt;-<span class="st"> </span><span class="kw">as.nb.sgbp</span>(<span class="kw">st_queen</span>(pol_pres15)))
 <span class="co">#&gt;    user  system elapsed </span>
-<span class="co">#&gt;     3.9     0.0     3.9</span></code></pre></div>
+<span class="co">#&gt;    4.03    0.00    4.03</span></code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">all.equal</span>(nb_q, nb_sf_q, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)
 <span class="co">#&gt; [1] TRUE</span></code></pre></div>
 <p>The same effect as using <code>rgeos::gUnarySTRtreeQuery</code> can be obtained without the overhead of converting to the equivalent <strong>sp</strong> class and using <strong>rgeos</strong> to make the equivalent tree search using <strong>sf</strong>, by finding intersecting bounding boxes, removing self-intersections and duplicate intersections (contiguities are by definition symmetric, if <code>i</code> is a neighbour of <code>j</code>, then <code>j</code> is a neighbour of <code>i</code>).</p>
@@ -358,7 +358,7 @@ as.nb.sgbp &lt;-<span class="st"> </span><span class="cf">function</span>(x, ...
   nb_sf_q1 &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>, <span class="dt">foundInBox=</span>fB1a)
 })
 <span class="co">#&gt;    user  system elapsed </span>
-<span class="co">#&gt;   0.637   0.000   0.637</span></code></pre></div>
+<span class="co">#&gt;   0.622   0.000   0.623</span></code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">all.equal</span>(nb_q, nb_sf_q1, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)
 <span class="co">#&gt; [1] TRUE</span></code></pre></div>
 <p>Much of the work involved in finding contiguous neighbours is spent on finding candidate neighbours with intersecting bounding boxes. Note that <code>nb</code> objects record both symmetric neighbour relationships, because these objects admit asymmetric relationships as well, but these duplications are not needed for object construction.</p>
@@ -809,63 +809,6 @@ mmc &lt;-<span class="st"> </span><span class="kw">moran.mc</span>(pol_pres15<sp
 <p>There is also a permutation bootstrap approach to the approximate profile likelihood estimator (APLE) measure <span class="citation">(Li, Calder, and Cressie <a href="#ref-Lietal07">2007</a>; Li, Calder, and Cressie <a href="#ref-Lietal12">2012</a>)</span> using row-standardised weights, in which the variable of interest must be centred on zero first:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">apmc &lt;-<span class="st"> </span><span class="kw">aple.mc</span>(<span class="kw">c</span>(<span class="kw">scale</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">scale=</span><span class="ot">FALSE</span>)), <span class="dt">listw=</span>lw_q_W,
                 <span class="dt">nsim=</span><span class="dv">999</span>)
-<span class="co">#&gt; Registered S3 methods overwritten by &#39;spatialreg&#39;:</span>
-<span class="co">#&gt;   method                   from </span>
-<span class="co">#&gt;   residuals.stsls          spdep</span>
-<span class="co">#&gt;   deviance.stsls           spdep</span>
-<span class="co">#&gt;   coef.stsls               spdep</span>
-<span class="co">#&gt;   print.stsls              spdep</span>
-<span class="co">#&gt;   summary.stsls            spdep</span>
-<span class="co">#&gt;   print.summary.stsls      spdep</span>
-<span class="co">#&gt;   residuals.gmsar          spdep</span>
-<span class="co">#&gt;   deviance.gmsar           spdep</span>
-<span class="co">#&gt;   coef.gmsar               spdep</span>
-<span class="co">#&gt;   fitted.gmsar             spdep</span>
-<span class="co">#&gt;   print.gmsar              spdep</span>
-<span class="co">#&gt;   summary.gmsar            spdep</span>
-<span class="co">#&gt;   print.summary.gmsar      spdep</span>
-<span class="co">#&gt;   print.lagmess            spdep</span>
-<span class="co">#&gt;   summary.lagmess          spdep</span>
-<span class="co">#&gt;   print.summary.lagmess    spdep</span>
-<span class="co">#&gt;   residuals.lagmess        spdep</span>
-<span class="co">#&gt;   deviance.lagmess         spdep</span>
-<span class="co">#&gt;   coef.lagmess             spdep</span>
-<span class="co">#&gt;   fitted.lagmess           spdep</span>
-<span class="co">#&gt;   logLik.lagmess           spdep</span>
-<span class="co">#&gt;   fitted.SFResult          spdep</span>
-<span class="co">#&gt;   print.SFResult           spdep</span>
-<span class="co">#&gt;   fitted.ME_res            spdep</span>
-<span class="co">#&gt;   print.ME_res             spdep</span>
-<span class="co">#&gt;   print.lagImpact          spdep</span>
-<span class="co">#&gt;   plot.lagImpact           spdep</span>
-<span class="co">#&gt;   summary.lagImpact        spdep</span>
-<span class="co">#&gt;   HPDinterval.lagImpact    spdep</span>
-<span class="co">#&gt;   print.summary.lagImpact  spdep</span>
-<span class="co">#&gt;   print.sarlm              spdep</span>
-<span class="co">#&gt;   summary.sarlm            spdep</span>
-<span class="co">#&gt;   residuals.sarlm          spdep</span>
-<span class="co">#&gt;   deviance.sarlm           spdep</span>
-<span class="co">#&gt;   coef.sarlm               spdep</span>
-<span class="co">#&gt;   vcov.sarlm               spdep</span>
-<span class="co">#&gt;   fitted.sarlm             spdep</span>
-<span class="co">#&gt;   logLik.sarlm             spdep</span>
-<span class="co">#&gt;   anova.sarlm              spdep</span>
-<span class="co">#&gt;   predict.sarlm            spdep</span>
-<span class="co">#&gt;   print.summary.sarlm      spdep</span>
-<span class="co">#&gt;   print.sarlm.pred         spdep</span>
-<span class="co">#&gt;   as.data.frame.sarlm.pred spdep</span>
-<span class="co">#&gt;   residuals.spautolm       spdep</span>
-<span class="co">#&gt;   deviance.spautolm        spdep</span>
-<span class="co">#&gt;   coef.spautolm            spdep</span>
-<span class="co">#&gt;   fitted.spautolm          spdep</span>
-<span class="co">#&gt;   print.spautolm           spdep</span>
-<span class="co">#&gt;   summary.spautolm         spdep</span>
-<span class="co">#&gt;   logLik.spautolm          spdep</span>
-<span class="co">#&gt;   print.summary.spautolm   spdep</span>
-<span class="co">#&gt;   print.WXImpact           spdep</span>
-<span class="co">#&gt;   summary.WXImpact         spdep</span>
-<span class="co">#&gt;   print.summary.WXImpact   spdep</span>
-<span class="co">#&gt;   predict.SLX              spdep</span>
 <span class="cf">if</span> (broom_ok) broom<span class="op">::</span><span class="kw">tidy</span>(apmc) <span class="cf">else</span> <span class="kw">glance_boot</span>(apmc)
 <span class="co">#&gt;  original      bias std.error    zvalue </span>
 <span class="co">#&gt;    0.7852   -0.7847    0.0326   24.0760</span></code></pre></div>

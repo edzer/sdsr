@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2019-06-04" />
+<meta name="date" content="2019-06-05" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -533,24 +533,24 @@ SEM1_94iv &lt;-<span class="st"> </span><span class="kw">spreg</span>(formiv, <s
 <p>The Spatial Econometrics Library is part of the extensive Matlab code repository at <a href="https://www.spatial-econometrics.com/" class="uri">https://www.spatial-econometrics.com/</a> and documented in LeSage and Pace <span class="citation">(<a href="#ref-lesage+pace:09">2009</a>)</span>. The Google Summer of Coding project in 2011 by Abhirup Mallik mentored by Virgilio Gómez-Rubio yielded translations of some of the model fitting functions for SEM, SDEM, SLM, SDM, SAC and GNM from the Matlab code. These have now been added to <strong>spatialreg</strong> as <code>spBreg_err()</code>, <code>spBreg_lag()</code> and <code>spBreg_sac()</code> with <code>Durbin=</code> arguments to handle the inclusion of spatially lagged covariates. As yet, heteroskedastic disturbances are not accommodated. The functions return <code>&quot;mcmc&quot;</code> objects as specified in the <strong>coda</strong> package, permitting the use of tools from <strong>coda</strong> for handling model output. The default burnin is 500 draws, followed by default 2000 draws returned, but these values and many others may be set through the <code>control=</code> list argument. Fitting the SDEM model for the output zones takes about an order of magnitude longer than using ML, but there is more work to do subsequently, and this difference scales more in the number of samples than covariates or observations.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">system.time</span>(SDEM_94B &lt;-<span class="st"> </span><span class="kw">spBreg_err</span>(form, <span class="dt">data=</span>boston_<span class="dv">94</span>, <span class="dt">listw=</span>lw_q_<span class="dv">94</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>))
 <span class="co">#&gt;    user  system elapsed </span>
-<span class="co">#&gt;    1.92    0.00    1.92</span></code></pre></div>
+<span class="co">#&gt;    2.11    0.00    2.12</span></code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">system.time</span>(SDEM_489B &lt;-<span class="st"> </span><span class="kw">spBreg_err</span>(form, <span class="dt">data=</span>boston_<span class="dv">489</span>, <span class="dt">listw=</span>lw_q_<span class="dv">489</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>, <span class="dt">zero.policy=</span><span class="ot">TRUE</span>))
 <span class="co">#&gt;    user  system elapsed </span>
-<span class="co">#&gt;   2.998   0.004   3.002</span></code></pre></div>
+<span class="co">#&gt;    2.87    0.00    2.87</span></code></pre></div>
 <p>Most time in the ML case using eigenvalues is taken by log determinant setup and optimization, and by dense matrix asymptotic standard errors if chosen (always chosen with default <code>&quot;eigen&quot;</code> log determinant method):</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">t</span>(<span class="kw">errorsarlm</span>(form, <span class="dt">data=</span>boston_<span class="dv">94</span>, <span class="dt">listw=</span>lw_q_<span class="dv">94</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>)<span class="op">$</span>timings[,<span class="dv">2</span>])
 <span class="co">#&gt;      set_up eigen_set_up eigen_opt coefs eigen_hcov eigen_se</span>
-<span class="co">#&gt; [1,]  0.006        0.006      0.01 0.005      0.003    0.002</span></code></pre></div>
+<span class="co">#&gt; [1,]  0.005        0.006     0.009 0.004      0.003    0.001</span></code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">t</span>(<span class="kw">errorsarlm</span>(form, <span class="dt">data=</span>boston_<span class="dv">489</span>, <span class="dt">listw=</span>lw_q_<span class="dv">489</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>, <span class="dt">zero.policy=</span><span class="ot">TRUE</span>)<span class="op">$</span>timings[,<span class="dv">2</span>])
 <span class="co">#&gt;      set_up eigen_set_up eigen_opt coefs eigen_hcov eigen_se</span>
-<span class="co">#&gt; [1,]   0.01         0.06     0.024 0.006      0.082    0.176</span></code></pre></div>
+<span class="co">#&gt; [1,]   0.01        0.059     0.023 0.005      0.081    0.176</span></code></pre></div>
 <p>while in the MCMC case, the default use of Spatial Econometric Toolbox gridded log determinants and obviously sampling takes most time:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">t</span>(<span class="kw">attr</span>(SDEM_94B, <span class="st">&quot;timings&quot;</span>)[ , <span class="dv">3</span>])
 <span class="co">#&gt;      set_up SE_classic_set_up complete_setup sampling finalise</span>
-<span class="co">#&gt; [1,]  0.004              0.26          0.034     1.56    0.058</span></code></pre></div>
+<span class="co">#&gt; [1,]  0.005             0.293           0.04     1.69    0.095</span></code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">t</span>(<span class="kw">attr</span>(SDEM_489B, <span class="st">&quot;timings&quot;</span>)[ , <span class="dv">3</span>])
 <span class="co">#&gt;      set_up SE_classic_set_up complete_setup sampling finalise</span>
-<span class="co">#&gt; [1,]  0.015             0.463          0.081     2.38    0.067</span></code></pre></div>
+<span class="co">#&gt; [1,]  0.016             0.445           0.08     2.27    0.056</span></code></pre></div>
 <p>However, as we will see shortly, inference from model impacts may need sampling (where the spatially lagged response is included in the model), and in the case of MCMC models, the samples have already been drawn.</p>
 </div>
 </div>
@@ -645,7 +645,7 @@ cch &lt;-<span class="st"> </span><span class="kw">Cholesky</span>((I <span clas
 tr_<span class="dv">489</span> &lt;-<span class="st"> </span><span class="kw">trW</span>(W)
 <span class="kw">str</span>(tr_<span class="dv">489</span>)
 <span class="co">#&gt;  num [1:30] 0 90.8 29.4 42.1 26.5 ...</span>
-<span class="co">#&gt;  - attr(*, &quot;timings&quot;)= Named num [1:2] 0.17 0.186</span>
+<span class="co">#&gt;  - attr(*, &quot;timings&quot;)= Named num [1:2] 0.169 0.17</span>
 <span class="co">#&gt;   ..- attr(*, &quot;names&quot;)= chr [1:2] &quot;user.self&quot; &quot;elapsed&quot;</span>
 <span class="co">#&gt;  - attr(*, &quot;type&quot;)= chr &quot;mult&quot;</span>
 <span class="co">#&gt;  - attr(*, &quot;n&quot;)= int 489</span></code></pre></div>
@@ -657,7 +657,7 @@ res &lt;-<span class="st"> </span><span class="kw">rbind</span>(<span class="dt"
 res
 <span class="co">#&gt;           Direct  Indirect    Total</span>
 <span class="co">#&gt; Impacts -0.00593 -1.01e-05 -0.00594</span>
-<span class="co">#&gt; SE       0.00105  1.01e-04  0.00105</span></code></pre></div>
+<span class="co">#&gt; SE       0.00106  1.00e-04  0.00107</span></code></pre></div>
 <p>Of more interest is trying to reconstruct the direct and total impacts using dense matrix methods; the direct global impacts are the mean of the diagonal of the dense impacts matrix, and the total global impacts are the sum of all matrix elements divided by the number of observations. The direct impacts agree, but the total impacts differ slightly.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">coef_SLM_<span class="dv">489</span> &lt;-<span class="st"> </span><span class="kw">coef</span>(SLM_<span class="dv">489</span>)
 IrW &lt;-<span class="st"> </span><span class="kw">Diagonal</span>(<span class="dv">489</span>) <span class="op">-</span><span class="st"> </span>coef_SLM_<span class="dv">489</span>[<span class="dv">1</span>] <span class="op">*</span><span class="st"> </span>W
