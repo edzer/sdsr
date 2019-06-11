@@ -626,14 +626,14 @@ Global measures of spatial autocorrelation using spatial weights objects based o
 
 Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s [@anselin:95; @getis+ord:92; @getis+ord:96]. In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable [@anselin:96]. The `moran.plot()` function also returns an influence measures object used to label observations exerting more than propotional influence on the slope of the line representing global Moran's $I$. In this case, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. 
 
-```{r moran_plot, out.width='100%', fig.cap="Moran plot of I round turnout, row standardised weights", fig=TRUE}
+```{r moranplot, out.width='100%', fig.cap="Moran plot of I round turnout, row standardised weights", fig=TRUE}
 infl_W <- moran.plot(pol_pres15$I_turnout, listw=lw_q_W, 
                      labels=pol_pres15$TERYT, cex=1, pch=".", 
                      xlab="I round turnout", ylab="lagged turnout")
 ```
 If we extract the hat value influence measure from the returned object, a map suggests that some edge entities exert more than proportional influence, as do entities in or near larger urban areas.
 
-```{r moran_hat, out.width='100%', fig.cap="Moran plot hat values, row standardised neighbours", fig=TRUE}
+```{r moranhat, out.width='100%', fig.cap="Moran plot hat values, row standardised neighbours", fig=TRUE}
 pol_pres15$hat_value <- infl_W$infmat[,6]
 tm_shape(pol_pres15) + tm_fill("hat_value")
 ```
@@ -655,7 +655,7 @@ all.equal(sum(locm[,1])/Szero(lw_q_B),
           unname(moran.test(pol_pres15$I_turnout, lw_q_B)$estimate[1]))
 ```
 Using `stats::p.adjust()` to adjust for multiple comparisons, we see that 
-almost 29\% of the local measures have p-values $\lt 0.05$ if no adjustment is applied, but only 12\% using Bonferroni correction.
+almost 29\% of the local measures have p-values < 0.05 if no adjustment is applied, but only 12\% using Bonferroni correction.
 
 ```{r, eval=FALSE}
 pvs <- cbind(locm[,5], p.adjust(locm[,5], "bonferroni"), 
@@ -670,7 +670,7 @@ The `localmoran.sad()` and `localmoran.exact()` functions take a fitted linear m
 ```{r}
 args(localmoran.sad)
 ```
-If we use `localmoran.sad()` to make saddlepoint approximations of the standard deviates of the local measures, and make the same corrections, we drop from 26\% of the p-values $\lt 0.05$ with no correction to under 2\% using Bonferroni correction:
+If we use `localmoran.sad()` to make saddlepoint approximations of the standard deviates of the local measures, and make the same corrections, we drop from 26\% of the p-values < 0.05 with no correction to under 2\% using Bonferroni correction:
 
 ```{r, eval=FALSE}
 locms <- localmoran.sad(ols, nb=nb_q, style="B", alternative="two.sided")
@@ -702,7 +702,7 @@ The spatial error model is clearly a better description of the data than a mean 
 ```{r}
 spatialreg::LR1.sarlm(SEM)
 ```
-Reconstructing a linear model after filtering out the global spatial autocorrelation $(I - \lambda W)$ as `lm.target`, we can also construct $(I - \lambda W)^{-1}$ representing the global spatial process as input to the `Omega=` argument. This is used internally to re-balance the matrix products of the per-observation star weights matrices, so involves substantial amounts of numerical linear algebra, including solving a dense matrix eigeneproblem, for each chosen observation. So if we take global autocorrelation into account, in this case the no-adjustment count of observations with p-values $\lt 0.05$ is under 7\%, and using Bonferroni correction, we drop to 0.2\%.
+Reconstructing a linear model after filtering out the global spatial autocorrelation $(I - \lambda W)$ as `lm.target`, we can also construct $(I - \lambda W)^{-1}$ representing the global spatial process as input to the `Omega=` argument. This is used internally to re-balance the matrix products of the per-observation star weights matrices, so involves substantial amounts of numerical linear algebra, including solving a dense matrix eigeneproblem, for each chosen observation. So if we take global autocorrelation into account, in this case the no-adjustment count of observations with p-values < 0.05 is under 7\%, and using Bonferroni correction, we drop to 0.2\%.
 
 ```{r, eval=FALSE}
 lm.target <- lm(SEM$tary ~ SEM$tarX - 1)
@@ -753,7 +753,7 @@ for (i in seq(along=x)) {
   }
 }
 ```
-This approach is not provided as a function in **spdep**. The outcome is that almost 32\% of observations have two sided p-values $\lt 0.05$ without multiple comparison correction, and under 3\% with Bonferroni correction. Since it is not advisable to use conditional permutation with regression residuals in the presence of spatial autocorrelation, `localmoran.sad()` and `localmoran.exact()` provide wys of calculating more robust standard deviates with the added flexibility of a possibly richer mean model.
+This approach is not provided as a function in **spdep**. The outcome is that almost 32\% of observations have two sided p-values < 0.05 without multiple comparison correction, and under 3\% with Bonferroni correction. Since it is not advisable to use conditional permutation with regression residuals in the presence of spatial autocorrelation, `localmoran.sad()` and `localmoran.exact()` provide wys of calculating more robust standard deviates with the added flexibility of a possibly richer mean model.
 
 ```{r}
 perm_Zi <- (locm[,1] - mns)/sds
@@ -788,7 +788,7 @@ apply(pvsp, 2, function(x) sum(x < 0.05))
 
 The figure shows the breadth of the density distribution of the standard deviates calculated using the analytical randomisation approach, compared with those of Saddlepoint approximation with and without the accommodation of global spatial autocorrelation, and with conditional permutation. 
 
-```{r localmoran_Zi, out.width='100%', fig.cap="Local Moran's I standard deviates by method", fig=TRUE}
+```{r localmoranZi, out.width='100%', fig.cap="Local Moran's I standard deviates by method", fig=TRUE}
 df <- data.frame(std_deviate=c(locm[,4], locms[,4], locmsO[,4], perm_Zi,
         loc_I_ps$z_sim), method=rep(c("Analytical randomisation", 
         "Saddlepoint approximation", "Saddlepoint approximation (Omega)", 
@@ -806,7 +806,7 @@ print(do.call("rbind", tapply(df$std_deviate, list(df$method), summary)),
 ```
 Taking global spatial autocorrelation into account leaves most of the areal units with "significant" local residual spatial autocorrelation below zero, indicating negative dependencies probably associated with urban/rural contrasts. The figure shows the dominance of positive local autocorrelation before the removal of global autocorrelation, and the speckled appearance of the local indocators after its removal using Omega, the global process model.
 
-```{r localmoran_Zi_map, out.width='100%', fig.cap="Local Moran's I standard deviates", fig=TRUE}
+```{r localmoranZimap, out.width='100%', fig.cap="Local Moran's I standard deviates", fig=TRUE}
 pol_pres15$loc_I_SA <- locms[,4]
 pol_pres15$loc_I_Omega <- locmsO[,4]
 tm_shape(pol_pres15) + tm_fill(c("loc_I_SA", "loc_I_Omega"), midpoint=0, title="Std. deviate") + tm_facets(free.scales=FALSE) + tm_borders(lwd=0.3, alpha=0.4) + tm_layout(panel.labels=c("Saddlepoint approximation", "Omega"))
@@ -822,7 +822,7 @@ load("rsb_rda/localG_perm.rda")
 ```{r, eval=FALSE}
 locG <- localG(pol_pres15$I_turnout, lw_q_B, return_internals=TRUE)
 ```
-Once again we face the problem of multiple comparisons, with the count of areal unit p-values $\lt 0.5$ being reduced by an order of magnitude when employing Bonferroni correction:
+Once again we face the problem of multiple comparisons, with the count of areal unit p-values < 0.05 being reduced by an order of magnitude when employing Bonferroni correction:
 
 ```{r}
 pv <- 2 * pnorm(abs(c(locG)), lower.tail = FALSE)
@@ -907,7 +907,7 @@ apply(pvsp, 2, function(x) sum(x < 0.05))
 (https://github.com/pysal/esda/issues/53).
 
 
-```{r local_Gi_map, out.width='100%', fig.cap="Local G standard deviates", fig=TRUE}
+```{r localGimap, out.width='100%', fig.cap="Local G standard deviates", fig=TRUE}
 pol_pres15$loc_G_Zi_perm <- G_Zi_1
 pol_pres15$loc_G_Zi <- c(locG)
 tm_shape(pol_pres15) + tm_fill(c("loc_G_Zi", "loc_G_Zi_perm"), midpoint=0, title="Std. deviate") + tm_facets(free.scales=FALSE) + tm_borders(lwd=0.3, alpha=0.4) + tm_layout(panel.labels=c("Analytical", "Permutation"))
@@ -930,7 +930,7 @@ lh <- LOSH(pol_pres15$I_turnout, listw=lw_q_B)
 ```
 It is also possible to map local spatially weighted mean values derived from the local measures, showing a smoothing effect
 
-```{r local_Hi_map, out.width='100%', fig.cap="Local spatially weighted mean values", fig=TRUE}
+```{r localHimap, out.width='100%', fig.cap="Local spatially weighted mean values", fig=TRUE}
 pol_pres15$x_bar_i <- lh[,5]
 tm_shape(pol_pres15) + tm_fill(c("I_turnout", "x_bar_i"), title="Turnout", n=6, style="fisher") + tm_facets(free.scales=FALSE) + tm_borders(lwd=0.3, alpha=0.4) + tm_layout(panel.labels=c("Turnout", "Weighted means"))
 ```
@@ -962,7 +962,7 @@ The solution to the eigenproblem of matrix product gives us the eigenvectors, pr
 EV <- eigen(Cmat)$vectors
 ```
 
-```{r EV_map, out.width='100%', fig.cap="First four eigenvectors", fig=TRUE}
+```{r EVmap, out.width='100%', fig.cap="First four eigenvectors", fig=TRUE}
 pol_pres15$EV1 <- EVa[,1]
 pol_pres15$EV2 <- EVa[,2]
 pol_pres15$EV3 <- EVa[,3]
