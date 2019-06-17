@@ -56,6 +56,7 @@ lon=-10-(i/2)
 p4s=paste0("+proj=ortho +lat_0=", lat, " +lon_0=", lon)
 plot(st_transform(m, st_crs(p4s), check = TRUE), col = 'lightblue', border = 'grey')
 crc = circ(lat0 = lat, lon0 = lon)
+st_crs(w) <- 4326 # added RSB to handle use of PROJ 6.1.0
 w0 = suppressWarnings(st_intersection(w, crc))
 w0 = st_cast(w0, "MULTIPOLYGON")
 plot(st_transform(st_geometry(w0), st_crs(p4s), check = TRUE), add = TRUE)
@@ -110,7 +111,7 @@ plot(DE.eqc, axes = TRUE)
 ### What is a good projection for my data?
 
 There is unfortunately no silver bullet here. Projections that
-maintain all distances do not exist; only globes do. The mostly
+maintain all distances do not exist; only globes do. The most
 used projections try to preserve
 
 * areas (equal area),
@@ -147,10 +148,10 @@ st_is_valid(pol.o, NA_on_exception=FALSE)
 where we see that the polygon is not nicely cut along the visibility
 line, but that the invisible points are simply dropped. This
 leads in this case to an invalid geometry, and may in the case of
-\@ref(fig:eqc) lead to straight lines that do not follow the map
+\@ref(fig:world) lead to straight lines that do not follow the map
 border circle.
 
-How was figure \@ref(fig:eqc) created? By using a rather ugly
+How was figure \@ref(fig:world) created? By using a rather ugly
 script that used a projected half-sphere circle to first cooky-cut
 the part of the countries that would
 remain visible on this projection. The
@@ -201,15 +202,18 @@ R package `classInt` [@R-classInt] provides a number of methods to
 do so. Using it is quite simple:
 ```{r}
 library(classInt)
+# set.seed(1) needed ?
 r = rnorm(100)
-classIntervals(r)
-classIntervals(r)$brks
+(cI <- classIntervals(r))
+cI$brks
 ```
 and it takes argument `n` for the number of intervals, and a `style`
 that can be one of "fixed", "sd", "equal", "pretty", "quantile",
-"kmeans", "hclust", "bclust", "fisher", or "jenks".  Style "pretty"
+"kmeans", "hclust", "bclust", "fisher" or "jenks".  Style "pretty"
 may not obey `n`; if if `n` is missing, ‘nclass.Sturges’ is used;
-two other methods are available for choosing `n` automatically.
+two other methods are available for choosing `n` automatically. If 
+the number of observations is greater than 3000, a 10\% sample is used
+to create the breaks for "fisher" and "jenks".
 
 ## Poles and datelines
 

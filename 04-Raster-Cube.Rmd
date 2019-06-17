@@ -209,13 +209,14 @@ out how they can be constructed.
 There are several reasons why non-regular rasters occur. For one,
 when the data is Earth-bound, a regular raster does not fit the Earth
 surface, which is curved. Other reasons are:
+
 * when we convert or transform a regular raster data into another coordinate reference system,
 it will become curvilinear unless we resample; resampling always
-goes at the cost of some data loss and is not reversible.
+goes at the cost of some loss of data and is not reversible.
 * observation may lead to irregular rasters; e.g. for satellite swaths, we
 may have a regular raster in the direction of the satellite (not
 aligned with $x$ or $y$), and rectilinear perpendicular to that
-(e.g. if the sensor discretizes the viewing angle in equal parts)
+(e.g. if the sensor discretizes the viewing _angle_ in equal sections)
 
 ### Handling large raster datasets
 
@@ -299,20 +300,23 @@ The idea of a proxy object is that we can build expressions like
 ```{r}
 p2 = p * 2
 ```
-but that these are not evaluated. Only when we really need
-the data, e.g. because we want to plot it, is `p * 2` evaluated.
-We need data when
+but that the computations for this are postponed. Only when we
+really need the data, e.g. because we want to plot it, is `p *
+2` evaluated.  We need data when either
 
-* we want to `plot` data
-* we want to write an object to disk, with `write_stars`.
+* we want to `plot` data, or
+* we want to write an object to disk, with `write_stars`, or
 * we want to explicitly load an object in memory, with `st_as_stars`
 
 In case the entire object does not fit in memory, `plot` and
-`write_stars` each choose a strategy to deal with this:
+`write_stars` choose different strategies to deal with this:
 
-* `plot` fetches only the pixels that can be plotted, rather than the
-ones that are available, and 
+* `plot` fetches only the pixels that can be seen, rather than all
+pixels available, and
 * `write_stars` reads, processes, and writes data chunk by chunk.
+
+Downsampling and chunking is implemented for spatially dense images,
+not e.g. for dense time series, or other dense dimensions.
 
 As an example,
 ```{r}
@@ -658,3 +662,10 @@ Package `stars` tries to follow the [tidy
 manifesto](https://cran.r-project.org/web/packages/tidyverse/vignettes/manifesto.html)
 to handle array sets, and has particularly developed support for the
 case where one or more of the dimensions refer to space, and/or time.
+
+## Exercises 
+
+1. NDVI, normalized differenced vegetation index, is coputed as (NIR-R)/(NIR+R), with NIR the near infrared and R the red band.  Read the `L7_ETMs.tif` file into object `x`, and distribute the band dimensions over attributes by `split(x, "band")`. Then, compute NDVI by using an expression that uses the NIR (band 4) and R (band 3) attributes directly.
+1. Compute NDVI for the S2 image, using `st_apply` and an a function `ndvi = function(x) (x[4]-x[3])/(x[4]+x[3])`. Plot the result, and write the result to a GeoTIFF. Explain the difference in runtime between plotting and writing.
+1. Use `st_transform` to transform the `stars` object read from `L7_ETMs.tif` to EPSG 4326. Print the object. Is this a regular grid? Plot the first band using arguments `axes=TRUE` and `border=NA`, and explain why this takes such a long time.
+1. Use `st_warp` to warp the `L7_ETMs.tif` object to EPSG 4326, and plot the resulting object with `axes=TRUE`. Why is the plot created much faster than after `st_transform`?

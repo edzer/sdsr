@@ -25,3 +25,7 @@ push:
 	git add _book/*html _book/sds_files/figure-html/* #_book/images/*png
 	git commit -a -m 'commit'
 	git push
+
+purl:
+	#Rscript -e 'knitr::purl("16-Geostatistics.Rmd")'
+	Rscript -e 'knitr::purl("17-Areal.Rmd")'
