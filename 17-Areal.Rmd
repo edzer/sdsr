@@ -379,25 +379,42 @@ unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE, adjust.n=FALSE))[c(1,6:8
 
 ## Measures of spatial autocorrelation
 
-Measures of spatial autcorrelation unfortunately pick up other mis-specifications in the way that we model data [@WallerGotway:2004; @McMillen:2003]. First we test a random variable using the Moran test, here under the normality assumption (argument `randomisation=FALSE`, default `TRUE`):
+Measures of spatial autcorrelation unfortunately pick up other mis-specifications in the way that we model data [@WallerGotway:2004; @McMillen:2003]. For reference, Moran's $I$ is given as [@cliff+ord:81, page 17]:
+
+$$
+I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
+$$
+where $x_i, i=1, \ldots, n$ are $n$ observations on the numeric variable of interest, $z_i = x_i - \bar{x}$, $\bar{x} = \sum_{i=1}^{n} x_i / n$, $\sum_{(2)} = \stackrel{\sum_{i=1}^{n} \sum_{j=1}^{n}}{i \neq j}$, $w_{ij}$ are the spatial weights, and $S_0 = \sum_{(2)} w_{ij}$. 
+First we test a random variable using the Moran test, here under the normality assumption (argument `randomisation=FALSE`, default `TRUE`):
 
 ```{r}
 set.seed(1)
 x <- rnorm(nrow(pol_pres15))
-moran.test(x, lw_q_B, randomisation=FALSE)$estimate
+mt <- moran.test(x, lw_q_B, randomisation=FALSE)
 ```
-It however fails to detect a missing trend in the data as a missing variable problem, finding spatial autocorrelation instead:
+
+Inference is made on the statistic $Z(I) = \frac{I - E(I)}{\sqrt{\mathrm{Var}(I)}}$, the z-value compared with the Normal distribution for $E(I)$ and $\mathrm{Var}(I)$ for the chosen assumptions; this `x` does not show spatial autocorrelation with these spatial weights:
+
+```{r}
+glance_htest <- function(ht) c(ht$estimate, "Std deviate"=unname(ht$statistic), "p.value="=unname(ht$p.value))
+broom_ok <- FALSE
+if (names(broom::tidy(mt))[1] == "Moran I statistic") broom_ok <- TRUE
+if (broom_ok) broom::tidy(mt)[,1:5] else glance_htest(mt)
+```
+The test however fails to detect a missing trend in the data as a missing variable problem, finding spatial autocorrelation instead:
 
 ```{r}
 beta <- 0.5e-02
 t <- st_coordinates(coords)[,1]/1000
 x_t <- x + beta*t
-moran.test(x_t, lw_q_B, randomisation=FALSE)$estimate
+mt <- moran.test(x_t, lw_q_B, randomisation=FALSE)
+if (broom_ok) broom::tidy(mt)[,1:5] else glance_htest(mt)
 ```
 If we test the residuals of a linear model including the trend, the apparent spatial autocorrelation disappears:
 
 ```{r}
-lm.morantest(lm(x_t ~ t), lw_q_B)$estimate
+lmt <- lm.morantest(lm(x_t ~ t), lw_q_B)
+if (broom_ok) broom::tidy(lmt)[,1:5] else glance_htest(lmt)
 ```
 
 A comparison of implementations of measures of spatial autocorrelation shows that a wide range of measures is available in R in a number of packages, chiefly in the **spdep** package, and that differences from other implementations can be attributed to design decisions [@Bivand2018]. The **spdep** package also includes the only implementations of exact and Saddlepoint approximations to global and local Moran's I for regression residuals [@tiefelsdorf:02; @bivandetal:09].
@@ -418,14 +435,9 @@ Since there are four levels, we re-arrange the list of `htest` objects to give a
 
 The global tests in **spdep** return `htest` objects with a `print()` method in the **stats** package. To save space here, we'll use a glance function if the `broom::tidy()` method has not been updated to use estimate names.
 
-```{r}
-glance_htest <- function(ht) c(ht$estimate, "Std deviate"=unname(ht$statistic))
-```
 
 ```{r}
 jcl <- joincount.test(pol_pres15$types, listw=lw_q_B)
-broom_ok <- FALSE
-if (names(broom::tidy(jcl[[1]]))[1] == "Same colour statistic") broom_ok <- TRUE
 if (broom_ok) {
 nm <- tibble::enframe(sapply(jcl, function(t) {
   nm <- substring(names(t$statistic), 18)
@@ -478,7 +490,7 @@ The default for the `randomisation=` argument is `TRUE`, but here we will simply
 
 ```{r}
 mt <- moran.test(pol_pres15$I_turnout, listw=lw_q_B, randomisation=FALSE)
-if (broom_ok) broom::tidy(mt)[,1:4] else glance_htest(mt)
+if (broom_ok) broom::tidy(mt)[,1:5] else glance_htest(mt)
 ```
 
 The `lm.morantest()` function also takes a `resfun=` argument to set the function used to extract the residuals used for testing, and clearly lets us model other salient features of the response variable [@cliff+ord:81, p. 203].
@@ -491,7 +503,7 @@ To compare with the standard test, we are only using the intercept here, and as 
 ```{r}
 ols <- lm(I_turnout ~ 1, pol_pres15)
 lmt <- lm.morantest(ols, listw=lw_q_B)
-if (broom_ok) broom::tidy(lmt)[,1:4] else glance_htest(lmt)
+if (broom_ok) broom::tidy(lmt)[,1:5] else glance_htest(lmt)
 ```
 Following the elaboration of the global Moran's I test for least squares residuals, further work was done to develop an exact test [@TiefelsdorfBoots1995; @TiefelsdorfBoots1997; @Hepple1998]. The `lm.morantest.sad()` function implements a Saddlepoint approximation, and `lm.morantest.exact()` the exact test, using dense matrix calculations unsuitable for large $n$ [@tiefelsdorf:02; @bivandetal:09]. The additional arguments are used in the computation of the exact standard deviate.
 
@@ -508,7 +520,7 @@ names(lmte$estimate) <- "Moran I statistic"
 class(lmte) <- c(class(lmte), "htest")
 ```
 ```{r}
-if (broom_ok) broom::tidy(lmte)[,1:2] else glance_htest(lmte)
+if (broom_ok) broom::tidy(lmte)[,1:3] else glance_htest(lmte)
 ```
 The only difference between tests under normality and randomisation is that an extra term is added if the kurtosis of the variable of interest indicates a flatter or more peaked distribution, where the measure used is the classical measure of kurtosis.
 
@@ -521,7 +533,7 @@ Under the default randomisation assumption of analytical randomisation, the resu
 
 ```{r}
 mtr <- moran.test(pol_pres15$I_turnout, listw=lw_q_B)
-if (broom_ok) (tmtr <- broom::tidy(mtr)[,1:4]) else (tmtr <- glance_htest(mtr))
+if (broom_ok) (tmtr <- broom::tidy(mtr)[,1:5]) else (tmtr <- glance_htest(mtr))
 ```
 
 The PySAL **esda** package contains the `Moran` function reporting the same results, here under randomisation. The function returns results under normality, randomisation and by permutation simulation. Similar compatisons may be made for other global measures; for details see Bivand and Wong [-@Bivand2018].
@@ -531,7 +543,7 @@ esda <- import("esda")
 np$random$seed(1L)
 mi <- esda$Moran(pol_pres15$I_turnout, nb_gal_ps, transformation="B",
                  permutations=999L, two_tailed=FALSE)
-all.equal(c(mi$I, mi$EI, mi$VI_rand, mi$z_rand), unname(tmtr))
+all.equal(c(mi$I, mi$EI, mi$VI_rand, mi$z_rand, mi$p_rand), unname(unlist(c(tmtr))))
 ```
 
 Of course, from the very beginning, interest was shown in Monte Carlo testing, also known as a Hope-type test and as a permutation bootstrap. By default, `moran.mc()` retrurns a `"htest"` object, but may simply use `boot::boot()` internally and return a `"boot"` object when `return_boot=TRUE`.
@@ -572,7 +584,12 @@ apmc <- aple.mc(c(scale(pol_pres15$I_turnout, scale=FALSE)), listw=lw_q_W,
                 nsim=999)
 if (broom_ok) broom::tidy(apmc) else glance_boot(apmc)
 ```
-Geary's global $C$ is implemented in `geary.test()` largely following the same argument structure as `moran.test()`.
+Geary's global $C$ is implemented in `geary.test()` largely following the same argument structure as `moran.test()`. Geary's global $C$ measure is given as [@cliff+ord:81, page 17]:
+
+$$
+C = \left( \frac{(n-1)}{2 S_0} \right) \frac{\sum_{(2)} w_{ij}(x_i-x_j)^2}{\sum_{i=1}^{n} z_i^2}
+$$
+using the same definitions as for Moran's $I$.
 
 ```{r}
 args(geary.test)
@@ -581,9 +598,14 @@ Because $C$ is based on the similarity of neighbouring values, small values of $
 
 ```{r}
 gt <- geary.test(pol_pres15$I_turnout, listw=lw_q_B)
-if (broom_ok) broom::tidy(gt)[,1:4] else glance_htest(gt)
+if (broom_ok) broom::tidy(gt)[,1:5] else glance_htest(gt)
 ```
-The Getis-Ord $G$ test includes extra arguments to accommodate differences between implementations, as Bivand and Wong [-@Bivand2018] found multiple divergences from the original definitions, often to omit no-neighbour observations generated when using distance band neighbours.
+The Getis-Ord $G$ test includes extra arguments to accommodate differences between implementations, as Bivand and Wong [-@Bivand2018] found multiple divergences from the original definitions, often to omit no-neighbour observations generated when using distance band neighbours. It is given as [@getis+ord:92, page 194]:
+
+$$
+G = \frac{\sum_{(2)} w_{ij} x_i x_j}{\sum_{(2)} x_i x_j}
+$$
+using the same definitions as for Moran's $I$. For $G_*$, the $\sum_{(2)}$ constraint is relaxed by including $i$ as a neighbour of itself (thereby also removing the no-neighbour problem, because all observations have at least one neighbour).
 
 ```{r}
 args(globalG.test)
@@ -592,13 +614,13 @@ With contiguity neighbours, global $G$ yields a much smaller standard deviate th
 
 ```{r}
 ggt <- globalG.test(pol_pres15$I_turnout, listw=lw_q_B)
-if (broom_ok) broom::tidy(ggt)[,1:4] else glance_htest(ggt)
+if (broom_ok) broom::tidy(ggt)[,1:5] else glance_htest(ggt)
 ```
 Because this neighbour definition leaves a few observations without neighbours, we need to use the `zero.policy=` argument.
 
 ```{r}
 ggt <- globalG.test(pol_pres15$I_turnout, listw=lw_d16_B, zero.policy=TRUE)
-if (broom_ok) broom::tidy(ggt)[,1:4] else glance_htest(ggt)
+if (broom_ok) broom::tidy(ggt)[,1:5] else glance_htest(ggt)
 ```
 The Mantel test is implemented without its analytical variance as `sp.mantel.mc()`, rather using permutation bootstrap like `moran.mc()`. It takes a `type=` argument, which can be set to `"moran"`, `"geary"` or `"sokal"`. The output is scaled differently, but gives similar inferences.
 
