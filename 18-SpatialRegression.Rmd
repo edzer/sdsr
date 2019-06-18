@@ -101,19 +101,42 @@ form <- formula(log(median) ~ CRIM + ZN + INDUS + CHAS + I((NOX*10)^2) + I(RM^2)
                   log(I(LSTAT/100)))
 ```
 
-Before moving to presentations of issues raised in fitting spatial regression models, it is worth making a few further points. A recent review of spatial regression in a spatial econometrics setting is given by Kelejian and Piras [-@kelejian+piras:17]; note that their usage is to call the spatial coefficient of the lagged response $\lambda$ and that of the lagged residuals $\rho$, the reverse of other usage  [@a88; @lesage+pace:09]. One interesting finding is that relatively dense spatial weights matrices may downweight model estimates, suggesting that sparser weights are preferable [@smith:09]. Another useful finding is that the presence of residual spatial autocorrelation need not bias the estimates of variance of regression coefficients, provided that the covariates themselves do not exhibit spatial autocorrelation [@smith+lee12]. In general, however, the footprints of the spatial processes of the response and covariates may not be aligned, and if covariates and the residual are autocorrelated, it is likely that the estimates of variance of regression coefficients will be biassed downwards if attempts are not made to model the spatial processes.
+Before moving to presentations of issues raised in fitting spatial regression models, it is worth making a few further points. A recent review of spatial regression in a spatial econometrics setting is given by Kelejian and Piras [-@kelejian+piras:17]; note that their usage is to call the spatial coefficient of the lagged response $\lambda$ and that of the lagged residuals $\rho$, the reverse of other usage  [@a88; @lesage+pace:09]; here we use $\rho_{\mathrm{Lag}}$ for the spatial coefficient in the spatial lag model, and $\rho_{\mathrm{Err}}$ for the spatial error model. One interesting finding is that relatively dense spatial weights matrices may downweight model estimates, suggesting that sparser weights are preferable [@smith:09]. Another useful finding is that the presence of residual spatial autocorrelation need not bias the estimates of variance of regression coefficients, provided that the covariates themselves do not exhibit spatial autocorrelation [@smith+lee12]. In general, however, the footprints of the spatial processes of the response and covariates may not be aligned, and if covariates and the residual are autocorrelated, it is likely that the estimates of variance of regression coefficients will be biassed downwards if attempts are not made to model the spatial processes.
 
 In trying to model these spatial processes, we may choose to model the spatial autocorrelation in the residual with a spatial error model (SEM). If the processes in the covariates and the response match, we should find little difference between the coefficients of a least squares and a SEM, but very often they diverge, suggesting that a Hausman test for this condition should be employed [@pace+lesage:08]. This may be related to earlier discussions of a spatial equivalent to the unit root and cointegration where spatial processes match [@fingleton:99].
 
 Work reviewed by Mur and Angulo [-@mur+angulo:06] on the Durbin model, including the spatially lagged covariates in the model, permits a shared spatial process to be viewed and tested for as a Common Factor [@burridge:81; @bivand:84]. The inclusion of spatially lagged covariates lets us check whether the same spatial process is manifest in the response and the covariates (SEM), whether they are different processes, or whether no process is detected. A model with a spatial process in the response only is termed a spatial lag model (SLM, often SAR - spatial autoregressive), and with different processes in the response and covariates a spatial Durbin model (SDM) [@lesage+pace:09].
 
-If we extend this family with processes in the covariates and the residual, we get  a spatial error Durbin model (SDEM). If it is chosen to admit a spatial process in the residuals in addition to a spatial process in the response, again two models are formed, a general nested model (GNM) nesting all the others, and a model without spatially lagged covariates (SAC, also known as SARAR). If neither the residuals nor the residual are modelled with spatial processes, spatially lagged covariates may be added to a linear model, as a spatially lagged X model (SLX) [@elhorst:10; @bivand:12; @lesage:14; @halleck-vega+elhorst:15]. 
+If we extend this family with processes in the covariates and the residual, we get  a spatial error Durbin model (SDEM). If it is chosen to admit a spatial process in the residuals in addition to a spatial process in the response, again two models are formed, a general nested model (GNM) nesting all the others, and a model without spatially lagged covariates (SAC, also known as SARAR - Spatial AutoRegressive-AutoRegressive model). If neither the residuals nor the residual are modelled with spatial processes, spatially lagged covariates may be added to a linear model, as a spatially lagged X model (SLX) [@elhorst:10; @bivand:12; @lesage:14; @halleck-vega+elhorst:15]. 
+
+We can write the general nested model (GNM) as:
+
+$$
+{\mathbf y} = \rho_{\mathrm{Lag}} {\mathbf W}{\mathbf y} + {\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma} + {\mathbf u},
+\qquad {\mathbf u} = \rho_{\mathrm{Err}} {\mathbf W} {\mathbf u} + {\mathbf \varepsilon},
+$$
 
 
+where ${\mathbf y}$ is an $(N \times 1)$ vector of observations on a dependent variable taken  at each of $N$ locations, ${\mathbf X}$ is an $(N \times k)$ matrix of exogenous variables, ${\mathbf \beta}$ and ${\mathbf \gamma}$ are $(k \times 1)$ and $((k-1) \times 1)$ vectors of parameters, ${\mathbf u}$ is an $(N \times 1)$ spatially autocorrelated disturbance vector, ${\mathbf \varepsilon}$ is an $(N \times 1)$ vector of independent and identically distributed disturbances and $\rho_{\mathrm{Lag}}$ and $\rho_{\mathrm{Err}}$ are scalar spatial parameters.
+
+This may be constrained to the double spatial coefficient model SAC/SARAR by setting ${\mathbf \gamma} = 0$, to the spatial Durbin (SDM) by setting $\rho_{\mathrm{Err}} = 0$, and to the error Durbin model (SDEM) by setting $\rho_{\mathrm{Lag}} = 0$. Imposing more conditions gives the spatial lag model (SLM) with ${\mathbf \gamma} = 0$ and $\rho_{\mathrm{Err}} = 0$, the spatial error model (SEM) with ${\mathbf \gamma} = 0$ and $\rho_{\mathrm{Lag}} = 0$, and the spatially lagged X model (SLX) with $\rho_{\mathrm{Lag}} = 0$ and $\rho_{\mathrm{Err}} = 0$.
 
 Although making predictions for new locations for which covariates are observed was raised as an issue some time ago, it has many years to make progress in reviewing the possibilities [@bivand:02; @goulardetal:17]. The prediction methods for SLM, SDM, SEM, SDEM, SAC and GNM models fitted with maximum likelihood were contributed as a Google Summer of Coding project by Martin Gubri. This work, and work on similar models with missing data [@suesse:18] is also relevant for exploring censored median house values in the Boston data set. Work on prediction also exposed the importance of the reduced form of these models, in which the spatial process in the response interacts with the regression coefficients in the SLM, SDM, SAC and GNM models. 
 
 The consequence of these interactions is that a unit change in a covariate will only impact the response as the value of the regression coefficient if the spatial coefficient of the lagged response is zero. Where it is non-zero, global spillovers, impacts, come into play, and these impacts should be reported rather than the regression coefficients [@lesage+pace:09; @elhorst:10; @bivand:12; @lesage:14; @halleck-vega+elhorst:15]. Local impacts may be reported for SDEM and SLX models, using linear combination to calculate standard errors for the total impacts of each covariate (sums of coefficients on the covariates and their spatial lags).
+
+This can be seen from the GNM data generation process:
+
+$$
+({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W}){\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})({\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma}) + {\mathbf \varepsilon},
+$$
+
+where ${\mathbf I}$ is the $N \times N$ identity matrix; re-writing:
+
+$$
+{\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1}({\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma}) + ({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1}({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})^{-1}{\mathbf \varepsilon}.
+$$
+There is interaction between the $\rho_{\mathrm{Lag}}$ and ${\mathbf \beta}$ (and ${\mathbf \gamma}$ if present) coefficients. This can be seen from the partial derivatives: $\partial y_i / \partial x_{jr} = (({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1} ({\mathbf I} \beta_r + {\mathbf W} \gamma_r))_{ij}$. This dense matrix $S_r({\mathbf W}) = (({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1} ({\mathbf I} \beta_r + {\mathbf W} \gamma_r))$ expresses the direct impacts (effects) on its principal diagonal, and indirect impacts in off-diagonal elements.
 
 Current work in the **spatialreg** package is focused on refining the handling of spatially lagged covariates using a consistent `Durbin=` argument taking either a logical value or a formula giving the subset of covariates to add in spatially lagged form. There is a speculation that some covariates, for example some dummy variables, should not be added in spatially lagged form. This then extends to handling these included spatially lagged covariates appropriately in calculating impacts. This work applies to cross-sectional models fitted using MCMC or maximum likelihood, and will offer facilities to spatial panel models.
 
@@ -126,7 +149,19 @@ The review of cross-sectional maximum likelihood and generalized method of momen
 
 ### Maximum likelihood
 
-For models with single spatial coefficients (SEM and SDEM using `errorsarlm()`, SLM and SDM using `lagsarlm()`), the methods initially described by Ord [-@ord:75] are used. Both estimating functions take similar arguments, where the first two, `formula=` and `data=` are shared by most model estimating functions. The third argument is a `listw` spatial weights object, while `na.action=` behaves as in other model estimating functions if the spatial weights can reasonably be subsetted to avoid observations with missing values. The `weights=` argument may be used to provide weights indicating the known degree of per-observation variability in the variance term - this is not available for `lagsarlm()`.
+For models with single spatial coefficients (SEM and SDEM using `errorsarlm()`, SLM and SDM using `lagsarlm()`), the methods initially described by Ord [-@ord:75] are used. The following table shows the functions that can be used to estimate the models described above using maximum likelihood.
+
+| model | model name                      | maximum likelihood estimation function |
+|-------|---------------------------------|----------------------------------------|
+| SEM   | spatial error                   | `errorsarlm(..., Durbin=FALSE, ...)`   |
+| SEM   | spatial error                   | `spautolm(..., family="SAR", ...)`     |
+| SDEM  | spatial Durbin error            | `errorsarlm(..., Durbin=TRUE, ...)`    |
+| SLM   | spatial lag                     | `lagsarlm(..., Durbin=FALSE, ...)`     |
+| SDM   | spatial Durbin                  | `lagsarlm(..., Durbin=TRUE, ...)`      |
+| SAC   | spatial autoregressive combined | `sacsarlm(..., Durbin=FALSE, ...)`     |
+| GNM   | general nested                  | `sacsarlm(..., Durbin=TRUE, ...)`      |
+
+The estimating functions `errorsarlm()` and `lagsarlm()` take similar arguments, where the first two, `formula=` and `data=` are shared by most model estimating functions. The third argument is a `listw` spatial weights object, while `na.action=` behaves as in other model estimating functions if the spatial weights can reasonably be subsetted to avoid observations with missing values. The `weights=` argument may be used to provide weights indicating the known degree of per-observation variability in the variance term - this is not available for `lagsarlm()`.
 
 ```{r}
 library(spatialreg)
