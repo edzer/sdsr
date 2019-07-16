@@ -144,24 +144,18 @@ the fitting is done by minimizing $\sum_{i=1}^{n}w_i(\gamma(h_i)-\hat{\gamma}(h_
 
 ## Kriging interpolation {#kriging}
 
-Kriging involves the prediction of $Z(s_0)$ at arbitrary locations $s_0$. Typically, when
-we interpolate a variable, we do that on points on a regular grid covering the target area.
-When we take the grid points such that they align with the points of our graphics device (screen), 
-then nobody will notice as long as the graphic device is not resized.
+Kriging involves the prediction of $Z(s_0)$ at arbitrary locations
+$s_0$. Typically, when we interpolate a variable, we do that on
+points on a regular grid covering the target area.  We first create
+a `stars` object with a raster covering the target area, and NA's
+outside it:
 
-We first create a `stars` object with a raster covering the target area, and NA's outside it:
 ```{r}
 # build a grid over Germany:
-bb = st_bbox(de)
-dx = seq(bb[1], bb[3], 10000)
-dy = seq(bb[4], bb[2], -10000) # decreases!
-st_as_stars(matrix(0, length(dx), length(dy))) %>%
-  st_set_dimensions(1, dx) %>%
-  st_set_dimensions(2, dy) %>%
-  st_set_dimensions(names = c("x", "y")) %>%
-  st_set_crs(crs) -> grd
-i = st_intersects(grd, de)
-grd[[1]][lengths(i)==0] = NA
+st_bbox(de) %>%
+  st_as_stars(dx = 10000) %>%
+  st_set_crs(crs) %>%
+  st_crop(de) -> grd
 grd
 ```
 
@@ -175,27 +169,77 @@ ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) +
 ```
 
 ## Areal means: block kriging
+
+Computing areal means can be done in several ways. The simples is to take
+the average of point samples falling inside the target polygons:
 ```{r}
-a = aggregate(no2.sf["NO2"], de, mean)
+a = aggregate(no2.sf["NO2"], by = de, FUN = mean)
+```
+A more complicated way is to use _block kriging_ [@jh78], which
+uses _all_ the data to estimate the mean of the variable over the
+target area. With `krige`, this can be done by giving the target
+areas (polygons) as the `newdata` argument:
+```{r}
 b = krige(NO2~1, no2.sf, de, v.m)
+```
+we can now compile the two maps together in order to create a single plot:
+```{r}
 b$sample = a$NO2
 b$kriging = b$var1.pred
 b %>% select(sample, kriging) %>% gather(var, NO2, -geometry) -> b2
 ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +
 	 scale_fill_gradientn(colors = sf.colors(20))
 ```
+We see that the signal is similar, but that the simple means are
+more variable than the block kriging values; this may be due to
+the smoothing effect of kriging: data points outside the target
+area are weighted, too.
 
+To compare the standard errors of means, for the sample mean we
+can get a rough guess of the standard error by $\sqrt{(\sigma^2/n)}$:
 ```{r}
 SE = function(x) sqrt(var(x)/length(x))
 a = aggregate(no2.sf["NO2"], de, SE)
+```
+which would have been the actual estimate in design-based inference
+if the sample was obtained by spatially random sampling.
+The block kriging variance is the model-based estimate, and is
+a by-product of kriging. We combine and rename the two:
+```{r}
 b$sample = a$NO2
 b$kriging = sqrt(b$var1.var)
 b %>% select(sample, kriging) %>% gather(var, NO2, -geometry) -> b2
 ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +
 	 scale_fill_gradientn(colors = sf.colors(20))
 ```
+where we see that the simple approach gives clearly more variability
+in prediction errors for the areal means.
 
-## Conditional and unconditional simulation
+## Conditional simulation
+
+In case one or more conditional realisation of the field $Z(s)$
+are needed rather than their conditional mean, we can obtain this
+by _conditional simulation_. A reason for wanting this may be the
+need to estimate areal mean values of $g(Z(s))$ with $g(\cdot)$
+a non-linear function; a simple example is the areal fraction where
+$Z(s)$ exceeds a threshold.
+
+The standard approach used by `gstat` is to use the sequential
+simulation algorithm for this. This is a very simple that randomly
+steps through the prediction locations and at each location
+
+* carries out a kriging prediction
+* draws a random variable from the normal distribution with mean and variance equal to the kriging variance
+* adds this value to the conditioning dataset
+* finds a new random simulation location
+
+until all locations have been visited. 
+
+This is caried out by `gstat::krige` when `nsim` is set to a positive
+value. In addition, it is good to constrain `nmax`, the (maximum)
+number of nearest neigbours to include in kriging estimation,
+because the dataset grows each step, leading otherwise quickly to
+very long computing times and large memory requirements.
 
 ```{r}
 library(viridis)
@@ -207,6 +251,13 @@ g = ggplot() + coord_equal() +
 	scale_y_discrete(expand=c(0,0))
 g + geom_stars(data = s[,,,1:6]) + facet_wrap(~sample)
 ```
+
+Alternative methods for conditional simulation have recently been
+added to `gstat`, and include `krigeSimCE` implementing the circular
+embedding method [@JSSv055i09], and `krigeSTSimTB` implementing
+the turning bands method [@schlather]. These are of particular
+of interest for larger datasets or conditional simulations of
+spatiotemporal data.
 
 ## Trend models
 
@@ -247,7 +298,7 @@ grd$ID = 1:prod(dim(grd)) # so we can find out later which grid cell we have
 ii = st_intersects(grd["ID"], st_cast(st_union(de), "MULTILINESTRING"))
 grd_sf = st_as_sf(grd["ID"], na.rm = FALSE)[lengths(ii) > 0,]
 iii = st_intersection(grd_sf, st_union(de))
-grd$area = st_area(grd)[[1]] + units::set_units(grd$A1, m^2) # NA's
+grd$area = st_area(grd)[[1]] + units::set_units(grd$values, m^2) # NA's
 grd$area[iii$ID] = st_area(iii)
 ```
 Instead of doing the two-stage procedure above: first finding cells that
@@ -431,9 +482,9 @@ a more reasonable approach.
 
 More in general, we can estimate at arbitrary locations and time
 points, and we will illustrate this with predicting time series at
-particular locations, and and predicting spatial slices. We can create
+particular locations, and and predicting spatial slices [@RJ-2016-014]. 
+We can create
 a `stars` object to denote two points and all time instances with
-
 ```{r}
 set.seed(123)
 pt = st_sample(de, 2)
@@ -444,7 +495,7 @@ st_as_stars(list(pts = matrix(1, length(t), length(pt)))) %>%
 	st_set_dimensions("station", pt) -> new_pt
 ```
 
-
+and obtain the corresponding spatiotemporal predictions using `krigeST` with
 ```{r}
 no2.st <- st_transform(no2.st, crs)
 new_ts <- krigeST(NO2~1, data = no2.st["NO2"], newdata = new_pt,
@@ -453,6 +504,8 @@ new_ts <- krigeST(NO2~1, data = no2.st["NO2"], newdata = new_pt,
 plot(xts(t(new_ts[[2]]), t), type = 'l')
 ```
 
+Alternatively, we can create spatiotemporal predictions for a set of time-stamped
+raster maps, created by
 ```{r}
 t4 = t[(1:4 - 0.5) * (3*24*30)]
 
@@ -462,27 +515,20 @@ st_as_stars(pts = array(1, c(d[1], d[2], time=length(t4)))) %>%
 	st_set_dimensions("x", st_get_dimension_values(grd, "x")) %>%
 	st_set_dimensions("y", st_get_dimension_values(grd, "y")) %>%
 	st_set_crs(crs) -> grd.st
+```
+and the subsequent predictions are obtained by
+
+```{r}
 new_int <- krigeST(NO2~1, data = no2.st["NO2"], newdata = grd.st,
-	     nmax = 50, stAni = StAni, modelList = fitProdSumModel,
+	     nmax = 200, stAni = StAni, modelList = fitProdSumModel,
 		 progress = FALSE)
-plot(new_int[2,,,1], reset = FALSE)
-plot(de, col = NA, border = 'red', add = TRUE)
-plot(st_geometry(no2.sf), col = 'green', add = TRUE, pch = 16)
+names(new_int)[2] = "NO2"
+g + geom_stars(data = new_int, aes(fill = NO2, x = x, y = y)) + 
+	facet_wrap(~time) +
+	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
+	geom_sf(data = no2.sf, col = 'grey', cex = .5)
 ```
 
-We can estimate 
-
-- have a single model for all correlations 
-
-- predict, or simulate, missing values; better approach than taking averages while
-   ignoring if 0-25% are missing
-   alternative multivariate arima would have been enough/better?
-
-   Alternative: pkg gapfill (remote sensing oriented; Florian Gerber)
-   https://cran.r-project.org/web/packages/gapfill/
-
-- predict a sequence of hours
-
-- smooth in between, e.g. by 10-min interpolations, but note that measurements are hourly integrals, not values at time instances, which is what we assume
-
-
+A larger value for `nmax` was needed here to decrease the visible
+disturbance (sharp edges) caused by discrete neighbourhood
+selections, which are now done in space _and_ time.

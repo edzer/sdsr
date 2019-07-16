@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>Chapter 16 Interpolation and Geostatistics | Spatial Data Science</title>
   <meta name="description" content="description_xx" />
-  <meta name="generator" content="bookdown 0.10 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.11 and GitBook 2.6.7" />
 
   <meta property="og:title" content="Chapter 16 Interpolation and Geostatistics | Spatial Data Science" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2019-06-19" />
+<meta name="date" content="2019-07-16" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -195,7 +195,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li class="chapter" data-level="16.3" data-path="interpolation.html"><a href="interpolation.html#fitting-variogram-models"><i class="fa fa-check"></i><b>16.3</b> Fitting variogram models</a></li>
 <li class="chapter" data-level="16.4" data-path="interpolation.html"><a href="interpolation.html#kriging"><i class="fa fa-check"></i><b>16.4</b> Kriging interpolation</a></li>
 <li class="chapter" data-level="16.5" data-path="interpolation.html"><a href="interpolation.html#areal-means-block-kriging"><i class="fa fa-check"></i><b>16.5</b> Areal means: block kriging</a></li>
-<li class="chapter" data-level="16.6" data-path="interpolation.html"><a href="interpolation.html#conditional-and-unconditional-simulation"><i class="fa fa-check"></i><b>16.6</b> Conditional and unconditional simulation</a></li>
+<li class="chapter" data-level="16.6" data-path="interpolation.html"><a href="interpolation.html#conditional-simulation"><i class="fa fa-check"></i><b>16.6</b> Conditional simulation</a></li>
 <li class="chapter" data-level="16.7" data-path="interpolation.html"><a href="interpolation.html#trend-models"><i class="fa fa-check"></i><b>16.7</b> Trend models</a></li>
 <li class="chapter" data-level="16.8" data-path="interpolation.html"><a href="interpolation.html#multivariable-geostatistics"><i class="fa fa-check"></i><b>16.8</b> Multivariable geostatistics</a></li>
 <li class="chapter" data-level="16.9" data-path="interpolation.html"><a href="interpolation.html#spatiotemporal-interpolation"><i class="fa fa-check"></i><b>16.9</b> Spatiotemporal interpolation</a></li>
@@ -330,34 +330,27 @@ v0 =<span class="st"> </span><span class="kw">variogram</span>(NO2<span class="o
 </div>
 <div id="kriging" class="section level2">
 <h2><span class="header-section-number">16.4</span> Kriging interpolation</h2>
-<p>Kriging involves the prediction of <span class="math inline">\(Z(s_0)\)</span> at arbitrary locations <span class="math inline">\(s_0\)</span>. Typically, when we interpolate a variable, we do that on points on a regular grid covering the target area. When we take the grid points such that they align with the points of our graphics device (screen), then nobody will notice as long as the graphic device is not resized.</p>
-<p>We first create a <code>stars</code> object with a raster covering the target area, and NA’s outside it:</p>
+<p>Kriging involves the prediction of <span class="math inline">\(Z(s_0)\)</span> at arbitrary locations <span class="math inline">\(s_0\)</span>. Typically, when we interpolate a variable, we do that on points on a regular grid covering the target area. We first create a <code>stars</code> object with a raster covering the target area, and NA’s outside it:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># build a grid over Germany:</span>
-bb =<span class="st"> </span><span class="kw">st_bbox</span>(de)
-dx =<span class="st"> </span><span class="kw">seq</span>(bb[<span class="dv">1</span>], bb[<span class="dv">3</span>], <span class="dv">10000</span>)
-dy =<span class="st"> </span><span class="kw">seq</span>(bb[<span class="dv">4</span>], bb[<span class="dv">2</span>], <span class="dv">-10000</span>) <span class="co"># decreases!</span>
-<span class="kw">st_as_stars</span>(<span class="kw">matrix</span>(<span class="dv">0</span>, <span class="kw">length</span>(dx), <span class="kw">length</span>(dy))) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">st_set_dimensions</span>(<span class="dv">1</span>, dx) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">st_set_dimensions</span>(<span class="dv">2</span>, dy) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">st_set_dimensions</span>(<span class="dt">names =</span> <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">st_set_crs</span>(crs) -&gt;<span class="st"> </span>grd
-i =<span class="st"> </span><span class="kw">st_intersects</span>(grd, de)
-grd[[<span class="dv">1</span>]][<span class="kw">lengths</span>(i)<span class="op">==</span><span class="dv">0</span>] =<span class="st"> </span><span class="ot">NA</span>
+<span class="kw">st_bbox</span>(de) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">st_as_stars</span>(<span class="dt">dx =</span> <span class="dv">10000</span>) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">st_set_crs</span>(crs) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">st_crop</span>(de) -&gt;<span class="st"> </span>grd
 grd
 <span class="co">#&gt; stars object with 2 dimensions and 1 attribute</span>
 <span class="co">#&gt; attribute(s):</span>
-<span class="co">#&gt;       A1       </span>
+<span class="co">#&gt;     values     </span>
 <span class="co">#&gt;  Min.   :0     </span>
 <span class="co">#&gt;  1st Qu.:0     </span>
 <span class="co">#&gt;  Median :0     </span>
 <span class="co">#&gt;  Mean   :0     </span>
 <span class="co">#&gt;  3rd Qu.:0     </span>
 <span class="co">#&gt;  Max.   :0     </span>
-<span class="co">#&gt;  NA&#39;s   :1793  </span>
+<span class="co">#&gt;  NA&#39;s   :2076  </span>
 <span class="co">#&gt; dimension(s):</span>
 <span class="co">#&gt;   from to  offset  delta                       refsys point values    </span>
-<span class="co">#&gt; x    1 65  280741  10000 +proj=utm +zone=32 +datum... FALSE   NULL [x]</span>
-<span class="co">#&gt; y    1 87 6101239 -10000 +proj=utm +zone=32 +datum... FALSE   NULL [y]</span></code></pre></div>
+<span class="co">#&gt; x    1 65  280741  10000 +proj=utm +zone=32 +datum...    NA   NULL [x]</span>
+<span class="co">#&gt; y    1 87 6101239 -10000 +proj=utm +zone=32 +datum...    NA   NULL [y]</span></code></pre></div>
 <p>Then, we can krige by using <code>gstat::krige</code>, with the model for the trend, the data, the prediction grid, and the variogram model:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">k =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, grd, v.m)
 <span class="co">#&gt; [using ordinary kriging]</span>
@@ -368,26 +361,41 @@ grd
 </div>
 <div id="areal-means-block-kriging" class="section level2">
 <h2><span class="header-section-number">16.5</span> Areal means: block kriging</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">a =<span class="st"> </span><span class="kw">aggregate</span>(no2.sf[<span class="st">&quot;NO2&quot;</span>], de, mean)
-b =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, de, v.m)
-<span class="co">#&gt; [using ordinary kriging]</span>
-b<span class="op">$</span>sample =<span class="st"> </span>a<span class="op">$</span>NO2
+<p>Computing areal means can be done in several ways. The simples is to take the average of point samples falling inside the target polygons:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">a =<span class="st"> </span><span class="kw">aggregate</span>(no2.sf[<span class="st">&quot;NO2&quot;</span>], <span class="dt">by =</span> de, <span class="dt">FUN =</span> mean)</code></pre></div>
+<p>A more complicated way is to use <em>block kriging</em> <span class="citation">(Journel and Huijbregts <a href="#ref-jh78">1978</a>)</span>, which uses <em>all</em> the data to estimate the mean of the variable over the target area. With <code>krige</code>, this can be done by giving the target areas (polygons) as the <code>newdata</code> argument:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">b =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, de, v.m)
+<span class="co">#&gt; [using ordinary kriging]</span></code></pre></div>
+<p>we can now compile the two maps together in order to create a single plot:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">b<span class="op">$</span>sample =<span class="st"> </span>a<span class="op">$</span>NO2
 b<span class="op">$</span>kriging =<span class="st"> </span>b<span class="op">$</span>var1.pred
 b <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(sample, kriging) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">gather</span>(var, NO2, <span class="op">-</span>geometry) -&gt;<span class="st"> </span>b2
 <span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> b2, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">fill =</span> NO2)) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>var) <span class="op">+</span>
 <span class="st">     </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>))</code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-220-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="sds_files/figure-html/unnamed-chunk-222-1.png" width="672" style="display: block; margin: auto;" /> We see that the signal is similar, but that the simple means are more variable than the block kriging values; this may be due to the smoothing effect of kriging: data points outside the target area are weighted, too.</p>
+<p>To compare the standard errors of means, for the sample mean we can get a rough guess of the standard error by <span class="math inline">\(\sqrt{(\sigma^2/n)}\)</span>:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">SE =<span class="st"> </span><span class="cf">function</span>(x) <span class="kw">sqrt</span>(<span class="kw">var</span>(x)<span class="op">/</span><span class="kw">length</span>(x))
-a =<span class="st"> </span><span class="kw">aggregate</span>(no2.sf[<span class="st">&quot;NO2&quot;</span>], de, SE)
-b<span class="op">$</span>sample =<span class="st"> </span>a<span class="op">$</span>NO2
+a =<span class="st"> </span><span class="kw">aggregate</span>(no2.sf[<span class="st">&quot;NO2&quot;</span>], de, SE)</code></pre></div>
+<p>which would have been the actual estimate in design-based inference if the sample was obtained by spatially random sampling. The block kriging variance is the model-based estimate, and is a by-product of kriging. We combine and rename the two:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">b<span class="op">$</span>sample =<span class="st"> </span>a<span class="op">$</span>NO2
 b<span class="op">$</span>kriging =<span class="st"> </span><span class="kw">sqrt</span>(b<span class="op">$</span>var1.var)
 b <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(sample, kriging) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">gather</span>(var, NO2, <span class="op">-</span>geometry) -&gt;<span class="st"> </span>b2
 <span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> b2, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">fill =</span> NO2)) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>var) <span class="op">+</span>
 <span class="st">     </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>))</code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-221-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="sds_files/figure-html/unnamed-chunk-224-1.png" width="672" style="display: block; margin: auto;" /> where we see that the simple approach gives clearly more variability in prediction errors for the areal means.</p>
 </div>
-<div id="conditional-and-unconditional-simulation" class="section level2">
-<h2><span class="header-section-number">16.6</span> Conditional and unconditional simulation</h2>
+<div id="conditional-simulation" class="section level2">
+<h2><span class="header-section-number">16.6</span> Conditional simulation</h2>
+<p>In case one or more conditional realisation of the field <span class="math inline">\(Z(s)\)</span> are needed rather than their conditional mean, we can obtain this by <em>conditional simulation</em>. A reason for wanting this may be the need to estimate areal mean values of <span class="math inline">\(g(Z(s))\)</span> with <span class="math inline">\(g(\cdot)\)</span> a non-linear function; a simple example is the areal fraction where <span class="math inline">\(Z(s)\)</span> exceeds a threshold.</p>
+<p>The standard approach used by <code>gstat</code> is to use the sequential simulation algorithm for this. This is a very simple that randomly steps through the prediction locations and at each location</p>
+<ul>
+<li>carries out a kriging prediction</li>
+<li>draws a random variable from the normal distribution with mean and variance equal to the kriging variance</li>
+<li>adds this value to the conditioning dataset</li>
+<li>finds a new random simulation location</li>
+</ul>
+<p>until all locations have been visited.</p>
+<p>This is caried out by <code>gstat::krige</code> when <code>nsim</code> is set to a positive value. In addition, it is good to constrain <code>nmax</code>, the (maximum) number of nearest neigbours to include in kriging estimation, because the dataset grows each step, leading otherwise quickly to very long computing times and large memory requirements.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(viridis)
 s =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, grd, v.m, <span class="dt">nmax =</span> <span class="dv">30</span>, <span class="dt">nsim =</span> <span class="dv">10</span>)
 <span class="co">#&gt; drawing 10 GLS realisations of beta...</span>
@@ -398,7 +406,8 @@ g =<span class="st"> </span><span class="kw">ggplot</span>() <span class="op">+<
 <span class="st">    </span><span class="kw">scale_x_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)) <span class="op">+</span>
 <span class="st">    </span><span class="kw">scale_y_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))
 g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> s[,,,<span class="dv">1</span><span class="op">:</span><span class="dv">6</span>]) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>sample)</code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-222-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="sds_files/figure-html/unnamed-chunk-225-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Alternative methods for conditional simulation have recently been added to <code>gstat</code>, and include <code>krigeSimCE</code> implementing the circular embedding method <span class="citation">(Davies and Bryant <a href="#ref-JSSv055i09">2013</a>)</span>, and <code>krigeSTSimTB</code> implementing the turning bands method <span class="citation">(Schlather <a href="#ref-schlather">2011</a>)</span>. These are of particular of interest for larger datasets or conditional simulations of spatiotemporal data.</p>
 </div>
 <div id="trend-models" class="section level2">
 <h2><span class="header-section-number">16.7</span> Trend models</h2>
@@ -425,11 +434,14 @@ a =<span class="st"> </span><span class="kw">aggregate</span>(b, <span class="kw
 <p>Now we have the population counts per grid cell in <code>a</code>. To get to population density, we need to find the area of each cell; for cells crossing the country border, this will be less than 10 x 10 km:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">grd<span class="op">$</span>ID =<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="kw">prod</span>(<span class="kw">dim</span>(grd)) <span class="co"># so we can find out later which grid cell we have</span>
 ii =<span class="st"> </span><span class="kw">st_intersects</span>(grd[<span class="st">&quot;ID&quot;</span>], <span class="kw">st_cast</span>(<span class="kw">st_union</span>(de), <span class="st">&quot;MULTILINESTRING&quot;</span>))
+<span class="co">#&gt; Warning in st_intersects.stars(grd[&quot;ID&quot;], st_cast(st_union(de),</span>
+<span class="co">#&gt; &quot;MULTILINESTRING&quot;)): as_points is NA: assuming here that raster cells are</span>
+<span class="co">#&gt; small polygons, not points</span>
 grd_sf =<span class="st"> </span><span class="kw">st_as_sf</span>(grd[<span class="st">&quot;ID&quot;</span>], <span class="dt">na.rm =</span> <span class="ot">FALSE</span>)[<span class="kw">lengths</span>(ii) <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span>,]
 iii =<span class="st"> </span><span class="kw">st_intersection</span>(grd_sf, <span class="kw">st_union</span>(de))
 <span class="co">#&gt; Warning: attribute variables are assumed to be spatially constant</span>
 <span class="co">#&gt; throughout all geometries</span>
-grd<span class="op">$</span>area =<span class="st"> </span><span class="kw">st_area</span>(grd)[[<span class="dv">1</span>]] <span class="op">+</span><span class="st"> </span>units<span class="op">::</span><span class="kw">set_units</span>(grd<span class="op">$</span>A1, m<span class="op">^</span><span class="dv">2</span>) <span class="co"># NA&#39;s</span>
+grd<span class="op">$</span>area =<span class="st"> </span><span class="kw">st_area</span>(grd)[[<span class="dv">1</span>]] <span class="op">+</span><span class="st"> </span>units<span class="op">::</span><span class="kw">set_units</span>(grd<span class="op">$</span>values, m<span class="op">^</span><span class="dv">2</span>) <span class="co"># NA&#39;s</span>
 grd<span class="op">$</span>area[iii<span class="op">$</span>ID] =<span class="st"> </span><span class="kw">st_area</span>(iii)</code></pre></div>
 <p>Instead of doing the two-stage procedure above: first finding cells that have a border crossing it, then computing its area, we could also directly use <code>st_intersection</code> on all cells, but that takes considerably longer. From the counts and areas we can compute densities, and verify totals:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">grd<span class="op">$</span>pop_dens =<span class="st"> </span>a<span class="op">$</span>Einwohner <span class="op">/</span><span class="st"> </span>grd<span class="op">$</span>area
@@ -438,7 +450,7 @@ grd<span class="op">$</span>area[iii<span class="op">$</span>ID] =<span class="s
 <span class="kw">sum</span>(b<span class="op">$</span>Einwohner)
 <span class="co">#&gt; [1] 80324282</span>
 g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> grd, <span class="kw">aes</span>(<span class="dt">fill =</span> <span class="kw">sqrt</span>(pop_dens), <span class="dt">x =</span> x, <span class="dt">y =</span> y))</code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-225-1.png" width="672" style="display: block; margin: auto;" /> We need to divide the number of inhabitants by the number of 100 m grid points contributing to it, in order to convert population counts into population density.</p>
+<p><img src="sds_files/figure-html/unnamed-chunk-228-1.png" width="672" style="display: block; margin: auto;" /> We need to divide the number of inhabitants by the number of 100 m grid points contributing to it, in order to convert population counts into population density.</p>
 <p>To obtain population density values at monitoring network stations, we can use</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">(<span class="dt">a =</span> <span class="kw">aggregate</span>(grd[<span class="st">&quot;pop_dens&quot;</span>], no2.sf, mean))
 <span class="co">#&gt; stars object with 1 dimensions and 1 attribute</span>
@@ -489,7 +501,7 @@ Figure 16.1: Scatter plot of 2017 annual mean NO2 concentration against populati
 vr =<span class="st"> </span><span class="kw">variogram</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf)
 vr.m =<span class="st"> </span><span class="kw">fit.variogram</span>(vr, <span class="kw">vgm</span>(<span class="dv">1</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">50000</span>, <span class="dv">1</span>))
 <span class="kw">plot</span>(vr, vr.m, <span class="dt">plot.numbers =</span> <span class="ot">TRUE</span>)</code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-227-1.png" width="672" style="display: block; margin: auto;" /> and subsequently, kriging prediction is done by</p>
+<p><img src="sds_files/figure-html/unnamed-chunk-230-1.png" width="672" style="display: block; margin: auto;" /> and subsequently, kriging prediction is done by</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">kr =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf, grd[<span class="st">&quot;pop_dens&quot;</span>], vr.m)
 <span class="co">#&gt; [using universal kriging]</span>
 k<span class="op">$</span>kr1 =<span class="st"> </span>k<span class="op">$</span>var1.pred
@@ -501,7 +513,7 @@ g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars<
 <span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span>
 <span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>what)
 <span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will replace the existing one.</span></code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-228-1.png" width="672" style="display: block; margin: auto;" /> where, critically, the <code>pop_dens</code> values are now available for prediction locations in object <code>grd</code>. We see some clear differences: the map with population density in the trend follows the extremes of the population density rather than those of the measurement stations, and has a range that extends that of the former. It should be taken with a large grain of salt however, since the stations used were filtered for the category “rural background”, indicating that they represent conditions of lower populations density. The scatter plot of Figure <a href="interpolation.html#fig:no2scat">16.1</a> reveals that the the population density at the locations of stations is much more limited than that in the population density map, and hence the right-hand side map is based on strongly extrapolating the relationship shown in <a href="interpolation.html#fig:no2scat">16.1</a>.</p>
+<p><img src="sds_files/figure-html/unnamed-chunk-231-1.png" width="672" style="display: block; margin: auto;" /> where, critically, the <code>pop_dens</code> values are now available for prediction locations in object <code>grd</code>. We see some clear differences: the map with population density in the trend follows the extremes of the population density rather than those of the measurement stations, and has a range that extends that of the former. It should be taken with a large grain of salt however, since the stations used were filtered for the category “rural background”, indicating that they represent conditions of lower populations density. The scatter plot of Figure <a href="interpolation.html#fig:no2scat">16.1</a> reveals that the the population density at the locations of stations is much more limited than that in the population density map, and hence the right-hand side map is based on strongly extrapolating the relationship shown in <a href="interpolation.html#fig:no2scat">16.1</a>.</p>
 </div>
 </div>
 <div id="multivariable-geostatistics" class="section level2">
@@ -533,7 +545,7 @@ v.st =<span class="st"> </span><span class="kw">variogramST</span>(NO2<span clas
 v2 =<span class="st"> </span><span class="kw">plot</span>(v.st, <span class="dt">map =</span> <span class="ot">FALSE</span>)
 <span class="kw">print</span>(v1, <span class="dt">split =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">more =</span> <span class="ot">TRUE</span>)
 <span class="kw">print</span>(v2, <span class="dt">split =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">more =</span> <span class="ot">FALSE</span>)</code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-231-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="sds_files/figure-html/unnamed-chunk-234-1.png" width="672" style="display: block; margin: auto;" /></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># product-sum</span>
 prodSumModel &lt;-<span class="st"> </span><span class="kw">vgmST</span>(<span class="st">&quot;productSum&quot;</span>,
     <span class="dt">space=</span><span class="kw">vgm</span>(<span class="dv">150</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">200</span>, <span class="dv">0</span>),
@@ -554,12 +566,12 @@ StAni =<span class="st"> </span><span class="kw">estiStAni</span>(v.st, <span cl
 <span class="co">#&gt; 2   Sph 15.99  40.1</span>
 <span class="co">#&gt; k: 0.0322468133959116</span>
 <span class="kw">plot</span>(v.st, fitProdSumModel, <span class="dt">wireframe=</span><span class="ot">FALSE</span>, <span class="dt">all=</span><span class="ot">TRUE</span>, <span class="dt">scales=</span><span class="kw">list</span>(<span class="dt">arrows=</span><span class="ot">FALSE</span>), <span class="dt">zlim=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">150</span>))</code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-232-1.png" width="672" style="display: block; margin: auto;" /> which can also be plotted as wireframes, by</p>
+<p><img src="sds_files/figure-html/unnamed-chunk-235-1.png" width="672" style="display: block; margin: auto;" /> which can also be plotted as wireframes, by</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">plot</span>(v.st, <span class="dt">model=</span>fitProdSumModel, <span class="dt">wireframe=</span><span class="ot">TRUE</span>, <span class="dt">all=</span><span class="ot">TRUE</span>, <span class="dt">scales=</span><span class="kw">list</span>(<span class="dt">arrows=</span><span class="ot">FALSE</span>), <span class="dt">zlim=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">185</span>))</code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-233-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="sds_files/figure-html/unnamed-chunk-236-1.png" width="672" style="display: block; margin: auto;" /></p>
 <p>Hints about the fitting strategy and alternative models for spatiotemporal variograms are given in <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span>.</p>
 <p>With this fitted model, and given the observations, we can carry out kriging or simulation at arbitrary points in space and time. For instance, we could estimate (or simulate) values in the time series that are now missing: this occurs regularly, and in section <a href="interpolation.html#kriging">16.4</a> we used means over time series based on simply ignoring up to 25% of the observations: substituting these with estimated or simulated values based on neigbouring (in space and time) observations before computing yearly mean values seems a more reasonable approach.</p>
-<p>More in general, we can estimate at arbitrary locations and time points, and we will illustrate this with predicting time series at particular locations, and and predicting spatial slices. We can create a <code>stars</code> object to denote two points and all time instances with</p>
+<p>More in general, we can estimate at arbitrary locations and time points, and we will illustrate this with predicting time series at particular locations, and and predicting spatial slices <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span>. We can create a <code>stars</code> object to denote two points and all time instances with</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">set.seed</span>(<span class="dv">123</span>)
 pt =<span class="st"> </span><span class="kw">st_sample</span>(de, <span class="dv">2</span>)
 t =<span class="st"> </span><span class="kw">st_get_dimension_values</span>(no2.st, <span class="dv">1</span>)
@@ -567,12 +579,14 @@ t =<span class="st"> </span><span class="kw">st_get_dimension_values</span>(no2.
 <span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="dt">names =</span> <span class="kw">c</span>(<span class="st">&quot;time&quot;</span>, <span class="st">&quot;station&quot;</span>)) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, t) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;station&quot;</span>, pt) -&gt;<span class="st"> </span>new_pt</code></pre></div>
+<p>and obtain the corresponding spatiotemporal predictions using <code>krigeST</code> with</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">no2.st &lt;-<span class="st"> </span><span class="kw">st_transform</span>(no2.st, crs)
 new_ts &lt;-<span class="st"> </span><span class="kw">krigeST</span>(NO2<span class="op">~</span><span class="dv">1</span>, <span class="dt">data =</span> no2.st[<span class="st">&quot;NO2&quot;</span>], <span class="dt">newdata =</span> new_pt,
          <span class="dt">nmax =</span> <span class="dv">50</span>, <span class="dt">stAni =</span> StAni, <span class="dt">modelList =</span> fitProdSumModel,
          <span class="dt">progress =</span> <span class="ot">FALSE</span>)
 <span class="kw">plot</span>(<span class="kw">xts</span>(<span class="kw">t</span>(new_ts[[<span class="dv">2</span>]]), t), <span class="dt">type =</span> <span class="st">&#39;l&#39;</span>)</code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-235-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="sds_files/figure-html/unnamed-chunk-238-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Alternatively, we can create spatiotemporal predictions for a set of time-stamped raster maps, created by</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">t4 =<span class="st"> </span>t[(<span class="dv">1</span><span class="op">:</span><span class="dv">4</span> <span class="op">-</span><span class="st"> </span><span class="fl">0.5</span>) <span class="op">*</span><span class="st"> </span>(<span class="dv">3</span><span class="op">*</span><span class="dv">24</span><span class="op">*</span><span class="dv">30</span>)]
 
 d =<span class="st"> </span><span class="kw">dim</span>(grd)
@@ -580,26 +594,19 @@ d =<span class="st"> </span><span class="kw">dim</span>(grd)
 <span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, t4) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;x&quot;</span>, <span class="kw">st_get_dimension_values</span>(grd, <span class="st">&quot;x&quot;</span>)) <span class="op">%&gt;%</span>
 <span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;y&quot;</span>, <span class="kw">st_get_dimension_values</span>(grd, <span class="st">&quot;y&quot;</span>)) <span class="op">%&gt;%</span>
-<span class="st">    </span><span class="kw">st_set_crs</span>(crs) -&gt;<span class="st"> </span>grd.st
-new_int &lt;-<span class="st"> </span><span class="kw">krigeST</span>(NO2<span class="op">~</span><span class="dv">1</span>, <span class="dt">data =</span> no2.st[<span class="st">&quot;NO2&quot;</span>], <span class="dt">newdata =</span> grd.st,
-         <span class="dt">nmax =</span> <span class="dv">50</span>, <span class="dt">stAni =</span> StAni, <span class="dt">modelList =</span> fitProdSumModel,
+<span class="st">    </span><span class="kw">st_set_crs</span>(crs) -&gt;<span class="st"> </span>grd.st</code></pre></div>
+<p>and the subsequent predictions are obtained by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">new_int &lt;-<span class="st"> </span><span class="kw">krigeST</span>(NO2<span class="op">~</span><span class="dv">1</span>, <span class="dt">data =</span> no2.st[<span class="st">&quot;NO2&quot;</span>], <span class="dt">newdata =</span> grd.st,
+         <span class="dt">nmax =</span> <span class="dv">200</span>, <span class="dt">stAni =</span> StAni, <span class="dt">modelList =</span> fitProdSumModel,
          <span class="dt">progress =</span> <span class="ot">FALSE</span>)
-<span class="kw">plot</span>(new_int[<span class="dv">2</span>,,,<span class="dv">1</span>], <span class="dt">reset =</span> <span class="ot">FALSE</span>)
-<span class="kw">plot</span>(de, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)
-<span class="co">#&gt; Warning in plot.sf(de, col = NA, border = &quot;red&quot;, add = TRUE): ignoring all</span>
-<span class="co">#&gt; but the first attribute</span>
-<span class="kw">plot</span>(<span class="kw">st_geometry</span>(no2.sf), <span class="dt">col =</span> <span class="st">&#39;green&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">pch =</span> <span class="dv">16</span>)</code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-236-1.png" width="672" style="display: block; margin: auto;" /></p>
-<p>We can estimate</p>
-<ul>
-<li><p>have a single model for all correlations</p></li>
-<li><p>predict, or simulate, missing values; better approach than taking averages while ignoring if 0-25% are missing alternative multivariate arima would have been enough/better?</p></li>
-</ul>
-<p>Alternative: pkg gapfill (remote sensing oriented; Florian Gerber) <a href="https://cran.r-project.org/web/packages/gapfill/" class="uri">https://cran.r-project.org/web/packages/gapfill/</a></p>
-<ul>
-<li><p>predict a sequence of hours</p></li>
-<li><p>smooth in between, e.g. by 10-min interpolations, but note that measurements are hourly integrals, not values at time instances, which is what we assume</p></li>
-</ul>
+<span class="kw">names</span>(new_int)[<span class="dv">2</span>] =<span class="st"> &quot;NO2&quot;</span>
+g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> new_int, <span class="kw">aes</span>(<span class="dt">fill =</span> NO2, <span class="dt">x =</span> x, <span class="dt">y =</span> y)) <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">facet_wrap</span>(<span class="op">~</span>time) <span class="op">+</span>
+<span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf, <span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>, <span class="dt">cex =</span> <span class="fl">.5</span>)
+<span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will replace the existing one.</span></code></pre></div>
+<p><img src="sds_files/figure-html/unnamed-chunk-240-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>A larger value for <code>nmax</code> was needed here to decrease the visible disturbance (sharp edges) caused by discrete neighbourhood selections, which are now done in space <em>and</em> time.</p>
 
 </div>
 </div>
@@ -612,14 +619,23 @@ new_int &lt;-<span class="st"> </span><span class="kw">krigeST</span>(NO2<span c
 <div id="ref-blangiardo2015spatial">
 <p>Blangiardo, Marta, and Michela Cameletti. 2015. <em>Spatial and Spatio-Temporal Bayesian Models with R-Inla</em>. John Wiley &amp; Sons.</p>
 </div>
+<div id="ref-JSSv055i09">
+<p>Davies, Tilman, and David Bryant. 2013. “On Circulant Embedding for Gaussian Random Fields in R.” <em>Journal of Statistical Software, Articles</em> 55 (9): 1–21. doi:<a href="https://doi.org/10.18637/jss.v055.i09">10.18637/jss.v055.i09</a>.</p>
+</div>
 <div id="ref-RJ-2016-014">
 <p>Gräler, Benedikt, Edzer Pebesma, and Gerard Heuvelink. 2016. “Spatio-Temporal Interpolation using gstat.” <em>The R Journal</em> 8 (1): 204–18. doi:<a href="https://doi.org/10.32614/RJ-2016-014">10.32614/RJ-2016-014</a>.</p>
+</div>
+<div id="ref-jh78">
+<p>Journel, Andre G, and Charles J Huijbregts. 1978. <em>Mining Geostatistics</em>. Academic press London.</p>
 </div>
 <div id="ref-gstatcg">
 <p>Pebesma, Edzer J. 2004. “Multivariable Geostatistics in S: The Gstat Package.” <em>Computers &amp; Geosciences</em> 30: 683–91.</p>
 </div>
 <div id="ref-R-gstat">
 <p>Pebesma, Edzer, and Benedikt Graeler. 2019. <em>Gstat: Spatial and Spatio-Temporal Geostatistical Modelling, Prediction and Simulation</em>. <a href="https://github.com/r-spatial/gstat/" class="uri">https://github.com/r-spatial/gstat/</a>.</p>
+</div>
+<div id="ref-schlather">
+<p>Schlather, Martin. 2011. “Construction of Covariance Functions and Unconditional Simulation of Random Fields.” In <em>Porcu, E., Montero, J.m. and Schlather, M., Space-Time Processes and Challenges Related to Environmental Problems</em>. New York: Springer.</p>
 </div>
 <div id="ref-ver1993multivariable">
 <p>Ver Hoef, Jay M, and Noel Cressie. 1993. “Multivariable Spatial Prediction.” <em>Mathematical Geology</em> 25 (2). Springer: 219–40.</p>

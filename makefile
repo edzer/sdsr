@@ -15,7 +15,7 @@ view:
 	google-chrome _book/index.html
 
 tangle:
-	Rscript -e "knitr::purl('06-Attributes.Rmd', documentation=0)"
+	Rscript -e "knitr::purl('16-Geostatistics.Rmd', documentation=0)"
 
 pdf:
 	Rscript --quiet _render.R "bookdown::pdf_book"
