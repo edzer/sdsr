@@ -2,215 +2,279 @@
 
 # Getting Started {#intro}
  
-This chapter gives a quick start to get you going with spatial data
-science with R. It is easier to read when understanding R at the
-level of, say, [R for Data Science](http://r4ds.had.co.nz/) [@r4ds].
+This chapter introduces a number of concepts associated with
+handling spatial data, and points forward to later sections where
+they are discussed in more detail.  The code sections in this chapter
+should be easy to follow when understanding R at the level of, say,
+[R for Data Science](http://r4ds.had.co.nz/) [@r4ds].
 
 ## A first map
 
-There is a lot to say about spatial data, but let us first create a map.
-We can create a simple map by:
-```{r first-map, fig.cap="a first map", eval=TRUE, fig=TRUE, cache=FALSE}
+The typical way to graph spatial data is by creating a map. Let us consider
+a simple map:
+
+```{r first-map, fig.cap="a first map", eval=TRUE, echo=FALSE, fig=TRUE, cache=FALSE, message=FALSE}
 library(tidyverse)
 library(sf)
 system.file("gpkg/nc.gpkg", package="sf") %>%
-	read_sf() %>%
-	st_transform(32119) %>%
+	read_sf() -> nc
+nc.32119 <- st_transform(nc, 32119)
+nc.32119 %>%
 	select(BIR74) %>%
 	plot(graticule = TRUE, axes = TRUE)
 ```
-A lot went on, here. We will describe the steps in detail. First, we loaded two R packages:
-```{r}
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
 library(tidyverse)
 library(sf)
-```
-where `tidyverse` is needed for the tidyverse functions and methods,
-and `sf` is needed for the spatial commands and spatial tidyverse
-methods. Package `sf` implements simple features, a standardised
-way to encode vector data (points, lines, polygons). We will say
-more about simple features in chapter \@ref(geometries).  Most
-commands in package `sf` start with `st_`, short for spatiotemporal,
-a convention it shares with e.g. PostGIS.
-
-The `%>%` (pipe) symbols should be read as _then_: we read
-```{r eval=FALSE}
-a %>% b() %>% c() %>% d(n = 10)
-```
-as _with `a` do `b` then `c` then `d`_, and that is just alternative syntax for
-```{r eval=FALSE}
-d(c(b(a)), n = 10)
-```
-or 
-```{r eval=FALSE}
-tmp1 <- b(a)
-tmp2 <- c(tmp1)
-tmp3 <- d(tmp2, n = 10)
-```
-To many, the pipe-form is easier to read because execution order
-follows reading order (from left to right). Like nested function
-calls, it avoids the need to choose names for intermediate results.
-
-For the illustration we picked a data file that comes with `sf`, 
-the location of which depends on the operating system used. The
-following will give a different output on your computer:
-```{r}
-(file <- system.file("gpkg/nc.gpkg", package="sf"))
-```
-Never use `system.file` if you want to read your own data; in that
-case, `fname` should be the data source (typically file or path)
-name (section \@ref(reading)). (Parens around this expression are
-used to have the result not only stored, but also printed.)
-
-Then, we read this file into R using `read_sf`:
-```{r}
-(file %>% read_sf()  -> nc)
-```
-which creates a "spatial tibble":
-```{r}
-class(nc)
-```
-This object is transformed into a new coordinate reference system (North Carolina State Plane, with EPSG code 32119):
-```{r}
-(nc %>% st_transform(32119) -> nc.32119)
-```
-and a single attribute column is selected
-```{r}
-(nc.32119 %>% select(BIR74) -> nc.32119.bir74)
-```
-Finally, the result is plotted, with the command:
-```{r eval=FALSE}
-nc.32119.bir74 %>% plot(graticule = TRUE, axes = TRUE)
-```
-as shown in figure \@ref(fig:first-map).
-
-Splitting up the steps lets us see what is happening, as errors from 
-combined steps can be hard to assign to the right step. Repeating the 
-same sequence, but with the wrong argument to `st_transform` gives:
-```{r first-mapa, fig.cap="a first map", eval=FALSE, fig=FALSE, echo=TRUE}
 system.file("gpkg/nc.gpkg", package="sf") %>%
-	read_sf() %>%
-	st_transform(32999) %>%
+	read_sf() -> nc
+nc.32119 <- st_transform(nc, 32119)
+nc.32119 %>%
 	select(BIR74) %>%
 	plot(graticule = TRUE, axes = TRUE)
 ```
-```{r first-mapb, fig.cap="a first map", eval=TRUE, fig=FALSE, echo=FALSE}
-try(system.file("gpkg/nc.gpkg", package="sf") %>%
-	read_sf() %>%
-	st_transform(32999) %>%
-	select(BIR74) %>%
-	plot(graticule = TRUE, axes = TRUE))
-```
-which is informative, but still needs more backtracking to find the cause 
-than taking things step-by-step in the first instance. Again, mistyping a 
-column name will cause an error:
-```{r first-mapc, fig.cap="a first map", eval=FALSE, fig=FALSE, echo=TRUE}
-system.file("gpkg/nc.gpkg", package="sf") %>%
-	read_sf() %>%
-	st_transform(32119) %>%
-	select(BIR75) %>%
-	plot(graticule = TRUE, axes = TRUE)
-```
-```{r first-mapd, fig.cap="a first map", eval=TRUE, fig=FALSE, echo=FALSE}
-try(system.file("gpkg/nc.gpkg", package="sf") %>%
-	read_sf() %>%
-	st_transform(32119) %>%
-	select(BIR75) %>%
-	plot(graticule = TRUE, axes = TRUE))
-```
-```
-#> Error in .f(.x[[i]], ...) : object 'BIR75' not found
-```
+</details>
 
-Where do these commands come from? `library` and `system.file` are base R. We
-can ask for help about a particular command by entering e.g.
+A number of graphical elements are present, in this case:
+
+* polygons are drawn, and colored according to a variable `BIR74`, whose name is in the title
+* a legend key explains the meaning of the colors, and has a certain _color palette_ and _color
+breaks_, values at which color changes
+* the background of the map shows curved lines with constant latitude or longitude (graticules)
+* the axis ticks show the latitude and longitude values 
+
+_Polygons_ are a particular form of _geometry_; spatial geometries
+(points, lines, polygons, pixels) are discussed in detail in
+chapter \@ref(geometries). Polygons consist of sequences of points,
+connected by straight lines. How point locations of spatial data are
+expressed, or measured, is discussed in chapter \@ref(cs). As can
+be seen from figure \@ref(fig:first-map), lines of equal latitude
+and longitude do not form straight lines, indicating that some
+form of projection took place before plotting; projections are also
+discussed in chapter \@ref(cs) and section \@ref(transform). 
+
+The color values in figure \@ref(fig:first-map) are derived
+from numeric values of a variable, `BIR74`, which has a
+single value assocated with each geometry or _feature_. Chapter
+\@ref(featureattributes) discusses such feature attributes, and the
+way they can relate to feature geometries. In this case, `BIR74`
+refers to birth counts, meaning counts _over the region_. This
+implies that the count does not refer to a value associated with
+every point inside the polygon, which the continuous color might
+suggest, but rather measures an integral (sum) over the polygon.
+
+Before plotting figure \@ref(fig:first-map) we had to read the data,
+in this case from a file (section \@ref(reading)). Printing a data
+summary for the first three records of three attribute variables
+shows:
+
+```{r first_ten, echo=FALSE}
+nc %>% select(AREA, BIR74, SID74) %>% print(n = 3)
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
 ```{r eval=FALSE}
-?library
+nc %>% select(AREA, BIR74, SID74) %>% print(n = 3)
 ```
-The command `read_sf` is an alternative to the `st_read`, which
-returns a spatial tibble instead of a spatial data frame, and will
-be discussed in section \@ref(reading).  The `st_transform`
-method is used here to convert from the geographic coordinates
-(degrees longitude and latitude) into "flat" coordinates, meaning
-$x$ and $y$ coordinates in a planar system. It will be discussed
-in section \@ref(transform). The `plot` method for `sf` objects
-chooses default colors and legends settings; we instructed it to
-add a graticule (the grey lines of equal longitude and latitude) and
-degree labels along the axes. It is described in chapter \@ref(plot).
+</details>
 
-As witnessed by the plot, the plot command receives county polygons
-as well as `BIR74` values for each polygon. How is it possible
-that we `select` _only_ the `BIR74` variable, but still can plot
-the polygons? This is because package `sf` provides a `select` method:
-```{r}
-methods(select)
-```
-and this method (`select.sf`) makes the geometry (`geom`) sticky:
-```{r}
-nc %>% select(BIR74) %>% names()
-```
-In **sp**, `select` methods using `[` were sticky.
-We get the "normal" `select` behaviour if we first coerce to a normal tibble:
-```{r}
-nc %>% as_tibble(validate = TRUE) %>% select(BIR74) %>% names()
-```
-A ggplot is created when we use `geom_sf`:
-```{r firstggplot,fig.cap="first ggplot"}
-ggplot() + geom_sf(data = nc.32119) + aes(fill = BIR74) +
-    theme(panel.grid.major = element_line(color = "white")) +
-    scale_fill_gradientn(colors = sf.colors(20))
-```
-and a facet plot for a pair of columns in `nc.32119` is obtained by gathering the columns:
-```{r firstgather,fig.cap="ggplot with facet maps"}
+The printed output shows 
+
+* the (selected) dataset has 100 features (records) and 3 fields (attributes)
+* the geometry type is `MULTIPOLYGON` (chapter \@ref(geometries))
+* it has dimension `XY`, indicating that each point will consist of 2 coordinate values
+* the range of x and y values of the geometry
+* the coordinate reference system is geographic, indicating that coordinates are degrees longitude and latitude, with reference to the `NAD27` datum (chapter \@ref(rs))
+* the three selected attribute variables are followed by a variable `geom` of type `MULTIPOLYGON` with unit degrees that contains the polygon information
+
+More complicated plots can involve facet plots with a map in each
+facet, as shown in figure \@ref(fig:firstgather).
+
+```{r firstgather,fig.cap="ggplot with facet maps", echo=FALSE, cache=FALSE}
+year_labels = c("SID74" = "1974 - 1978", "SID79" = "1979 - 1984")
 nc.32119 %>% select(SID74, SID79) %>% gather(VAR, SID, -geom) -> nc2
-ggplot() + geom_sf(data = nc2, aes(fill = SID)) + facet_wrap(~VAR, ncol = 1) +
+ggplot() + geom_sf(data = nc2, aes(fill = SID)) + 
+  facet_wrap(~VAR, ncol = 1, labeller = labeller(VAR = year_labels)) +
   scale_y_continuous(breaks = 34:36) +
   scale_fill_gradientn(colors = sf.colors(20)) +
   theme(panel.grid.major = element_line(color = "white"))
 ```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+year_labels = c("SID74" = "1974 - 1978", "SID79" = "1979 - 1984")
+nc.32119 %>% select(SID74, SID79) %>% gather(VAR, SID, -geom) -> nc2
+ggplot() + geom_sf(data = nc2, aes(fill = SID)) + 
+  facet_wrap(~VAR, ncol = 1, labeller = labeller(VAR = year_labels)) +
+  scale_y_continuous(breaks = 34:36) +
+  scale_fill_gradientn(colors = sf.colors(20)) +
+  theme(panel.grid.major = element_line(color = "white"))
+```
+</details>
+
 An interactive, leaflet-type map is obtained by
-```{r cache=FALSE}
+```{r cache=FALSE, echo=FALSE}
 suppressPackageStartupMessages(library(mapview))
 nc.32119 %>% mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
 ```
-
-## Reading and writing {#reading}
-
-Typical R data science tasks start with reading data from an external
-source; this may be a file, or a set of files like a "shapefile",
-or a database, or a web service. Package `sf` can read from a large
-number of different data source types, each having its own driver. 
-The following commands show how many vector and raster drivers we have available:
-```{r}
-st_drivers("vector") %>% nrow() # vector drivers
-st_drivers("raster") %>% nrow() # raster drivers
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+suppressPackageStartupMessages(library(mapview))
+nc.32119 %>% mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
 ```
-(the output you see may differ because of different operating system
-and configuration; when the same version of GDAL is in use, the drivers available
-in **sf** are the same as in **rgdal**.)
+</details>
 
-### GDAL
+## Raster and vector data
 
-`st_drivers` lists the drivers available to GDAL, the geospatial data
-abstraction library. This library can be seen as the Swiss army knive
-of spatial data; besides for R it is being used in
-Python, QGIS, PostGIS, [and more than 100 other software
-projects](https://trac.osgeo.org/gdal/wiki/SoftwareUsingGdal).
-The dependency of `sf` on other R packages and system libraries
-is shown in figure \@ref(fig:gdal-fig).
+Polygon, point and line geometries are examples of _vector_ data:
+point coordinates describe the "exact" locations that can be
+anywhere. Raster data on the other hand describe data where values
+are aligned on a _raster_, meaning on a regularly laid out lattice of
+usually square pixels. An example is shown in figure \@ref(fig:ras).
 
-```{r gdal-fig, out.width = '100%', echo=FALSE,fig.cap = "sf and its dependencies; arrows indicate strong dependency, dashed arrows weak dependency"}
+```{r ras,echo=FALSE,fig.cap="raster maps: Landsat-7 blue band, with color values derived from data values (a), the top-left 10x10 sub-image from (a) with numeric values shown (b), three sample points (c), three sample areas (d)", message=FALSE}
+library(stars)
+par(mfrow = c(2, 2))
+par(mar = rep(1, 4))
+tif <- system.file("tif/L7_ETMs.tif", package = "stars")
+x <- read_stars(tif)[,,,1]
+image(x, main = "(a)")
+image(x[,1:10,1:10], text_values = TRUE, border = 'grey', main = "(b)")
+image(x, main = "(c)")
+set.seed(131)
+pts = st_sample(st_as_sfc(st_bbox(x)), 3)
+plot(pts, add = TRUE, pch = 3, col = 'blue')
+image(x, main = "(d)")
+plot(st_buffer(pts, 500), add = TRUE, pch = 3, border = 'blue', col = NA, lwd = 2)
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+library(stars)
+par(mfrow = c(2, 2))
+par(mar = rep(1, 4))
+tif <- system.file("tif/L7_ETMs.tif", package = "stars")
+x <- read_stars(tif)[,,,1]
+image(x, main = "(a)")
+image(x[,1:10,1:10], text_values = TRUE, border = 'grey', main = "(b)")
+image(x, main = "(c)")
+set.seed(131)
+pts = st_sample(st_as_sfc(st_bbox(x)), 3)
+plot(pts, add = TRUE, pch = 3, col = 'blue')
+image(x, main = "(d)")
+plot(st_buffer(pts, 500), add = TRUE, pch = 3, border = 'blue', col = NA, lwd = 2)
+```
+</details>
+
+Vector and raster data can be combined in different ways; for instance we can query the raster at the three points of figure \@ref(fig:ras)(c), 
+```{r raspts,echo=FALSE}
+st_extract(x, pts)
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+st_extract(x, pts)
+```
+</details>
+or compute an aggregate, such as the average, over arbitrary regions such as the circles shown in figure \@ref(fig:ras)(d):
+```{r rasbuffers,echo=FALSE}
+aggregate(x, st_buffer(pts, 500), FUN = mean) %>% st_as_sf()
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+aggregate(x, st_buffer(pts, 500), FUN = mean) %>% st_as_sf()
+```
+</details>
+
+Other raster-to-vector conversions are discussed in \@ref(raster-to-vector) and include
+
+* converting raster pixels in point values
+* converting raster pixels into small polygons, possibly merging polygons with identical values (polygonize)
+* generating lines or polygons that delineate continuous pixel areas with a certain value _range_ (contouring)
+
+
+```{r vectoras,echo=FALSE,fig.cap="The map of figure 1.1 after rasterizing"}
+plot(st_rasterize(nc["BIR74"], dx = 0.1), col =sf.colors(), breaks = "equal")
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+plot(st_rasterize(nc["BIR74"], dx = 0.1), col =sf.colors(), breaks = "equal")
+```
+</details>
+
+Raster-to-vector conversions can be as simple as rasterizing polygons, as shown in figure \@ref(fig:vectoras). Other, more general vector-to-raster conversions include
+
+* interpolation of point values to points on a regular grid (chapter \@ref(interpolation))
+* estimating densities of points over a regular grid (chapter \@ref(pointpatterns))
+* area-weighted interpolation of polygon values to grid cells (section \@ref(areaweighted))
+* direct rasterization of points, lines or polygons (section @\ref(rasterize))
+
+## Time series, arrays, data cubes
+
+A lot of spatial data is not _just_ spatial, but in addition temporal. Just like any observation is associated with an observation location, it is associated with an observation time or period. The dataset on the North Carolina counties shown above contains disease cases counted over two time periods, shown in figure \@ref(fig:firstgather). Although the original dataset has these variables in two different columns, for plotting them these columns had to be stacked first, while repeating the associated geometries - a form called _tidy_ by [@tidy]. When we have longer time series associated with geometries, neither option - distributing time over multiple columns, or stacking columns while repeating geometries - works well, and a more effective way of storing such data would be a matrix, where on dimension refers to time, and the other to space. The natural way for image or raster data is alreay to store them in matrices; time series of rasters then lead to a three-dimensional array. The general term for such data is a (spatiotemporal) **data cube**, where cube refers to arrays with any number of dimensions.  Data cubes can refer to both raster and vector data, examples are given in chapter \@ref(raster). 
+
+## Support, attribute-geometry relationships
+
+When we have spatial data with geometries that are not points but
+collections of points (multi-points, lines, polygons, pixels), then
+the attributes associated with these geometries may have a different
+relationship to them. Attributes can
+
+* have a **constant** value for every point of the geometry 
+* have a value that is unique to only this geometry, describing its **identity**
+* have a single value that is an **aggregate**  over all points of the geometry
+
+An example of a constant may be land use or bedrock type of
+a polygon. An example of an identity could be a county name. An
+example of an aggregate could be the number of births over a given
+period of time, of a county. 
+
+This property is called **support**: aggregate properties have
+block (or polygon, or line) support, constant properties have
+point support (they apply to every point). Support matters when
+we manipulate the data. For instance, figure \@ref(vectoras) was
+derived from a variable that has polygon support: the number of
+births per county. Rasterizing these values gives pixels with values
+that are associated to counties.  The result of the rasterization
+is a meaningless map: the numeric values ("birth totals") are not
+associated with the raster cells, and the county boundaries are lost.
+Totals of birth for the whole state can no longer be recovered from
+the pixel values.  Ignoring support can easily lead to meaningless
+results. Chapter \@ref(featureattributes) discusses this further.
+
+## The Spatial Data Science software ecosystem
+
+Although this book largely uses R and R packages for spatial data
+science, a number of these packages actually use software libraries
+that were not developed for R alone.  As an example, the dependency
+of R package `sf` on other R packages and system libraries is shown
+in figure \@ref(fig:gdal-fig-nodetails).
+
+```{r gdal-fig-nodetails, out.width = '100%', echo=FALSE,fig.cap = "sf and its dependencies; arrows indicate strong dependency, dashed arrows weak dependency"}
 knitr::include_graphics("images/sf_deps.png")
 ```
 
-Note that the C/C++ libraries used (GDAL, GEOS, PROJ, liblwgeom,
+The C or C++ libraries used (GDAL, GEOS, PROJ, liblwgeom, s2geometry,
 udunits2) are all developed, maintained and used by data science
-communities that are large but different from the R community.  By using
-these libraries, we share how we understand what we are doing with
-these other communities. Because R (and Python) provide interactive 
-interfaces to this software, many R users get closer to these libraries 
-than do users of other software based on these libraries. This is not only 
-important for resolving problems, but also for reaching consensus on which 
-findings are helpful.
+communities that are large and mostly different from the R community.
+By using these libraries, we share how we understand what we
+are doing with these other communities. Because R, Python and Julia
+provide interactive interfaces to this software, many users get
+closer to these libraries than do users of other software based on
+these libraries. This is not only important for resolving problems,
+but also for reaching consensus on which findings are helpful.
+
+### GDAL
+
+GDAL (geospatial data abstraction library) can be seen as the
+Swiss army knive of spatial data; besides for R it is being
+used in Python, QGIS, PostGIS, [and more than 100 other software
+projects](https://trac.osgeo.org/gdal/wiki/SoftwareUsingGdal).
 
 GDAL is a "library of libraries" -- in order to read all these data
 sources it needs a large number of other libraries. It typically
@@ -222,172 +286,29 @@ in binary form from CRAN, it includes a copy of all the required
 external libraries as well as their dependencies, which may amount
 to 100 Mb.
 
-### `st_read` or `read_sf`?
+### PROJ
 
-The function to read vector data is `st_read`.  Function `read_sf`
-is largely the same as `st_read`, but chooses a few tidyverse-style
-defaults:
+PROJ is a library for cartographic projections and datum
+transformations: it converts spatial coordinates from one coordinate
+reference system to another. It comes with a large database of known
+projections and access to datum grids (high-precision pre-calculated
+values for datum transformations). It aligns with an international
+standard for coordinate reference systems [@lott2015geographic].
+Chapter \@ref(rs) details more about coordinate systems.
 
-* it is silent by default, where `st_read` gives a short report
-* it returns a spatial tibble instead of a spatial data frame
-* it sets as default `stringsAsFactors = FALSE`, where `st_read`
-listens to the global option `default.stringsAsFactors()` (which is
-`TRUE` by default)
-* it accepts list-columns as input
+### GEOS and s2geometry
 
-In the same fashion, compared to `st_write`, function `write_sf`, 
+GEOS ("Geometry Engine Open Source") and s2geometry are two libraries
+for geometric operations. They are used to find measures (length,
+area, distance), and calculate predicates (do two geometries have
+any points in common?) or new geometries (which points do these two
+geometries have in common?). GEOS does this for flat, two-dimensional
+space ($R^2$), s2geometry does this for geometries on the sphere
+($S^2$). Chapter \@ref(cs) discusses more about the differences between
+working with these two spaces.
 
-* is also silent
-* overwrites layers (i.e., sets `delete_layer = TRUE`) by default, which `st_write` does not do.
-
-### reading and writing raster data
-
-Raster data can be read with function `read_stars` from package `stars`
-```{r}
-library(stars)
-tif = system.file("tif/L7_ETMs.tif", package = "stars")
-(x = tif %>% read_stars())
-```
-Plotting this object shows the six different spectral bands read, with color breaks based on quantiles of pixel values accross all bands:
-```{r}
-plot(x)
-```
-Similarly, we can write raster data in a `stars` object with `write_stars`
-```{r}
-tif_file = paste0(tempfile(), ".tif")
-write_stars(x, tif_file)
-```
-We can read back the raster metadata (its dimensions and reference system, but not the actual pixel values) by
-```{r}
-read_stars(tif_file, proxy = TRUE)
-```
-
-Raster data analysis and its integration with vector data is explained in detail in chapter \@ref(raster).
-
-### Reading from files, and legacy shapefiles
-
-We saw above that a spatial dataset can be read from a single file by
-```{r}
-system.file("gpkg/nc.gpkg", package="sf") %>% read_sf() -> nc
-```
-
-In some cases, spatial datasets are contained in _multiple_
-files, e.g.  in the case of shapefiles. A "shapefile" should be
-really understood as a set of files with a common prefix, or even
-a directory with several of such sets.
-
-Package `sf` comes with a couple of shapefiles packaged, a directory
-listing of the `shape` directory in the packge is obtained by
-```{r}
-list.files(system.file("shape/", package = "sf"))
-```
-
-We can read a single shapefile by
-```{r}
-system.file("shape/nc.shp", package="sf") %>% read_sf() -> nc
-```
-and it is important to know that in that case all four files starting
-with `nc` are read from this directory.
-
-We can also read the directory with shapefiles by
-```{r}
-system.file("shape", package="sf") %>% read_sf() -> something
-```
-but we see some warnings now, indicating that we are reading only the first
-layer from a multi-layer dataset (and not `nc.shp`!).
-Indeed, this directory contains multiple layers, which can be queried by
-```{r}
-system.file("shape", package="sf") %>% st_layers()
-```
-From this list, we could pick one, and use it as the `layer` argument, as
-in
-```{r}
-dataset <- system.file("shape", package="sf")
-layer <- "nc"
-nc <- read_sf(dataset, layer)
-```
-which is essentially a convoluted way of what we did before to read
-`nc.shp`.
-
-Considering shapefiles in directories as layers in a dataset is
-not something that `sf` came up with, but is the way GDAL handles
-this.  Although it is a good idea in general to [give up using
-shapefiles](http://switchfromshapefile.org/), we cannot always
-control the format of the spatial data we get to start with. 
-
-
-### Reading from a text string
-In the special case of a GeoJSON [@geojson] dataset, when the dataset
-is contained in a length-one character vector, it can be directly
-passed to `read_sf` and read from memory:
-
-```{r}
-str <- '{
-  "type": "FeatureCollection",
-  "features": [
-    { "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [102.0, 0.5]
-      },
-      "properties": {
-        "prop0": "value0"
-      }
-    },
-    { "type": "Feature",
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]
-        ]
-      },
-      "properties": {
-        "prop0": "value0",
-        "prop1": 0.0
-      }
-    },
-    { "type": "Feature",
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [
-          [
-            [100.0, 0.0], [101.0, 0.0], [101.0, 1.0],
-            [100.0, 1.0], [100.0, 0.0]
-          ]
-        ]
-      },
-      "properties": {
-        "prop0": "value0",
-        "prop1": { "this": "that" }
-      }
-    }
-  ]
-}'
-(sf_obj <- read_sf(str))
-```
-
-### Database
-
-Data can be read from a spatial database directly through two paths. The first is to
-use the standard database interface of R (DBI), for instance with a SQLITE database:
-```{r}
-library(RSQLite)
-db = system.file("sqlite/meuse.sqlite", package = "sf")
-dbcon <- dbConnect(dbDriver("SQLite"), db)
-(s = st_read(dbcon, "meuse.sqlite"))[1:3,]
-dbDisconnect(dbcon)
-```
-Another way is to use GDAL database drivers, e.g. by
-```{r}
-st_read(db)[1:3,]
-```
-An advantage of the former approach may be that any query can be
-passed, allowing for reading only parts of a table into R's memory.
 
 ## Exercises
-
-1. Read the shapefile `storms_xyz_feature` from the `shape` directory in the `sf` package
-2. Copy this file to another directory on your computer, and read it from there (note: a shapefile consists of more than one file!)
-3. How many features does this dataset contain?
-4. Plot the dataset, with `axes = TRUE` (hint: before plotting, pipe through `st_zm` to drop Z and M coordinates; more about this in chapter \@ref(geometries)).
-5. Before plotting, pipe the dataset through `st_set_crs(4326)`. What is different in the plot obtained?
+1. What is the difference between raster and vector data?
+2. Which components of a map can you list?
+3. 

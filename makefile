@@ -1,4 +1,5 @@
 book:
+	make details
 	./_build.sh
 
 clean:
@@ -29,3 +30,9 @@ push:
 purl:
 	#Rscript -e 'knitr::purl("16-Geostatistics.Rmd")'
 	Rscript -e 'knitr::purl("17-Areal.Rmd")'
+
+objects = 01-hello.Rmd
+
+details:
+	#Rscript -e "source(\"f.R\"); f(\"$<\", \"$@\")"
+	Rscript -e 'source("f.R"); f("01-hello.Rmd")'
