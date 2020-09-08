@@ -1,12 +1,28 @@
 # Coordinate systems {#cs}
 
-For spatial data, the location of observations are characterised by
-coordinates, and coordinates are defined in a coordinate system.
-Different coordinate systems can be used for this, and the most
-important difference is whether coordinates are defined over a
-2-dimensional or 3-dimensional space referenced to orthogonal axes
-(Cartesian coordinates), or using distance and directions (polar
-coordinates, spherical coordinates).
+```{r echo=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+</details>
+
+Before we can try to understand geometries like points, lines,
+polygons, coverages and grids, it is useful to review coordinate
+system so that we have an idea what exactly coordinates of a point
+reflect.  For spatial data, the location of observations are
+characterised by coordinates, and coordinates are defined in a
+coordinate system.  Different coordinate systems can be used for
+this, and the most important difference is whether coordinates
+are defined over a 2-dimensional or 3-dimensional space referenced
+to orthogonal axes (Cartesian coordinates), or using distance
+and directions (polar coordinates, spherical and ellipsoidal
+coordinates).
+
+## Polar and Cartesian coordinates
 
 ```{r polar, out.width = '50%', fig.cap="Two-dimensional polar (red) and Cartesian (blue) coordinates", eval=TRUE, fig=TRUE, echo=FALSE}
 par(mar = rep(0,4))
@@ -26,22 +42,42 @@ lines(c(0,3), c(4,4), lty = 2, col = 'blue')
 text(3.3, 0.3, label = "x", col = 'blue')
 text(0.3, 4.3, label = "y", col = 'blue')
 ```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+par(mar = rep(0,4))
+plot(3, 4, xlim = c(-6,6), ylim = c(-6,6), asp = 1)
+axis(1, pos = 0, at = 0:6)
+axis(2, pos = 0, at = -6:6)
+xd = seq(-5, 5, by = .1)
+lines(xd, sqrt(25 - xd^2), col = 'grey')
+lines(xd, -sqrt(25 - xd^2), col = 'grey')
+arrows(0, 0, 3, 4, col = 'red', length = .15, angle = 20)
+text(1.5, 2.7, label = "r", col = 'red')
+xd = seq(3/5, 1, by = .1)
+lines(xd, sqrt(1 - xd^2), col = 'red')
+text(1.2, 0.5, label = parse(text = "phi"), col = 'red')
+lines(c(3,3), c(0,4), lty = 2, col = 'blue')
+lines(c(0,3), c(4,4), lty = 2, col = 'blue')
+text(3.3, 0.3, label = "x", col = 'blue')
+text(0.3, 4.3, label = "y", col = 'blue')
+```
+</details>
 
-## Cartesian and geodetic coordinates
 Figure \@ref(fig:polar) shows both polar and Cartesian coordinates
-for a standard two-dimensional situation. In Cartesian coordinates,
+for a two-dimensional situation. In Cartesian coordinates,
 the point shown is $(x,y) = (3,4)$, for polar coordinates it is
 $(r,\phi) = (5, \mbox{arctan}(4/3))$, where $\mbox{arctan}(4/3)$ is
 approximately $0.93$ radians, or $53^{\circ}$. Note that $x$, $y$
 and $r$ all have length units, where $\phi$ is an angle (a unitless
 length/length ratio). Converting back and forth between Cartesian
-and polar coordinates is trivial, 
-$$x = r~\mbox{cos} \phi$$
-$$y = r~\mbox{sin} \phi$$
-$$\phi = \mbox{arctan}(y/x)$$
-$$r = \sqrt{x^2 + y^2}$$
-but requires care with using the right quadrant for $\mbox{arctan}$;
-the `atan2` function is helpful here.
+and polar coordinates is trivial, as
+$$x = r~\mbox{cos} \phi,$$
+$$y = r~\mbox{sin} \phi,$$
+$$r = \sqrt{x^2 + y^2}, \ \mbox{and}$$
+$$\phi = \mbox{atan2}(y, x)$$
+where $\mbox{atan2}$ is used in favor of $\mbox{atan}(y/x)$ to take care
+of the right quadrant.
 
 ## Ellipsoidal coordinates
 
@@ -53,6 +89,221 @@ of polar coordinates and can be expressed as $(r,\lambda,\phi)$, where
 * $\lambda$ is the longitude, measured in the $(x,y)$ plane counter-clockwise from positive $x$, and
 * $\phi$ is the latitude, the angle between the vector and the $(x,y)$ plane.
 
+Figure \@ref(fig:sphere) illustrates Cartesian geocentric and
+geographic coordinates.
+
+```{r sphere,echo=FALSE,fig.cap="Cartesian geocentric coordinates (left) measure three distances, geographic coordinates (right) measure two angles"}
+suppressPackageStartupMessages(library(sf))
+e = cbind(-90:90,0) # equator
+f1 = rbind(cbind(0, -90:90)) # 0/antimerid.
+f2 = rbind(cbind(90, -90:90), cbind(270, 90:-90))# +/- 90
+eq = st_sfc(st_linestring(e), st_linestring(f1), st_linestring(f2), crs=4326)
+
+geoc = st_transform(eq, "+proj=geocent")
+cc = rbind(geoc[[1]], NA, geoc[[2]], NA, geoc[[3]])
+from3d = function(x, offset, maxz, minz) {
+	x = x[,c(2,3,1)] + offset # move to y right, x up, z backw
+	x[,2] = x[,2] - maxz      # shift y to left
+	d = maxz
+	z = x[,3] - minz + offset
+	x[,1] = x[,1] * (d/z)
+	x[,2] = x[,2] * (d/z)
+	x[,1:2]
+}
+maxz = max(cc[,3], na.rm = TRUE)
+minz = min(cc[,3], na.rm = TRUE)
+offset = 3e7
+circ = from3d(cc, offset, maxz, minz)
+mx = max(cc, na.rm = TRUE) * 1.1
+x = rbind(c(0, 0, 0), c(mx, 0, 0))
+y = rbind(c(0, 0, 0), c(0, mx, 0))
+z = rbind(c(0, 0, 0), c(0, 0, mx))
+ll = rbind(x, NA, y, NA, z)
+l0 =  from3d(ll, offset, maxz, minz)
+mx = max(cc, na.rm = TRUE) * 1.2
+x = rbind(c(0, 0, 0), c(mx, 0, 0))
+y = rbind(c(0, 0, 0), c(0, mx, 0))
+z = rbind(c(0, 0, 0), c(0, 0, mx))
+ll = rbind(x, NA, y, NA, z)
+l =  from3d(ll, offset, maxz, minz)
+
+par(mfrow = c(1, 2))
+par(mar=rep(0,4))
+plot.new()
+plot.window(xlim = c(min(circ[,1],na.rm = TRUE), 3607103*1.02), 
+						ylim = c(min(circ[,2],na.rm = TRUE), 2873898*1.1), asp = 1)
+lines(circ)
+lines(l0)
+text(l[c(2,5,8),], labels = c("x", "y", "z"), col = 'red')
+# add POINT(60 47)
+p = st_as_sfc("POINT(60 47)", crs = 4326) %>% st_transform("+proj=geocent")
+p = p[[1]]
+pts = rbind(c(0,0,0), c(p[1],0,0), c(p[1],p[2],0), c(p[1],p[2],p[2]))
+ptsl =  from3d(pts, offset, maxz, minz)
+lines(ptsl, col = 'blue', lty = 2, lwd = 2)
+points(ptsl[4,1], ptsl[4,2], col = 'blue', cex = 1, pch = 16)
+
+plot.new()
+plot.window(xlim = c(min(circ[,1],na.rm = TRUE), 3607103*1.02), 
+						ylim = c(min(circ[,2],na.rm = TRUE), 2873898*1.1), asp = 1)
+lines(circ)
+
+p = st_as_sfc("POINT(60 47)", crs = 4326) %>% st_transform("+proj=geocent")
+p = p[[1]]
+pts = rbind(c(0,0,0), c(p[1],p[2],p[3]))
+pt =  from3d(pts, offset, maxz, minz)
+lines(pt)
+points(pt[2,1], pt[2,2], col = 'blue', cex = 1, pch = 16)
+
+p0 = st_as_sfc("POINT(60 0)", crs = 4326) %>% st_transform("+proj=geocent")
+p0 = p0[[1]]
+pts = rbind(c(0,0,0), c(p0[1],p0[2],p0[3]))
+pt =  from3d(pts, offset, maxz, minz)
+lines(pt)
+
+p0 = st_as_sfc("POINT(0 0)", crs = 4326) %>% st_transform("+proj=geocent")
+p0 = p0[[1]]
+pts = rbind(c(0,0,0), c(p0[1],p0[2],p0[3]))
+pt =  from3d(pts, offset, maxz, minz)
+lines(pt)
+
+p0 = st_as_sfc("POINT(0 90)", crs = 4326) %>% st_transform("+proj=geocent")
+p0 = p0[[1]]
+pts = rbind(c(0,0,0), c(p0[1],p0[2],p0[3]))
+pt =  from3d(pts, offset, maxz, minz)
+lines(pt, lty = 2)
+
+p0 = st_as_sfc("POINT(90 0)", crs = 4326) %>% st_transform("+proj=geocent")
+p0 = p0[[1]]
+pts = rbind(c(0,0,0), c(p0[1],p0[2],p0[3]))
+pt =  from3d(pts, offset, maxz, minz)
+lines(pt, lty = 2)
+
+f1 = rbind(cbind(0:60, 0))
+arc = st_sfc(st_linestring(f1), crs=4326)
+geoc = st_transform(arc, "+proj=geocent")
+cc = rbind(geoc[[1]])
+circ = from3d(cc, offset, maxz, minz)
+lines(circ, col = 'red', lwd = 2, lty = 2)
+
+f1 = rbind(cbind(60, 0:47))
+arc = st_sfc(st_linestring(f1), crs=4326)
+geoc = st_transform(arc, "+proj=geocent")
+cc = rbind(geoc[[1]])
+circ = from3d(cc, offset, maxz, minz)
+lines(circ, col = 'blue', lwd = 2, lty = 2)
+
+text(pt[1,1]+100000, pt[1,2]+50000, labels = expression(phi), col = 'blue') # lat
+text(pt[1,1]+20000, pt[1,2]-50000, labels = expression(lambda), col = 'red') # lng
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+suppressPackageStartupMessages(library(sf))
+e = cbind(-90:90,0) # equator
+f1 = rbind(cbind(0, -90:90)) # 0/antimerid.
+f2 = rbind(cbind(90, -90:90), cbind(270, 90:-90))# +/- 90
+eq = st_sfc(st_linestring(e), st_linestring(f1), st_linestring(f2), crs=4326)
+
+geoc = st_transform(eq, "+proj=geocent")
+cc = rbind(geoc[[1]], NA, geoc[[2]], NA, geoc[[3]])
+from3d = function(x, offset, maxz, minz) {
+	x = x[,c(2,3,1)] + offset # move to y right, x up, z backw
+	x[,2] = x[,2] - maxz      # shift y to left
+	d = maxz
+	z = x[,3] - minz + offset
+	x[,1] = x[,1] * (d/z)
+	x[,2] = x[,2] * (d/z)
+	x[,1:2]
+}
+maxz = max(cc[,3], na.rm = TRUE)
+minz = min(cc[,3], na.rm = TRUE)
+offset = 3e7
+circ = from3d(cc, offset, maxz, minz)
+mx = max(cc, na.rm = TRUE) * 1.1
+x = rbind(c(0, 0, 0), c(mx, 0, 0))
+y = rbind(c(0, 0, 0), c(0, mx, 0))
+z = rbind(c(0, 0, 0), c(0, 0, mx))
+ll = rbind(x, NA, y, NA, z)
+l0 =  from3d(ll, offset, maxz, minz)
+mx = max(cc, na.rm = TRUE) * 1.2
+x = rbind(c(0, 0, 0), c(mx, 0, 0))
+y = rbind(c(0, 0, 0), c(0, mx, 0))
+z = rbind(c(0, 0, 0), c(0, 0, mx))
+ll = rbind(x, NA, y, NA, z)
+l =  from3d(ll, offset, maxz, minz)
+
+par(mfrow = c(1, 2))
+par(mar=rep(0,4))
+plot.new()
+plot.window(xlim = c(min(circ[,1],na.rm = TRUE), 3607103*1.02), 
+						ylim = c(min(circ[,2],na.rm = TRUE), 2873898*1.1), asp = 1)
+lines(circ)
+lines(l0)
+text(l[c(2,5,8),], labels = c("x", "y", "z"), col = 'red')
+# add POINT(60 47)
+p = st_as_sfc("POINT(60 47)", crs = 4326) %>% st_transform("+proj=geocent")
+p = p[[1]]
+pts = rbind(c(0,0,0), c(p[1],0,0), c(p[1],p[2],0), c(p[1],p[2],p[2]))
+ptsl =  from3d(pts, offset, maxz, minz)
+lines(ptsl, col = 'blue', lty = 2, lwd = 2)
+points(ptsl[4,1], ptsl[4,2], col = 'blue', cex = 1, pch = 16)
+
+plot.new()
+plot.window(xlim = c(min(circ[,1],na.rm = TRUE), 3607103*1.02), 
+						ylim = c(min(circ[,2],na.rm = TRUE), 2873898*1.1), asp = 1)
+lines(circ)
+
+p = st_as_sfc("POINT(60 47)", crs = 4326) %>% st_transform("+proj=geocent")
+p = p[[1]]
+pts = rbind(c(0,0,0), c(p[1],p[2],p[3]))
+pt =  from3d(pts, offset, maxz, minz)
+lines(pt)
+points(pt[2,1], pt[2,2], col = 'blue', cex = 1, pch = 16)
+
+p0 = st_as_sfc("POINT(60 0)", crs = 4326) %>% st_transform("+proj=geocent")
+p0 = p0[[1]]
+pts = rbind(c(0,0,0), c(p0[1],p0[2],p0[3]))
+pt =  from3d(pts, offset, maxz, minz)
+lines(pt)
+
+p0 = st_as_sfc("POINT(0 0)", crs = 4326) %>% st_transform("+proj=geocent")
+p0 = p0[[1]]
+pts = rbind(c(0,0,0), c(p0[1],p0[2],p0[3]))
+pt =  from3d(pts, offset, maxz, minz)
+lines(pt)
+
+p0 = st_as_sfc("POINT(0 90)", crs = 4326) %>% st_transform("+proj=geocent")
+p0 = p0[[1]]
+pts = rbind(c(0,0,0), c(p0[1],p0[2],p0[3]))
+pt =  from3d(pts, offset, maxz, minz)
+lines(pt, lty = 2)
+
+p0 = st_as_sfc("POINT(90 0)", crs = 4326) %>% st_transform("+proj=geocent")
+p0 = p0[[1]]
+pts = rbind(c(0,0,0), c(p0[1],p0[2],p0[3]))
+pt =  from3d(pts, offset, maxz, minz)
+lines(pt, lty = 2)
+
+f1 = rbind(cbind(0:60, 0))
+arc = st_sfc(st_linestring(f1), crs=4326)
+geoc = st_transform(arc, "+proj=geocent")
+cc = rbind(geoc[[1]])
+circ = from3d(cc, offset, maxz, minz)
+lines(circ, col = 'red', lwd = 2, lty = 2)
+
+f1 = rbind(cbind(60, 0:47))
+arc = st_sfc(st_linestring(f1), crs=4326)
+geoc = st_transform(arc, "+proj=geocent")
+cc = rbind(geoc[[1]])
+circ = from3d(cc, offset, maxz, minz)
+lines(circ, col = 'blue', lwd = 2, lty = 2)
+
+text(pt[1,1]+100000, pt[1,2]+50000, labels = expression(phi), col = 'blue') # lat
+text(pt[1,1]+20000, pt[1,2]-50000, labels = expression(lambda), col = 'red') # lng
+```
+</details>
+
 $\lambda$ typically varies between $-180^{\circ}$ and $180^{\circ}$
 (or alternatively from $0^{\circ}$ to $360^{\circ}$), $\phi$ from
 $-90^{\circ}$ to $90^{\circ}$.  When we are only interested in points
@@ -60,17 +311,43 @@ _on_ a sphere with given radius, we can drop $r$: $(\lambda,\phi)$
 now suffice to identify any point.
 
 It should be noted that this is just _a_ definition, one could for
-instance also choose to measure polar angle, i.e. the angle between
+instance also choose to measure polar angle, the angle between
 the vector and $z$, instead of latitude. There is also a long
 tradition of specifying points as $(\phi,\lambda)$ but throughout
 this book we will stick to longitude-latitude, $(\lambda,\phi)$.
+The point denoted in figure \ref(fig:sphere) has $(\lambda,\phi)$
+or geographic coordinates with values
+```{r echo=FALSE}
+p = st_as_sfc("POINT(60 47)", crs = 4326)
+p[[1]]
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+p = st_as_sfc("POINT(60 47)", crs = 4326)
+p[[1]]
+```
+</details>
+with angles in degrees, and geocentric coordinates
+```{r echo=FALSE}
+p = st_as_sfc("POINT(60 47)", crs = 4326) %>% st_transform("+proj=geocent")
+p[[1]]
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+p = st_as_sfc("POINT(60 47)", crs = 4326) %>% st_transform("+proj=geocent")
+p[[1]]
+```
+</details>
+with unit metres.
 
 For points on an ellipse, there are two ways in which angle can be
 expressed (figure \@ref(fig:ellipse)): measured from the center of
 the ellipse ($\psi$), or measured perpendicular to the tangent on
 the ellipse at the target point ($\phi$).
 
-```{r ellipse, out.width = '50%', fig.cap="Angles on an ellipse: geodetic (blue) and geocentric (red) latitude", eval=TRUE, fig=TRUE, echo=FALSE}
+```{r ellipse, out.width = '50%', fig.cap="Angles on an ellipse: geographic (blue) and geocentric (red) latitude", eval=TRUE, fig=TRUE, echo=FALSE}
 par(mar = rep(0,4))
 x = 4
 y = 5/8 * sqrt(48)
@@ -90,29 +367,72 @@ arrows(x0, 0, x, y, col = 'blue', length = .15, angle = 20)
 text(1.2, 0.5, label = parse(text = "psi"), col = 'red')
 text(3, 0.5, label = parse(text = "phi"), col = 'blue')
 ```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+par(mar = rep(0,4))
+x = 4
+y = 5/8 * sqrt(48)
+plot(x, y, xlim = c(-6,6), ylim = c(-8,8), asp = 1)
+axis(1, pos = 0, at = 0:9)
+axis(2, pos = 0, at = -5:5)
+xd = seq(-8, 8, by = .1)
+lines(xd, 5/8 * sqrt(64 - xd^2), col = 'grey')
+lines(xd, 5/8 * -sqrt(64 - xd^2), col = 'grey')
+arrows(0, 0, x, y, col = 'red', length = .15, angle = 20)
+b = (x * 25) / (-y * 64)
+a = y - x * b
+abline(a, b, col = 'grey')
+b = -1/b
+x0 = x - y / b
+arrows(x0, 0, x, y, col = 'blue', length = .15, angle = 20)
+text(1.2, 0.5, label = parse(text = "psi"), col = 'red')
+text(3, 0.5, label = parse(text = "phi"), col = 'blue')
+```
+</details>
 
 The most commonly used parametric model for the Earth is _an
 ellipsoid of revolution_, an ellipsoid with two equal semi-axes
 [@iliffelott]. In effect, this is a flattened sphere (or spheroid):
 the distance between the poles is (slightly: about 0.33%) smaller
 than the distance between two opposite points on the equator. Under
-this model, longitude is always measured along a circle, but latitude
-along an ellipse. If we think of figure \@ref(fig:ellipse) as a
-cross section of the Earth passing through the poles, the latitude
-measure $\phi$ is the one used when no further specification is
-given; it is also called _geodetic latitude_. The latitude measure
-$\psi$ is called the _geocentric latitude_.
+this model, longitude is always measured along a circle (as in
+figure \@ref(fig:sphere)), and latitude along an ellipse (as in
+figure \@ref(fig:ellipse)). If we
+think of figure \@ref(fig:ellipse) as a cross section of the Earth
+passing through the poles, the latitude measure $\phi$ is the one
+used when no further specification is given; it is also called
+_geographic latitude_. The latitude measure $\psi$ is called the
+_geocentric latitude_. 
 
-In addition to longitude and latitude we can add _altitude_ to define
-points that are not on the spheroid, and obtain a three dimensional
-space again. When defining altitude, we need to choose 
+In addition to longitude and latitude we can add _altitude_
+or elevation to define points that are not on the spheroid, and
+obtain a three dimensional space again. When defining altitude,
+we need to choose
 
 * where zero altitude is: on the ellipsoid, or relative to the surface approximating mean sea level (the geoid)?
 * which direction is positive, and 
 * which direction is "straight up": perpendicular to the spheroid surface,
 or in the direction perpendicular to the surface of the geoid?
 
-All these choices may matter, depending on the application area.
+All these choices may matter, depending on the application area
+and required measurement accuracies.
+
+The shape of the Earth is not a perfect ellipsoid. As a consequence,
+several ellipsoids with different shape parameters and bound to
+the Earth in different are being used. Such ellipsoids are called
+_datums_, and are briefly discussed in section @\ref(datum), along
+with _coordinate reference systems_.
+
+## Projected coordinates
+
+Because paper maps and computer screens are much more abundant
+and practical than globes, most of the time we look at spatial
+data we see it _projected_ on a two-dimensional surface. Computing
+the locations on a two-dimensional space means that we work with
+_projected_ coordinates. Projecting ellipsoidal coordinates means
+that shapes, directions, areas, or even all three, are distorted
+[@iliffelott].
 
 ## Distances
 
@@ -130,7 +450,8 @@ For two points on a circle, the length of the arc of two points $c_1 = (r,{\phi}
 $c_2 = (r, \phi_2)$ is
 $$s_{ij}=r~|\phi_1-\phi_2| = r ~\theta$$
 with $\theta$ the angle between $\phi_1$ and $\phi_2$ in radians.
-For very small values of $\theta$, we will have $s_{ij} \approx d_{ij}$.
+For very small values of $\theta$, we will have $s_{ij} \approx d_{ij}$,
+because a small arc segment is nearly straight.
 
 For two points $p_1 = (\lambda_1,\phi_1)$ and $p_2 =
 (\lambda_2,\phi_2)$ on a sphere with radius $r'$, the _great circle
@@ -141,25 +462,55 @@ $$\theta_{12} = \arccos(\sin \phi_1 \cdot \sin \phi_2 + \cos \phi_1 \cdot \cos \
 the angle between $p_1$ and $p_2$, in radians.
 
 Arc distances between two points on a spheroid are more complicated
-to compute.  Details about the computation method used in package
-`lwgeom` (which, in turn, is used by package `sf`) are given in
-@karney2013algorithms.
+to compute; a good discussion on the topic and an explanation of
+the method implemented in GeographicLib (part of PROJ) is given
+in @karney2013algorithms.
 
-## Bounded spaces
+To show that the different distance measures (ellipsoidal, spherical, straight line)
+actually give differnt values, we computed them for the distance Berlin - Paris:
+```{r echo=FALSE}
+pts = st_sfc(st_point(c(13.4050, 52.5200)), st_point(c(2.3522, 48.8566)), crs = 'EPSG:4326')
+sf_use_s2(FALSE)
+d1 = c(ellipsoidal = st_distance(pts)[1,2])
+sf_use_s2(TRUE)
+# or, without s2, st_distance(st_transform(pts, "+proj=longlat +ellps=sphere"))
+d2 = c(spherical = st_distance(pts)[1,2])
+p = st_transform(pts, "+proj=geocent")
+cat("straight line: ")
+d3 = c(straight_line = units::set_units(sqrt(sum(apply(do.call(cbind, p), 1, diff)^2)), m))
+c(d1,d2,d3)
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+pts = st_sfc(st_point(c(13.4050, 52.5200)), st_point(c(2.3522, 48.8566)), crs = 'EPSG:4326')
+sf_use_s2(FALSE)
+d1 = c(ellipsoidal = st_distance(pts)[1,2])
+sf_use_s2(TRUE)
+# or, without s2, st_distance(st_transform(pts, "+proj=longlat +ellps=sphere"))
+d2 = c(spherical = st_distance(pts)[1,2])
+p = st_transform(pts, "+proj=geocent")
+cat("straight line: ")
+d3 = c(straight_line = units::set_units(sqrt(sum(apply(do.call(cbind, p), 1, diff)^2)), m))
+c(d1,d2,d3)
+```
+</details>
 
-All the above assumes pure geometric computations in spaces where
-there are no unexpected obstructions. When we move through space
-on a daily basis, we typically find constraints e.g.
+## Bounded and unbounded spaces {#bounded}
 
-* when we walk through a building
-* when we cycle to work
-* or when we drive to a shop.
+Two-dimensinal and three-dimensional Euclidean spaces ($R^2$ and
+$R^3$) are unbounded: every line in this space has infinite length,
+distances, areas or volumes are unbounded. In contrast, spaces
+defined on a circle ($S^1$) or sphere ($S^2$) define a bounded set:
+there may be infinitely many points but the length and area of the
+circle and the radius, area and volume of a sphere are bound.
 
-Distances, in such case, can be made up of a sequence of shortest
-(straight line or great circle) distances, but follow a more
-complex path than a straight line. Typical constraints come from
-road networks, or from the requirement for a certain habitat for
-movement (water for fish, forest for certain bird species).
+This may sound trivial, but leads to some interesting findings
+when handling spatial data. A polygon on $R^2$ has unambiguously an
+inside and an outside. On $S^2$, any polygon on the sphere divides
+the sphere in two parts: which of these two is to be considered
+inside and which outside is ambiguous and needs to be defined
+e.g. by the traversal direction.
 
 ## Time
 
@@ -185,7 +536,7 @@ or (day, time-of-day). When we study for instance traffic patterns,
 day of week plays a role, in which we may end up with (year,
 week-of-year, day-of-week, time-of-day) in order to quantify hourly,
 daily, weekly, and yearly signals. This decomposes time essentially in two
-or more components, with some of them having a cyclic character.
+or more components, with some of them being cyclic.
 
 ## Exercises
 

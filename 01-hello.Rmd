@@ -127,7 +127,7 @@ nc.32119 %>% mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
 ```
 </details>
 
-## Projection and coordinate reference systems
+## Coordinate reference systems
 
 In figure \@ref(first-map), the grey lines denote _graticules_,
 lines with constant latitude or longitude. Clearly, these lines
@@ -153,7 +153,7 @@ Projections describe how we go back and forth between
 latitude and longitude, pointing to locations on a shape
 approximating the Earth's shape (an ellipsoid or spheroid), and
 
-* **Cartesian coordinates** which are coordinates on a flat,
+* **projected coordinates** which are coordinates on a flat,
 two-dimensional coordinate system, used when plotting maps.
 
 Datums transformations are associated with moving from one datum
@@ -341,49 +341,56 @@ reverting this procedure, one can recover the exact original raster.
 
 Creating a new, regular grid in the new projection is called raster
 (or image) reprojection or warping (section \@ref(warping)). This
-process is lossy, irreversible, and may needs to be informed whether
-raster cells can be interpolated or averaged, or whether they denote
-categorical variables.
-
+process is lossy, irreversible, and may need to be informed whether
+raster cells can be interpolated, averaged or summed, or whether
+they denote categorical variables; see also section \@ref(support).
 
 ## Time series, arrays, data cubes
 
 A lot of spatial data is not _just_ spatial, but in addition temporal. Just like any observation is associated with an observation location, it is associated with an observation time or period. The dataset on the North Carolina counties shown above contains disease cases counted over two time periods, shown in figure \@ref(fig:firstgather). Although the original dataset has these variables in two different columns, for plotting them these columns had to be stacked first, while repeating the associated geometries - a form called _tidy_ by [@tidy]. When we have longer time series associated with geometries, neither option - distributing time over multiple columns, or stacking columns while repeating geometries - works well, and a more effective way of storing such data would be a matrix, where one dimension refers to time, and the other to space. The natural way for image or raster data is alreay to store them in matrices; time series of rasters then lead to a three-dimensional array. The general term for such data is a (spatiotemporal) **data cube**, where cube refers to arrays with any number of dimensions.  Data cubes can refer to both raster and vector data, examples are given in chapter \@ref(raster). 
 
-## Support, attribute-geometry relationships
+## Support {#support}
 
 When we have spatial data with geometries that are not points but
-collections of points (multi-points, lines, polygons, pixels), then
-the attributes associated with these geometries may have a different
-relationship to them. Attributes can
+collections of points (multi-points, lines, polygons, pixels),
+then the attributes associated with these geometries has one
+of several different relationships to them. Attributes can have
 
-* have a **constant** value for every point of the geometry 
-* have a value that is unique to only this geometry, describing its **identity**
-* have a single value that is an **aggregate**  over all points of the geometry
+* a **constant** value for every point of the geometry 
+* a value that is unique to only this geometry, describing its **identity**
+* a single value that is an **aggregate**  over all points of the geometry
 
-An example of a constant may be land use or bedrock type of
-a polygon. An example of an identity could be a county name. An
-example of an aggregate could be the number of births over a given
-period of time, of a county. 
+An example of a constant is land use or bedrock type of a polygon. An
+example of an identity is a county name. An example of an aggregate
+is the number of births over a given period of time, of a county.
 
-This property is called **support**: aggregate properties have
-block (or polygon, or line) support, constant properties have
-point support (they apply to every point). Support matters when
-we manipulate the data. For instance, figure \@ref(vectoras) was
-derived from a variable that has polygon support: the number of
-births per county. Rasterizing these values gives pixels with values
-that are associated to counties.  The result of the rasterization
-is a meaningless map: the numeric values ("birth totals") are not
-associated with the raster cells, and the county boundaries are lost.
-Totals of birth for the whole state can no longer be recovered from
-the pixel values.  Ignoring support can easily lead to meaningless
-results. Chapter \@ref(featureattributes) discusses this further.
+The area with to which an attribute value refers to is called
+**support**: aggregate properties have block (or polygon, or line)
+support, constant properties have point support (they apply to
+every point). Support matters when we manipulate the data. For
+instance, figure \@ref(vectoras) was derived from a variable that has
+polygon support: the number of births per county. Rasterizing these
+values gives pixels with values that are associated to counties.
+The result of the rasterization is a meaningless map: the numeric
+values ("birth totals") are not associated with the raster cells,
+and the county boundaries are lost.  Totals of birth for the
+whole state can no longer be recovered from the pixel values.
+Ignoring support can easily lead to meaningless results. Chapter
+\@ref(featureattributes) discusses this further.
 
-## The Spatial Data Science software ecosystem
+Raster cell values may have point support, e.g. when the cell records
+the elevation of the point at the cell centre in a digital elevation
+model, or cell support, e.g. when a satellite image pixel gives the
+color value averaged over (an area similar to the) pixel. Most file
+formats do not provide this information, yet it may be important
+to know when aggregating, regridding or warping rasters (section
+\@ref{warp}).
+
+## Spatial data science software
 
 Although this book largely uses R and R packages for spatial data
-science, a number of these packages actually use software libraries
-that were not developed for R alone.  As an example, the dependency
+science, a number of these packages use software libraries that were
+not developed for R specifically.  As an example, the dependency
 of R package `sf` on other R packages and system libraries is shown
 in figure \@ref(fig:gdal-fig-nodetails).
 
@@ -392,14 +399,16 @@ knitr::include_graphics("images/sf_deps.png")
 ```
 
 The C or C++ libraries used (GDAL, GEOS, PROJ, liblwgeom, s2geometry,
-udunits2) are all developed, maintained and used by data science
-communities that are large and mostly different from the R community.
-By using these libraries, we share how we understand what we
-are doing with these other communities. Because R, Python and Julia
-provide interactive interfaces to this software, many users get
-closer to these libraries than do users of other software based on
-these libraries. This is not only important for resolving problems,
-but also for reaching consensus on which findings are helpful.
+netcdf, udunits2) are all developed, maintained and used by (spatial) data
+science communities that are large and mostly different from the
+R community.  By using these libraries, we share how we understand
+what we are doing with these other communities. Because R, Python
+and Julia provide interactive interfaces to this software, many
+users get closer to these libraries than do users of other software
+based on these libraries. The first part of this book describes
+the concepts implemented in these libraries, and although R is
+dominantly used to construct examples, it has relevance to spatial
+data science in general.
 
 ### GDAL
 
@@ -410,13 +419,15 @@ projects](https://trac.osgeo.org/gdal/wiki/SoftwareUsingGdal).
 
 GDAL is a "library of libraries" -- in order to read all these data
 sources it needs a large number of other libraries. It typically
-links to over 100 other libraries. Binary packages distributed by
-CRAN contain only statically linked code: CRAN does not want to
-make any assumptions about presence of third-party libraries on the
-host system. As a consequence, when the `sf` package is installed
-in binary form from CRAN, it includes a copy of all the required
-external libraries as well as their dependencies, which may amount
-to 100 Mb.
+links to over 100 other libraries, each of which provides access to
+e.g. a particular data file format, database access, or web service.
+
+Binary R packages distributed by CRAN contain only statically linked
+code: CRAN does not want to make any assumptions about presence
+of third-party libraries on the host system. As a consequence,
+when the `sf` package is installed in binary form from CRAN, it
+includes a copy of all the required external libraries as well as
+their dependencies, which may amount to 100 Mb.
 
 ### PROJ
 
@@ -439,9 +450,22 @@ space (indicated by $R^2$), s2geometry does this for geometries on
 the sphere (indicated by $S^2$). Chapter \@ref(cs) discusses more
 about the differences between working with these two spaces.
 
+### netcdf, udunits2, liblwgeom
+
+NetCDF [@netcdf] refers to a file format as well as a C library
+for reading and writing netcdf files. It allows the definition of
+arrays of any dimensionality, and is widely used for spatial and
+spatiotemporal information, especially in the (climate) modelling
+communities. Udunits2 [@R-units,@udunits2] is a database and software
+library for units of measurement that allows the conversion of
+units, handles derived units, and supports user-defined units. The
+liblwgeom "library" is a software component of PostGIS [@postgis]
+that contains several routines missing from GDAL or GEOS, including
+convenient access to GeographicLib routines [@karney2013algorithms]
+that ship with PROJ.
 
 ## Exercises
-1. What is the difference between raster and vector data?
+1. What are the differences between raster and vector data?
 2. Which components of a map can you list?
 3. In your own words, why is the numeric information shown in figure \@ref(fig:vectoras) misleading (or meaningless)?
 4. When and where would you expect strong differences when doing geometrical operations on $S^2$, compared to doing them on $R^2$?

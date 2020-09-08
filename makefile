@@ -34,5 +34,5 @@ purl:
 objects = 01-hello.Rmd
 
 details:
-	#Rscript -e "source(\"f.R\"); f(\"$<\", \"$@\")"
 	Rscript -e 'source("f.R"); f("01-hello.Rmd")'
+	Rscript -e 'source("f.R"); f("02-Spaces.Rmd")'
