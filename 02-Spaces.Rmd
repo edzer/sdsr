@@ -1,14 +1,8 @@
 # Coordinate systems {#cs}
 
-```{r echo=FALSE}
+```{r nodetails-ch2, echo=FALSE}
 knitr::opts_chunk$set(collapse = TRUE)
 ```
-<details>
-<summary style="color:blue;">Click for Code</summary>
-```{r eval=FALSE}
-knitr::opts_chunk$set(collapse = TRUE)
-```
-</details>
 
 Before we can try to understand geometries like points, lines,
 polygons, coverages and grids, it is useful to review coordinate
@@ -466,31 +460,43 @@ to compute; a good discussion on the topic and an explanation of
 the method implemented in GeographicLib (part of PROJ) is given
 in @karney2013algorithms.
 
-To show that the different distance measures (ellipsoidal, spherical, straight line)
-actually give differnt values, we computed them for the distance Berlin - Paris:
+To show that these distance measures actually give different
+values, we computed them for the distance Berlin - Paris. Here,
+`gc_` refers to ellipsoidal and spherical great circle distances,
+`straight_` refers to straight line, Euclidean distances between
+Cartesian geocentric coordinates associated on the WGS84 ellipse
+and sphere:
 ```{r echo=FALSE}
 pts = st_sfc(st_point(c(13.4050, 52.5200)), st_point(c(2.3522, 48.8566)), crs = 'EPSG:4326')
 sf_use_s2(FALSE)
-d1 = c(ellipsoidal = st_distance(pts)[1,2])
+d1 = c(gc_ellipse = st_distance(pts)[1,2])
 sf_use_s2(TRUE)
-# or, without s2, st_distance(st_transform(pts, "+proj=longlat +ellps=sphere"))
-d2 = c(spherical = st_distance(pts)[1,2])
+# or, without using s2, use st_distance(st_transform(pts, "+proj=longlat +ellps=sphere"))
+d2 = c(gc_sphere = st_distance(pts)[1,2])
 p = st_transform(pts, "+proj=geocent")
-d3 = c(straight_line = units::set_units(sqrt(sum(apply(do.call(cbind, p), 1, diff)^2)), m))
-c(d1,d2,d3)
+d3 = c(straight_ellipse = units::set_units(sqrt(sum(apply(do.call(cbind, p), 1, diff)^2)), m))
+p2 = st_transform(pts, "+proj=longlat +ellps=sphere") %>% st_transform("+proj=geocent")
+d4 = c(straight_sphere = units::set_units(sqrt(sum(apply(do.call(cbind, p2), 1, diff)^2)), m))
+res = c(d1,d3,d2,d4)
+# print as km, re-add names:
+res %>% units::set_units(km) %>% setNames(names(res))
 ```
 <details>
 <summary style="color:blue;">Click for Code</summary>
 ```{r eval=FALSE}
 pts = st_sfc(st_point(c(13.4050, 52.5200)), st_point(c(2.3522, 48.8566)), crs = 'EPSG:4326')
 sf_use_s2(FALSE)
-d1 = c(ellipsoidal = st_distance(pts)[1,2])
+d1 = c(gc_ellipse = st_distance(pts)[1,2])
 sf_use_s2(TRUE)
-# or, without s2, st_distance(st_transform(pts, "+proj=longlat +ellps=sphere"))
-d2 = c(spherical = st_distance(pts)[1,2])
+# or, without using s2, use st_distance(st_transform(pts, "+proj=longlat +ellps=sphere"))
+d2 = c(gc_sphere = st_distance(pts)[1,2])
 p = st_transform(pts, "+proj=geocent")
-d3 = c(straight_line = units::set_units(sqrt(sum(apply(do.call(cbind, p), 1, diff)^2)), m))
-c(d1,d2,d3)
+d3 = c(straight_ellipse = units::set_units(sqrt(sum(apply(do.call(cbind, p), 1, diff)^2)), m))
+p2 = st_transform(pts, "+proj=longlat +ellps=sphere") %>% st_transform("+proj=geocent")
+d4 = c(straight_sphere = units::set_units(sqrt(sum(apply(do.call(cbind, p2), 1, diff)^2)), m))
+res = c(d1,d3,d2,d4)
+# print as km, re-add names:
+res %>% units::set_units(km) %>% setNames(names(res))
 ```
 </details>
 

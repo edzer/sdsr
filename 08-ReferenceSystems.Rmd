@@ -1,0 +1,253 @@
+# Reference Systems {#rs}
+
+"_Data are not just numbers, they are numbers with a context_";
+"_In data analysis, context provides meaning_"  [@cobbmoore]
+
+## Units of measurement {#units}
+
+```{r echo=FALSE}
+Sys.setenv(UDUNITS2_XML_PATH="")
+```
+
+### Quantities 
+
+The VIM (International vocabulary of metrology, @vim)
+defines a _quantity_ as a "property of a phenomenon, body, or
+substance, where the property has a magnitude that can be expressed
+as a number and a reference", where "[a] reference can be a measurement
+unit, a measurement procedure, a reference material, or a combination
+of such."
+
+One could argue whether all data is constituted of quantities, but
+there is no need to argue that proper data handling requires that
+numbers are accompanied by information on what the numbers mean,
+and what they are about. 
+
+A measurement system consist of _base units_ for base quantities, and
+_derived units_ for derived quantities.  The SI system of units [@SI]
+consist of the seven base units length (metre, m), mass (kilogram,
+kg), time (second, s), electric current (ampere, A), thermodynamic
+temperature (kelvin, K), amount of substance (mole, mol), and
+luminous intensity (candela, cd).  Derived units are composed
+of products of integer powers of base units; exampes are speed
+($\mbox{m}~\mbox{s}^{-1}$) and density ($\mbox{kg}~\mbox{m}^{-3}$).
+
+Many data variables have units that are not expressed as SI base
+units or derived units. @hand discusses many such measurement scales,
+e.g. those used to measure intelligence in social sciences, in the
+context of measurement units.
+
+### Unitless measures
+
+The special case of unitless units can refer to either cases where
+units cancelled out (e.g. mass fraction: kg/kg, or angle measured
+in rad: m/m) or to cases where objects or events were counted
+(e.g. 5 apples).  Adding an angle to a count of apples would not make
+sense; adding 5 apples to 3 oranges may make sense if the result is
+reinterpreted, e.g. as _pieces of fruit_. @flater discusses systems
+for proper handling of unitless quantities; handling counts could for
+instance link to domain-specific ontologies pointing out which things
+were counted, and perhaps identifying super-classes, like _fruit_.
+
+### Units in R
+
+The `units` R package [@unitsrj] provides units
+of measurement support for R, by interfacing the
+[udunits2](https://www.unidata.ucar.edu/software/udunits/) units
+database and C library. It allows for setting, converting and deriving 
+units:
+```{r}
+library(units)
+(a = set_units(1:3, m))
+a_km = set_units(1:3, km)
+a + a_km
+b = set_units(4:6, s)
+a / b
+```
+and raises errors in case of meaningless operations
+```{r error=TRUE}
+a + b
+```
+
+### Datum {#datum}
+
+For many quantities, the natural origin of values is zero. This
+works for amounts, and differences between amounts results in
+meaningful negative values. For locations and times, differences
+have a natural zero interpretation: length and duration.  Absolute
+location (position) and time need a fixed origin, from which we can
+meaningfully measure other absolute space-time points: a datum.  For space,
+a datum involves more than one dimension. The combination of a datum
+and a measurement unit (scale) is a a _reference system_.  The next
+two sections will deal with temporal and spatial reference systems,
+and how they are handled in R.
+
+## Temporal Reference Systems
+
+R has two native classes for time-related data: `POSIXt` and `Date`,
+which are used for specifying dates, and times.
+
+### `Date`
+
+`Date` objects are numeric vectors of class `Date`, which contain
+the number of days since (or in case negative: before) Jan 1, 1970:
+```{r}
+(d = as.Date("1970-02-01"))
+as.numeric(d)
+```
+We see that the `print` method as well as the `as.Date` method use
+ISO 8601 [@iso8601] character strings, which is standard used to
+read and write dates. We can also modify this to local conventions
+by specifying a `format`:
+```{r}
+(d = as.Date("01.02.1970", format = "%d.%m.%Y"))
+format(d, format = "%d.%m.%Y")
+```
+The default for `format` may depend on the locale settings of
+the computer used. The help page of `?as.Date` contains further
+discussion of date systems, and calendars used.
+
+### POSIXt
+
+`POSIXt` is an R native class for specifying times. It has two
+subclasses: `POSIXct` represents time as a numeric, representing decimal
+seconds since 1970-01-01 00:00 UTC, and `POSIXlt` contains the same
+information as a list with all time components (second, minute,
+hour, day of month, month, year) in list components:
+```{r}
+t = as.POSIXct("1970-01-01 01:00:00", tz = "UTC")
+as.numeric(t)
+names(unclass(as.POSIXlt(t)))
+unclass(as.POSIXlt(t))$hour
+```
+
+### Time zones
+
+Time zones can be seen as local modifiers of time: where time as
+numeric value is stored with respect to UTC (universal coordinated
+time), a local time zone is used to format it, and a time zone can
+be specified for creation, and formatting:
+```{r}
+(t = as.POSIXct("1970-01-01 00:00:00", tz = "PST"))
+```
+this adds a time zone modifier to `t` that redefines the time origin, as
+```{r}
+as.numeric(t)
+```
+To convert `POSIXt` to `Date` we can use `as.Date`; this converts
+to the _local_ date. Converting back to `POSIXct` looses the time
+of day and time zone information.
+```{r}
+(t = as.POSIXct("1970-01-01 23:00:00", tz = "PST"))
+as.Date(t)
+format(as.POSIXct(as.Date(t)), tz = "UTC")
+```
+
+Working with local time zones is sometimes confusing when the data
+we work with were not referenced to this time zone. It may help
+to set
+```{r}
+Sys.setenv(TZ="UTC")
+```
+at the start of an R script. The effect is, at lease on some
+platforms, that R thinks it is working in a UTC time zone.  This way,
+the scripts will produce identical outputs, no matter in which time
+zone it is run.
+
+## Coordinate Reference Systems {#crs}
+
+We follow @lott2015geographic when defining the following concepts (italics indicate literal quoting):
+
+* a **coordinate system** is a _set of mathematical rules for specifying how coordinates are to be assigned to points_
+* a **datum** is a _parameter or set of parameters that define the position of the origin, the scale, and the orientation of a coordinate system_, 
+* a **geodetic datum** is a _datum describing the relationship of a two- or three-dimensional coordinate system to the Earth_, and
+* a **coordinate reference system** is a _coordinate system that is related to an object by a datum; for geodetic and vertical datums, the object will be the Earth._
+
+A readable text that further explains these concepts is @iliffelott.
+
+Essentially it boils down to the Earth not following a regular shape. The topography of the Earth is of course known to vary strongly, but also the surface formed by constant gravity at mean sea level, the geoid, is irregular. A commonly used model that is fit to the geoid is an ellipsoid of revolution, which is an ellipse with two identical minor axes. This model can be fit locally to be highly precise, can be fixed for particular tectonic plates (like ETRS89), or can be globally fit (like WGS84). 
+
+The definitions above state that coordinates in degrees longitude
+and latitude can only have a meaning, i.e. can only be understood
+as Earth coordinates when the datum they relate to is given.
+
+Recomputing coordinates in a new datum is called _coordinate
+transformation_.
+
+### Projections {#projections}
+
+When we look at geographical data on a paper map or a screen, or
+on any _flat_ device, we see the values _projected_ -- they are no
+longer arranged on an a sphere or ellipsoid.  Even if we plot degrees
+longitude/latitude data on a flat x/y plane with unit aspect ratio,
+we use a projection, called _plate carrée_. 
+
+Note that even for projected data, the data that _were_ projected
+are associated with a reference ellipsoid (datum). Going from one
+projection to the other without changing datum is called _coordinate
+conversion_, and usually passes through the geographic coordinates of
+the datum involved; up to numerical errors this process is lossless
+and invertible.
+
+### Describing Coordinate Reference Systems
+
+@lott2015geographic describes a standard for encoding coordinate
+reference system using _well known text_; the standard is referred
+to as WKT2. GDAL and PROJ support this encoding (FIXME: verify this
+is true by the time this book goes into print).
+
+Traditionally, PROJ used a string representation to encode coordinate
+reference systems (datums) and projections, called the proj4string.
+Some of these come from a catalogue (originally) compiled by the
+European Petroleum Survey Group (now: International Association of
+Oil & Gas Producers), and have a so-called epsg code.
+
+Package `sf` provides a `crs` class which is initialised either by
+an epsg code, like
+```{r}
+st_crs(4326)
+```
+or by a PROJ string, like
+```{r}
+st_crs("+proj=longlat")
+```
+and can be missing valued
+```{r}
+st_crs()
+```
+A number of methods are available for `crs` objects:
+```{r}
+methods(class = "crs")
+```
+The `Ops` methods are convenience functions, e.g.
+```{r}
+st_crs(4326) == st_crs("+proj=longlat")
+```
+but there not all cases semantically identical `crs` objects will
+yield equality in this test.
+
+`st_as_text` converts a `crs` object into WKT, we print it using `cat`:
+```{r}
+cat(st_as_text(st_crs(4326), pretty = TRUE))
+```
+
+It should be noted that at the time of writing this, a new draft
+standard for WKT (informally called WKT2, @lott2015geographic) is
+rapidly being implemented in GDAL and PROJ, and can be expected in
+R once these changes appear in released versions.
+
+`st_crs` is also a generic, with methods for
+```{r}
+methods(st_crs)
+```
+The method for `sfc` objects can drill further into the underlying
+data, by adding an argument; a few of these are printed by
+```{r}
+st_crs(st_sfc(crs = 4326), parameters = TRUE)[c(1:4, 8)]
+```
+where we see that udunits and GDAL units are integrated. The
+major axis lengths (`SemiMajor`) and inverse flattening are used
+e.g. to compute great circle distances on the ellipsoid, using the
+algorithm from @karney2013algorithms. This algorithm is implemented
+in PROJ, and interfaced by `lwgeom::st_geod_distance`, which is
+called from `sf::st_distance` when objects have geographic coordinates.

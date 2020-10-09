@@ -1,20 +1,28 @@
 # Geometries {#geometries}
 
-Having learned how we describe spaces, we can define how geometries
-can be described in these spaces. This chapter will mostly explain the
-geometries for _simple features_, and introduce the three classes
-`sfg`, `sfc` and `sf` for single geometries, geometry sets, and
-geometry sets with associated attributes.
+Having learned how we describe coordinates systems, we can define
+how geometries can be described using these coordinate systems. This
+chapter will explain 
 
-## Simple feature geometry types
+* _simple features_, a standard that describes point, line and polygon 
+geometries along with operations on them, 
+* operations on geometries
+* coverages, subdivisions of larger regions into sub-regions
+* rasters, rectangular subdivisions of space
+* networks
+* geometries on the sphere
+
+## Simple feature geometries
 
 Simple feature geometries are a way to describe the geometries of
 _features_.  By _features_ we mean _things_ that have a geometry,
-some time properties, and other attributes.  The main application of
-simple feature geometries is to describe two-dimensional geometries
-by points, lines, or polygons. The "simple" adjective refers to
-the fact that the line or polygon geometries are represented by
-sequences of points connected with straight lines.
+potentially some time properties, and other attributes that could
+include a label describing the thing and quantitative measures of it.
+The main application of simple feature geometries is to describe
+two-dimensional geometries by points, lines, or polygons. The
+"simple" adjective refers to the fact that the line or polygon
+geometries are represented by sequences of points connected with
+straight lines that do not self-intersect.
 
 _Simple features access_ is a standard [@sfa, @sfa2, @iso]
 for describing simple feature geometries that includes
@@ -23,10 +31,8 @@ for describing simple feature geometries that includes
 * a set of operations
 * binary and text encodings
 
-We will now discuss the seven most common simple feature geometry
-types. Although in practice we will most often import spatial data
-from external sources (files, databases, web services), we will
-create them here from scratch using simple constructor functions.
+We will first discuss the seven most common simple feature geometry
+types.
 
 ### The big seven
 
@@ -34,29 +40,192 @@ The most commonly used simple features geometries, used to represent a _single_ 
 
 | type                 | description                                                               |
 |----------------------|---------------------------------------------------------------------------|
-| `POINT` | single point geometry |
-| `MULTIPOINT` | set of points |
-| `LINESTRING` | single linestring (two or more points connected by straight lines) |
-| `MULTILINESTRING` | set of linestrings |
-| `POLYGON` | exterior ring with zero or more inner rings, denoting holes |
-| `MULTIPOLYGON` | set of polygons |
+| `POINT`              | single point geometry |
+| `MULTIPOINT`         | set of points |
+| `LINESTRING`         | single linestring (two or more points connected by straight lines) |
+| `MULTILINESTRING`    | set of linestrings |
+| `POLYGON`            | exterior ring with zero or more inner rings, denoting holes |
+| `MULTIPOLYGON`       | set of polygons |
 | `GEOMETRYCOLLECTION` | set of the geometries above  |
 
-Points in a geometry contain at least two coordinates: x and y, in that order.
+```{r sfgeometries,fig.cap = "sketches of the main simple feature geometry types", echo=FALSE}
+library(sf)
+par(mfrow = c(2,4))
+par(mar = c(1,1,1.2,1))
 
-### Valid geometries
+# 1
+p = st_point(0:1)
+plot(p, pch = 16)
+title("point")
+box(col = 'grey')
 
-Valid geometries obey the following properties:
+# 2
+mp = st_multipoint(rbind(c(1,1), c(2, 2), c(4, 1), c(2, 3), c(1,4)))
+plot(mp, pch = 16)
+title("multipoint")
+box(col = 'grey')
 
-* linestrings shall not self-intersect
-* polygon rings shall be closed (the last point equals the first)
-* polygon holes (inner rings) shall be inside their exterior ring
-* polygon inner rings shall maximally touch the exterior ring in single points, not over a line
+# 3
+ls = st_linestring(rbind(c(1,1), c(5,5), c(5, 6), c(4, 6), c(3, 4), c(2, 3)))
+plot(ls, lwd = 2)
+title("linestring")
+box(col = 'grey')
+
+# 4
+mls = st_multilinestring(list(
+  rbind(c(1,1), c(5,5), c(5, 6), c(4, 6), c(3, 4), c(2, 3)),
+  rbind(c(3,0), c(4,1), c(2,1))))
+plot(mls, lwd = 2)
+title("multilinestring")
+box(col = 'grey')
+
+# 5 polygon
+po = st_polygon(list(rbind(c(2,1), c(3,1), c(5,2), c(6,3), c(5,3), c(4,4), c(3,4), c(1,3), c(2,1)),
+	rbind(c(2,2), c(3,3), c(4,3), c(4,2), c(2,2))))
+plot(po, border = 'black', col = '#ff8888', lwd = 2)
+title("polygon")
+box(col = 'grey')
+
+# 6 multipolygon
+mpo = st_multipolygon(list(
+	list(rbind(c(2,1), c(3,1), c(5,2), c(6,3), c(5,3), c(4,4), c(3,4), c(1,3), c(2,1)),
+		rbind(c(2,2), c(3,3), c(4,3), c(4,2), c(2,2))),
+	list(rbind(c(3,7), c(4,7), c(5,8), c(3,9), c(2,8), c(3,7)))))
+mpo
+plot(mpo, border = 'black', col = '#ff8888', lwd = 2)
+title("multipolygon")
+box(col = 'grey')
+
+# 7 geometrycollection
+gc = st_geometrycollection(list(po, ls + c(0,5), st_point(c(2,5)), st_point(c(5,4))))
+plot(gc, border = 'black', col = '#ff6666', pch = 16, lwd = 2)
+title("geometrycollection")
+box(col = 'grey')
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+library(sf)
+par(mfrow = c(2,4))
+par(mar = c(1,1,1.2,1))
+
+# 1
+p = st_point(0:1)
+plot(p, pch = 16)
+title("point")
+box(col = 'grey')
+
+# 2
+mp = st_multipoint(rbind(c(1,1), c(2, 2), c(4, 1), c(2, 3), c(1,4)))
+plot(mp, pch = 16)
+title("multipoint")
+box(col = 'grey')
+
+# 3
+ls = st_linestring(rbind(c(1,1), c(5,5), c(5, 6), c(4, 6), c(3, 4), c(2, 3)))
+plot(ls, lwd = 2)
+title("linestring")
+box(col = 'grey')
+
+# 4
+mls = st_multilinestring(list(
+  rbind(c(1,1), c(5,5), c(5, 6), c(4, 6), c(3, 4), c(2, 3)),
+  rbind(c(3,0), c(4,1), c(2,1))))
+plot(mls, lwd = 2)
+title("multilinestring")
+box(col = 'grey')
+
+# 5 polygon
+po = st_polygon(list(rbind(c(2,1), c(3,1), c(5,2), c(6,3), c(5,3), c(4,4), c(3,4), c(1,3), c(2,1)),
+	rbind(c(2,2), c(3,3), c(4,3), c(4,2), c(2,2))))
+plot(po, border = 'black', col = '#ff8888', lwd = 2)
+title("polygon")
+box(col = 'grey')
+
+# 6 multipolygon
+mpo = st_multipolygon(list(
+	list(rbind(c(2,1), c(3,1), c(5,2), c(6,3), c(5,3), c(4,4), c(3,4), c(1,3), c(2,1)),
+		rbind(c(2,2), c(3,3), c(4,3), c(4,2), c(2,2))),
+	list(rbind(c(3,7), c(4,7), c(5,8), c(3,9), c(2,8), c(3,7)))))
+mpo
+plot(mpo, border = 'black', col = '#ff8888', lwd = 2)
+title("multipolygon")
+box(col = 'grey')
+
+# 7 geometrycollection
+gc = st_geometrycollection(list(po, ls + c(0,5), st_point(c(2,5)), st_point(c(5,4))))
+plot(gc, border = 'black', col = '#ff6666', pch = 16, lwd = 2)
+title("geometrycollection")
+box(col = 'grey')
+```
+</details>
+
+Figure \@ref(fig:sfgeometries) shows examples of these basic
+geometry types. The human-readable, "well-known-text" (WKT) representation
+of the geometries plotted are:
+
+```{r echo=FALSE}
+p
+mp
+ls
+mls
+po
+mpo
+gc
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+p
+mp
+ls
+mls
+po
+mpo
+gc
+```
+</details>
+
+In this representation, coordinates are separated by space, and
+points by commas. Sets are denoted by parentheses, and separated
+by commas.
+
+Individual points in a geometry contain at least two coordinates:
+x and y, in that order.  If these coordinates refer to geographic
+coordinates, x and y usually refer to longitude and latitude,
+respectively, although sometimes to latitude and longitude (see
+section @ref(axisorder)).
+
+### Simple and valid geometries, ring direction {#valid}
+
+Linestrings are called _simple_ when they do not self-intersect:
+```{r echo=FALSE}
+(ls = st_linestring(rbind(c(0,0), c(1,1), c(2,2), c(0,2), c(1,1), c(2,0))))
+c(is_simple = st_is_simple(ls))
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+(ls = st_linestring(rbind(c(0,0), c(1,1), c(2,2), c(0,2), c(1,1), c(2,0))))
+c(is_simple = st_is_simple(ls))
+```
+</details>
+
+Valid polygons and multipolygons obey the following properties:
+
+* polygon rings are closed (the last point equals the first)
+* polygon holes (inner rings) are inside their exterior ring
+* polygon inner rings maximally touch the exterior ring in single points, not over a line
 * a polygon ring shall not repeat its own path
+* in a multipolygon, an external ring maximally touches another exterior ring in single points, not over a line
 
 If this is not the case, the geometry concerned is not valid.
 
-### Z and M
+A further convention is that the outer ring of a polygon is winded
+counter-clockwise, while the holes are winded clockwise, but polygons
+for which this is not the case are still considered valid.
+
+### Z and M coordinates
 
 In addition to X and Y coordinates, Single points (vertices) of
 simple feature geometries can have
@@ -70,7 +239,53 @@ in `LINESTRING`s. These become however invalid once the trajectory
 self-intersects.
 
 Both `Z` and `M` are found relatively rarely, and software support
-to do something useful with them is (still) rather rare.
+to do something useful with them is (still) rather rare. Their
+WKT representation are fairly easily understood:
+```{r echo=FALSE}
+st_point(c(1,3,2))
+st_point(c(1,3,2), dim = "XYM")
+st_linestring(rbind(c(3,1,2,4), c(4,4,2,2)))
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+st_point(c(1,3,2))
+st_point(c(1,3,2), dim = "XYM")
+st_linestring(rbind(c(3,1,2,4), c(4,4,2,2)))
+```
+</details>
+
+### Empty geometries
+
+A very important concept in the feature geometry framework is that of the
+empty geometry. We can think of an empty geometry as similar to the
+`NA` value in R vectors: it is a placeholder, but a usable value is
+not available. Empty geometries arise naturally when we do geometrical
+operations (section \@ref(opgeom)), for instance when we want to
+know the intersection of `POINT (0 0)` and `POINT (1 1)`: 
+```{r echo=FALSE}
+(e = st_intersection(st_point(c(0,0)), st_point(c(1,1))))
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+(e = st_intersection(st_point(c(0,0)), st_point(c(1,1))))
+```
+</details>
+
+All geometry types have a special value representing the empty (typed) geometry:
+```{r echo=FALSE}
+st_point()
+st_linestring(matrix(1,1,3)[0,], dim = "XYM")
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+st_point()
+st_linestring(matrix(1,1,3)[0,], dim = "XYM")
+```
+</details>
+
 
 ### Ten further geometry types
 
@@ -89,342 +304,464 @@ There are 10 more geometry types which are more rare, but increasingly find impl
 | `TIN` | A TIN (triangulated irregular network) is a PolyhedralSurface consisting only of Triangle patches.|
 | `TRIANGLE` | A Triangle is a polygon with 3 distinct, non-collinear vertices and no interior boundary |
 
-Note that `CIRCULASTRING`, `COMPOUNDCURVE` and `CURVEPOLYGON`
-are not described in the SFA standard, but in the [SQL-MM part
-3 standard](https://www.iso.org/standard/38651.html). The
+`CIRCULASTRING`, `COMPOUNDCURVE` and `CURVEPOLYGON` are not
+described in the SFA standard, but in the [SQL-MM part 3
+standard](https://www.iso.org/standard/38651.html). The
 descriptions above were copied from the [PostGIS
 manual](http://postgis.net/docs/using_postgis_dbmanagement.html).
 
-### Encodings
+### Text and binary encodings
 
-Part of the simple feature standard are two encodings: a text and a
-binary encoding.  The text strings `POINT (0 1)` and so on indicate
-text encodings, also known as _well-known text_ (WKT) encodings,
-of simple feature geometries. They are meant to be human-readable.
+Part of the simple feature standard are two encodings: a text and
+a binary encoding. The well-known text encoding, used above, is
+human-readable, the well-known binary encoding is machine-readable.
+Binary encodings are lossless and typically faster than text encoding
+(and parsing), and are used for instance in all communications
+between R package `sf` and the GDAL, GEOS, liblwgeom and s2geometry
+libraries.
 
+## Operations on geometries {#opgeom}
 
-## Simple features in `sf`
+Simple feature geometries can be queried for properties,
+transformed into new geometries, and combinations of geometries can
+be queried for properties. This section gives an overview of the
+operations entirely focusing on _geometrical_ properties.  Chapter,
+\@ref(featureattributes), focuses on the analysis of non-geometrical
+feature properties, in relationship to their geometries. Some of
+the material in this section appeared in [@rjsf].
 
-This section describes the implementation of simple feature
-geometries in package `sf`.  It will first explain how single
-simple feature geometries, explained in the previous section,
-are represented in R objects of class `sfg`. Next, it will explain
-how _sets_ of simple feature geometry objects are collected in a
-list of class `sfc`. This list acts as a geometry _list-column_
-in data.frame objects, of class `sf`.
+We can categorise operations on geometries in terms of what they
+take as input, and what they return as output. In terms of output
+we have operations that return
 
-### `sfg`: simple feature geometry
+* **predicates**: a logical asserting a certain property is `TRUE`,
+* **measures**: a value (e.g. a numeric value with measurement unit), or
+* **transformations**: newly generated geometries
 
-Point sets are stored as numeric matrix, with 2 (`XY`), 3 (`XYZ`
-or `XYM`) or 4 (`XYZM`) columns, with a points in each row.
-Individual simple feature geometry objects are implemented as:
+and in terms of what they operate on, we distinguish operations
+that are
 
-* numeric vector for `POINT`,
-* numeric matrix for `MULTIPOINT` and `LINESTRING`
-* list of numeric matrices for `MULTILINESTRING` and `POLYGON`
-* list of lists of numeric matrices for `MULTIPOLYGON`
-* list of (typed) geometries for `GEOMETRYCOLLECTION`
+* **unary** when they work on a single geometry
+* **binary** when they work on pairs of geometries
+* **n-ary** when they work on sets of geometries
 
-All other geometry types follow this, using the simplest possible option. 
-Note that matrices can have zero points, and lists can have zero
-elements, in which case we have _empty_ geometries; more about this
-in section \@ref(empty).
+### Unary predicates
 
-Objects have a class indicating their dimension, type, and a
-superclass (`sfg`: simple feature geometry), and have no other
-attributes than their S3 class:
+Unary predicates describe a certain property of a geometry.
+The predicates `is_simple`, `is_valid`, and `is_empty` returns
+respectively whether a geometry is simple, valid or empty.  Given a
+coordinate reference system, `is_longlat` returns whether the
+coordinates are geographic or projected. `is(geometry, class)`
+checks whether a geometry belongs to a particular class.
 
-```{r}
-(pt = st_point(c(0,1)))
-attributes(pt)
+### Binary predicates and DE-9IM {#de9im}
+
+The Dimensionally Extended nine-Intersection Model (DE-9IM,
+[@de9im1,@de9im2]) is a model that helps describing the qualitative
+relation between any two geometries in two-dimensional space
+($R^2$). Any geometry has a _dimension_ value that is
+
+* 0 for points, 
+* 1 for linear geometries, 
+* 2 for polygonal geometries, and 
+* F (false) for empty geometries.
+
+Any geometry also has an inside (I), a boundary (B) and an exterior (E); these
+roles are obvious for polygons but e.g. for
+
+* **lines** the boundary is formed by the end points, and the interior
+by all remaining points,
+* **points** have a zero-dimensional inside but no boundary
+
+```{r de9im,echo=FALSE,fig.cap = "DE-9IM: intersections between the interior, boundary and exterior of a polygon (rows) and of a linestring (columns) indicated by red"}
+library(sf)
+polygon = po = st_polygon(list(rbind(c(0,0), c(1,0), c(1,1), c(0,1), c(0,0))))
+p0 = st_polygon(list(rbind(c(-1,-1), c(2,-1), c(2,2), c(-1,2), c(-1,-1))))
+line = li = st_linestring(rbind(c(.5, -.5), c(.5, 0.5)))
+s = st_sfc(po, li)
+
+par(mfrow = c(3,3))
+par(mar = c(1,1,1,1))
+
+# "1020F1102"
+# 1: 1
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("I(pol)",intersect(),"I(line) = 1")))
+lines(rbind(c(.5,0), c(.5,.495)), col = 'red', lwd = 2)
+points(0.5, 0.5, pch = 1)
+
+# 2: 0
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("I(pol)",intersect(),"B(line) = 0")))
+points(0.5, 0.5, col = 'red', pch = 16)
+
+# 3: 2
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("I(pol)",intersect(),"E(line) = 2")))
+plot(po, col = '#ff8888', add = TRUE)
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', add = TRUE)
+
+# 4: 0
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("B(pol)",intersect(),"I(line) = 0")))
+points(.5, 0, col = 'red', pch = 16)
+
+# 5: F
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("B(pol)",intersect(),"B(line) = F")))
+
+# 6: 1
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("B(pol)",intersect(),"E(line) = 1")))
+plot(po, border = 'red', col = NA, add = TRUE, lwd = 2)
+
+# 7: 1
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("E(pol)",intersect(),"I(line) = 1")))
+lines(rbind(c(.5, -.5), c(.5, 0)), col = 'red', lwd = 2)
+
+# 8: 0
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("E(pol)",intersect(),"B(line) = 0")))
+points(.5, -.5, col = 'red', pch = 16)
+
+# 9: 2
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("E(pol)",intersect(),"E(line) = 2")))
+plot(p0 / po, col = '#ff8888', add = TRUE)
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', add = TRUE)
 ```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+library(sf)
+polygon = po = st_polygon(list(rbind(c(0,0), c(1,0), c(1,1), c(0,1), c(0,0))))
+p0 = st_polygon(list(rbind(c(-1,-1), c(2,-1), c(2,2), c(-1,2), c(-1,-1))))
+line = li = st_linestring(rbind(c(.5, -.5), c(.5, 0.5)))
+s = st_sfc(po, li)
 
-We see that in addition to `sfg` the `class` attribute has two values:
+par(mfrow = c(3,3))
+par(mar = c(1,1,1,1))
 
-* `XY` telling the dimension of the point(s), can also be `XYZ`, `XYM` or `XYZM`
-* `POINT` revealing the geometry type.
+# "1020F1102"
+# 1: 1
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("I(pol)",intersect(),"I(line) = 1")))
+lines(rbind(c(.5,0), c(.5,.495)), col = 'red', lwd = 2)
+points(0.5, 0.5, pch = 1)
 
-Examples of `XYZ` and `XYM` and `XYZM` geometries are found here:
-```{r}
-system.file("shape/storms_xyz_feature.shp", package="sf") %>%
-	st_read()
-system.file("shape/storms_xyzm_feature.shp", package="sf") %>% # badly named!
-	st_read()
-(pzm = st_point(c(1,2,3,4)))
+# 2: 0
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("I(pol)",intersect(),"B(line) = 0")))
+points(0.5, 0.5, col = 'red', pch = 16)
+
+# 3: 2
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("I(pol)",intersect(),"E(line) = 2")))
+plot(po, col = '#ff8888', add = TRUE)
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', add = TRUE)
+
+# 4: 0
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("B(pol)",intersect(),"I(line) = 0")))
+points(.5, 0, col = 'red', pch = 16)
+
+# 5: F
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("B(pol)",intersect(),"B(line) = F")))
+
+# 6: 1
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("B(pol)",intersect(),"E(line) = 1")))
+plot(po, border = 'red', col = NA, add = TRUE, lwd = 2)
+
+# 7: 1
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("E(pol)",intersect(),"I(line) = 1")))
+lines(rbind(c(.5, -.5), c(.5, 0)), col = 'red', lwd = 2)
+
+# 8: 0
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("E(pol)",intersect(),"B(line) = 0")))
+points(.5, -.5, col = 'red', pch = 16)
+
+# 9: 2
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', main = expression(paste("E(pol)",intersect(),"E(line) = 2")))
+plot(p0 / po, col = '#ff8888', add = TRUE)
+plot(s, col = c(NA, 'darkgreen'), border = 'blue', add = TRUE)
 ```
+</details>
 
-
-A `MULTIPOINT` or a `LINESTRING` can be created by a matrix
-```{r}
-(m1 = rbind(c(8, 1), c(2, 5), c(3, 2)))
-(mp = st_multipoint(m1))
-(ls = st_linestring(m1))
+Figure \@ref(fig:de9im) shows the intersections between the I,
+B and E components of a polygon and a linestring indicated by red;
+the sub-plot title gives the dimension of these intersections (0,
+1, 2 or F). The relationship between the two geometries is the
+concatenation of these dimensions:
+```{r echo=TRUE}
+st_relate(polygon, line)
 ```
-Although these geometries contain the same points, they have entirely different meaning:
-the point set is a zero-dimensional, the line a one-dimensional geometry:
-```{r}
-st_dimension(mp)
-st_dimension(ls)
+Using the ability to express relationships, we can also query
+pairs of geometries about particular conditions expressed in a
+_mask string_; e.g. the string `"*0*******"` would evaluate `TRUE`
+when the second geometry has one or more boundary points in common
+with the interior of the first geometry; the symbol `*` standing for
+"any dimensionality" (0, 1, 2 or F). The mask string `"T********"`
+matches pairs of geometry with intersecting interiors. Here, the
+symbol `T` stands for any intersection (of dimensionality 0, 1 or 2).
+
+Binary predicates are further described using normal-language verbs,
+using DE-9IM definitions.  For instance, the predicate `equals`
+corresponds to the relationship "T*F**FFF*". If any two geometries
+obey this relationship, they are (topologically) equal, but may
+have a different ordering of nodes.
+
+A list of binary predicates is
+
+|predicate                 |meaning                                                          |inverse of      |
+|--------------------------|-----------------------------------------------------------------|----------------|
+|`equals`     |Two geometries A and B are topologically identical|
+|`contains`|None of the points of A are outside B| `within`|
+|`contains_properly`|A contains B and B has no points in common with the boundary of A| |
+|`covers`|No points of B lie in the exterior of A| `covered_by`|
+|`covered_by`|inverse of `covers`| |
+|`crosses`|A and B have some but not all interior points in common| |
+|`disjoint` |A and B have no points in common| `intersects`|
+|`equals` |A and B are geometrically equal; node order number of nodes may differ; identical to A contains B AND A within B|
+|`equals_exact` |A and B are geometrically equal, and have identical node order| |
+|`intersects`|A and B are not disjoint| `disjoint`|
+|`is_within_distance`|A is closer to B than a given distance|
+|`within`|None of the points of B are outside A| `contains`|
+|`touches`|A and B have at least one boundary point in common, but no interior points|  |
+|`overlaps`|A and B have some points in common; the dimension of these is identical to that of A and B|  |
+|`relate`|given a mask pattern, returns whether A and B adhere to this pattern| |
+
+The [Wikipedia DE-9IM page](https://en.wikipedia.org/wiki/DE-9IM)
+provides the `relate` patterns for each of these verbs. They are
+important to check out; for instance _covers_ and _contains_ (and
+their inverses) are often not directly intuitive:
+
+* if A _contains_ B, B has no points in common with the exterior _or
+boundary_ of A
+* if A _covers_ B, B has no points in common with the exterior of A
+
+
+### Unary Measures
+
+Unary measures return a single value that describes a property of
+the geometry:
+
+|measure              |returns                                                       |
+|---------------------|--------------------------------------------------------------|
+|`dimension`|0 for points, 1 for linear, 2 for polygons, `NA` for empty geometries|
+|`area`|the area of a geometry|
+|`length`|the length of a linear geometry|
+|`geohash`|the [geohash](https://en.wikipedia.org/wiki/Geohash) for a geometry|
+|`geometry_type`|the type of a geometries|
+
+### Binary Measures
+
+`distance` returns the distances between pairs of geometries.
+`relate` (without mask) returns the relation pattern, a qualitative
+description of the geometrical relationship between two geometries
+explained in section \@ref(de9im).
+
+
+### Unary Transformers
+
+Unary transformations work on a per-geometry basis, and for each geometry return a new geometry.
+
+|transformer               |returns a geometry ...                                                              |
+|--------------------------|----------------------------------------------------------------------------------|
+|`centroid`|of type `POINT` with the geometry's centroid|
+|`buffer`|that is this larger (or smaller) than the input geometry, depending on the buffer size|
+|`jitter` |that was moved in space a certain amount, using a bivariate uniform distribution|
+|`wrap_dateline`|cut into pieces that do no longer cover the dateline|
+|`boundary`|with the boundary of the input geometry|
+|`convex_hull`|that forms the convex hull of the input geometry (figure \@ref(fig:vor))|
+|`line_merge`|after merging connecting `LINESTRING` elements of a `MULTILINESTRING` into longer `LINESTRING`s.|
+|`make_valid`|that is valid |
+|`node`|with added nodes to linear geometries at intersections without a node; only works on individual linear geometries|
+|`point_on_surface`|with a (arbitrary) point on a surface|
+|`polygonize`|of type polygon, created from lines that form a closed ring|
+|`segmentize`|a (linear) geometry with nodes at a given density or minimal distance|
+|`simplify`|simplified by removing vertices/nodes (lines or polygons)|
+|`split`|that has been split with a splitting linestring|
+|`transform`|transformed to a new coordinate reference system (chapter \@ref(rs))|
+|`triangulate`|with triangulated polygon(s)|
+|`voronoi`|with the voronoi tesselation of an input geometry (figure \@ref(fig:vor))|
+|`zm`|with removed or added `Z` and/or `M` coordinates|
+|`collection_extract`|with subgeometries from a `GEOMETRYCOLLECTION` of a particular type|
+|`cast`|that is converted to another type|
+|`+`|that is shifted over a given vector|
+|`*`|that is multiplied by a scalar or matrix|
+
+```{r vor, echo=FALSE, out.width='60%', fig.cap="left: convex hull (red) around a polygon (black); right: voronoi diagram (red) from a `MULTIPOINT` (black)"}
+par(mar = rep(0,4), mfrow = c(1, 2))
+plot(st_geometry(nc)[1], col = NA, border = 'black')
+plot(st_convex_hull(st_geometry(nc)[1]), add = TRUE, col = NA, border = 'red')
+box()
+set.seed(131)
+mp = st_multipoint(matrix(runif(20), 10))
+plot(mp)
+plot(st_voronoi(mp), add = TRUE, col = NA, border = 'red')
+box()
 ```
-A `MULTILINESTRING` can be constructed from a list of matrices, representing vertices:
-```{r}
-m2 = rbind(c(22,20), c(18, 15))
-(mls = st_multilinestring(list(m1, m2)))
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+par(mar = rep(0,4), mfrow = c(1, 2))
+plot(st_geometry(nc)[1], col = NA, border = 'black')
+plot(st_convex_hull(st_geometry(nc)[1]), add = TRUE, col = NA, border = 'red')
+box()
+set.seed(131)
+mp = st_multipoint(matrix(runif(20), 10))
+plot(mp)
+plot(st_voronoi(mp), add = TRUE, col = NA, border = 'red')
+box()
 ```
-A `POLYGON` consists of an outer ring, followed by zero or more
-inner rings that denote holes in the outer ring:
-```{r}
-(ring1 = rbind(c(0,0), c(4,0), c(4,4), c(0,4), c(0,0)))
-(p1 = st_polygon(list(ring1)))
-(ring2 = ring1 + 5)
-(ring3 = (ring1[5:1,] / 4) + 6)
-(p2 = st_polygon(list(ring2, ring3)))
+</details>
+
+### Binary Transformers {#bintrans}
+
+Binary functions that return a geometry include
+
+|function           |returns                                                    |infix operator|
+|-------------------|-----------------------------------------------------------|:------------:|
+|`intersection`     |the overlapping geometries for pair of geometries|`&`|
+|`union`            |the combination of the geometries; removes internal boundaries and duplicate points, nodes or line pieces|`|`|
+|`difference`       |the geometries of the first after removing the overlap with the second geometry|`/`|
+|`sym_differenec`   |the combinations of the geometries after removing where they overlap|`%/%`|
+
+
+### N-ary transformers
+
+N-ary operate on sets of geometries.
+`union` can be applied to a set of geometries to return its
+geometrical union.  Otherwise, any set of geometries can be combined
+into a `MULTI`-type geometry when they have equal dimension, or
+else into a `GEOMETRYCOLLECTION`. Without unioning, this may
+lead to a geometry that is not valid, e.g. because two polygon
+rings have a boundary line in common.
+
+N-ary `intersection` and `difference` take a single argument,
+but operate (sequentially) on all pairs, triples, quadruples etc.
+Consider the plot in figure \@ref(fig:boxes): how do we identify
+the area where all three boxes overlap?  Using binary intersections
+gives us intersections for all pairs: 1-1, 1-1, 1-3, 2-1, 2-2, 2-3,
+3-1, 3-2, 3-3, but does not let us identify areas where more than
+two geometries intersect.
+Figure \@(fig:boxes) (right) shows the n-ary intersection: the 7
+unique, non-overlapping geometries originating from intersection
+of one, two, _or more_ geometries.
+
+```{r boxes, out.width='50%', fig.cap="left: three overlapping boxes -- how do we identify the small box where all three overlap? right: unique, non-overlapping n-ary intersections", echo=FALSE, eval=TRUE, fig=TRUE}
+par(mar = rep(.1, 4), mfrow = c(1, 2))
+sq = function(pt, sz = 1) st_polygon(list(rbind(c(pt - sz), 
+  c(pt[1] + sz, pt[2] - sz), c(pt + sz), c(pt[1] - sz, pt[2] + sz), c(pt - sz))))
+x = st_sf(box = 1:3, st_sfc(sq(c(0,0)), sq(c(1.7, -0.5)), sq(c(0.5, 1))))
+plot(st_geometry(x), col = NA, border = sf.colors(3, categorical=TRUE), lwd = 3)
+plot(st_intersection(st_geometry(x)), col = sf.colors(7, categorical=TRUE, alpha = .5))
 ```
-A `MULTIPOLYGON` can be constructed as a list of lists of matrices:
-```{r}
-(mpol = st_multipolygon(list(list(ring1), list(ring2, ring3))))
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+par(mar = rep(.1, 4), mfrow = c(1, 2))
+sq = function(pt, sz = 1) st_polygon(list(rbind(c(pt - sz), 
+  c(pt[1] + sz, pt[2] - sz), c(pt + sz), c(pt[1] - sz, pt[2] + sz), c(pt - sz))))
+x = st_sf(box = 1:3, st_sfc(sq(c(0,0)), sq(c(1.7, -0.5)), sq(c(0.5, 1))))
+plot(st_geometry(x), col = NA, border = sf.colors(3, categorical=TRUE), lwd = 3)
+plot(st_intersection(st_geometry(x)), col = sf.colors(7, categorical=TRUE, alpha = .5))
 ```
-And finally, a `GEOMETRYCOLLECTION` can be constructed from a list of typed geometries:
-```{r}
-st_geometrycollection(list(pt, mp, ls, mpol))
+</details>
+
+Similarly, one can compute an n-ary _difference_ from a set $\{s_1, s_2,
+s_3, ...\}$ by creating differences $\{s_1, s_2-s_1, s_3-s_2-s_1,
+...\}$. This is shown in figure \@ref(fig:diff), left for the original
+set, right for the set after reversing its order to make clear that
+the result here depends on the ordering of the input geometries. Again,
+resulting geometries do not overlap.
+
+```{r diff, out.width='50%', fig.cap="difference between subsequent boxes, left: in original order; right: in reverse order", echo=FALSE, eval=TRUE, fig=TRUE}
+par(mar = rep(.1, 4), mfrow = c(1, 2)) 
+xg = st_geometry(x)
+plot(st_difference(xg), col = sf.colors(3, alpha = .5, categorical=TRUE))
+plot(st_difference(xg[3:1]), col = sf.colors(3, alpha = .5, categorical=TRUE))
 ```
-
-#### WKT, WKB encodings
-
-By default, package
-`sf` prints the same number of digits as R, but this can be manipulated:
-```{r}
-st_point(c(1/3, 2/3))
-print(st_point(c(1/3, 2/3)), digits = 16)
-print(st_point(c(1/3, 2/3)), digits = 3)
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+par(mar = rep(.1, 4), mfrow = c(1, 2)) 
+xg = st_geometry(x)
+plot(st_difference(xg), col = sf.colors(3, alpha = .5, categorical=TRUE))
+plot(st_difference(xg[3:1]), col = sf.colors(3, alpha = .5, categorical=TRUE))
 ```
+</details>
 
-An encoding that is more useful for machine-to-machine communication is
-_well-known binary_. An example of a round-trip R $\rightarrow$ binary $\rightarrow$ R is
-```{r}
-(wkb = st_as_binary(st_point(c(1/3, 2/3))))
-st_as_sfc(wkb)[[1]]
-```
-Object `r` is a raw vector, which is little useful in R. Binary
-conversion is used to communicate geometries to external libraries
-(GDAL, GEOS, liblwgeom) and spatial databases because it is fast
-and lossless. Whenever there is a choice, binary encoding should
-be prefered over text encoding.
+## Precision {#precision}
 
+Geometrical operations, such as finding out whether a certain
+point is on a line, may fail when coordinates are represented by
+double precision floating point numbers, such as 8-byte doubles
+used in R. An often chosen remedy is to limit the precision of the
+coordinates before the operation.  For this, a _precision model_
+is adopted; the most common is to choose a factor $p$ and compute
+rounded coordinates $c'$ from original coordinates $c$ by
+$$c' = \mbox{round}(p \cdot c) / p$$
 
-#### simple, valid, empty {#empty}
-
-Methods `st_is_simple` and `st_is_valid` help detect non-simple and non-valid geometries:
-```{r}
-st_is_simple(st_linestring(rbind(c(0,0), c(1,1), c(1,0), c(0,1)))) # self-intersects
-st_is_valid(st_polygon(list(rbind(c(1,1), c(0,0), c(1,1), c(2,2), c(2,1), c(1,1))))) # repeats
-```
-
-A very important concept in the feature geometry framework is that of the
-empty geometry. We can think of an empty geometry as similar to the
-`NA` value in R vectors: it is a placeholder, but a usable value is
-not available. Empty geometries arise naturally when we do geometrical
-operations (chapter \@ref(geommanip)), for instance when we want to
-know where two disjoint geometries coincide:
-```{r}
-(e = st_intersection(st_point(c(0,0)), st_point(c(1,1))))
-```
-
-It is not entirely clear what the benefit is of having _typed_
-empty geometries, but according to the simple feature standard
-they are. They are detected by
-```{r}
-st_is_empty(e)
-```
-
-#### Conversion between geometry types
-
-Up to the extent that a conversion is feasible, we can convert
-simple feature geometries using the `st_cast` generic:
-```{r}
-methods(st_cast)
-```
-
-Conversion is required e.g. to be able to plot curved geometries.
-`CURVE`, `COMPOUNDCURVE` and `CIRCULARSTRING` have `st_cast` methods to cast them to `LINESTRING`;
-`MULTISURFACE` has an `st_cast` method to `MULTIPOLYGON`. An example, needed for plotting, is
-```{r}
-(ls <- st_as_sfc("CIRCULARSTRING(0 0,1 0,1 1)") %>% st_cast("LINESTRING"))
-plot(ls, axes = TRUE)
-```
-
-It is convenient in other cases to analyse the point pattern
-from a set of vertices in a linestring. However,
-```{r}
-rbind(c(0,0), c(1,1), c(1,0), c(0,1)) %>% st_linestring() %>% st_cast("POINT")
-```
-does not what we expect, because it will convert a single geometry into
-a new single geometry. We can convert to a `MULTIPOINT`
-```{r}
-rbind(c(0,0), c(1,1), c(1,0), c(0,1)) %>% st_linestring() %>% st_cast("MULTIPOINT")
-```
-but if we want to have a set of points, we need to work with sets (section \@ref(sfc)) first, because
-we want a set with another cardinality:
-```{r}
-(p <- rbind(c(0,0), c(1,1), c(1,0), c(0,1)) %>% st_linestring() %>% st_sfc() %>% st_cast("POINT"))
-```
-
-#### `GEOMETRYCOLLECTION` handling
-
-Single features can have a geometry that consists of several
-subgeometries of different type, held in a `GEOMETRYCOLLECTION`.
-This may sound like looking for trouble, but these arise rather
-naturally when looking for intersections. For instance, the
-intersection of two `LINESTRING` geometries may be the combination
-of a `LINESTRING` and a `POINT`. Putting this intersection into a
-single feature geometry needs a `GEOMETRYCOLLECTION`.
-
-In case we end up with `GEOMETRYCOLLECTION` objects, the next question is
-often what to do with them. One thing we can do is extract elements from them:
-```{r}
-pt <- st_point(c(1, 0))
-ls <- st_linestring(matrix(c(4, 3, 0, 0), ncol = 2))
-poly1 <- st_polygon(list(matrix(c(5.5, 7, 7, 6, 5.5, 0, 0, -0.5, -0.5, 0), ncol = 2)))
-poly2 <- st_polygon(list(matrix(c(6.6, 8, 8, 7, 6.6, 1, 1, 1.5, 1.5, 1), ncol = 2)))
-multipoly <- st_multipolygon(list(poly1, poly2))
-
-j <- st_geometrycollection(list(pt, ls, poly1, poly2, multipoly))
-
-st_collection_extract(j, "POLYGON")
-st_collection_extract(j, "POINT")
-st_collection_extract(j, "LINESTRING")
-```
-which sometimes results in a geometry set, sometimes in single geometries.
-
-### `sfc`: sets of geometries {#sfc}
-
-Rather than handling geometries individually, we typically handle
-them as sets.
-Package `sf` provides a dedicated class for this, called `sfc`
-(for **s**imple **f**eature geometry list **c**olumn). We can create such a
-list column with constructor function `st_sfc`:
-```{r}
-(sfc = st_sfc(st_point(c(0,1)), st_point(c(-3,2)), crs = 4326))
-```
-The default report from the `print` method for `sfc` gives
-
-* the number of features geometries
-* the feature geometry type (here: `POINT`)
-* the feature geometry dimension (here: `XY`)
-* the bounding box for the set
-* the coordinate reference system for the set (`epsg` and `proj4string`: see chapter \@ref(crs))
-* the first few geometries, as (abbreviated) WKT 
-
-The class of the geometry list-column,
-```{r}
-class(sfc)
-```
-is again a combination of a specific class, and a superclass.
-In addition to a `class`, the object has further attributes
-```{r}
-attributes(sfc) %>% names() %>% setdiff("class")
-```
-which are used to record _for the whole set_:
-
-* a precision value (section \@ref(precision))
-* the bounding box enclosing all geometries (for x and y)
-* a coordinate reference system (section \@ref(crs))
-* the number of empty geometries contained in the set
-
-This means that all these properties are defined for the set,
-and not for geometries individually.
-
-As we've seen above, sets of geometries arise when we tear apart compound geometries, as in
-```{r}
-(p <- rbind(c(0,0), c(1,1), c(1,0), c(0,1)) %>% st_linestring() %>% st_sfc() %>% st_cast("POINT"))
-```
-Here, `st_sfc` creates a set of one `LINESTRING`, and the resulting set has size 4:
-```{r}
-length(p)
-```
-Going the other way around, we need `st_combine` to combine geometries into one:
-```{r}
-p %>% st_combine
-p %>% st_combine %>% st_cast("LINESTRING")
-```
-
-More general, in practice we will almost always work with sets
-of geometries, because in spatial data we typically associate an
-observation with a feature, which has a geometry, and we work with
-sets of observations. 
-
-`sfc` objects are lists with each entry being an `sfg` object:
-```{r}
-p[[2]]
-```
-and we will use these lists as _list columns_ in `data.frame` or
-`tibble` objects to represent simple features with geometries in
-a list column. These objects are of class `sf` (section \@ref(sf)).
-
-#### Feature sets with mixed geometries
-
-Sets of simple features also consist of features with heterogeneous
-geometries. In this case, the geometry type of the set is `GEOMETRY`:
-```{r}
-(g = st_sfc(st_point(c(0,0)), st_linestring(rbind(c(0,0), c(1,1)))))
-```
-These can be filtered by using `st_is`
-```{r}
-g %>% st_is("LINESTRING")
-```
-or, when working with `sf` objects, 
-```{r}
-st_sf(g) %>% filter(st_is(., "LINESTRING"))
-```
+Rounding of this kind brings the coordinates to points on a
+regular grid with spacing $1/p$, which is beneficial for geometric
+computations. Of course, it also affects all computations like
+areas and distances, and may turn valid geometries into invalid
+ones. Which precision values are best for which application is
+often a matter of common sense combined with trial and error. A
+reproducible example illustrating the need for setting precision
+is found [here](https://github.com/r-spatial/sf/issues/275).
 
 
-### `sf`: geometries with attributes {#sf}
+## Coverages: tesselations and rasters {#geomraster}
 
-`sf` objects are `tibble` or `data.frame` objects with feature geometries
-in a list column, and an `sf` class added:
-```{r}
-sf = st_sf(sfc)
-class(sf)
-```
-Although there is nothing against simply using data.frames or tibbles
-with `sfc` list columns, a number of methods have been written for
-`sf` objects that make life even more convenient, including
-plot methods to create maps.
+#### FIXME: discuss DE9-IM and uniquely assigning _all_ points!!
+### "Spatial predicates are topologically-invariant binary spatial relations based on the DE-9IM"
+###  invariant under homeomorphisms. Projections are, in general, no homeomorphisms.
+###  (mappings that preserve all the topological properties of a given space)
 
-In addition to the usual `data.frame` attributes, `sf` objects have two more attributes:
-```{r}
-sf %>% attributes() %>% names() %>% setdiff(c("row.names", "class", "names"))
-```
-They are:
+OGC [@ogccov] defines a _coverage_ as a ``feature that acts as a
+function to return values from its range for any direct position
+within its spatiotemporal domain''. Having a _function_ implies that
+for every spatiotemporal "point" (spatial point and moment in time)
+of the domain we have _single_ value for the range. This is a very
+common situation for many spatiotemporal phenomena, a few examples
+can be given:
 
-* `sf_column`: a length one character vector with the name of the
-(active) geometry list-column. Note that `sf` objects may contain multiple
-geometry list-columns, but the one named here is used for all operations,
-as the "active" geometry.
-* `agr`: **a**ttribute-**g**eometry **r**elationships; this encodes for each of
-the attributes how it relates to the geometry (in case of a non-point
-geometry): is it constant throughout the geometry like a soil type,
-is it an aggregate over the geometry like a population count,
-or does it identify the geometry like a state name? This is explained
-in more depth in section \@ref(agr).
+* boundary disputes aside, every point in a region (domain) belongs to a single adminstrative unit (range)
+* at any given moment in time, every point in a region (domain) has a certain _land cover type_ (range)
+* every point in an area (domain) has a single elevation (range), e.g. measured with respect to a given mean sea level surface
+* every spatiotemporal point in a threedimensional body of air (domain) has single value for temperature (range)
 
-## Tesselations: coverages, rasters {#geomraster}
+(A caveat here is that because measurement always takes time
+and requires space, measured values are always an average over
+a spatiotemporal volume, and hence range variables can rarely be
+measured for true, zero-volume "points"; for many practical cases
+however the measured volume is small enough to be considered a
+"point"; for a variable like _land cover type_ the volume needs to
+be chosen such that the types distinguished make sense with respect
+to the measured units).
 
-A common case in spatial data analysis is that an area is split
-(tesselated) in a number of non-overlapping regions. Although
-this can be modelled by a sequence of simple feature geometries
-(polygons), it is hard to guarantee for a set of simple feature
-polygons that they overlap nowhere, or that there are no gaps
-between them.
+In the first two of the given examples the range variable is
+_categorical_, in the last two the range variable is _continuous_.
+For categorical range variables, if large connected areas have a
+constant range value, an efficient way to represent these data
+is by storing the boundaries of the areas with constant value,
+such as country boundaries.  Although this can be done by a set of
+simple feature geometries (polygons or multipolygons), it is hard
+to guarantee for such a set of simple feature polygons that they
+do not overlap, or that there are no gaps between them.
 
-More fundamental ways of storing such polygons use a _topological_
-model, examples of this are found in geographic information systems
-like GRASS GIS or ArcGIS. Topological models store every boundary
-between polygons only once, and register which polygon is on either
-side of a boundary.
+### Topological models
 
-A simpler approach, associated with the term _raster data_,
-is to tesselate each spatial dimension $d$ into regular cells,
+A data model that guarantees no inadvertent gaps or overlaps of
+polygonal coverages is the _topological_ model, examples of which
+are found in geographic information systems (GIS) like GRASS GIS
+or ArcGIS. Topological models store boundaries between polygons
+only once, and register which polygonal area is on either side
+of a boundary. 
+
+Deriving the set of (multi)polygons for each area with a constant
+range value from a topological model is straightforward; the other
+way around: deriving topology from a set of polygons involves
+setting thresholds and handling gaps and overlaps.
+
+### Raster tesselations
+
+A tesselation is a subdivision of a space (area, volume) into
+smaller elements by ways of polygons. A regular tesselation
+does this with regular polygons: triangles, squares or hexagons.
+Tesselations using squares are very commonly used for spatial data,
+and are called _raster data_. Raster data
+tesselate each spatial dimension $d$ into regular cells,
 formed e.g. by left-closed and right-open intervals $d_i$:
 \begin{equation}
 d_i = d_0 + [~ i \cdot \delta, (i+1) \cdot \delta~)
@@ -432,8 +769,8 @@ d_i = d_0 + [~ i \cdot \delta, (i+1) \cdot \delta~)
 with $d_0$ an offset, $\delta$ the interval (cell or
 pixel) size, and where the cell index $i$ is an arbitrary but
 consecutive set of integers. The $\delta$ value is often taken
-negative for the $y$-axis (Northing), indicating that raster row
-numbers increasing Southwards correspond to $y$-coordinates
+negative for the $y$-axis (Northing), indicating that raster
+row numbers increasing Southwards correspond to $y$-coordinates
 increasing Northwards.
 
 In arbitrary polygon tesselations, assigning points to polygons
@@ -441,13 +778,14 @@ when they fall on a boundary shared by two polygons is ambiguous.
 Using left-closed "[" and right-open ")" intervals in regular
 tesselations removes this ambiguity.
 
-Tesselating the time dimension in this way is very common, and
-reflects the implicit assumption underlying time series packages
-such as `xts` in R.  Different models can be combined: one could
-use simple feature polygons to tesselate space, and combine this
-with a regular tesselation of time in order to cover a space-time
-_vector datacube_.  Raster data and data cubes are discussed in
-chapter \@ref(raster).
+Tesselating the time dimension with left-closed, right-open intervals
+is very common, and reflects the implicit assumption underlying
+time series packages such as `xts` in R, where time stamps indicate
+the start of time intervals.  Different models can be combined:
+one could use simple feature polygons to tesselate space, and
+combine this with a regular tesselation of time in order to cover
+a space-time _vector datacube_.  Raster data and data cubes are
+discussed in chapter \@ref(raster).
 
 ## Networks
 
@@ -460,79 +798,7 @@ start or end points, forming a set of nodes and edges
 * edges may be directed, and allow for connections (flow, transport)
 in only one way.
 
-Several R packages (`osmar`, `stplanr`) have (limited) functionality
+Several R packages (`osmar`, `stplanr`, `sfnetworks`) have functionality
 available for constructing network objects, and working with them,
 e.g. computing shortest or fastest routes through a network.
 
-## Geometries on the sphere
-
-Geometries on the sphere are geometries made from geographic
-coordinates. The easiest of these concern small regions near the
-equator not covering the date line, because in that case we can
-ignore all problems and still do a good job. Reality is nastier.
-
-The concept of a bounding box, defined from the coordinate ranges
-breaks easily down, e.g. when crossing the date line:
-```{r}
-pts = rbind(c(-179,0), c(179,0), c(179,1), c(-179,1), c(-179,0))
-date_line = st_sfc(st_polygon(list(pts)), crs = 4326)
-st_bbox(date_line) %>% st_as_sfc()
-```
-or when a polygon contains one of the poles:
-```{r}
-pts = rbind(c(0,89), c(120,89), c(240,89), c(0,89))
-pole = st_sfc(st_polygon(list(pts)), crs = 4326)
-st_bbox(pole) %>% st_as_sfc()
-```
-where we see that in both cases the `st_bbox` implied polygon does
-not cover the area intended.
-
-### Straight lines?
-
-The simple feature model assumes that linestrings and polygons
-are formed of points connected by straight lines. When however
-representing the Earth surface, what does a straight line mean?
-The simple feature standard does not help much, here: it assumes
-Cartesian space.  Technically speaking, a straight line between
-two points on a sphere exists, but it crosses the sphere, which is
-not very practical in most cases. The most common case is to use
-_great circle_ segments to connect points: the shortest path that
-follows the surface of the sphere or ellipsoid. This means that
-(with longitude latitude coordinates) the line between `POINT(0 50)`
-and `POINT(10 50)` does not cross `POINT(5 50)`. It also means that
-the line between points on opposite sides of the sphere is ambiguous.
-Also, the direction of a great circle segment, when defined as the
-angle it has with meridians, is not constant.
-
-### Ring direction for polygons
-
-The simple feature standard is not conclusive about the direction
-of points in a ring. It points out that exterior rings should be
-counter clockwise, when seen from above, and interior rings (holes)
-clockwise, but for instance `st_is_valid` does not invalidate
-clockwise exterior rings:
-```{r}
-st_is_valid(st_polygon(list(rbind(c(0,0), c(0,1), c(1,1), c(0,0)))))
-```
-This may have several reasons: a lot of data may come with wrong
-ring directions, and the distinction between exterior and interior
-rings is already unambiguous by their order: the first is exterior,
-anything following is interior.
-
-On the sphere, any polygon divides the sphere surface in two
-finite areas, meaning there is no longer an unambiguous "inside"
-vs. "outside": does the polygon with longitude latitude coordinates
-`POLYGON((0 0, 120 0, 240 0, 0 0))` denote the northern or the
-southern hemisphere? One can still go two directions here:
-
-* assume that in practice polygons never divide the Earth in two equal
-halves, and take the smaller area as the "inside" 
-* decide strongly about ring direction, e.g. counter-clockwise
-(following the ring, standing on the Earth, the left-side of
-the ring denotes the polygon interior)
-
-Package `sf` comes with a large number of functions that work both
-for projected (Cartesian) data as for data defined in spherical
-coordinates. Whenever it makes assumptions of Cartesian coordinates
-for spherical coordinates it emits a warning. This is discussed
-further in section \@ref(longlat).

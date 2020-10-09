@@ -1,0 +1,227 @@
+# Spherical Geometries {#spherical}
+
+The previous chapter discussed geometries defined on the plane,
+$R^2$.  This chapter discusses what changes when we consider
+geometries not on the plane, but on the sphere ($S^2$).
+
+Although we learned in chapter \@ref(cs) that the shape of the Earth
+is usually approximated by an ellipsoid, none of the libraries shown
+in green in figure \@ref(fig:gdal-fig-nodetails) provide access
+to a comprehensive set of functions using ellipsoidal geometries,
+whereas the s2geometry [@R-s2,@s2geometry] library does provide it
+using a sphere rather than an ellipsoid. When compared to a flat
+(projected) space assumed in the previous chapter, a sphere is a
+much better approximation to an ellipsoid.
+
+## Straight lines
+
+The basic premise of _simple features_ of chapter \@{geometries}
+is that geometries are represented by sequences of points _connected
+by straight lines_.  On $R^2$ (or any Cartesian space), this is is
+trivial, but on a sphere straightlines do not exist. The shortest
+line connecting two points is an arc of the circle through both
+points and the center of the sphere, also called a _great circle
+segment_. A consequence is that "the" shortest distance line
+connecting two points on opposing sides of the sphere does not exist,
+as any great circle segment connecting them has equal length.
+
+## Ring direction
+
+Any polygon on the sphere divides the sphere surface in two parts
+with finite area: the inside and the outside. Using the "counter
+clockwise rule" as was done for $R^2$ will not work, because the
+direction interpretation depends on what is defined as inside. A
+way out is to define the inside as the left (or right) side of the
+polygon boundary when traversing its points in sequence. Reversal
+of the node order then switches inside and outside.
+
+## Full polygon
+
+In addition to empty polygons, on a sphere one can define the
+full polygon, which comprises its entire surface. This is useful,
+for instance for computing the oceans as the geometric difference
+between the full polygon and those of the land mass.
+
+## Bounding box, rectangle, and cap
+
+Where in $R^2$ one can easily define bounding boxes as the range
+of the $x$ and $y$ coordinates, for geographic coordinates these
+ranges are not of much use when geometries cross the antimeridian
+(longitude +/- 180) or one of the poles. The assumption in $R^2$
+that lower $x$ values are Westwards of higher ones does not hold
+when crossing the antimeridian. An alternative to delineating
+an area on a sphere that is more natural is the _bounding cap_,
+defined by its center coordinates and a radius. For Antarctica,
+as depicted in figure \@ref(fig:antarctica) (a) and (c), the
+bounding box formed by coordinate ranges is
+```{r caprect,echo=FALSE}
+library(sf)
+suppressPackageStartupMessages(library(maps))
+# maps:
+par(mfrow = c(2,2))
+par(mar = c(1,1.2,1,1))
+m = st_as_sf(map(fill=TRUE, plot=FALSE))
+a = m[m$ID == "Antarctica", ]
+st_bbox(a)
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+library(sf)
+suppressPackageStartupMessages(library(maps))
+# maps:
+par(mfrow = c(2,2))
+par(mar = c(1,1.2,1,1))
+m = st_as_sf(map(fill=TRUE, plot=FALSE))
+a = m[m$ID == "Antarctica", ]
+st_bbox(a)
+```
+</details>
+which clearly does not contain the region (`ymin` being -90 and `xmax` 180).
+Two geometries that do contain the region are the bounding cap:
+```{r echo=FALSE}
+library(s2)
+s2_bounds_cap(a)
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+library(s2)
+s2_bounds_cap(a)
+```
+</details>
+and the bounding _rectangle_:
+```{r echo=FALSE}
+s2_bounds_rect(a)
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+s2_bounds_rect(a)
+```
+</details>
+For an area spanning the antimeridian, here the Fiji island country,
+the bounding box
+```{r echo=FALSE}
+st_bbox(m[m$ID == "Fiji",])
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+st_bbox(m[m$ID == "Fiji",])
+```
+</details>
+seems to span most of the Earth, as opposed to the bounding rectangle
+```{r echo=FALSE}
+s2_bounds_rect(m[m$ID == "Fiji",])
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+s2_bounds_rect(m[m$ID == "Fiji",])
+```
+</details>
+where a value `lng_lo` _larger_ than `lng_hi` indicates that the
+bounding rectangle spans the antimeridian. This property could not
+be infered from the coordinate ranges (bounding box) themselves.
+
+## Validity on the sphere
+
+Many global datasets are given in geographic coordinates but are
+prepared in a way that they "work" when interpreted on the $R^2$
+space [-180,180] $\times$ [-90,90]. This means that
+
+* geometries crossing the antimeridian (longitude +/- 180) are cut in
+halves, such that they no longer cross it (but nearly touch eachother)
+* geometries including a pole, like Antarctica, are cut at +/- 180 and
+make an excursion through -180,-90 and 180,90 (both representing the
+Geographic South Pole). 
+
+Figure \@ref(fig:antarctica) shows two different representation of
+Antarctica, plotted with geographical coordinates taken as $R^2$
+(top) and in a Polar Stereographic projection (bottom), without
+(left) and with (right) en excursion through the Geographic South
+Pole. In the projections as plotted, polygons polygons (b) and
+(c) are valid; polygon (a) is not valid as it self-intersects,
+polygon (d) is not valid because it traverses the same edge to the
+South Pole twice.  On the sphere ($S^2$), polygon (a) is valid but
+(b) is not, for the same reason as (d) is not valid.
+
+```{r antarctica,echo=FALSE,fig.cap="different representations of Antarctica, (a, c): with a polygon _not_ passing through (-180 -90); (b, d): with a polygon passing through (-180 -90) and (180 -90)"}
+library(sf)
+suppressPackageStartupMessages(library(maps))
+# maps:
+par(mfrow = c(2,2))
+par(mar = c(1,1.2,1,1))
+m = st_as_sf(map(fill=TRUE, plot=FALSE))
+m = m[m$ID == "Antarctica", ]
+plot(st_geometry(m), asp = 2)
+title("a (not valid)")
+# ne:
+library(rnaturalearth)
+ne = ne_countries(returnclass = "sf")
+ne = ne[ne$region_un == "Antarctica", "region_un"]
+plot(st_geometry(ne), asp = 2)
+title("b (valid)")
+# 3031
+m %>%
+  st_geometry() %>%
+  st_transform(3031) %>%
+  plot()
+title("c (valid)")
+ne %>%
+  st_geometry() %>%
+  st_transform(3031) %>%
+  plot()
+title("d (not valid)")
+```
+<details>
+<summary style="color:blue;">Click for Code</summary>
+```{r eval=FALSE}
+library(sf)
+suppressPackageStartupMessages(library(maps))
+# maps:
+par(mfrow = c(2,2))
+par(mar = c(1,1.2,1,1))
+m = st_as_sf(map(fill=TRUE, plot=FALSE))
+m = m[m$ID == "Antarctica", ]
+plot(st_geometry(m), asp = 2)
+title("a (not valid)")
+# ne:
+library(rnaturalearth)
+ne = ne_countries(returnclass = "sf")
+ne = ne[ne$region_un == "Antarctica", "region_un"]
+plot(st_geometry(ne), asp = 2)
+title("b (valid)")
+# 3031
+m %>%
+  st_geometry() %>%
+  st_transform(3031) %>%
+  plot()
+title("c (valid)")
+ne %>%
+  st_geometry() %>%
+  st_transform(3031) %>%
+  plot()
+title("d (not valid)")
+```
+</details>
+
+# area-weighted interpolation
+
+. There are various ways we can go for this. The simplest one, building on the previous example, would be to obtain for the geometry of `d2` the attribute of `d1` that has the largest overlap with `d2`. This is obtained by
+```{r}
+st_join(d2, d1, largest = TRUE)
+```
+
+Another option would be to summarise the attribute, e.g. taking its mean, regardless the amount of overlap. This is obtained by
+```{r}
+aggregate(d1, d2, mean)
+```
+
+A third option is to apply area-weighted interpolation, meaning that we interpolate (average) the variable by taking into account the respective area contributions of overlap [@goodchild,@thomas,@do]. This is done e.g. by
+```{r}
+d3 = st_sfc(p1 * .75 + c(3, 2), p1 * .75 + c(3,3))
+st_interpolate_aw(d1, d3, extensive = FALSE)$a
+st_interpolate_aw(d1, d3, extensive = TRUE)$a
+```
