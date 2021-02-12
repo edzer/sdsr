@@ -253,9 +253,11 @@ formed by just putting all the county geometries together would
 have many duplicate boundaries, and hence not be _valid_ (section
 \@ref(valid)).
 
-```{r ncaggregation, out.width='60%', fig.cap="left: invalid `MULTIPOLYGON` with two external rings with common boundary, right: valid `POLYGON` obtained after unioning the geometry left", echo=FALSE}
+```{r ncaggregation, fig.cap="top: SID74 disease cases by county, bottom: summed values by county quadrant, county polygons unioned by county quadrant", echo=FALSE}
+nc <- read_sf(system.file("gpkg/nc.gpkg", package="sf"))
 plot(nc["SID74"], axes = TRUE)
 sf_use_s2(TRUE)
+# encode quadrant by two logicals:
 nc$lng = st_coordinates(st_centroid(st_geometry(nc)))[,1] > -79
 nc$lat = st_coordinates(st_centroid(st_geometry(nc)))[,2] > 35.5
 nc.grp = aggregate(nc["SID74"], list(nc$lng, nc$lat), sum)
@@ -264,8 +266,10 @@ plot(nc.grp["SID74"], axes = TRUE)
 <details>
 <summary style="color:blue;">Click for Code</summary>
 ```{r eval=FALSE}
+nc <- read_sf(system.file("gpkg/nc.gpkg", package="sf"))
 plot(nc["SID74"], axes = TRUE)
 sf_use_s2(TRUE)
+# encode quadrant by two logicals:
 nc$lng = st_coordinates(st_centroid(st_geometry(nc)))[,1] > -79
 nc$lat = st_coordinates(st_centroid(st_geometry(nc)))[,2] > 35.5
 nc.grp = aggregate(nc["SID74"], list(nc$lng, nc$lat), sum)
@@ -295,12 +299,14 @@ of the counties that _intersect_ with the rectangle, the sum of these
 will be much larger:
 
 ```{r echo=FALSE}
+nc <- st_transform(nc, 2264)
 a = aggregate(nc["SID74"], gr, sum)
 c(sid74_sum_counties = sum(nc$SID74), sid74_sum_rectangles = sum(a$SID74, na.rm = TRUE))
 ```
 <details>
 <summary style="color:blue;">Click for Code</summary>
 ```{r eval=FALSE}
+nc <- st_transform(nc, 2264)
 a = aggregate(nc["SID74"], gr, sum)
 c(sid74_sum_counties = sum(nc$SID74), sid74_sum_rectangles = sum(a$SID74, na.rm = TRUE))
 ```
@@ -334,12 +340,147 @@ such that we get attribute values of a source dataset summarised for
 the geometries of a target, where source and target geometries are
 unrelated, area-weighted interpolation may be a simple approach. In
 effect, it considers the area of overlap of the source and target
-geometries, and uses that to weigh the source attribute values into
-the target value [@goodchild,@thomas,@do]. 
+geometries, and uses that to weight the source attribute values into
+the target value [@goodchild; @thomas; @do]. Here, we follow the
+notation of [@do].
 
-### Spatially intensive and extensive variables
+Area-weighted interpolation computes for each of $q$ spatial target
+areas $T_j$ a weighted average from the values $Y_i$ corresponding
+to the $p$ spatial source areas $S_i$,
 
-The difference between the two examples for area-weighted interpolation is how the final weighted sum (value times area of intersection) is normalised: by the target area (extensive), or by the sum of the area covered (intensive, `extensive = FALSE`). Spatially intensive variables are variables for which the value, when we split an area, does not _principally_ change. An example might be temperature, elevation, or population density. Spatially extensive variables are variables for which the value is also split, according to the area. Examples are population (amount), or area.
+\begin{equation}
+\hat{Y}_j(T_j) = \sum_{i=1}^p w_{ij} Y_i(S_i)
+(\#eq:aw)
+\end{equation}
+
+where the $w_{ij}$ depend on the amount of overlap of $T_j$ and
+$S_i$, $A_{ij} = T_j \cap S_i$.
+
+Different options exist for choosing weights, including methods
+using external variables (e.g. dasymetric mapping, [@mennis]).
+Two simple approaches for computing weights that do not use external
+variables arise, depending on whether the variable $Z$ is _intensive_
+or _extensive_.
+
+### Spatially extensive and intensive variables
+
+An example of an extensive variable is _population count_. It
+is associated with an area, and if that area is cut into smaller
+areas, the population count is split accordingly: not necessary
+proportional to area, because population is rarely uniform, but split
+in such a way that the sum of the population count for the smaller
+areas equals that of the total.  An example of a related variable
+that is _intensive_ is population density. If an an area is split
+into smaller areas, population density is not split similarly:
+the sum of the population densities for the smaller areas is a
+meaningless measure, as opposed to the average of the population
+densities which will be similar to the density of the total area.
+
+Extensive variables correspond to amounts, associated with a physical
+size (length, area, volume); for spatially extensive variables,
+if the area a value corresponds to is cut in parts, the values
+associated with the sub-area are split accordingly. In other words:
+the value is proportional to the support.  Intensive variables are
+variables that do not have values proportional to support: if the
+area is split, values may vary but _on average_ remain the same.
+The corresponding example of an intensive variable is _population
+density_: when we split an area into sub-areas, the sub-areas either
+have identical population densities (in case population is uniformly
+distributed) or, more realistically, have _varying_ population
+densities that by necessity are both higher and lower than the
+density of the total area.
+
+When we assume that the extensive variable $Y$ is uniformly
+distributed over space, the value $Y_{ij}$, derived from $Y_i$
+for a sub-area of $S_i$, $A_{ij} = T_j \cap S_i$ of $S_i$ is
+
+$$\hat{Y}_{ij}(A_{ij}) = \frac{|A_{ij}|}{|S_i|} Y_i(S_i)$$
+
+where $|\cdot|$ denotes the spatial area.
+For estimating $Y_j(T_j)$ we sum all the elements over area $T_j$:
+
+\begin{equation}
+\hat{Y}_j(T_j) = \sum_{i=1}^p \frac{|A_{ij}|}{|S_i|} Y_i(S_i)
+(\#eq:awextensive)
+\end{equation}
+
+For an intensive variable, under the assumption that the variable
+has a constant value over each area $S_i$, the estimate for a
+sub-area equals that of the total,
+
+$$\hat{Y}_{ij} = Y_i(S_i)$$
+
+and we can estimate the value of $Y$ for a new spatial unit $T_j$
+by an area-weighted average of the source values:
+
+\begin{equation}
+\hat{Y}_j(T_j) = \sum_{i=1}^p \frac{|A_{ij}|}{|T_j|} Y_i(S_i)
+(\#eq:awintensive)
+\end{equation}
+
+### Dasymetric mapping
+
+Dasymetric mapping distributes variables, such as population,
+known at a course spatial aggregation level over finer spatial
+units by using other variables that are associated with population
+distribution, such as land use, building density, or road density.
+The simplest approach to dasymetric mapping is obtained for
+extensive variables, where the ratio $|A_{ij}| / |S_i|$ in
+\@ref(eq:awextensive) is replaced by the ratio of another extensive
+variable $X_{ij}(S_{ij})/X_i(S_i)$, which has to be known for both
+the intersecting regions $S_{ij}$ and the source regions $S_i$.
+[@do] discuss several alternatives for intensive $Y$ and/or $X$,
+and cases where $X$ is known for other areas.
+
+### Aggregation and disaggregation
+
+The application of areal interpolation using \@ref(eq:aw) with
+its realisations for extensive \@ref(eq:awextensive) and intensive
+\@ref(eq:awintensive) variables allows moving information from any
+source area $S_i$ to any target area $T_j$ as long as the two areas
+have some overlap. This means that one can go arbitrarily to much
+larger units (aggregation) or to much smaller units (disaggregation).
+Of course this makes only sense to the extent that the assumptions
+hold: over the source regions extensive variables need to be
+uniformly distributed and intensive variables need to have constant
+value.
+
+The ultimate disaggregation involves retrieving (extracting)
+point values from line or area data. For this, we cannot work with
+equations \@ref(eq:awextensive) or \@ref(eq:awintensive) because
+$|A_{ij}| = 0$ for points, but under the assumption of having a
+constant value over the geometry, for intensive variables the value
+$Y_i(S_i)$ can be assigned to points as long as all points can be
+uniquely assigned to a single source area $S_i$. For polygon data,
+this implies that $Y$ needs to be a coverage variable (section
+\@ref(coverages)).
+
+In cases where values associated with areas are **aggregate** values
+over the area, the assumptions made by area-weighted interpolation
+or dasymetric mapping -- uniformity or constant values over the
+source areas -- are highly unrealistic. In such cases, these simple
+approaches still be reasonable approximations, for instance when
+
+* the source and target area are nearly identical
+* the variability inside source units is very small, and the variable
+is nearly uniform or constant.
+
+In other cases, results obtained using these methods are merely
+consequences of unjustified assumptions. Statistical aggregation
+methods that can estimate quantities for larger regions from points
+or smaller regions include
+
+* design-based methods, which require that a probability sample is
+available from the target region, with known inclusion probabilities, and
+* model-based methods, which assume a random field model with spatially
+correlated values (block kriging, section \@ref(blockkriging)).
+
+Alternative disaggregation methods include 
+
+* deterministic, smoothing-based approaches: kernel- or spline-based
+smoothing methods [@toblerpyc; @martin89]
+* statistical, model-based approaches: area-to-area and area-to-point
+kriging [@kyriakidis04], see section \@ref(areatopoint)
 
 ## Exercises
 
