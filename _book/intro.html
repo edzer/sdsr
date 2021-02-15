@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2021-02-12" />
+<meta name="date" content="2021-02-15" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -70,6 +70,742 @@
 <script src="libs/clipboard-0.0.1/setClipboardText.js"></script>
 <link href="libs/mapviewCSS-0.0.1/mapview-popup.css" rel="stylesheet" />
 <link href="libs/mapviewCSS-0.0.1/mapview.css" rel="stylesheet" />
+
+<script>
+/* ========================================================================
+ * Bootstrap: transition.js v3.3.7
+ * http://getbootstrap.com/javascript/#transitions
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // CSS TRANSITION SUPPORT (Shoutout: http://www.modernizr.com/)
+  // ============================================================
+
+  function transitionEnd() {
+    var el = document.createElement('bootstrap')
+
+    var transEndEventNames = {
+      WebkitTransition : 'webkitTransitionEnd',
+      MozTransition    : 'transitionend',
+      OTransition      : 'oTransitionEnd otransitionend',
+      transition       : 'transitionend'
+    }
+
+    for (var name in transEndEventNames) {
+      if (el.style[name] !== undefined) {
+        return { end: transEndEventNames[name] }
+      }
+    }
+
+    return false // explicit for ie8 (  ._.)
+  }
+
+  // http://blog.alexmaccaw.com/css-transitions
+  $.fn.emulateTransitionEnd = function (duration) {
+    var called = false
+    var $el = this
+    $(this).one('bsTransitionEnd', function () { called = true })
+    var callback = function () { if (!called) $($el).trigger($.support.transition.end) }
+    setTimeout(callback, duration)
+    return this
+  }
+
+  $(function () {
+    $.support.transition = transitionEnd()
+
+    if (!$.support.transition) return
+
+    $.event.special.bsTransitionEnd = {
+      bindType: $.support.transition.end,
+      delegateType: $.support.transition.end,
+      handle: function (e) {
+        if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
+      }
+    }
+  })
+
+}(jQuery);
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: collapse.js v3.3.7
+ * http://getbootstrap.com/javascript/#collapse
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+/* jshint latedef: false */
+
++function ($) {
+  'use strict';
+
+  // COLLAPSE PUBLIC CLASS DEFINITION
+  // ================================
+
+  var Collapse = function (element, options) {
+    this.$element      = $(element)
+    this.options       = $.extend({}, Collapse.DEFAULTS, options)
+    this.$trigger      = $('[data-toggle="collapse"][href="#' + element.id + '"],' +
+                           '[data-toggle="collapse"][data-target="#' + element.id + '"]')
+    this.transitioning = null
+
+    if (this.options.parent) {
+      this.$parent = this.getParent()
+    } else {
+      this.addAriaAndCollapsedClass(this.$element, this.$trigger)
+    }
+
+    if (this.options.toggle) this.toggle()
+  }
+
+  Collapse.VERSION  = '3.3.7'
+
+  Collapse.TRANSITION_DURATION = 350
+
+  Collapse.DEFAULTS = {
+    toggle: true
+  }
+
+  Collapse.prototype.dimension = function () {
+    var hasWidth = this.$element.hasClass('width')
+    return hasWidth ? 'width' : 'height'
+  }
+
+  Collapse.prototype.show = function () {
+    if (this.transitioning || this.$element.hasClass('in')) return
+
+    var activesData
+    var actives = this.$parent && this.$parent.children('.panel').children('.in, .collapsing')
+
+    if (actives && actives.length) {
+      activesData = actives.data('bs.collapse')
+      if (activesData && activesData.transitioning) return
+    }
+
+    var startEvent = $.Event('show.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    if (actives && actives.length) {
+      Plugin.call(actives, 'hide')
+      activesData || actives.data('bs.collapse', null)
+    }
+
+    var dimension = this.dimension()
+
+    this.$element
+      .removeClass('collapse')
+      .addClass('collapsing')[dimension](0)
+      .attr('aria-expanded', true)
+
+    this.$trigger
+      .removeClass('collapsed')
+      .attr('aria-expanded', true)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse in')[dimension]('')
+      this.transitioning = 0
+      this.$element
+        .trigger('shown.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    var scrollSize = $.camelCase(['scroll', dimension].join('-'))
+
+    this.$element
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)[dimension](this.$element[0][scrollSize])
+  }
+
+  Collapse.prototype.hide = function () {
+    if (this.transitioning || !this.$element.hasClass('in')) return
+
+    var startEvent = $.Event('hide.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    var dimension = this.dimension()
+
+    this.$element[dimension](this.$element[dimension]())[0].offsetHeight
+
+    this.$element
+      .addClass('collapsing')
+      .removeClass('collapse in')
+      .attr('aria-expanded', false)
+
+    this.$trigger
+      .addClass('collapsed')
+      .attr('aria-expanded', false)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.transitioning = 0
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse')
+        .trigger('hidden.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    this.$element
+      [dimension](0)
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)
+  }
+
+  Collapse.prototype.toggle = function () {
+    this[this.$element.hasClass('in') ? 'hide' : 'show']()
+  }
+
+  Collapse.prototype.getParent = function () {
+    return $(this.options.parent)
+      .find('[data-toggle="collapse"][data-parent="' + this.options.parent + '"]')
+      .each($.proxy(function (i, element) {
+        var $element = $(element)
+        this.addAriaAndCollapsedClass(getTargetFromTrigger($element), $element)
+      }, this))
+      .end()
+  }
+
+  Collapse.prototype.addAriaAndCollapsedClass = function ($element, $trigger) {
+    var isOpen = $element.hasClass('in')
+
+    $element.attr('aria-expanded', isOpen)
+    $trigger
+      .toggleClass('collapsed', !isOpen)
+      .attr('aria-expanded', isOpen)
+  }
+
+  function getTargetFromTrigger($trigger) {
+    var href
+    var target = $trigger.attr('data-target')
+      || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
+
+    return $(target)
+  }
+
+
+  // COLLAPSE PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.collapse')
+      var options = $.extend({}, Collapse.DEFAULTS, $this.data(), typeof option == 'object' && option)
+
+      if (!data && options.toggle && /show|hide/.test(option)) options.toggle = false
+      if (!data) $this.data('bs.collapse', (data = new Collapse(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  var old = $.fn.collapse
+
+  $.fn.collapse             = Plugin
+  $.fn.collapse.Constructor = Collapse
+
+
+  // COLLAPSE NO CONFLICT
+  // ====================
+
+  $.fn.collapse.noConflict = function () {
+    $.fn.collapse = old
+    return this
+  }
+
+
+  // COLLAPSE DATA-API
+  // =================
+
+  $(document).on('click.bs.collapse.data-api', '[data-toggle="collapse"]', function (e) {
+    var $this   = $(this)
+
+    if (!$this.attr('data-target')) e.preventDefault()
+
+    var $target = getTargetFromTrigger($this)
+    var data    = $target.data('bs.collapse')
+    var option  = data ? 'toggle' : $this.data()
+
+    Plugin.call($target, option)
+  })
+
+}(jQuery);
+</script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.sourceCode, pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan');
+  rCodeBlocks.each(function() {
+
+    // if code block has been labeled with class `fold-show`, show the code on init!
+    var classList = $(this).attr('class').split(/\s+/);
+    for (var i = 0; i < classList.length; i++) {
+    if (classList[i] === 'fold-show') {
+        show = true;
+      }
+    }
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    if (show)
+      div.addClass('in');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (show ? 'Hide' : 'Code') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs code-folding-btn pull-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-target', '#' + id)
+        .attr('aria-expanded', show)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // hack: return show to false, otherwise all next codeBlocks will be shown!
+    show = false;
+
+    // update state of button on show/hide
+    div.on('hidden.bs.collapse', function () {
+      showCodeText.text('Code');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+    });
+  });
+
+}
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: dropdown.js v3.3.7
+ * http://getbootstrap.com/javascript/#dropdowns
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // DROPDOWN CLASS DEFINITION
+  // =========================
+
+  var backdrop = '.dropdown-backdrop'
+  var toggle   = '[data-toggle="dropdown"]'
+  var Dropdown = function (element) {
+    $(element).on('click.bs.dropdown', this.toggle)
+  }
+
+  Dropdown.VERSION = '3.3.7'
+
+  function getParent($this) {
+    var selector = $this.attr('data-target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+    }
+
+    var $parent = selector && $(selector)
+
+    return $parent && $parent.length ? $parent : $this.parent()
+  }
+
+  function clearMenus(e) {
+    if (e && e.which === 3) return
+    $(backdrop).remove()
+    $(toggle).each(function () {
+      var $this         = $(this)
+      var $parent       = getParent($this)
+      var relatedTarget = { relatedTarget: this }
+
+      if (!$parent.hasClass('open')) return
+
+      if (e && e.type == 'click' && /input|textarea/i.test(e.target.tagName) && $.contains($parent[0], e.target)) return
+
+      $parent.trigger(e = $.Event('hide.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this.attr('aria-expanded', 'false')
+      $parent.removeClass('open').trigger($.Event('hidden.bs.dropdown', relatedTarget))
+    })
+  }
+
+  Dropdown.prototype.toggle = function (e) {
+    var $this = $(this)
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    clearMenus()
+
+    if (!isActive) {
+      if ('ontouchstart' in document.documentElement && !$parent.closest('.navbar-nav').length) {
+        // if mobile we use a backdrop because click events don't delegate
+        $(document.createElement('div'))
+          .addClass('dropdown-backdrop')
+          .insertAfter($(this))
+          .on('click', clearMenus)
+      }
+
+      var relatedTarget = { relatedTarget: this }
+      $parent.trigger(e = $.Event('show.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this
+        .trigger('focus')
+        .attr('aria-expanded', 'true')
+
+      $parent
+        .toggleClass('open')
+        .trigger($.Event('shown.bs.dropdown', relatedTarget))
+    }
+
+    return false
+  }
+
+  Dropdown.prototype.keydown = function (e) {
+    if (!/(38|40|27|32)/.test(e.which) || /input|textarea/i.test(e.target.tagName)) return
+
+    var $this = $(this)
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    if (!isActive && e.which != 27 || isActive && e.which == 27) {
+      if (e.which == 27) $parent.find(toggle).trigger('focus')
+      return $this.trigger('click')
+    }
+
+    var desc = ' li:not(.disabled):visible a'
+    var $items = $parent.find('.dropdown-menu' + desc)
+
+    if (!$items.length) return
+
+    var index = $items.index(e.target)
+
+    if (e.which == 38 && index > 0)                 index--         // up
+    if (e.which == 40 && index < $items.length - 1) index++         // down
+    if (!~index)                                    index = 0
+
+    $items.eq(index).trigger('focus')
+  }
+
+
+  // DROPDOWN PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this = $(this)
+      var data  = $this.data('bs.dropdown')
+
+      if (!data) $this.data('bs.dropdown', (data = new Dropdown(this)))
+      if (typeof option == 'string') data[option].call($this)
+    })
+  }
+
+  var old = $.fn.dropdown
+
+  $.fn.dropdown             = Plugin
+  $.fn.dropdown.Constructor = Dropdown
+
+
+  // DROPDOWN NO CONFLICT
+  // ====================
+
+  $.fn.dropdown.noConflict = function () {
+    $.fn.dropdown = old
+    return this
+  }
+
+
+  // APPLY TO STANDARD DROPDOWN ELEMENTS
+  // ===================================
+
+  $(document)
+    .on('click.bs.dropdown.data-api', clearMenus)
+    .on('click.bs.dropdown.data-api', '.dropdown form', function (e) { e.stopPropagation() })
+    .on('click.bs.dropdown.data-api', toggle, Dropdown.prototype.toggle)
+    .on('keydown.bs.dropdown.data-api', toggle, Dropdown.prototype.keydown)
+    .on('keydown.bs.dropdown.data-api', '.dropdown-menu', Dropdown.prototype.keydown)
+
+}(jQuery);
+</script>
+<style type="text/css">
+.code-folding-btn {
+  margin-bottom: 4px;
+}
+
+.row { display: flex; }
+.collapse { display: none; }
+.in { display:block }
+.pull-right > .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    float: left;
+    min-width: 160px;
+    padding: 5px 0;
+    margin: 2px 0 0;
+    font-size: 14px;
+    text-align: left;
+    list-style: none;
+    background-color: #fff;
+    -webkit-background-clip: padding-box;
+    background-clip: padding-box;
+    border: 1px solid #ccc;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: 4px;
+    -webkit-box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    box-shadow: 0 6px 12px rgba(0,0,0,.175);
+}
+
+.open > .dropdown-menu {
+    display: block;
+    color: #ffffff;
+    background-color: #ffffff;
+    background-image: none;
+    border-color: #92897e;
+}
+
+.dropdown-menu > li > a {
+  display: block;
+  padding: 3px 20px;
+  clear: both;
+  font-weight: 400;
+  line-height: 1.42857143;
+  color: #000000;
+  white-space: nowrap;
+}
+
+.dropdown-menu > li > a:hover,
+.dropdown-menu > li > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+}
+
+.dropdown-menu > .active > a,
+.dropdown-menu > .active > a:hover,
+.dropdown-menu > .active > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+  outline: 0;
+}
+.dropdown-menu > .disabled > a,
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  color: #aea79f;
+}
+
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  text-decoration: none;
+  cursor: not-allowed;
+  background-color: transparent;
+  background-image: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(enabled = false);
+}
+
+.btn {
+  display: inline-block;
+  margin-bottom: 1;
+  font-weight: normal;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  -ms-touch-action: manipulation;
+      touch-action: manipulation;
+  cursor: pointer;
+  background-image: none;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.42857143;
+  border-radius: 4px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn.active:focus,
+.btn.focus,
+.btn:active.focus,
+.btn.active.focus {
+  outline: 5px auto -webkit-focus-ring-color;
+  outline-offset: -2px;
+}
+.btn:hover,
+.btn:focus,
+.btn.focus {
+  color: #ffffff;
+  text-decoration: none;
+}
+.btn:active,
+.btn.active {
+  background-image: none;
+  outline: 0;
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn.disabled,
+.btn[disabled],
+fieldset[disabled] .btn {
+  cursor: not-allowed;
+  filter: alpha(opacity=65);
+  opacity: 0.65;
+  box-shadow: none;
+}
+a.btn.disabled,
+fieldset[disabled] a.btn {
+  pointer-events: none;
+}
+.btn-default {
+  color: #ffffff;
+  background-color: #aea79f; #important
+  border-color: #aea79f;
+}
+
+.btn-default:focus,
+.btn-default.focus {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #6f675e;
+}
+
+.btn-default:hover {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #92897e;
+}
+.btn-default:active,
+.btn-default.active,
+.btn-group > .btn:not(:first-child):not(:last-child):not(.dropdown-toggle) {
+  border-radius: 0;
+}
+.btn-group > .btn:first-child {
+  margin-left: 0;
+}
+.btn-group > .btn:first-child:not(:last-child):not(.dropdown-toggle) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn:last-child:not(:first-child),
+.btn-group > .dropdown-toggle:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group > .btn-group {
+  float: left;
+}
+.btn-group > .btn-group:not(:first-child):not(:last-child) > .btn {
+  border-radius: 0;
+}
+.btn-group > .btn-group:first-child:not(:last-child) > .btn:last-child,
+.btn-group > .btn-group:first-child:not(:last-child) > .dropdown-toggle {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn-group:last-child:not(:first-child) > .btn:first-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group .dropdown-toggle:active,
+.btn-group.open .dropdown-toggle {
+  outline: 0;
+}
+.btn-group > .btn + .dropdown-toggle {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+.btn-group > .btn-lg + .dropdown-toggle {
+  padding-right: 12px;
+  padding-left: 12px;
+}
+.btn-group.open .dropdown-toggle {
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn-group.open .dropdown-toggle.btn-link {
+  box-shadow: none;
+}
+
+</style>
+<script>
+var str = '<div class="btn-group pull-right" style="position: fixed; right: 50px; top: 10px; z-index: 200"><button type="button" class="btn btn-default btn-xs dropdown-toggle" id="allCodeButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" data-_extension-text-contrast=""><span>Code</span> <span class="caret"></span></button><ul class="dropdown-menu" style="min-width: 50px;"><li><a id="rmd-show-all-code" href="#">Show All Code</a></li><li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li></ul></div>';
+document.write(str);
+</script>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "hide");
+});
+</script>
 
 
 <style type="text/css">
@@ -281,23 +1017,20 @@ should be easy to follow when understanding R at the level of, say,
 <h2><span class="header-section-number">1.1</span> A first map</h2>
 <p>The typical way to graph spatial data is by creating a map. Let us consider
 a simple map:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb17-1" title="1"><span class="kw">library</span>(tidyverse)</a>
+<a class="sourceLine" id="cb17-2" title="2"><span class="kw">library</span>(sf)</a>
+<a class="sourceLine" id="cb17-3" title="3"><span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb17-4" title="4"><span class="st">    </span><span class="kw">read_sf</span>() -&gt;<span class="st"> </span>nc</a>
+<a class="sourceLine" id="cb17-5" title="5">nc<span class="fl">.32119</span> &lt;-<span class="st"> </span><span class="kw">st_transform</span>(nc, <span class="dv">32119</span>)</a>
+<a class="sourceLine" id="cb17-6" title="6">nc<span class="fl">.32119</span> <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb17-7" title="7"><span class="st">    </span><span class="kw">select</span>(BIR74) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb17-8" title="8"><span class="st">    </span><span class="kw">plot</span>(<span class="dt">graticule =</span> <span class="ot">TRUE</span>, <span class="dt">axes =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:first-map"></span>
 <img src="sds_files/figure-html/first-map-1.png" alt="a first map" width="672" />
 <p class="caption">
 Figure 1.1: a first map
 </p>
 </div>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">library</span>(tidyverse)</a>
-<a class="sourceLine" id="cb2-2" title="2"><span class="kw">library</span>(sf)</a>
-<a class="sourceLine" id="cb2-3" title="3"><span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb2-4" title="4"><span class="st">    </span><span class="kw">read_sf</span>() -&gt;<span class="st"> </span>nc</a>
-<a class="sourceLine" id="cb2-5" title="5">nc<span class="fl">.32119</span> &lt;-<span class="st"> </span><span class="kw">st_transform</span>(nc, <span class="dv">32119</span>)</a>
-<a class="sourceLine" id="cb2-6" title="6">nc<span class="fl">.32119</span> <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb2-7" title="7"><span class="st">    </span><span class="kw">select</span>(BIR74) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb2-8" title="8"><span class="st">    </span><span class="kw">plot</span>(<span class="dt">graticule =</span> <span class="ot">TRUE</span>, <span class="dt">axes =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-</details>
 <p>A number of graphical elements are present, in this case:</p>
 <ul>
 <li>polygons are drawn, and colored according to a variable <code>BIR74</code>, whose name is in the title</li>
@@ -328,6 +1061,7 @@ suggest, but rather measures an integral (sum) over the polygon.</p>
 in this case from a file (section <a href="#reading"><strong>??</strong></a>). Printing a data
 summary for the first three records of three attribute variables
 shows:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" title="1">nc <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(AREA, BIR74, SID74) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">print</span>(<span class="dt">n =</span> <span class="dv">3</span>)</a></code></pre></div>
 <pre><code># Simple feature collection with 100 features and 3 fields
 # geometry type:  MULTIPOLYGON
 # dimension:      XY
@@ -340,10 +1074,6 @@ shows:</p>
 # 2 0.061   487     0 (((-81.2 36.4, -81.2 36.4, -81.3 36.4, -81.3 36.4, -81.3 36…
 # 3 0.143  3188     5 (((-80.5 36.2, -80.5 36.3, -80.5 36.3, -80.5 36.3, -80.6 36…
 # # … with 97 more rows</code></pre>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1">nc <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(AREA, BIR74, SID74) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">print</span>(<span class="dt">n =</span> <span class="dv">3</span>)</a></code></pre></div>
-</details>
 <p>The printed output shows</p>
 <ul>
 <li>the (selected) dataset has 100 features (records) and 3 fields (attributes)</li>
@@ -355,30 +1085,24 @@ shows:</p>
 </ul>
 <p>More complicated plots can involve facet plots with a map in each
 facet, as shown in figure <a href="intro.html#fig:firstgather">1.2</a>.</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb20-1" title="1">year_labels =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;SID74&quot;</span> =<span class="st"> &quot;1974 - 1978&quot;</span>, <span class="st">&quot;SID79&quot;</span> =<span class="st"> &quot;1979 - 1984&quot;</span>)</a>
+<a class="sourceLine" id="cb20-2" title="2">nc<span class="fl">.32119</span> <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(SID74, SID79) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">gather</span>(VAR, SID, <span class="op">-</span>geom) -&gt;<span class="st"> </span>nc2</a>
+<a class="sourceLine" id="cb20-3" title="3"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> nc2, <span class="kw">aes</span>(<span class="dt">fill =</span> SID)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb20-4" title="4"><span class="st">  </span><span class="kw">facet_wrap</span>(<span class="op">~</span>VAR, <span class="dt">ncol =</span> <span class="dv">1</span>, <span class="dt">labeller =</span> <span class="kw">labeller</span>(<span class="dt">VAR =</span> year_labels)) <span class="op">+</span></a>
+<a class="sourceLine" id="cb20-5" title="5"><span class="st">  </span><span class="kw">scale_y_continuous</span>(<span class="dt">breaks =</span> <span class="dv">34</span><span class="op">:</span><span class="dv">36</span>) <span class="op">+</span></a>
+<a class="sourceLine" id="cb20-6" title="6"><span class="st">  </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>)) <span class="op">+</span></a>
+<a class="sourceLine" id="cb20-7" title="7"><span class="st">  </span><span class="kw">theme</span>(<span class="dt">panel.grid.major =</span> <span class="kw">element_line</span>(<span class="dt">color =</span> <span class="st">&quot;white&quot;</span>))</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:firstgather"></span>
 <img src="sds_files/figure-html/firstgather-1.png" alt="ggplot with facet maps" width="672" />
 <p class="caption">
 Figure 1.2: ggplot with facet maps
 </p>
 </div>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1">year_labels =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;SID74&quot;</span> =<span class="st"> &quot;1974 - 1978&quot;</span>, <span class="st">&quot;SID79&quot;</span> =<span class="st"> &quot;1979 - 1984&quot;</span>)</a>
-<a class="sourceLine" id="cb5-2" title="2">nc<span class="fl">.32119</span> <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(SID74, SID79) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">gather</span>(VAR, SID, <span class="op">-</span>geom) -&gt;<span class="st"> </span>nc2</a>
-<a class="sourceLine" id="cb5-3" title="3"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> nc2, <span class="kw">aes</span>(<span class="dt">fill =</span> SID)) <span class="op">+</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb5-4" title="4"><span class="st">  </span><span class="kw">facet_wrap</span>(<span class="op">~</span>VAR, <span class="dt">ncol =</span> <span class="dv">1</span>, <span class="dt">labeller =</span> <span class="kw">labeller</span>(<span class="dt">VAR =</span> year_labels)) <span class="op">+</span></a>
-<a class="sourceLine" id="cb5-5" title="5"><span class="st">  </span><span class="kw">scale_y_continuous</span>(<span class="dt">breaks =</span> <span class="dv">34</span><span class="op">:</span><span class="dv">36</span>) <span class="op">+</span></a>
-<a class="sourceLine" id="cb5-6" title="6"><span class="st">  </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>)) <span class="op">+</span></a>
-<a class="sourceLine" id="cb5-7" title="7"><span class="st">  </span><span class="kw">theme</span>(<span class="dt">panel.grid.major =</span> <span class="kw">element_line</span>(<span class="dt">color =</span> <span class="st">&quot;white&quot;</span>))</a></code></pre></div>
-</details>
 <p>An interactive, leaflet-based map is obtained in figure <a href="#fig:mapviewfigure"><strong>??</strong></a>.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb21-1" title="1"><span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(mapview))</a>
+<a class="sourceLine" id="cb21-2" title="2">nc<span class="fl">.32119</span> <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">mapview</span>(<span class="dt">zcol =</span> <span class="st">&quot;BIR74&quot;</span>, <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">col.regions =</span> sf.colors)</a></code></pre></div>
 <div id="htmlwidget-ac96cb3ee4656e2e9ec3" style="width:672px;height:480px;" class="leaflet html-widget"></div>
 <script type="application/json" data-for="htmlwidget-ac96cb3ee4656e2e9ec3">{"x":{"options":{"minZoom":1,"maxZoom":52,"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}},"preferCanvas":false,"bounceAtZoomLimits":false,"maxBounds":[[[-90,-370]],[[90,370]]]},"calls":[{"method":"addProviderTiles","args":["CartoDB.Positron","CartoDB.Positron","CartoDB.Positron",{"errorTileUrl":"","noWrap":false,"detectRetina":false,"pane":"tilePane"}]},{"method":"addProviderTiles","args":["CartoDB.DarkMatter","CartoDB.DarkMatter","CartoDB.DarkMatter",{"errorTileUrl":"","noWrap":false,"detectRetina":false,"pane":"tilePane"}]},{"method":"addProviderTiles","args":["OpenStreetMap","OpenStreetMap","OpenStreetMap",{"errorTileUrl":"","noWrap":false,"detectRetina":false,"pane":"tilePane"}]},{"method":"addProviderTiles","args":["Esri.WorldImagery","Esri.WorldImagery","Esri.WorldImagery",{"errorTileUrl":"","noWrap":false,"detectRetina":false,"pane":"tilePane"}]},{"method":"addProviderTiles","args":["OpenTopoMap","OpenTopoMap","OpenTopoMap",{"errorTileUrl":"","noWrap":false,"detectRetina":false,"pane":"tilePane"}]},{"method":"createMapPane","args":["polygon",420]},{"method":"addFlatGeoBuf","args":["_-BIR74",". - BIR74",null,true,"BIR74",{"radius":6,"stroke":true,"color":"#333333","weight":0.5,"opacity":0.9,"fill":true,"fillColor":null,"fillOpacity":0.6},{"className":"","pane":"polygon"},"mapview-popup",{"radius":{"to":[3,15],"from":[3,15]},"weight":{"to":[1,10],"from":[1,10]},"opacity":{"to":[0,1],"from":[0,1]},"fillOpacity":{"to":[0,1],"from":[0,1]}}]},{"method":"addScaleBar","args":[{"maxWidth":100,"metric":true,"imperial":true,"updateWhenIdle":true,"position":"bottomleft"}]},{"method":"addHomeButton","args":[-84.3237734918342,33.8821646134545,-75.4565804266542,36.5897678621411,". - BIR74","Zoom to . - BIR74","<strong> . - BIR74 <\/strong>","bottomright"]},{"method":"addLayersControl","args":[["CartoDB.Positron","CartoDB.DarkMatter","OpenStreetMap","Esri.WorldImagery","OpenTopoMap"],". - BIR74",{"collapsed":true,"autoZIndex":true,"position":"topleft"}]},{"method":"addLegend","args":[{"colors":["#0000B3 , #4500FF 22.2680412371134%, #CC2CD3 45.6982193064667%, #FF837C 69.1283973758201%, #FFDA26 92.5585754451734%, #FFF50A "],"labels":["5,000","10,000","15,000","20,000"],"na_color":null,"na_label":"NA","opacity":1,"position":"topright","type":"numeric","title":". - BIR74","extra":{"p_1":0.222680412371134,"p_n":0.925585754451734},"layerId":null,"className":"info legend","group":". - BIR74"}]}],"fitBounds":[33.8821646134545,-84.3237734918342,36.5897678621411,-75.4565804266542,[]]},"evals":[],"jsHooks":{"render":[{"code":"function(el, x, data) {\n  return (\n      function(el, x, data) {\n      // get the leaflet map\n      var map = this; //HTMLWidgets.find('#' + el.id);\n      // we need a new div element because we have to handle\n      // the mouseover output separately\n      // debugger;\n      function addElement () {\n      // generate new div Element\n      var newDiv = $(document.createElement('div'));\n      // append at end of leaflet htmlwidget container\n      $(el).append(newDiv);\n      //provide ID and style\n      newDiv.addClass('lnlt');\n      newDiv.css({\n      'position': 'relative',\n      'bottomleft':  '0px',\n      'background-color': 'rgba(255, 255, 255, 0.7)',\n      'box-shadow': '0 0 2px #bbb',\n      'background-clip': 'padding-box',\n      'margin': '0',\n      'padding-left': '5px',\n      'color': '#333',\n      'font': '9px/1.5 \"Helvetica Neue\", Arial, Helvetica, sans-serif',\n      'z-index': '700',\n      });\n      return newDiv;\n      }\n\n\n      // check for already existing lnlt class to not duplicate\n      var lnlt = $(el).find('.lnlt');\n\n      if(!lnlt.length) {\n      lnlt = addElement();\n\n      // grab the special div we generated in the beginning\n      // and put the mousmove output there\n\n      map.on('mousemove', function (e) {\n      if (e.originalEvent.ctrlKey) {\n      if (document.querySelector('.lnlt') === null) lnlt = addElement();\n      lnlt.text(\n                           ' lon: ' + (e.latlng.lng).toFixed(5) +\n                           ' | lat: ' + (e.latlng.lat).toFixed(5) +\n                           ' | zoom: ' + map.getZoom() +\n                           ' | x: ' + L.CRS.EPSG3857.project(e.latlng).x.toFixed(0) +\n                           ' | y: ' + L.CRS.EPSG3857.project(e.latlng).y.toFixed(0) +\n                           ' | epsg: 3857 ' +\n                           ' | proj4: +proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs ');\n      } else {\n      if (document.querySelector('.lnlt') === null) lnlt = addElement();\n      lnlt.text(\n                      ' lon: ' + (e.latlng.lng).toFixed(5) +\n                      ' | lat: ' + (e.latlng.lat).toFixed(5) +\n                      ' | zoom: ' + map.getZoom() + ' ');\n      }\n      });\n\n      // remove the lnlt div when mouse leaves map\n      map.on('mouseout', function (e) {\n      var strip = document.querySelector('.lnlt');\n      if( strip !==null) strip.remove();\n      });\n\n      };\n\n      //$(el).keypress(67, function(e) {\n      map.on('preclick', function(e) {\n      if (e.originalEvent.ctrlKey) {\n      if (document.querySelector('.lnlt') === null) lnlt = addElement();\n      lnlt.text(\n                      ' lon: ' + (e.latlng.lng).toFixed(5) +\n                      ' | lat: ' + (e.latlng.lat).toFixed(5) +\n                      ' | zoom: ' + map.getZoom() + ' ');\n      var txt = document.querySelector('.lnlt').textContent;\n      console.log(txt);\n      //txt.innerText.focus();\n      //txt.select();\n      setClipboardText('\"' + txt + '\"');\n      }\n      });\n\n      }\n      ).call(this.getMap(), el, x, data);\n}","data":null},{"code":"function(el, x, data) {\n  return (function(el,x,data){\n           var map = this;\n\n           map.on('keypress', function(e) {\n               console.log(e.originalEvent.code);\n               var key = e.originalEvent.code;\n               if (key === 'KeyE') {\n                   var bb = this.getBounds();\n                   var txt = JSON.stringify(bb);\n                   console.log(txt);\n\n                   setClipboardText('\\'' + txt + '\\'');\n               }\n           })\n        }).call(this.getMap(), el, x, data);\n}","data":null}]}}</script>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" title="1"><span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(mapview))</a>
-<a class="sourceLine" id="cb6-2" title="2">nc<span class="fl">.32119</span> <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">mapview</span>(<span class="dt">zcol =</span> <span class="st">&quot;BIR74&quot;</span>, <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">col.regions =</span> sf.colors)</a></code></pre></div>
-</details>
 </div>
 <div id="coordinate-reference-systems" class="section level2">
 <h2><span class="header-section-number">1.2</span> Coordinate reference systems</h2>
@@ -417,29 +1141,27 @@ point coordinates describe the “exact” locations that can be
 anywhere. Raster data on the other hand describe data where values
 are aligned on a <em>raster</em>, meaning on a regularly laid out lattice of
 usually square pixels. An example is shown in figure <a href="intro.html#fig:ras">1.3</a>.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb22-1" title="1"><span class="kw">library</span>(stars)</a>
+<a class="sourceLine" id="cb22-2" title="2"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>))</a>
+<a class="sourceLine" id="cb22-3" title="3"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">rep</span>(<span class="dv">1</span>, <span class="dv">4</span>))</a>
+<a class="sourceLine" id="cb22-4" title="4">tif &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;tif/L7_ETMs.tif&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;stars&quot;</span>)</a>
+<a class="sourceLine" id="cb22-5" title="5">x &lt;-<span class="st"> </span><span class="kw">read_stars</span>(tif)[,,,<span class="dv">1</span>]</a>
+<a class="sourceLine" id="cb22-6" title="6"><span class="kw">image</span>(x, <span class="dt">main =</span> <span class="st">&quot;(a)&quot;</span>)</a>
+<a class="sourceLine" id="cb22-7" title="7"><span class="kw">image</span>(x[,<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>,<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>], <span class="dt">text_values =</span> <span class="ot">TRUE</span>, <span class="dt">border =</span> <span class="st">&#39;grey&#39;</span>, <span class="dt">main =</span> <span class="st">&quot;(b)&quot;</span>)</a>
+<a class="sourceLine" id="cb22-8" title="8"><span class="kw">image</span>(x, <span class="dt">main =</span> <span class="st">&quot;(c)&quot;</span>)</a>
+<a class="sourceLine" id="cb22-9" title="9"><span class="kw">set.seed</span>(<span class="dv">131</span>)</a>
+<a class="sourceLine" id="cb22-10" title="10">pts =<span class="st"> </span><span class="kw">st_sample</span>(<span class="kw">st_as_sfc</span>(<span class="kw">st_bbox</span>(x)), <span class="dv">3</span>)</a>
+<a class="sourceLine" id="cb22-11" title="11"><span class="kw">plot</span>(pts, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">pch =</span> <span class="dv">3</span>, <span class="dt">col =</span> <span class="st">&#39;blue&#39;</span>)</a>
+<a class="sourceLine" id="cb22-12" title="12"><span class="kw">image</span>(x, <span class="dt">main =</span> <span class="st">&quot;(d)&quot;</span>)</a>
+<a class="sourceLine" id="cb22-13" title="13"><span class="kw">plot</span>(<span class="kw">st_buffer</span>(pts, <span class="dv">500</span>), <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">pch =</span> <span class="dv">3</span>, <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:ras"></span>
 <img src="sds_files/figure-html/ras-1.png" alt="raster maps: Landsat-7 blue band, with color values derived from data values (a), the top-left 10x10 sub-image from (a) with numeric values shown (b), and overlayed by two different types of vector data: three sample points (c), and a 500m radius around the points represented as polygons (d)" width="672" />
 <p class="caption">
 Figure 1.3: raster maps: Landsat-7 blue band, with color values derived from data values (a), the top-left 10x10 sub-image from (a) with numeric values shown (b), and overlayed by two different types of vector data: three sample points (c), and a 500m radius around the points represented as polygons (d)
 </p>
 </div>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" title="1"><span class="kw">library</span>(stars)</a>
-<a class="sourceLine" id="cb7-2" title="2"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>))</a>
-<a class="sourceLine" id="cb7-3" title="3"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">rep</span>(<span class="dv">1</span>, <span class="dv">4</span>))</a>
-<a class="sourceLine" id="cb7-4" title="4">tif &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;tif/L7_ETMs.tif&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;stars&quot;</span>)</a>
-<a class="sourceLine" id="cb7-5" title="5">x &lt;-<span class="st"> </span><span class="kw">read_stars</span>(tif)[,,,<span class="dv">1</span>]</a>
-<a class="sourceLine" id="cb7-6" title="6"><span class="kw">image</span>(x, <span class="dt">main =</span> <span class="st">&quot;(a)&quot;</span>)</a>
-<a class="sourceLine" id="cb7-7" title="7"><span class="kw">image</span>(x[,<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>,<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>], <span class="dt">text_values =</span> <span class="ot">TRUE</span>, <span class="dt">border =</span> <span class="st">&#39;grey&#39;</span>, <span class="dt">main =</span> <span class="st">&quot;(b)&quot;</span>)</a>
-<a class="sourceLine" id="cb7-8" title="8"><span class="kw">image</span>(x, <span class="dt">main =</span> <span class="st">&quot;(c)&quot;</span>)</a>
-<a class="sourceLine" id="cb7-9" title="9"><span class="kw">set.seed</span>(<span class="dv">131</span>)</a>
-<a class="sourceLine" id="cb7-10" title="10">pts =<span class="st"> </span><span class="kw">st_sample</span>(<span class="kw">st_as_sfc</span>(<span class="kw">st_bbox</span>(x)), <span class="dv">3</span>)</a>
-<a class="sourceLine" id="cb7-11" title="11"><span class="kw">plot</span>(pts, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">pch =</span> <span class="dv">3</span>, <span class="dt">col =</span> <span class="st">&#39;blue&#39;</span>)</a>
-<a class="sourceLine" id="cb7-12" title="12"><span class="kw">image</span>(x, <span class="dt">main =</span> <span class="st">&quot;(d)&quot;</span>)</a>
-<a class="sourceLine" id="cb7-13" title="13"><span class="kw">plot</span>(<span class="kw">st_buffer</span>(pts, <span class="dv">500</span>), <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">pch =</span> <span class="dv">3</span>, <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a></code></pre></div>
-</details>
 <p>Vector and raster data can be combined in different ways; for instance we can query the raster at the three points of figure <a href="intro.html#fig:ras">1.3</a>(c),</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb23-1" title="1"><span class="kw">st_extract</span>(x, pts)</a></code></pre></div>
 <pre><code># Simple feature collection with 3 features and 1 field
 # geometry type:  POINT
 # dimension:      XY
@@ -449,11 +1171,8 @@ Figure 1.3: raster maps: Landsat-7 blue band, with color values derived from dat
 # 1          80 POINT (290830 9114499)
 # 2          58 POINT (290019 9119219)
 # 3          63 POINT (291693 9116038)</code></pre>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" title="1"><span class="kw">st_extract</span>(x, pts)</a></code></pre></div>
-</details>
 <p>or compute an aggregate, such as the average, over arbitrary regions such as the circles shown in figure <a href="intro.html#fig:ras">1.3</a>(d):</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb25-1" title="1"><span class="kw">aggregate</span>(x, <span class="kw">st_buffer</span>(pts, <span class="dv">500</span>), <span class="dt">FUN =</span> mean) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">st_as_sf</span>()</a></code></pre></div>
 <pre><code># Simple feature collection with 3 features and 1 field
 # geometry type:  POLYGON
 # dimension:      XY
@@ -463,26 +1182,19 @@ Figure 1.3: raster maps: Landsat-7 blue band, with color values derived from dat
 # 1 77.2 POLYGON ((291330 9114499, 2...
 # 2 60.1 POLYGON ((290519 9119219, 2...
 # 3 71.6 POLYGON ((292193 9116038, 2...</code></pre>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" title="1"><span class="kw">aggregate</span>(x, <span class="kw">st_buffer</span>(pts, <span class="dv">500</span>), <span class="dt">FUN =</span> mean) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">st_as_sf</span>()</a></code></pre></div>
-</details>
 <p>Other raster-to-vector conversions are discussed in <a href="#raster-to-vector"><strong>??</strong></a> and include</p>
 <ul>
 <li>converting raster pixels in point values</li>
 <li>converting raster pixels into small polygons, possibly merging polygons with identical values (polygonize)</li>
 <li>generating lines or polygons that delineate continuous pixel areas with a certain value <em>range</em> (contouring)</li>
 </ul>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb27-1" title="1"><span class="kw">plot</span>(<span class="kw">st_rasterize</span>(nc[<span class="st">&quot;BIR74&quot;</span>], <span class="dt">dx =</span> <span class="fl">0.1</span>), <span class="dt">col =</span><span class="kw">sf.colors</span>(), <span class="dt">breaks =</span> <span class="st">&quot;equal&quot;</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:vectoras"></span>
 <img src="sds_files/figure-html/vectoras-1.png" alt="The map obtained by rasterizing county total number of births for the period 1974-1979  shown in figure 1.1" width="672" />
 <p class="caption">
 Figure 1.4: The map obtained by rasterizing county total number of births for the period 1974-1979 shown in figure 1.1
 </p>
 </div>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" title="1"><span class="kw">plot</span>(<span class="kw">st_rasterize</span>(nc[<span class="st">&quot;BIR74&quot;</span>], <span class="dt">dx =</span> <span class="fl">0.1</span>), <span class="dt">col =</span><span class="kw">sf.colors</span>(), <span class="dt">breaks =</span> <span class="st">&quot;equal&quot;</span>)</a></code></pre></div>
-</details>
 <p>Vector-to-raster conversions can be as simple as rasterizing polygons, as shown in figure <a href="intro.html#fig:vectoras">1.4</a>. Other, more general vector-to-raster conversions include</p>
 <ul>
 <li>interpolation of point values to points on a regular grid (chapter <a href="#interpolation"><strong>??</strong></a>)</li>
@@ -496,46 +1208,43 @@ Figure 1.4: The map obtained by rasterizing county total number of births for th
 <p>Raster dimensions describe how the rows and columns relate to
 spatial coordinates. Figure <a href="#rastertypes01"><strong>??</strong></a> shows a number
 of different possibilities.</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb28-1" title="1">x =<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="dv">5</span></a>
+<a class="sourceLine" id="cb28-2" title="2">y =<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="dv">4</span></a>
+<a class="sourceLine" id="cb28-3" title="3">d =<span class="st"> </span><span class="kw">st_dimensions</span>(<span class="dt">x =</span> x, <span class="dt">y =</span> y, <span class="dt">.raster =</span> <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>))</a>
+<a class="sourceLine" id="cb28-4" title="4">m =<span class="st"> </span><span class="kw">matrix</span>(<span class="kw">runif</span>(<span class="dv">20</span>),<span class="dv">5</span>,<span class="dv">4</span>)</a>
+<a class="sourceLine" id="cb28-5" title="5">r1 =<span class="st"> </span><span class="kw">st_as_stars</span>(<span class="dt">r =</span> m, <span class="dt">dimensions =</span> d)</a>
+<a class="sourceLine" id="cb28-6" title="6"></a>
+<a class="sourceLine" id="cb28-7" title="7">r =<span class="st"> </span><span class="kw">attr</span>(d, <span class="st">&quot;raster&quot;</span>)</a>
+<a class="sourceLine" id="cb28-8" title="8">r<span class="op">$</span>affine =<span class="st"> </span><span class="kw">c</span>(<span class="fl">0.2</span>, <span class="fl">-0.2</span>)</a>
+<a class="sourceLine" id="cb28-9" title="9"><span class="kw">attr</span>(d, <span class="st">&quot;raster&quot;</span>) =<span class="st"> </span>r</a>
+<a class="sourceLine" id="cb28-10" title="10">r2 =<span class="st"> </span><span class="kw">st_as_stars</span>(<span class="dt">r =</span> m, <span class="dt">dimensions =</span> d)</a>
+<a class="sourceLine" id="cb28-11" title="11"></a>
+<a class="sourceLine" id="cb28-12" title="12">r =<span class="st"> </span><span class="kw">attr</span>(d, <span class="st">&quot;raster&quot;</span>)</a>
+<a class="sourceLine" id="cb28-13" title="13">r<span class="op">$</span>affine =<span class="st"> </span><span class="kw">c</span>(<span class="fl">0.1</span>, <span class="fl">-0.3</span>)</a>
+<a class="sourceLine" id="cb28-14" title="14"><span class="kw">attr</span>(d, <span class="st">&quot;raster&quot;</span>) =<span class="st"> </span>r</a>
+<a class="sourceLine" id="cb28-15" title="15">r3 =<span class="st"> </span><span class="kw">st_as_stars</span>(<span class="dt">r =</span> m, <span class="dt">dimensions =</span> d)</a>
+<a class="sourceLine" id="cb28-16" title="16"></a>
+<a class="sourceLine" id="cb28-17" title="17">x =<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="fl">3.5</span>, <span class="dv">5</span>, <span class="dv">6</span>)</a>
+<a class="sourceLine" id="cb28-18" title="18">y =<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>, <span class="fl">1.5</span>, <span class="dv">3</span>, <span class="fl">3.5</span>)</a>
+<a class="sourceLine" id="cb28-19" title="19">d =<span class="st"> </span><span class="kw">st_dimensions</span>(<span class="dt">x =</span> x, <span class="dt">y =</span> y, <span class="dt">.raster =</span> <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>))</a>
+<a class="sourceLine" id="cb28-20" title="20">r4 =<span class="st"> </span><span class="kw">st_as_stars</span>(<span class="dt">r =</span> m, <span class="dt">dimensions =</span> d)</a>
+<a class="sourceLine" id="cb28-21" title="21"></a>
+<a class="sourceLine" id="cb28-22" title="22">grd =<span class="st"> </span><span class="kw">st_make_grid</span>(<span class="dt">cellsize =</span> <span class="kw">c</span>(<span class="dv">10</span>,<span class="dv">10</span>), <span class="dt">offset =</span> <span class="kw">c</span>(<span class="op">-</span><span class="dv">130</span>,<span class="dv">10</span>), <span class="dt">n=</span> <span class="kw">c</span>(<span class="dv">8</span>,<span class="dv">5</span>), <span class="dt">crs=</span><span class="kw">st_crs</span>(<span class="dv">4326</span>))</a>
+<a class="sourceLine" id="cb28-23" title="23">r5 =<span class="st"> </span><span class="kw">st_transform</span>(grd, <span class="st">&quot;+proj=laea +lon_0=-70 +lat_0=35&quot;</span>)</a>
+<a class="sourceLine" id="cb28-24" title="24"></a>
+<a class="sourceLine" id="cb28-25" title="25"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>), <span class="dt">mar =</span> <span class="kw">c</span>(<span class="fl">0.1</span>, <span class="dv">1</span>, <span class="fl">1.1</span>, <span class="dv">1</span>))</a>
+<a class="sourceLine" id="cb28-26" title="26">r1 =<span class="st"> </span><span class="kw">st_make_grid</span>(<span class="dt">cellsize =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="dt">n =</span> <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">4</span>), <span class="dt">offset =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))</a>
+<a class="sourceLine" id="cb28-27" title="27"><span class="kw">plot</span>(r1, <span class="dt">main =</span> <span class="st">&quot;regular&quot;</span>)</a>
+<a class="sourceLine" id="cb28-28" title="28"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(<span class="kw">st_as_sf</span>(r2)), <span class="dt">main =</span> <span class="st">&quot;rotated&quot;</span>)</a>
+<a class="sourceLine" id="cb28-29" title="29"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(<span class="kw">st_as_sf</span>(r3)), <span class="dt">main =</span> <span class="st">&quot;sheared&quot;</span>)</a>
+<a class="sourceLine" id="cb28-30" title="30"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(<span class="kw">st_as_sf</span>(r4, <span class="dt">as_points =</span> <span class="ot">FALSE</span>)), <span class="dt">main =</span> <span class="st">&quot;rectilinear&quot;</span>)</a>
+<a class="sourceLine" id="cb28-31" title="31"><span class="kw">plot</span>(<span class="kw">st_geometry</span>((r5)), <span class="dt">main =</span> <span class="st">&quot;curvilinear&quot;</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:rastertypes01"></span>
 <img src="sds_files/figure-html/rastertypes01-1.png" alt="various raster types" width="672" />
 <p class="caption">
 Figure 1.5: various raster types
 </p>
 </div>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb13-1" title="1">x =<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="dv">5</span></a>
-<a class="sourceLine" id="cb13-2" title="2">y =<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="dv">4</span></a>
-<a class="sourceLine" id="cb13-3" title="3">d =<span class="st"> </span><span class="kw">st_dimensions</span>(<span class="dt">x =</span> x, <span class="dt">y =</span> y, <span class="dt">.raster =</span> <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>))</a>
-<a class="sourceLine" id="cb13-4" title="4">m =<span class="st"> </span><span class="kw">matrix</span>(<span class="kw">runif</span>(<span class="dv">20</span>),<span class="dv">5</span>,<span class="dv">4</span>)</a>
-<a class="sourceLine" id="cb13-5" title="5">r1 =<span class="st"> </span><span class="kw">st_as_stars</span>(<span class="dt">r =</span> m, <span class="dt">dimensions =</span> d)</a>
-<a class="sourceLine" id="cb13-6" title="6"></a>
-<a class="sourceLine" id="cb13-7" title="7">r =<span class="st"> </span><span class="kw">attr</span>(d, <span class="st">&quot;raster&quot;</span>)</a>
-<a class="sourceLine" id="cb13-8" title="8">r<span class="op">$</span>affine =<span class="st"> </span><span class="kw">c</span>(<span class="fl">0.2</span>, <span class="fl">-0.2</span>)</a>
-<a class="sourceLine" id="cb13-9" title="9"><span class="kw">attr</span>(d, <span class="st">&quot;raster&quot;</span>) =<span class="st"> </span>r</a>
-<a class="sourceLine" id="cb13-10" title="10">r2 =<span class="st"> </span><span class="kw">st_as_stars</span>(<span class="dt">r =</span> m, <span class="dt">dimensions =</span> d)</a>
-<a class="sourceLine" id="cb13-11" title="11"></a>
-<a class="sourceLine" id="cb13-12" title="12">r =<span class="st"> </span><span class="kw">attr</span>(d, <span class="st">&quot;raster&quot;</span>)</a>
-<a class="sourceLine" id="cb13-13" title="13">r<span class="op">$</span>affine =<span class="st"> </span><span class="kw">c</span>(<span class="fl">0.1</span>, <span class="fl">-0.3</span>)</a>
-<a class="sourceLine" id="cb13-14" title="14"><span class="kw">attr</span>(d, <span class="st">&quot;raster&quot;</span>) =<span class="st"> </span>r</a>
-<a class="sourceLine" id="cb13-15" title="15">r3 =<span class="st"> </span><span class="kw">st_as_stars</span>(<span class="dt">r =</span> m, <span class="dt">dimensions =</span> d)</a>
-<a class="sourceLine" id="cb13-16" title="16"></a>
-<a class="sourceLine" id="cb13-17" title="17">x =<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="fl">3.5</span>, <span class="dv">5</span>, <span class="dv">6</span>)</a>
-<a class="sourceLine" id="cb13-18" title="18">y =<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>, <span class="fl">1.5</span>, <span class="dv">3</span>, <span class="fl">3.5</span>)</a>
-<a class="sourceLine" id="cb13-19" title="19">d =<span class="st"> </span><span class="kw">st_dimensions</span>(<span class="dt">x =</span> x, <span class="dt">y =</span> y, <span class="dt">.raster =</span> <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>))</a>
-<a class="sourceLine" id="cb13-20" title="20">r4 =<span class="st"> </span><span class="kw">st_as_stars</span>(<span class="dt">r =</span> m, <span class="dt">dimensions =</span> d)</a>
-<a class="sourceLine" id="cb13-21" title="21"></a>
-<a class="sourceLine" id="cb13-22" title="22">grd =<span class="st"> </span><span class="kw">st_make_grid</span>(<span class="dt">cellsize =</span> <span class="kw">c</span>(<span class="dv">10</span>,<span class="dv">10</span>), <span class="dt">offset =</span> <span class="kw">c</span>(<span class="op">-</span><span class="dv">130</span>,<span class="dv">10</span>), <span class="dt">n=</span> <span class="kw">c</span>(<span class="dv">8</span>,<span class="dv">5</span>), <span class="dt">crs=</span><span class="kw">st_crs</span>(<span class="dv">4326</span>))</a>
-<a class="sourceLine" id="cb13-23" title="23">r5 =<span class="st"> </span><span class="kw">st_transform</span>(grd, <span class="st">&quot;+proj=laea +lon_0=-70 +lat_0=35&quot;</span>)</a>
-<a class="sourceLine" id="cb13-24" title="24"></a>
-<a class="sourceLine" id="cb13-25" title="25"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>), <span class="dt">mar =</span> <span class="kw">c</span>(<span class="fl">0.1</span>, <span class="dv">1</span>, <span class="fl">1.1</span>, <span class="dv">1</span>))</a>
-<a class="sourceLine" id="cb13-26" title="26">r1 =<span class="st"> </span><span class="kw">st_make_grid</span>(<span class="dt">cellsize =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="dt">n =</span> <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">4</span>), <span class="dt">offset =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))</a>
-<a class="sourceLine" id="cb13-27" title="27"><span class="kw">plot</span>(r1, <span class="dt">main =</span> <span class="st">&quot;regular&quot;</span>)</a>
-<a class="sourceLine" id="cb13-28" title="28"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(<span class="kw">st_as_sf</span>(r2)), <span class="dt">main =</span> <span class="st">&quot;rotated&quot;</span>)</a>
-<a class="sourceLine" id="cb13-29" title="29"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(<span class="kw">st_as_sf</span>(r3)), <span class="dt">main =</span> <span class="st">&quot;sheared&quot;</span>)</a>
-<a class="sourceLine" id="cb13-30" title="30"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(<span class="kw">st_as_sf</span>(r4, <span class="dt">as_points =</span> <span class="ot">FALSE</span>)), <span class="dt">main =</span> <span class="st">&quot;rectilinear&quot;</span>)</a>
-<a class="sourceLine" id="cb13-31" title="31"><span class="kw">plot</span>(<span class="kw">st_geometry</span>((r5)), <span class="dt">main =</span> <span class="st">&quot;curvilinear&quot;</span>)</a></code></pre></div>
-</details>
 <p>Regular rasters like shown in figure <a href="#ras"><strong>??</strong></a> have a constant,
 not necessarily square cell size and axes aligned with the x and y
 (Easting and Northing) axes. Other raster types include those
@@ -732,14 +1441,14 @@ that ship with PROJ.</p>
 gitbook.require(["gitbook"], function(gitbook) {
 gitbook.start({
 "sharing": {
-"github": false,
-"facebook": true,
+"github": true,
+"facebook": false,
 "twitter": true,
 "linkedin": false,
 "weibo": false,
 "instapaper": false,
 "vk": false,
-"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+"all": false
 },
 "fontsettings": {
 "theme": "white",
@@ -758,7 +1467,7 @@ gitbook.start({
 "link": null,
 "text": null
 },
-"download": ["sds.pdf", "sds.epub"],
+"download": null,
 "toc": {
 "collapse": "subsection"
 }

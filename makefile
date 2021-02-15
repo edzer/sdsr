@@ -1,5 +1,4 @@
 book:
-	make details
 	./_build.sh
 
 clean:

@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2021-02-12" />
+<meta name="date" content="2021-02-15" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -70,6 +70,742 @@
 <script src="libs/clipboard-0.0.1/setClipboardText.js"></script>
 <link href="libs/mapviewCSS-0.0.1/mapview-popup.css" rel="stylesheet" />
 <link href="libs/mapviewCSS-0.0.1/mapview.css" rel="stylesheet" />
+
+<script>
+/* ========================================================================
+ * Bootstrap: transition.js v3.3.7
+ * http://getbootstrap.com/javascript/#transitions
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // CSS TRANSITION SUPPORT (Shoutout: http://www.modernizr.com/)
+  // ============================================================
+
+  function transitionEnd() {
+    var el = document.createElement('bootstrap')
+
+    var transEndEventNames = {
+      WebkitTransition : 'webkitTransitionEnd',
+      MozTransition    : 'transitionend',
+      OTransition      : 'oTransitionEnd otransitionend',
+      transition       : 'transitionend'
+    }
+
+    for (var name in transEndEventNames) {
+      if (el.style[name] !== undefined) {
+        return { end: transEndEventNames[name] }
+      }
+    }
+
+    return false // explicit for ie8 (  ._.)
+  }
+
+  // http://blog.alexmaccaw.com/css-transitions
+  $.fn.emulateTransitionEnd = function (duration) {
+    var called = false
+    var $el = this
+    $(this).one('bsTransitionEnd', function () { called = true })
+    var callback = function () { if (!called) $($el).trigger($.support.transition.end) }
+    setTimeout(callback, duration)
+    return this
+  }
+
+  $(function () {
+    $.support.transition = transitionEnd()
+
+    if (!$.support.transition) return
+
+    $.event.special.bsTransitionEnd = {
+      bindType: $.support.transition.end,
+      delegateType: $.support.transition.end,
+      handle: function (e) {
+        if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
+      }
+    }
+  })
+
+}(jQuery);
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: collapse.js v3.3.7
+ * http://getbootstrap.com/javascript/#collapse
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+/* jshint latedef: false */
+
++function ($) {
+  'use strict';
+
+  // COLLAPSE PUBLIC CLASS DEFINITION
+  // ================================
+
+  var Collapse = function (element, options) {
+    this.$element      = $(element)
+    this.options       = $.extend({}, Collapse.DEFAULTS, options)
+    this.$trigger      = $('[data-toggle="collapse"][href="#' + element.id + '"],' +
+                           '[data-toggle="collapse"][data-target="#' + element.id + '"]')
+    this.transitioning = null
+
+    if (this.options.parent) {
+      this.$parent = this.getParent()
+    } else {
+      this.addAriaAndCollapsedClass(this.$element, this.$trigger)
+    }
+
+    if (this.options.toggle) this.toggle()
+  }
+
+  Collapse.VERSION  = '3.3.7'
+
+  Collapse.TRANSITION_DURATION = 350
+
+  Collapse.DEFAULTS = {
+    toggle: true
+  }
+
+  Collapse.prototype.dimension = function () {
+    var hasWidth = this.$element.hasClass('width')
+    return hasWidth ? 'width' : 'height'
+  }
+
+  Collapse.prototype.show = function () {
+    if (this.transitioning || this.$element.hasClass('in')) return
+
+    var activesData
+    var actives = this.$parent && this.$parent.children('.panel').children('.in, .collapsing')
+
+    if (actives && actives.length) {
+      activesData = actives.data('bs.collapse')
+      if (activesData && activesData.transitioning) return
+    }
+
+    var startEvent = $.Event('show.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    if (actives && actives.length) {
+      Plugin.call(actives, 'hide')
+      activesData || actives.data('bs.collapse', null)
+    }
+
+    var dimension = this.dimension()
+
+    this.$element
+      .removeClass('collapse')
+      .addClass('collapsing')[dimension](0)
+      .attr('aria-expanded', true)
+
+    this.$trigger
+      .removeClass('collapsed')
+      .attr('aria-expanded', true)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse in')[dimension]('')
+      this.transitioning = 0
+      this.$element
+        .trigger('shown.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    var scrollSize = $.camelCase(['scroll', dimension].join('-'))
+
+    this.$element
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)[dimension](this.$element[0][scrollSize])
+  }
+
+  Collapse.prototype.hide = function () {
+    if (this.transitioning || !this.$element.hasClass('in')) return
+
+    var startEvent = $.Event('hide.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    var dimension = this.dimension()
+
+    this.$element[dimension](this.$element[dimension]())[0].offsetHeight
+
+    this.$element
+      .addClass('collapsing')
+      .removeClass('collapse in')
+      .attr('aria-expanded', false)
+
+    this.$trigger
+      .addClass('collapsed')
+      .attr('aria-expanded', false)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.transitioning = 0
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse')
+        .trigger('hidden.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    this.$element
+      [dimension](0)
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)
+  }
+
+  Collapse.prototype.toggle = function () {
+    this[this.$element.hasClass('in') ? 'hide' : 'show']()
+  }
+
+  Collapse.prototype.getParent = function () {
+    return $(this.options.parent)
+      .find('[data-toggle="collapse"][data-parent="' + this.options.parent + '"]')
+      .each($.proxy(function (i, element) {
+        var $element = $(element)
+        this.addAriaAndCollapsedClass(getTargetFromTrigger($element), $element)
+      }, this))
+      .end()
+  }
+
+  Collapse.prototype.addAriaAndCollapsedClass = function ($element, $trigger) {
+    var isOpen = $element.hasClass('in')
+
+    $element.attr('aria-expanded', isOpen)
+    $trigger
+      .toggleClass('collapsed', !isOpen)
+      .attr('aria-expanded', isOpen)
+  }
+
+  function getTargetFromTrigger($trigger) {
+    var href
+    var target = $trigger.attr('data-target')
+      || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
+
+    return $(target)
+  }
+
+
+  // COLLAPSE PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.collapse')
+      var options = $.extend({}, Collapse.DEFAULTS, $this.data(), typeof option == 'object' && option)
+
+      if (!data && options.toggle && /show|hide/.test(option)) options.toggle = false
+      if (!data) $this.data('bs.collapse', (data = new Collapse(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  var old = $.fn.collapse
+
+  $.fn.collapse             = Plugin
+  $.fn.collapse.Constructor = Collapse
+
+
+  // COLLAPSE NO CONFLICT
+  // ====================
+
+  $.fn.collapse.noConflict = function () {
+    $.fn.collapse = old
+    return this
+  }
+
+
+  // COLLAPSE DATA-API
+  // =================
+
+  $(document).on('click.bs.collapse.data-api', '[data-toggle="collapse"]', function (e) {
+    var $this   = $(this)
+
+    if (!$this.attr('data-target')) e.preventDefault()
+
+    var $target = getTargetFromTrigger($this)
+    var data    = $target.data('bs.collapse')
+    var option  = data ? 'toggle' : $this.data()
+
+    Plugin.call($target, option)
+  })
+
+}(jQuery);
+</script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.sourceCode, pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan');
+  rCodeBlocks.each(function() {
+
+    // if code block has been labeled with class `fold-show`, show the code on init!
+    var classList = $(this).attr('class').split(/\s+/);
+    for (var i = 0; i < classList.length; i++) {
+    if (classList[i] === 'fold-show') {
+        show = true;
+      }
+    }
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    if (show)
+      div.addClass('in');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (show ? 'Hide' : 'Code') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs code-folding-btn pull-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-target', '#' + id)
+        .attr('aria-expanded', show)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // hack: return show to false, otherwise all next codeBlocks will be shown!
+    show = false;
+
+    // update state of button on show/hide
+    div.on('hidden.bs.collapse', function () {
+      showCodeText.text('Code');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+    });
+  });
+
+}
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: dropdown.js v3.3.7
+ * http://getbootstrap.com/javascript/#dropdowns
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // DROPDOWN CLASS DEFINITION
+  // =========================
+
+  var backdrop = '.dropdown-backdrop'
+  var toggle   = '[data-toggle="dropdown"]'
+  var Dropdown = function (element) {
+    $(element).on('click.bs.dropdown', this.toggle)
+  }
+
+  Dropdown.VERSION = '3.3.7'
+
+  function getParent($this) {
+    var selector = $this.attr('data-target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+    }
+
+    var $parent = selector && $(selector)
+
+    return $parent && $parent.length ? $parent : $this.parent()
+  }
+
+  function clearMenus(e) {
+    if (e && e.which === 3) return
+    $(backdrop).remove()
+    $(toggle).each(function () {
+      var $this         = $(this)
+      var $parent       = getParent($this)
+      var relatedTarget = { relatedTarget: this }
+
+      if (!$parent.hasClass('open')) return
+
+      if (e && e.type == 'click' && /input|textarea/i.test(e.target.tagName) && $.contains($parent[0], e.target)) return
+
+      $parent.trigger(e = $.Event('hide.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this.attr('aria-expanded', 'false')
+      $parent.removeClass('open').trigger($.Event('hidden.bs.dropdown', relatedTarget))
+    })
+  }
+
+  Dropdown.prototype.toggle = function (e) {
+    var $this = $(this)
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    clearMenus()
+
+    if (!isActive) {
+      if ('ontouchstart' in document.documentElement && !$parent.closest('.navbar-nav').length) {
+        // if mobile we use a backdrop because click events don't delegate
+        $(document.createElement('div'))
+          .addClass('dropdown-backdrop')
+          .insertAfter($(this))
+          .on('click', clearMenus)
+      }
+
+      var relatedTarget = { relatedTarget: this }
+      $parent.trigger(e = $.Event('show.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this
+        .trigger('focus')
+        .attr('aria-expanded', 'true')
+
+      $parent
+        .toggleClass('open')
+        .trigger($.Event('shown.bs.dropdown', relatedTarget))
+    }
+
+    return false
+  }
+
+  Dropdown.prototype.keydown = function (e) {
+    if (!/(38|40|27|32)/.test(e.which) || /input|textarea/i.test(e.target.tagName)) return
+
+    var $this = $(this)
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    if (!isActive && e.which != 27 || isActive && e.which == 27) {
+      if (e.which == 27) $parent.find(toggle).trigger('focus')
+      return $this.trigger('click')
+    }
+
+    var desc = ' li:not(.disabled):visible a'
+    var $items = $parent.find('.dropdown-menu' + desc)
+
+    if (!$items.length) return
+
+    var index = $items.index(e.target)
+
+    if (e.which == 38 && index > 0)                 index--         // up
+    if (e.which == 40 && index < $items.length - 1) index++         // down
+    if (!~index)                                    index = 0
+
+    $items.eq(index).trigger('focus')
+  }
+
+
+  // DROPDOWN PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this = $(this)
+      var data  = $this.data('bs.dropdown')
+
+      if (!data) $this.data('bs.dropdown', (data = new Dropdown(this)))
+      if (typeof option == 'string') data[option].call($this)
+    })
+  }
+
+  var old = $.fn.dropdown
+
+  $.fn.dropdown             = Plugin
+  $.fn.dropdown.Constructor = Dropdown
+
+
+  // DROPDOWN NO CONFLICT
+  // ====================
+
+  $.fn.dropdown.noConflict = function () {
+    $.fn.dropdown = old
+    return this
+  }
+
+
+  // APPLY TO STANDARD DROPDOWN ELEMENTS
+  // ===================================
+
+  $(document)
+    .on('click.bs.dropdown.data-api', clearMenus)
+    .on('click.bs.dropdown.data-api', '.dropdown form', function (e) { e.stopPropagation() })
+    .on('click.bs.dropdown.data-api', toggle, Dropdown.prototype.toggle)
+    .on('keydown.bs.dropdown.data-api', toggle, Dropdown.prototype.keydown)
+    .on('keydown.bs.dropdown.data-api', '.dropdown-menu', Dropdown.prototype.keydown)
+
+}(jQuery);
+</script>
+<style type="text/css">
+.code-folding-btn {
+  margin-bottom: 4px;
+}
+
+.row { display: flex; }
+.collapse { display: none; }
+.in { display:block }
+.pull-right > .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    float: left;
+    min-width: 160px;
+    padding: 5px 0;
+    margin: 2px 0 0;
+    font-size: 14px;
+    text-align: left;
+    list-style: none;
+    background-color: #fff;
+    -webkit-background-clip: padding-box;
+    background-clip: padding-box;
+    border: 1px solid #ccc;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: 4px;
+    -webkit-box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    box-shadow: 0 6px 12px rgba(0,0,0,.175);
+}
+
+.open > .dropdown-menu {
+    display: block;
+    color: #ffffff;
+    background-color: #ffffff;
+    background-image: none;
+    border-color: #92897e;
+}
+
+.dropdown-menu > li > a {
+  display: block;
+  padding: 3px 20px;
+  clear: both;
+  font-weight: 400;
+  line-height: 1.42857143;
+  color: #000000;
+  white-space: nowrap;
+}
+
+.dropdown-menu > li > a:hover,
+.dropdown-menu > li > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+}
+
+.dropdown-menu > .active > a,
+.dropdown-menu > .active > a:hover,
+.dropdown-menu > .active > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+  outline: 0;
+}
+.dropdown-menu > .disabled > a,
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  color: #aea79f;
+}
+
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  text-decoration: none;
+  cursor: not-allowed;
+  background-color: transparent;
+  background-image: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(enabled = false);
+}
+
+.btn {
+  display: inline-block;
+  margin-bottom: 1;
+  font-weight: normal;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  -ms-touch-action: manipulation;
+      touch-action: manipulation;
+  cursor: pointer;
+  background-image: none;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.42857143;
+  border-radius: 4px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn.active:focus,
+.btn.focus,
+.btn:active.focus,
+.btn.active.focus {
+  outline: 5px auto -webkit-focus-ring-color;
+  outline-offset: -2px;
+}
+.btn:hover,
+.btn:focus,
+.btn.focus {
+  color: #ffffff;
+  text-decoration: none;
+}
+.btn:active,
+.btn.active {
+  background-image: none;
+  outline: 0;
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn.disabled,
+.btn[disabled],
+fieldset[disabled] .btn {
+  cursor: not-allowed;
+  filter: alpha(opacity=65);
+  opacity: 0.65;
+  box-shadow: none;
+}
+a.btn.disabled,
+fieldset[disabled] a.btn {
+  pointer-events: none;
+}
+.btn-default {
+  color: #ffffff;
+  background-color: #aea79f; #important
+  border-color: #aea79f;
+}
+
+.btn-default:focus,
+.btn-default.focus {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #6f675e;
+}
+
+.btn-default:hover {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #92897e;
+}
+.btn-default:active,
+.btn-default.active,
+.btn-group > .btn:not(:first-child):not(:last-child):not(.dropdown-toggle) {
+  border-radius: 0;
+}
+.btn-group > .btn:first-child {
+  margin-left: 0;
+}
+.btn-group > .btn:first-child:not(:last-child):not(.dropdown-toggle) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn:last-child:not(:first-child),
+.btn-group > .dropdown-toggle:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group > .btn-group {
+  float: left;
+}
+.btn-group > .btn-group:not(:first-child):not(:last-child) > .btn {
+  border-radius: 0;
+}
+.btn-group > .btn-group:first-child:not(:last-child) > .btn:last-child,
+.btn-group > .btn-group:first-child:not(:last-child) > .dropdown-toggle {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn-group:last-child:not(:first-child) > .btn:first-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group .dropdown-toggle:active,
+.btn-group.open .dropdown-toggle {
+  outline: 0;
+}
+.btn-group > .btn + .dropdown-toggle {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+.btn-group > .btn-lg + .dropdown-toggle {
+  padding-right: 12px;
+  padding-left: 12px;
+}
+.btn-group.open .dropdown-toggle {
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn-group.open .dropdown-toggle.btn-link {
+  box-shadow: none;
+}
+
+</style>
+<script>
+var str = '<div class="btn-group pull-right" style="position: fixed; right: 50px; top: 10px; z-index: 200"><button type="button" class="btn btn-default btn-xs dropdown-toggle" id="allCodeButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" data-_extension-text-contrast=""><span>Code</span> <span class="caret"></span></button><ul class="dropdown-menu" style="min-width: 50px;"><li><a id="rmd-show-all-code" href="#">Show All Code</a></li><li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li></ul></div>';
+document.write(str);
+</script>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "hide");
+});
+</script>
 
 
 <style type="text/css">
@@ -324,62 +1060,62 @@ and also for observed imagery for instance obtained from satellites.</p>
 <h3><span class="header-section-number">6.2.1</span> Reading and writing raster data</h3>
 <p>Raster data typically are read from a file. We read an example
 file of a regular, non-rotated grid from the package <code>stars</code>:</p>
-<div class="sourceCode" id="cb60"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb60-1" title="1">tif =<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;tif/L7_ETMs.tif&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;stars&quot;</span>)</a>
-<a class="sourceLine" id="cb60-2" title="2"><span class="kw">library</span>(stars)</a>
-<a class="sourceLine" id="cb60-3" title="3">x =<span class="st"> </span><span class="kw">read_stars</span>(tif)</a></code></pre></div>
+<div class="sourceCode" id="cb59"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb59-1" title="1">tif =<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;tif/L7_ETMs.tif&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;stars&quot;</span>)</a>
+<a class="sourceLine" id="cb59-2" title="2"><span class="kw">library</span>(stars)</a>
+<a class="sourceLine" id="cb59-3" title="3">x =<span class="st"> </span><span class="kw">read_stars</span>(tif)</a></code></pre></div>
 <p>The dataset contains (a section of) a Landsat 7 scene, with the 6
 30m-resolution bands (bands 1-5 and 7) for a region covering the
 city of Olinda, Brazil.
 A short summary of the data is given by</p>
-<div class="sourceCode" id="cb61"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb61-1" title="1">x</a>
-<a class="sourceLine" id="cb61-2" title="2"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb61-3" title="3"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb61-4" title="4"><span class="co">#   L7_ETMs.tif   </span></a>
-<a class="sourceLine" id="cb61-5" title="5"><span class="co">#  Min.   :  1.0  </span></a>
-<a class="sourceLine" id="cb61-6" title="6"><span class="co">#  1st Qu.: 54.0  </span></a>
-<a class="sourceLine" id="cb61-7" title="7"><span class="co">#  Median : 69.0  </span></a>
-<a class="sourceLine" id="cb61-8" title="8"><span class="co">#  Mean   : 68.9  </span></a>
-<a class="sourceLine" id="cb61-9" title="9"><span class="co">#  3rd Qu.: 86.0  </span></a>
-<a class="sourceLine" id="cb61-10" title="10"><span class="co">#  Max.   :255.0  </span></a>
-<a class="sourceLine" id="cb61-11" title="11"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb61-12" title="12"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
-<a class="sourceLine" id="cb61-13" title="13"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
-<a class="sourceLine" id="cb61-14" title="14"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
-<a class="sourceLine" id="cb61-15" title="15"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a></code></pre></div>
+<div class="sourceCode" id="cb60"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb60-1" title="1">x</a>
+<a class="sourceLine" id="cb60-2" title="2"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb60-3" title="3"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb60-4" title="4"><span class="co">#   L7_ETMs.tif   </span></a>
+<a class="sourceLine" id="cb60-5" title="5"><span class="co">#  Min.   :  1.0  </span></a>
+<a class="sourceLine" id="cb60-6" title="6"><span class="co">#  1st Qu.: 54.0  </span></a>
+<a class="sourceLine" id="cb60-7" title="7"><span class="co">#  Median : 69.0  </span></a>
+<a class="sourceLine" id="cb60-8" title="8"><span class="co">#  Mean   : 68.9  </span></a>
+<a class="sourceLine" id="cb60-9" title="9"><span class="co">#  3rd Qu.: 86.0  </span></a>
+<a class="sourceLine" id="cb60-10" title="10"><span class="co">#  Max.   :255.0  </span></a>
+<a class="sourceLine" id="cb60-11" title="11"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb60-12" title="12"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
+<a class="sourceLine" id="cb60-13" title="13"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
+<a class="sourceLine" id="cb60-14" title="14"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
+<a class="sourceLine" id="cb60-15" title="15"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a></code></pre></div>
 <p>where we see the offset, cellsize, coordinate reference system,
 and dimensions. The object <code>x</code> is a simple list of length one, holding
 a three-dimensional array:</p>
-<div class="sourceCode" id="cb62"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb62-1" title="1"><span class="kw">length</span>(x)</a>
-<a class="sourceLine" id="cb62-2" title="2"><span class="co"># [1] 1</span></a>
-<a class="sourceLine" id="cb62-3" title="3"><span class="kw">class</span>(x[[<span class="dv">1</span>]])</a>
-<a class="sourceLine" id="cb62-4" title="4"><span class="co"># [1] &quot;array&quot;</span></a>
-<a class="sourceLine" id="cb62-5" title="5"><span class="kw">dim</span>(x[[<span class="dv">1</span>]])</a>
-<a class="sourceLine" id="cb62-6" title="6"><span class="co">#    x    y band </span></a>
-<a class="sourceLine" id="cb62-7" title="7"><span class="co">#  349  352    6</span></a></code></pre></div>
+<div class="sourceCode" id="cb61"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb61-1" title="1"><span class="kw">length</span>(x)</a>
+<a class="sourceLine" id="cb61-2" title="2"><span class="co"># [1] 1</span></a>
+<a class="sourceLine" id="cb61-3" title="3"><span class="kw">class</span>(x[[<span class="dv">1</span>]])</a>
+<a class="sourceLine" id="cb61-4" title="4"><span class="co"># [1] &quot;array&quot;</span></a>
+<a class="sourceLine" id="cb61-5" title="5"><span class="kw">dim</span>(x[[<span class="dv">1</span>]])</a>
+<a class="sourceLine" id="cb61-6" title="6"><span class="co">#    x    y band </span></a>
+<a class="sourceLine" id="cb61-7" title="7"><span class="co">#  349  352    6</span></a></code></pre></div>
 <p>and in addition holds an attribute with a dimensions table with all the metadata
 required to know what the array values refer to, obtained by</p>
-<div class="sourceCode" id="cb63"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb63-1" title="1"><span class="kw">st_dimensions</span>(x)</a>
-<a class="sourceLine" id="cb63-2" title="2"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
-<a class="sourceLine" id="cb63-3" title="3"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
-<a class="sourceLine" id="cb63-4" title="4"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
-<a class="sourceLine" id="cb63-5" title="5"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a></code></pre></div>
+<div class="sourceCode" id="cb62"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb62-1" title="1"><span class="kw">st_dimensions</span>(x)</a>
+<a class="sourceLine" id="cb62-2" title="2"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
+<a class="sourceLine" id="cb62-3" title="3"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
+<a class="sourceLine" id="cb62-4" title="4"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
+<a class="sourceLine" id="cb62-5" title="5"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a></code></pre></div>
 <p>We can get the spatial extent of the array by</p>
-<div class="sourceCode" id="cb64"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb64-1" title="1"><span class="kw">st_bbox</span>(x)</a>
-<a class="sourceLine" id="cb64-2" title="2"><span class="co">#    xmin    ymin    xmax    ymax </span></a>
-<a class="sourceLine" id="cb64-3" title="3"><span class="co">#  288776 9110729  298723 9120761</span></a></code></pre></div>
+<div class="sourceCode" id="cb63"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb63-1" title="1"><span class="kw">st_bbox</span>(x)</a>
+<a class="sourceLine" id="cb63-2" title="2"><span class="co">#    xmin    ymin    xmax    ymax </span></a>
+<a class="sourceLine" id="cb63-3" title="3"><span class="co">#  288776 9110729  298723 9120761</span></a></code></pre></div>
 <p>Raster data can be written to local disk using <code>write_stars</code>:</p>
-<div class="sourceCode" id="cb65"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb65-1" title="1">tf =<span class="st"> </span><span class="kw">tempfile</span>(<span class="dt">fileext=</span><span class="st">&quot;.tif&quot;</span>)</a>
-<a class="sourceLine" id="cb65-2" title="2"><span class="kw">write_stars</span>(x, tf)</a></code></pre></div>
+<div class="sourceCode" id="cb64"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb64-1" title="1">tf =<span class="st"> </span><span class="kw">tempfile</span>(<span class="dt">fileext=</span><span class="st">&quot;.tif&quot;</span>)</a>
+<a class="sourceLine" id="cb64-2" title="2"><span class="kw">write_stars</span>(x, tf)</a></code></pre></div>
 <p>where the format (in this case, GeoTIFF) is derived from the file
 extension. As for simple features, reading and writing uses the GDAL
 library; the list of available drivers for raster data is obtained
 by</p>
-<div class="sourceCode" id="cb66"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb66-1" title="1"><span class="kw">st_drivers</span>(<span class="st">&quot;raster&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb65"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb65-1" title="1"><span class="kw">st_drivers</span>(<span class="st">&quot;raster&quot;</span>)</a></code></pre></div>
 </div>
 <div id="plotting-raster-data" class="section level3">
 <h3><span class="header-section-number">6.2.2</span> Plotting raster data</h3>
 <p>We can use the base plot method for <code>stars</code> objects, shown in figure <a href="raster.html#fig:firststars">6.1</a>.</p>
-<div class="sourceCode" id="cb67"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb67-1" title="1"><span class="kw">plot</span>(x)</a></code></pre></div>
+<div class="sourceCode" id="cb66"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb66-1" title="1"><span class="kw">plot</span>(x)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:firststars"></span>
 <img src="sds_files/figure-html/firststars-1.png" alt="6 30m Landsat bands downsampled to 90m for Olinda, Br." width="672" />
 <p class="caption">
@@ -389,9 +1125,9 @@ Figure 6.1: 6 30m Landsat bands downsampled to 90m for Olinda, Br.
 <p>The default color scale uses grey tones, and stretches this such
 that color breaks correspond to data quantiles over all bands.
 A more familiar view is the rgb or false color composite:</p>
-<div class="sourceCode" id="cb68"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb68-1" title="1"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</a>
-<a class="sourceLine" id="cb68-2" title="2"><span class="kw">plot</span>(x, <span class="dt">rgb =</span> <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">reset =</span> <span class="ot">FALSE</span>, <span class="dt">main =</span> <span class="st">&quot;RGB&quot;</span>)    <span class="co"># rgb</span></a>
-<a class="sourceLine" id="cb68-3" title="3"><span class="kw">plot</span>(x, <span class="dt">rgb =</span> <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">3</span>,<span class="dv">2</span>), <span class="dt">main =</span> <span class="st">&quot;False color (NIR-R-G)&quot;</span>) <span class="co"># false color</span></a></code></pre></div>
+<div class="sourceCode" id="cb67"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb67-1" title="1"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</a>
+<a class="sourceLine" id="cb67-2" title="2"><span class="kw">plot</span>(x, <span class="dt">rgb =</span> <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">reset =</span> <span class="ot">FALSE</span>, <span class="dt">main =</span> <span class="st">&quot;RGB&quot;</span>)    <span class="co"># rgb</span></a>
+<a class="sourceLine" id="cb67-3" title="3"><span class="kw">plot</span>(x, <span class="dt">rgb =</span> <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">3</span>,<span class="dv">2</span>), <span class="dt">main =</span> <span class="st">&quot;False color (NIR-R-G)&quot;</span>) <span class="co"># false color</span></a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:starsrgb"></span>
 <img src="sds_files/figure-html/starsrgb-1.png" alt="two RGB composites" width="100%" />
 <p class="caption">
@@ -404,155 +1140,155 @@ Figure 6.2: two RGB composites
 <p>Element-wise mathematical operations on <code>stars</code> objects are just passed
 on to the arrays. This means that we can call functions and create
 expressions:</p>
-<div class="sourceCode" id="cb69"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb69-1" title="1"><span class="kw">log</span>(x)</a>
-<a class="sourceLine" id="cb69-2" title="2"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb69-3" title="3"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb69-4" title="4"><span class="co">#   L7_ETMs.tif  </span></a>
-<a class="sourceLine" id="cb69-5" title="5"><span class="co">#  Min.   :0.00  </span></a>
-<a class="sourceLine" id="cb69-6" title="6"><span class="co">#  1st Qu.:3.99  </span></a>
-<a class="sourceLine" id="cb69-7" title="7"><span class="co">#  Median :4.23  </span></a>
-<a class="sourceLine" id="cb69-8" title="8"><span class="co">#  Mean   :4.12  </span></a>
-<a class="sourceLine" id="cb69-9" title="9"><span class="co">#  3rd Qu.:4.45  </span></a>
-<a class="sourceLine" id="cb69-10" title="10"><span class="co">#  Max.   :5.54  </span></a>
-<a class="sourceLine" id="cb69-11" title="11"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb69-12" title="12"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
-<a class="sourceLine" id="cb69-13" title="13"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
-<a class="sourceLine" id="cb69-14" title="14"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
-<a class="sourceLine" id="cb69-15" title="15"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a>
-<a class="sourceLine" id="cb69-16" title="16">x <span class="op">+</span><span class="st"> </span><span class="dv">2</span> <span class="op">*</span><span class="st"> </span><span class="kw">log</span>(x)</a>
-<a class="sourceLine" id="cb69-17" title="17"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb69-18" title="18"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb69-19" title="19"><span class="co">#   L7_ETMs.tif   </span></a>
-<a class="sourceLine" id="cb69-20" title="20"><span class="co">#  Min.   :  1.0  </span></a>
-<a class="sourceLine" id="cb69-21" title="21"><span class="co">#  1st Qu.: 62.0  </span></a>
-<a class="sourceLine" id="cb69-22" title="22"><span class="co">#  Median : 77.5  </span></a>
-<a class="sourceLine" id="cb69-23" title="23"><span class="co">#  Mean   : 77.1  </span></a>
-<a class="sourceLine" id="cb69-24" title="24"><span class="co">#  3rd Qu.: 94.9  </span></a>
-<a class="sourceLine" id="cb69-25" title="25"><span class="co">#  Max.   :266.1  </span></a>
-<a class="sourceLine" id="cb69-26" title="26"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb69-27" title="27"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
-<a class="sourceLine" id="cb69-28" title="28"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
-<a class="sourceLine" id="cb69-29" title="29"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
-<a class="sourceLine" id="cb69-30" title="30"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a></code></pre></div>
+<div class="sourceCode" id="cb68"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb68-1" title="1"><span class="kw">log</span>(x)</a>
+<a class="sourceLine" id="cb68-2" title="2"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb68-3" title="3"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb68-4" title="4"><span class="co">#   L7_ETMs.tif  </span></a>
+<a class="sourceLine" id="cb68-5" title="5"><span class="co">#  Min.   :0.00  </span></a>
+<a class="sourceLine" id="cb68-6" title="6"><span class="co">#  1st Qu.:3.99  </span></a>
+<a class="sourceLine" id="cb68-7" title="7"><span class="co">#  Median :4.23  </span></a>
+<a class="sourceLine" id="cb68-8" title="8"><span class="co">#  Mean   :4.12  </span></a>
+<a class="sourceLine" id="cb68-9" title="9"><span class="co">#  3rd Qu.:4.45  </span></a>
+<a class="sourceLine" id="cb68-10" title="10"><span class="co">#  Max.   :5.54  </span></a>
+<a class="sourceLine" id="cb68-11" title="11"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb68-12" title="12"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
+<a class="sourceLine" id="cb68-13" title="13"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
+<a class="sourceLine" id="cb68-14" title="14"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
+<a class="sourceLine" id="cb68-15" title="15"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a>
+<a class="sourceLine" id="cb68-16" title="16">x <span class="op">+</span><span class="st"> </span><span class="dv">2</span> <span class="op">*</span><span class="st"> </span><span class="kw">log</span>(x)</a>
+<a class="sourceLine" id="cb68-17" title="17"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb68-18" title="18"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb68-19" title="19"><span class="co">#   L7_ETMs.tif   </span></a>
+<a class="sourceLine" id="cb68-20" title="20"><span class="co">#  Min.   :  1.0  </span></a>
+<a class="sourceLine" id="cb68-21" title="21"><span class="co">#  1st Qu.: 62.0  </span></a>
+<a class="sourceLine" id="cb68-22" title="22"><span class="co">#  Median : 77.5  </span></a>
+<a class="sourceLine" id="cb68-23" title="23"><span class="co">#  Mean   : 77.1  </span></a>
+<a class="sourceLine" id="cb68-24" title="24"><span class="co">#  3rd Qu.: 94.9  </span></a>
+<a class="sourceLine" id="cb68-25" title="25"><span class="co">#  Max.   :266.1  </span></a>
+<a class="sourceLine" id="cb68-26" title="26"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb68-27" title="27"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
+<a class="sourceLine" id="cb68-28" title="28"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
+<a class="sourceLine" id="cb68-29" title="29"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
+<a class="sourceLine" id="cb68-30" title="30"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a></code></pre></div>
 <p>or even mask out certain values:</p>
-<div class="sourceCode" id="cb70"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb70-1" title="1">x2 =<span class="st"> </span>x</a>
-<a class="sourceLine" id="cb70-2" title="2">x2[x <span class="op">&lt;</span><span class="st"> </span><span class="dv">50</span>] =<span class="st"> </span><span class="ot">NA</span></a>
-<a class="sourceLine" id="cb70-3" title="3">x2</a>
-<a class="sourceLine" id="cb70-4" title="4"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb70-5" title="5"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb70-6" title="6"><span class="co">#   L7_ETMs.tif    </span></a>
-<a class="sourceLine" id="cb70-7" title="7"><span class="co">#  Min.   : 50     </span></a>
-<a class="sourceLine" id="cb70-8" title="8"><span class="co">#  1st Qu.: 64     </span></a>
-<a class="sourceLine" id="cb70-9" title="9"><span class="co">#  Median : 75     </span></a>
-<a class="sourceLine" id="cb70-10" title="10"><span class="co">#  Mean   : 79     </span></a>
-<a class="sourceLine" id="cb70-11" title="11"><span class="co">#  3rd Qu.: 90     </span></a>
-<a class="sourceLine" id="cb70-12" title="12"><span class="co">#  Max.   :255     </span></a>
-<a class="sourceLine" id="cb70-13" title="13"><span class="co">#  NA&#39;s   :149170  </span></a>
-<a class="sourceLine" id="cb70-14" title="14"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb70-15" title="15"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
-<a class="sourceLine" id="cb70-16" title="16"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
-<a class="sourceLine" id="cb70-17" title="17"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
-<a class="sourceLine" id="cb70-18" title="18"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a></code></pre></div>
+<div class="sourceCode" id="cb69"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb69-1" title="1">x2 =<span class="st"> </span>x</a>
+<a class="sourceLine" id="cb69-2" title="2">x2[x <span class="op">&lt;</span><span class="st"> </span><span class="dv">50</span>] =<span class="st"> </span><span class="ot">NA</span></a>
+<a class="sourceLine" id="cb69-3" title="3">x2</a>
+<a class="sourceLine" id="cb69-4" title="4"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb69-5" title="5"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb69-6" title="6"><span class="co">#   L7_ETMs.tif    </span></a>
+<a class="sourceLine" id="cb69-7" title="7"><span class="co">#  Min.   : 50     </span></a>
+<a class="sourceLine" id="cb69-8" title="8"><span class="co">#  1st Qu.: 64     </span></a>
+<a class="sourceLine" id="cb69-9" title="9"><span class="co">#  Median : 75     </span></a>
+<a class="sourceLine" id="cb69-10" title="10"><span class="co">#  Mean   : 79     </span></a>
+<a class="sourceLine" id="cb69-11" title="11"><span class="co">#  3rd Qu.: 90     </span></a>
+<a class="sourceLine" id="cb69-12" title="12"><span class="co">#  Max.   :255     </span></a>
+<a class="sourceLine" id="cb69-13" title="13"><span class="co">#  NA&#39;s   :149170  </span></a>
+<a class="sourceLine" id="cb69-14" title="14"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb69-15" title="15"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
+<a class="sourceLine" id="cb69-16" title="16"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
+<a class="sourceLine" id="cb69-17" title="17"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
+<a class="sourceLine" id="cb69-18" title="18"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a></code></pre></div>
 <p>or un-mask areas:</p>
-<div class="sourceCode" id="cb71"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb71-1" title="1">x2[<span class="kw">is.na</span>(x2)] =<span class="st"> </span><span class="dv">0</span></a>
-<a class="sourceLine" id="cb71-2" title="2">x2</a>
-<a class="sourceLine" id="cb71-3" title="3"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb71-4" title="4"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb71-5" title="5"><span class="co">#   L7_ETMs.tif </span></a>
-<a class="sourceLine" id="cb71-6" title="6"><span class="co">#  Min.   :  0  </span></a>
-<a class="sourceLine" id="cb71-7" title="7"><span class="co">#  1st Qu.: 54  </span></a>
-<a class="sourceLine" id="cb71-8" title="8"><span class="co">#  Median : 69  </span></a>
-<a class="sourceLine" id="cb71-9" title="9"><span class="co">#  Mean   : 63  </span></a>
-<a class="sourceLine" id="cb71-10" title="10"><span class="co">#  3rd Qu.: 86  </span></a>
-<a class="sourceLine" id="cb71-11" title="11"><span class="co">#  Max.   :255  </span></a>
-<a class="sourceLine" id="cb71-12" title="12"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb71-13" title="13"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
-<a class="sourceLine" id="cb71-14" title="14"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
-<a class="sourceLine" id="cb71-15" title="15"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
-<a class="sourceLine" id="cb71-16" title="16"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a></code></pre></div>
+<div class="sourceCode" id="cb70"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb70-1" title="1">x2[<span class="kw">is.na</span>(x2)] =<span class="st"> </span><span class="dv">0</span></a>
+<a class="sourceLine" id="cb70-2" title="2">x2</a>
+<a class="sourceLine" id="cb70-3" title="3"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb70-4" title="4"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb70-5" title="5"><span class="co">#   L7_ETMs.tif </span></a>
+<a class="sourceLine" id="cb70-6" title="6"><span class="co">#  Min.   :  0  </span></a>
+<a class="sourceLine" id="cb70-7" title="7"><span class="co">#  1st Qu.: 54  </span></a>
+<a class="sourceLine" id="cb70-8" title="8"><span class="co">#  Median : 69  </span></a>
+<a class="sourceLine" id="cb70-9" title="9"><span class="co">#  Mean   : 63  </span></a>
+<a class="sourceLine" id="cb70-10" title="10"><span class="co">#  3rd Qu.: 86  </span></a>
+<a class="sourceLine" id="cb70-11" title="11"><span class="co">#  Max.   :255  </span></a>
+<a class="sourceLine" id="cb70-12" title="12"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb70-13" title="13"><span class="co">#      from  to  offset delta                       refsys point values x/y</span></a>
+<a class="sourceLine" id="cb70-14" title="14"><span class="co"># x       1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
+<a class="sourceLine" id="cb70-15" title="15"><span class="co"># y       1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a>
+<a class="sourceLine" id="cb70-16" title="16"><span class="co"># band    1   6      NA    NA                           NA    NA   NULL</span></a></code></pre></div>
 <p>Dimension-wise, we can apply functions to array dimensions of stars
 objects just like <code>apply</code> does this to matrices. For instance, to
 compute for each pixel the mean of the 6 band values we can do</p>
-<div class="sourceCode" id="cb72"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb72-1" title="1"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), mean)</a>
-<a class="sourceLine" id="cb72-2" title="2"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb72-3" title="3"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb72-4" title="4"><span class="co">#      mean       </span></a>
-<a class="sourceLine" id="cb72-5" title="5"><span class="co">#  Min.   : 25.5  </span></a>
-<a class="sourceLine" id="cb72-6" title="6"><span class="co">#  1st Qu.: 53.3  </span></a>
-<a class="sourceLine" id="cb72-7" title="7"><span class="co">#  Median : 68.3  </span></a>
-<a class="sourceLine" id="cb72-8" title="8"><span class="co">#  Mean   : 68.9  </span></a>
-<a class="sourceLine" id="cb72-9" title="9"><span class="co">#  3rd Qu.: 82.0  </span></a>
-<a class="sourceLine" id="cb72-10" title="10"><span class="co">#  Max.   :255.0  </span></a>
-<a class="sourceLine" id="cb72-11" title="11"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb72-12" title="12"><span class="co">#   from  to  offset delta                       refsys point values x/y</span></a>
-<a class="sourceLine" id="cb72-13" title="13"><span class="co"># x    1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
-<a class="sourceLine" id="cb72-14" title="14"><span class="co"># y    1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a></code></pre></div>
+<div class="sourceCode" id="cb71"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb71-1" title="1"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), mean)</a>
+<a class="sourceLine" id="cb71-2" title="2"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb71-3" title="3"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb71-4" title="4"><span class="co">#      mean       </span></a>
+<a class="sourceLine" id="cb71-5" title="5"><span class="co">#  Min.   : 25.5  </span></a>
+<a class="sourceLine" id="cb71-6" title="6"><span class="co">#  1st Qu.: 53.3  </span></a>
+<a class="sourceLine" id="cb71-7" title="7"><span class="co">#  Median : 68.3  </span></a>
+<a class="sourceLine" id="cb71-8" title="8"><span class="co">#  Mean   : 68.9  </span></a>
+<a class="sourceLine" id="cb71-9" title="9"><span class="co">#  3rd Qu.: 82.0  </span></a>
+<a class="sourceLine" id="cb71-10" title="10"><span class="co">#  Max.   :255.0  </span></a>
+<a class="sourceLine" id="cb71-11" title="11"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb71-12" title="12"><span class="co">#   from  to  offset delta                       refsys point values x/y</span></a>
+<a class="sourceLine" id="cb71-13" title="13"><span class="co"># x    1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
+<a class="sourceLine" id="cb71-14" title="14"><span class="co"># y    1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a></code></pre></div>
 <p>A more meaningful function would e.g. compute the NDVI (normalized
 differenced vegetation index):</p>
-<div class="sourceCode" id="cb73"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb73-1" title="1">ndvi =<span class="st"> </span><span class="cf">function</span>(x) (x[<span class="dv">4</span>]<span class="op">-</span>x[<span class="dv">3</span>])<span class="op">/</span>(x[<span class="dv">4</span>]<span class="op">+</span>x[<span class="dv">3</span>])</a>
-<a class="sourceLine" id="cb73-2" title="2"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), ndvi)</a>
-<a class="sourceLine" id="cb73-3" title="3"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb73-4" title="4"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb73-5" title="5"><span class="co">#      ndvi        </span></a>
-<a class="sourceLine" id="cb73-6" title="6"><span class="co">#  Min.   :-0.753  </span></a>
-<a class="sourceLine" id="cb73-7" title="7"><span class="co">#  1st Qu.:-0.203  </span></a>
-<a class="sourceLine" id="cb73-8" title="8"><span class="co">#  Median :-0.069  </span></a>
-<a class="sourceLine" id="cb73-9" title="9"><span class="co">#  Mean   :-0.064  </span></a>
-<a class="sourceLine" id="cb73-10" title="10"><span class="co">#  3rd Qu.: 0.187  </span></a>
-<a class="sourceLine" id="cb73-11" title="11"><span class="co">#  Max.   : 0.587  </span></a>
-<a class="sourceLine" id="cb73-12" title="12"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb73-13" title="13"><span class="co">#   from  to  offset delta                       refsys point values x/y</span></a>
-<a class="sourceLine" id="cb73-14" title="14"><span class="co"># x    1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
-<a class="sourceLine" id="cb73-15" title="15"><span class="co"># y    1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a></code></pre></div>
+<div class="sourceCode" id="cb72"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb72-1" title="1">ndvi =<span class="st"> </span><span class="cf">function</span>(x) (x[<span class="dv">4</span>]<span class="op">-</span>x[<span class="dv">3</span>])<span class="op">/</span>(x[<span class="dv">4</span>]<span class="op">+</span>x[<span class="dv">3</span>])</a>
+<a class="sourceLine" id="cb72-2" title="2"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), ndvi)</a>
+<a class="sourceLine" id="cb72-3" title="3"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb72-4" title="4"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb72-5" title="5"><span class="co">#      ndvi        </span></a>
+<a class="sourceLine" id="cb72-6" title="6"><span class="co">#  Min.   :-0.753  </span></a>
+<a class="sourceLine" id="cb72-7" title="7"><span class="co">#  1st Qu.:-0.203  </span></a>
+<a class="sourceLine" id="cb72-8" title="8"><span class="co">#  Median :-0.069  </span></a>
+<a class="sourceLine" id="cb72-9" title="9"><span class="co">#  Mean   :-0.064  </span></a>
+<a class="sourceLine" id="cb72-10" title="10"><span class="co">#  3rd Qu.: 0.187  </span></a>
+<a class="sourceLine" id="cb72-11" title="11"><span class="co">#  Max.   : 0.587  </span></a>
+<a class="sourceLine" id="cb72-12" title="12"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb72-13" title="13"><span class="co">#   from  to  offset delta                       refsys point values x/y</span></a>
+<a class="sourceLine" id="cb72-14" title="14"><span class="co"># x    1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE   NULL [x]</span></a>
+<a class="sourceLine" id="cb72-15" title="15"><span class="co"># y    1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE   NULL [y]</span></a></code></pre></div>
 <p>Alternatively, to compute for each band the mean of the whole image
 we can do</p>
-<div class="sourceCode" id="cb74"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb74-1" title="1"><span class="kw">as.data.frame</span>(<span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;band&quot;</span>), mean))</a>
-<a class="sourceLine" id="cb74-2" title="2"><span class="co">#   band mean</span></a>
-<a class="sourceLine" id="cb74-3" title="3"><span class="co"># 1    1 79.1</span></a>
-<a class="sourceLine" id="cb74-4" title="4"><span class="co"># 2    2 67.6</span></a>
-<a class="sourceLine" id="cb74-5" title="5"><span class="co"># 3    3 64.4</span></a>
-<a class="sourceLine" id="cb74-6" title="6"><span class="co"># 4    4 59.2</span></a>
-<a class="sourceLine" id="cb74-7" title="7"><span class="co"># 5    5 83.2</span></a>
-<a class="sourceLine" id="cb74-8" title="8"><span class="co"># 6    6 60.0</span></a></code></pre></div>
+<div class="sourceCode" id="cb73"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb73-1" title="1"><span class="kw">as.data.frame</span>(<span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;band&quot;</span>), mean))</a>
+<a class="sourceLine" id="cb73-2" title="2"><span class="co">#   band mean</span></a>
+<a class="sourceLine" id="cb73-3" title="3"><span class="co"># 1    1 79.1</span></a>
+<a class="sourceLine" id="cb73-4" title="4"><span class="co"># 2    2 67.6</span></a>
+<a class="sourceLine" id="cb73-5" title="5"><span class="co"># 3    3 64.4</span></a>
+<a class="sourceLine" id="cb73-6" title="6"><span class="co"># 4    4 59.2</span></a>
+<a class="sourceLine" id="cb73-7" title="7"><span class="co"># 5    5 83.2</span></a>
+<a class="sourceLine" id="cb73-8" title="8"><span class="co"># 6    6 60.0</span></a></code></pre></div>
 <p>which is so small it can be printed here as a <code>data.frame</code>. In these
 two examples, entire dimensions disappear. Sometimes, this does not
 happen; we can for instance compute the three quartiles for each band</p>
-<div class="sourceCode" id="cb75"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb75-1" title="1"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;band&quot;</span>), quantile, <span class="kw">c</span>(.<span class="dv">25</span>, <span class="fl">.5</span>, <span class="fl">.75</span>))</a>
-<a class="sourceLine" id="cb75-2" title="2"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb75-3" title="3"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb75-4" title="4"><span class="co">#   L7_ETMs.tif   </span></a>
-<a class="sourceLine" id="cb75-5" title="5"><span class="co">#  Min.   : 32.0  </span></a>
-<a class="sourceLine" id="cb75-6" title="6"><span class="co">#  1st Qu.: 60.8  </span></a>
-<a class="sourceLine" id="cb75-7" title="7"><span class="co">#  Median : 66.5  </span></a>
-<a class="sourceLine" id="cb75-8" title="8"><span class="co">#  Mean   : 69.8  </span></a>
-<a class="sourceLine" id="cb75-9" title="9"><span class="co">#  3rd Qu.: 78.8  </span></a>
-<a class="sourceLine" id="cb75-10" title="10"><span class="co">#  Max.   :112.0  </span></a>
-<a class="sourceLine" id="cb75-11" title="11"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb75-12" title="12"><span class="co">#          from to offset delta refsys point        values</span></a>
-<a class="sourceLine" id="cb75-13" title="13"><span class="co"># quantile    1  3     NA    NA     NA    NA 25%, 50%, 75%</span></a>
-<a class="sourceLine" id="cb75-14" title="14"><span class="co"># band        1  6     NA    NA     NA    NA          NULL</span></a></code></pre></div>
+<div class="sourceCode" id="cb74"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb74-1" title="1"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;band&quot;</span>), quantile, <span class="kw">c</span>(.<span class="dv">25</span>, <span class="fl">.5</span>, <span class="fl">.75</span>))</a>
+<a class="sourceLine" id="cb74-2" title="2"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb74-3" title="3"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb74-4" title="4"><span class="co">#   L7_ETMs.tif   </span></a>
+<a class="sourceLine" id="cb74-5" title="5"><span class="co">#  Min.   : 32.0  </span></a>
+<a class="sourceLine" id="cb74-6" title="6"><span class="co">#  1st Qu.: 60.8  </span></a>
+<a class="sourceLine" id="cb74-7" title="7"><span class="co">#  Median : 66.5  </span></a>
+<a class="sourceLine" id="cb74-8" title="8"><span class="co">#  Mean   : 69.8  </span></a>
+<a class="sourceLine" id="cb74-9" title="9"><span class="co">#  3rd Qu.: 78.8  </span></a>
+<a class="sourceLine" id="cb74-10" title="10"><span class="co">#  Max.   :112.0  </span></a>
+<a class="sourceLine" id="cb74-11" title="11"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb74-12" title="12"><span class="co">#          from to offset delta refsys point        values</span></a>
+<a class="sourceLine" id="cb74-13" title="13"><span class="co"># quantile    1  3     NA    NA     NA    NA 25%, 50%, 75%</span></a>
+<a class="sourceLine" id="cb74-14" title="14"><span class="co"># band        1  6     NA    NA     NA    NA          NULL</span></a></code></pre></div>
 <p>and see that this <em>creates</em> a new dimension, <code>quantile</code>, with three values.
 Alternatively, the three quantiles over the 6 bands for each pixel are
 obtained by</p>
-<div class="sourceCode" id="cb76"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb76-1" title="1"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), quantile, <span class="kw">c</span>(.<span class="dv">25</span>, <span class="fl">.5</span>, <span class="fl">.75</span>))</a>
-<a class="sourceLine" id="cb76-2" title="2"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb76-3" title="3"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb76-4" title="4"><span class="co">#   L7_ETMs.tif   </span></a>
-<a class="sourceLine" id="cb76-5" title="5"><span class="co">#  Min.   :  4.0  </span></a>
-<a class="sourceLine" id="cb76-6" title="6"><span class="co">#  1st Qu.: 55.0  </span></a>
-<a class="sourceLine" id="cb76-7" title="7"><span class="co">#  Median : 69.2  </span></a>
-<a class="sourceLine" id="cb76-8" title="8"><span class="co">#  Mean   : 67.2  </span></a>
-<a class="sourceLine" id="cb76-9" title="9"><span class="co">#  3rd Qu.: 81.2  </span></a>
-<a class="sourceLine" id="cb76-10" title="10"><span class="co">#  Max.   :255.0  </span></a>
-<a class="sourceLine" id="cb76-11" title="11"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb76-12" title="12"><span class="co">#          from  to  offset delta                       refsys point</span></a>
-<a class="sourceLine" id="cb76-13" title="13"><span class="co"># quantile    1   3      NA    NA                           NA    NA</span></a>
-<a class="sourceLine" id="cb76-14" title="14"><span class="co"># x           1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE</span></a>
-<a class="sourceLine" id="cb76-15" title="15"><span class="co"># y           1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE</span></a>
-<a class="sourceLine" id="cb76-16" title="16"><span class="co">#                 values x/y</span></a>
-<a class="sourceLine" id="cb76-17" title="17"><span class="co"># quantile 25%, 50%, 75%    </span></a>
-<a class="sourceLine" id="cb76-18" title="18"><span class="co"># x                 NULL [x]</span></a>
-<a class="sourceLine" id="cb76-19" title="19"><span class="co"># y                 NULL [y]</span></a></code></pre></div>
+<div class="sourceCode" id="cb75"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb75-1" title="1"><span class="kw">st_apply</span>(x, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>), quantile, <span class="kw">c</span>(.<span class="dv">25</span>, <span class="fl">.5</span>, <span class="fl">.75</span>))</a>
+<a class="sourceLine" id="cb75-2" title="2"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb75-3" title="3"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb75-4" title="4"><span class="co">#   L7_ETMs.tif   </span></a>
+<a class="sourceLine" id="cb75-5" title="5"><span class="co">#  Min.   :  4.0  </span></a>
+<a class="sourceLine" id="cb75-6" title="6"><span class="co">#  1st Qu.: 55.0  </span></a>
+<a class="sourceLine" id="cb75-7" title="7"><span class="co">#  Median : 69.2  </span></a>
+<a class="sourceLine" id="cb75-8" title="8"><span class="co">#  Mean   : 67.2  </span></a>
+<a class="sourceLine" id="cb75-9" title="9"><span class="co">#  3rd Qu.: 81.2  </span></a>
+<a class="sourceLine" id="cb75-10" title="10"><span class="co">#  Max.   :255.0  </span></a>
+<a class="sourceLine" id="cb75-11" title="11"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb75-12" title="12"><span class="co">#          from  to  offset delta                       refsys point</span></a>
+<a class="sourceLine" id="cb75-13" title="13"><span class="co"># quantile    1   3      NA    NA                           NA    NA</span></a>
+<a class="sourceLine" id="cb75-14" title="14"><span class="co"># x           1 349  288776  28.5 UTM Zone 25, Southern Hem... FALSE</span></a>
+<a class="sourceLine" id="cb75-15" title="15"><span class="co"># y           1 352 9120761 -28.5 UTM Zone 25, Southern Hem... FALSE</span></a>
+<a class="sourceLine" id="cb75-16" title="16"><span class="co">#                 values x/y</span></a>
+<a class="sourceLine" id="cb75-17" title="17"><span class="co"># quantile 25%, 50%, 75%    </span></a>
+<a class="sourceLine" id="cb75-18" title="18"><span class="co"># x                 NULL [x]</span></a>
+<a class="sourceLine" id="cb75-19" title="19"><span class="co"># y                 NULL [y]</span></a></code></pre></div>
 </div>
 <div id="raster-varieties-rectilinear-curvilinear" class="section level3">
 <h3><span class="header-section-number">6.2.4</span> Raster varieties: rectilinear, curvilinear</h3>
@@ -639,32 +1375,32 @@ devices will create a plot at target density.</p>
 provides <code>stars_proxy</code> objects. To demonstrate its use, we will
 use the <code>starsdata</code> package, an R data package with larger datasets
 (around 1 Gb total). It can be installed by</p>
-<div class="sourceCode" id="cb77"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb77-1" title="1"><span class="kw">install.packages</span>(<span class="st">&quot;starsdata&quot;</span>, <span class="dt">repos =</span> <span class="st">&quot;http://pebesma.staff.ifgi.de&quot;</span>, <span class="dt">type =</span> <span class="st">&quot;source&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb76"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb76-1" title="1"><span class="kw">install.packages</span>(<span class="st">&quot;starsdata&quot;</span>, <span class="dt">repos =</span> <span class="st">&quot;http://pebesma.staff.ifgi.de&quot;</span>, <span class="dt">type =</span> <span class="st">&quot;source&quot;</span>)</a></code></pre></div>
 <p>We can “load” a Sentinel-2 image from it by</p>
-<div class="sourceCode" id="cb78"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb78-1" title="1">granule =<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;starsdata&quot;</span>)</a>
-<a class="sourceLine" id="cb78-2" title="2"><span class="kw">file.size</span>(granule)</a>
-<a class="sourceLine" id="cb78-3" title="3"><span class="co"># [1] 7.69e+08</span></a>
-<a class="sourceLine" id="cb78-4" title="4">base_name =<span class="st"> </span><span class="kw">strsplit</span>(<span class="kw">basename</span>(granule), <span class="st">&quot;.zip&quot;</span>)[[<span class="dv">1</span>]]</a>
-<a class="sourceLine" id="cb78-5" title="5">s2 =<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;SENTINEL2_L1C:/vsizip/&quot;</span>, granule, <span class="st">&quot;/&quot;</span>, base_name, <span class="st">&quot;.SAFE/MTD_MSIL1C.xml:10m:EPSG_32632&quot;</span>)</a>
-<a class="sourceLine" id="cb78-6" title="6">(<span class="dt">p =</span> <span class="kw">read_stars</span>(s2, <span class="dt">proxy =</span> <span class="ot">TRUE</span>))</a>
-<a class="sourceLine" id="cb78-7" title="7"><span class="co"># stars_proxy object with 1 attribute in 1 file(s):</span></a>
-<a class="sourceLine" id="cb78-8" title="8"><span class="co"># $`MTD_MSIL1C.xml:10m:EPSG_32632`</span></a>
-<a class="sourceLine" id="cb78-9" title="9"><span class="co"># [1] &quot;[...]/MTD_MSIL1C.xml:10m:EPSG_32632&quot;</span></a>
-<a class="sourceLine" id="cb78-10" title="10"><span class="co"># </span></a>
-<a class="sourceLine" id="cb78-11" title="11"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb78-12" title="12"><span class="co">#      from    to offset delta                refsys point    values x/y</span></a>
-<a class="sourceLine" id="cb78-13" title="13"><span class="co"># x       1 10980  3e+05    10 WGS 84 / UTM zone 32N    NA      NULL [x]</span></a>
-<a class="sourceLine" id="cb78-14" title="14"><span class="co"># y       1 10980  6e+06   -10 WGS 84 / UTM zone 32N    NA      NULL [y]</span></a>
-<a class="sourceLine" id="cb78-15" title="15"><span class="co"># band    1     4     NA    NA                    NA    NA B4,...,B8</span></a>
-<a class="sourceLine" id="cb78-16" title="16"><span class="kw">object.size</span>(p)</a>
-<a class="sourceLine" id="cb78-17" title="17"><span class="co"># 11160 bytes</span></a></code></pre></div>
+<div class="sourceCode" id="cb77"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb77-1" title="1">granule =<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;starsdata&quot;</span>)</a>
+<a class="sourceLine" id="cb77-2" title="2"><span class="kw">file.size</span>(granule)</a>
+<a class="sourceLine" id="cb77-3" title="3"><span class="co"># [1] 7.69e+08</span></a>
+<a class="sourceLine" id="cb77-4" title="4">base_name =<span class="st"> </span><span class="kw">strsplit</span>(<span class="kw">basename</span>(granule), <span class="st">&quot;.zip&quot;</span>)[[<span class="dv">1</span>]]</a>
+<a class="sourceLine" id="cb77-5" title="5">s2 =<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;SENTINEL2_L1C:/vsizip/&quot;</span>, granule, <span class="st">&quot;/&quot;</span>, base_name, <span class="st">&quot;.SAFE/MTD_MSIL1C.xml:10m:EPSG_32632&quot;</span>)</a>
+<a class="sourceLine" id="cb77-6" title="6">(<span class="dt">p =</span> <span class="kw">read_stars</span>(s2, <span class="dt">proxy =</span> <span class="ot">TRUE</span>))</a>
+<a class="sourceLine" id="cb77-7" title="7"><span class="co"># stars_proxy object with 1 attribute in 1 file(s):</span></a>
+<a class="sourceLine" id="cb77-8" title="8"><span class="co"># $`MTD_MSIL1C.xml:10m:EPSG_32632`</span></a>
+<a class="sourceLine" id="cb77-9" title="9"><span class="co"># [1] &quot;[...]/MTD_MSIL1C.xml:10m:EPSG_32632&quot;</span></a>
+<a class="sourceLine" id="cb77-10" title="10"><span class="co"># </span></a>
+<a class="sourceLine" id="cb77-11" title="11"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb77-12" title="12"><span class="co">#      from    to offset delta                refsys point    values x/y</span></a>
+<a class="sourceLine" id="cb77-13" title="13"><span class="co"># x       1 10980  3e+05    10 WGS 84 / UTM zone 32N    NA      NULL [x]</span></a>
+<a class="sourceLine" id="cb77-14" title="14"><span class="co"># y       1 10980  6e+06   -10 WGS 84 / UTM zone 32N    NA      NULL [y]</span></a>
+<a class="sourceLine" id="cb77-15" title="15"><span class="co"># band    1     4     NA    NA                    NA    NA B4,...,B8</span></a>
+<a class="sourceLine" id="cb77-16" title="16"><span class="kw">object.size</span>(p)</a>
+<a class="sourceLine" id="cb77-17" title="17"><span class="co"># 11160 bytes</span></a></code></pre></div>
 <p>and we see that this does not actually load <em>any</em> of the pixel
 values, but keeps the reference to the dataset and fills the
 dimensions table. (The convoluted <code>s2</code> name is needed to point
 GDAL to the right file inside the <code>.zip</code> file containing 115 files
 in total).</p>
 <p>The idea of a proxy object is that we can build expressions like</p>
-<div class="sourceCode" id="cb79"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb79-1" title="1">p2 =<span class="st"> </span>p <span class="op">*</span><span class="st"> </span><span class="dv">2</span></a></code></pre></div>
+<div class="sourceCode" id="cb78"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb78-1" title="1">p2 =<span class="st"> </span>p <span class="op">*</span><span class="st"> </span><span class="dv">2</span></a></code></pre></div>
 <p>but that the computations for this are postponed. Only when we
 really need the data, e.g. because we want to plot it, is <code>p * 2</code> evaluated. We need data when either</p>
 <ul>
@@ -682,13 +1418,13 @@ pixels available, and</li>
 <p>Downsampling and chunking is implemented for spatially dense images,
 not e.g. for dense time series, or other dense dimensions.</p>
 <p>As an example,</p>
-<div class="sourceCode" id="cb80"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb80-1" title="1"><span class="kw">plot</span>(p)</a></code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-78-1.png" width="672" style="display: block; margin: auto;" />
+<div class="sourceCode" id="cb79"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb79-1" title="1"><span class="kw">plot</span>(p)</a></code></pre></div>
+<p><img src="sds_files/figure-html/unnamed-chunk-43-1.png" width="672" style="display: block; margin: auto;" />
 only fetches the pixels that can be seen on the plot device, rather
 than the 10980 x 10980 pixels available in each band. The downsampling
 ratio taken is</p>
-<div class="sourceCode" id="cb81"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb81-1" title="1"><span class="kw">floor</span>(<span class="kw">sqrt</span>(<span class="kw">prod</span>(<span class="kw">dim</span>(p)) <span class="op">/</span><span class="st"> </span><span class="kw">prod</span>(<span class="kw">dev.size</span>(<span class="st">&quot;px&quot;</span>))))</a>
-<a class="sourceLine" id="cb81-2" title="2"><span class="co"># [1] 19</span></a></code></pre></div>
+<div class="sourceCode" id="cb80"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb80-1" title="1"><span class="kw">floor</span>(<span class="kw">sqrt</span>(<span class="kw">prod</span>(<span class="kw">dim</span>(p)) <span class="op">/</span><span class="st"> </span><span class="kw">prod</span>(<span class="kw">dev.size</span>(<span class="st">&quot;px&quot;</span>))))</a>
+<a class="sourceLine" id="cb80-2" title="2"><span class="co"># [1] 19</span></a></code></pre></div>
 <p>meaning that for every 19 x 19 sub-image in the original image,
 only one pixel is read, and plotted. This value is still a bit too
 high as it ignores the white space and space for the key on the
@@ -697,16 +1433,16 @@ plotting device.</p>
 <div id="operations-on-proxy-objects" class="section level3">
 <h3><span class="header-section-number">6.2.7</span> Operations on proxy objects</h3>
 <p>A few dedicated methods are available for <code>stars_proxy</code> objects:</p>
-<div class="sourceCode" id="cb82"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb82-1" title="1"><span class="kw">methods</span>(<span class="dt">class =</span> <span class="st">&quot;stars_proxy&quot;</span>)</a>
-<a class="sourceLine" id="cb82-2" title="2"><span class="co">#  [1] [              [[&lt;-           adrop          aggregate      aperm         </span></a>
-<a class="sourceLine" id="cb82-3" title="3"><span class="co">#  [6] as.data.frame  c              coerce         dim            droplevels    </span></a>
-<a class="sourceLine" id="cb82-4" title="4"><span class="co"># [11] filter         initialize     mapView        Math           merge         </span></a>
-<a class="sourceLine" id="cb82-5" title="5"><span class="co"># [16] mutate         Ops            plot           predict        print         </span></a>
-<a class="sourceLine" id="cb82-6" title="6"><span class="co"># [21] pull           select         show           slice          slotsFromS3   </span></a>
-<a class="sourceLine" id="cb82-7" title="7"><span class="co"># [26] split          st_apply       st_as_sf       st_as_stars    st_crop       </span></a>
-<a class="sourceLine" id="cb82-8" title="8"><span class="co"># [31] st_mosaic      st_redimension st_sample      st_set_bbox    transmute     </span></a>
-<a class="sourceLine" id="cb82-9" title="9"><span class="co"># [36] write_stars   </span></a>
-<a class="sourceLine" id="cb82-10" title="10"><span class="co"># see &#39;?methods&#39; for accessing help and source code</span></a></code></pre></div>
+<div class="sourceCode" id="cb81"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb81-1" title="1"><span class="kw">methods</span>(<span class="dt">class =</span> <span class="st">&quot;stars_proxy&quot;</span>)</a>
+<a class="sourceLine" id="cb81-2" title="2"><span class="co">#  [1] [              [[&lt;-           adrop          aggregate      aperm         </span></a>
+<a class="sourceLine" id="cb81-3" title="3"><span class="co">#  [6] as.data.frame  c              coerce         dim            droplevels    </span></a>
+<a class="sourceLine" id="cb81-4" title="4"><span class="co"># [11] filter         initialize     mapView        Math           merge         </span></a>
+<a class="sourceLine" id="cb81-5" title="5"><span class="co"># [16] mutate         Ops            plot           predict        print         </span></a>
+<a class="sourceLine" id="cb81-6" title="6"><span class="co"># [21] pull           select         show           slice          slotsFromS3   </span></a>
+<a class="sourceLine" id="cb81-7" title="7"><span class="co"># [26] split          st_apply       st_as_sf       st_as_stars    st_crop       </span></a>
+<a class="sourceLine" id="cb81-8" title="8"><span class="co"># [31] st_mosaic      st_redimension st_sample      st_set_bbox    transmute     </span></a>
+<a class="sourceLine" id="cb81-9" title="9"><span class="co"># [36] write_stars   </span></a>
+<a class="sourceLine" id="cb81-10" title="10"><span class="co"># see &#39;?methods&#39; for accessing help and source code</span></a></code></pre></div>
 <p>We have seen <code>plot</code> and <code>print</code> in action; <code>dim</code> reads out
 the dimension from the dimensions metadata table.</p>
 <p>The three methods that actually fetch data are <code>st_as_stars</code>,
@@ -779,9 +1515,9 @@ disease) counts, with number of persons</p>
 <p>which forms an array with <span class="math inline">\(n m p\)</span> elements.</p>
 <p>R has strong native support for arbitrarily dimensioned arrays, and we can get
 the value for year <span class="math inline">\(i\)</span>, age class <span class="math inline">\(j\)</span> and year <span class="math inline">\(k\)</span> from array <code>a</code> by</p>
-<div class="sourceCode" id="cb83"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb83-1" title="1">a[i,j,k]</a></code></pre></div>
+<div class="sourceCode" id="cb82"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb82-1" title="1">a[i,j,k]</a></code></pre></div>
 <p>and e.g. the sub-array for age class <span class="math inline">\(j\)</span> by</p>
-<div class="sourceCode" id="cb84"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb84-1" title="1">a[,j,]</a></code></pre></div>
+<div class="sourceCode" id="cb83"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb83-1" title="1">a[,j,]</a></code></pre></div>
 <p>Thinking along the classical GIS
 lines, where we would have either raster or vector data, one is left
 with the question what to do when we have a raster time series data
@@ -814,45 +1550,45 @@ Downloaded were daily average PM<span class="math inline">\(_{10}\)</span> value
 stations in Germany, 1998-2009.</p>
 <p>We can create a <code>stars</code> object from the <code>air</code> matrix, the <code>dates</code>
 Date vector and the <code>stations</code> <code>SpatialPoints</code> objects by</p>
-<div class="sourceCode" id="cb85"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb85-1" title="1"><span class="kw">library</span>(spacetime)</a>
-<a class="sourceLine" id="cb85-2" title="2"><span class="kw">data</span>(air) <span class="co"># this loads several datasets in .GlobalEnv</span></a>
-<a class="sourceLine" id="cb85-3" title="3"><span class="kw">dim</span>(air)</a>
-<a class="sourceLine" id="cb85-4" title="4"><span class="co"># space  time </span></a>
-<a class="sourceLine" id="cb85-5" title="5"><span class="co">#    70  4383</span></a>
-<a class="sourceLine" id="cb85-6" title="6">d =<span class="st"> </span><span class="kw">st_dimensions</span>(<span class="dt">station =</span> <span class="kw">st_as_sfc</span>(stations), <span class="dt">time =</span> dates)</a>
-<a class="sourceLine" id="cb85-7" title="7">(<span class="dt">aq =</span> <span class="kw">st_as_stars</span>(<span class="kw">list</span>(<span class="dt">PM10 =</span> air), <span class="dt">dimensions =</span> d))</a>
-<a class="sourceLine" id="cb85-8" title="8"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb85-9" title="9"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb85-10" title="10"><span class="co">#      PM10        </span></a>
-<a class="sourceLine" id="cb85-11" title="11"><span class="co">#  Min.   :  0     </span></a>
-<a class="sourceLine" id="cb85-12" title="12"><span class="co">#  1st Qu.: 10     </span></a>
-<a class="sourceLine" id="cb85-13" title="13"><span class="co">#  Median : 15     </span></a>
-<a class="sourceLine" id="cb85-14" title="14"><span class="co">#  Mean   : 18     </span></a>
-<a class="sourceLine" id="cb85-15" title="15"><span class="co">#  3rd Qu.: 22     </span></a>
-<a class="sourceLine" id="cb85-16" title="16"><span class="co">#  Max.   :274     </span></a>
-<a class="sourceLine" id="cb85-17" title="17"><span class="co">#  NA&#39;s   :157659  </span></a>
-<a class="sourceLine" id="cb85-18" title="18"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb85-19" title="19"><span class="co">#         from   to     offset  delta                       refsys point</span></a>
-<a class="sourceLine" id="cb85-20" title="20"><span class="co"># station    1   70         NA     NA +proj=longlat +datum=WGS8...  TRUE</span></a>
-<a class="sourceLine" id="cb85-21" title="21"><span class="co"># time       1 4383 1998-01-01 1 days                         Date FALSE</span></a>
-<a class="sourceLine" id="cb85-22" title="22"><span class="co">#                                          values</span></a>
-<a class="sourceLine" id="cb85-23" title="23"><span class="co"># station POINT (9.59 53.7),...,POINT (9.45 49.2)</span></a>
-<a class="sourceLine" id="cb85-24" title="24"><span class="co"># time                                       NULL</span></a></code></pre></div>
+<div class="sourceCode" id="cb84"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb84-1" title="1"><span class="kw">library</span>(spacetime)</a>
+<a class="sourceLine" id="cb84-2" title="2"><span class="kw">data</span>(air) <span class="co"># this loads several datasets in .GlobalEnv</span></a>
+<a class="sourceLine" id="cb84-3" title="3"><span class="kw">dim</span>(air)</a>
+<a class="sourceLine" id="cb84-4" title="4"><span class="co"># space  time </span></a>
+<a class="sourceLine" id="cb84-5" title="5"><span class="co">#    70  4383</span></a>
+<a class="sourceLine" id="cb84-6" title="6">d =<span class="st"> </span><span class="kw">st_dimensions</span>(<span class="dt">station =</span> <span class="kw">st_as_sfc</span>(stations), <span class="dt">time =</span> dates)</a>
+<a class="sourceLine" id="cb84-7" title="7">(<span class="dt">aq =</span> <span class="kw">st_as_stars</span>(<span class="kw">list</span>(<span class="dt">PM10 =</span> air), <span class="dt">dimensions =</span> d))</a>
+<a class="sourceLine" id="cb84-8" title="8"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb84-9" title="9"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb84-10" title="10"><span class="co">#      PM10        </span></a>
+<a class="sourceLine" id="cb84-11" title="11"><span class="co">#  Min.   :  0     </span></a>
+<a class="sourceLine" id="cb84-12" title="12"><span class="co">#  1st Qu.: 10     </span></a>
+<a class="sourceLine" id="cb84-13" title="13"><span class="co">#  Median : 15     </span></a>
+<a class="sourceLine" id="cb84-14" title="14"><span class="co">#  Mean   : 18     </span></a>
+<a class="sourceLine" id="cb84-15" title="15"><span class="co">#  3rd Qu.: 22     </span></a>
+<a class="sourceLine" id="cb84-16" title="16"><span class="co">#  Max.   :274     </span></a>
+<a class="sourceLine" id="cb84-17" title="17"><span class="co">#  NA&#39;s   :157659  </span></a>
+<a class="sourceLine" id="cb84-18" title="18"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb84-19" title="19"><span class="co">#         from   to     offset  delta                       refsys point</span></a>
+<a class="sourceLine" id="cb84-20" title="20"><span class="co"># station    1   70         NA     NA +proj=longlat +datum=WGS8...  TRUE</span></a>
+<a class="sourceLine" id="cb84-21" title="21"><span class="co"># time       1 4383 1998-01-01 1 days                         Date FALSE</span></a>
+<a class="sourceLine" id="cb84-22" title="22"><span class="co">#                                          values</span></a>
+<a class="sourceLine" id="cb84-23" title="23"><span class="co"># station POINT (9.59 53.7),...,POINT (9.45 49.2)</span></a>
+<a class="sourceLine" id="cb84-24" title="24"><span class="co"># time                                       NULL</span></a></code></pre></div>
 <p>We can see from figure <a href="raster.html#fig:airst">6.4</a> that the time series are
 quite long, but also have large missing value gaps.
 Figure <a href="raster.html#fig:airmap">6.5</a> shows the spatial distribution measurement stations and
 mean PM<span class="math inline">\(_{10}\)</span> values.</p>
-<div class="sourceCode" id="cb86"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb86-1" title="1"><span class="kw">image</span>(<span class="kw">aperm</span>(<span class="kw">log</span>(aq), <span class="dv">2</span><span class="op">:</span><span class="dv">1</span>), <span class="dt">main =</span> <span class="st">&quot;NA pattern (white) in PM10 station time series&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb85"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb85-1" title="1"><span class="kw">image</span>(<span class="kw">aperm</span>(<span class="kw">log</span>(aq), <span class="dv">2</span><span class="op">:</span><span class="dv">1</span>), <span class="dt">main =</span> <span class="st">&quot;NA pattern (white) in PM10 station time series&quot;</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:airst"></span>
 <img src="sds_files/figure-html/airst-1.png" alt="space-time diagram of PM$_{10}$ measurements by time and station" width="672" />
 <p class="caption">
 Figure 6.4: space-time diagram of PM<span class="math inline">\(_{10}\)</span> measurements by time and station
 </p>
 </div>
-<div class="sourceCode" id="cb87"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb87-1" title="1"><span class="kw">plot</span>(<span class="kw">st_as_sf</span>(<span class="kw">st_apply</span>(aq, <span class="dv">1</span>, mean, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>)), <span class="dt">reset =</span> <span class="ot">FALSE</span>, <span class="dt">pch =</span> <span class="dv">16</span>,</a>
-<a class="sourceLine" id="cb87-2" title="2">    <span class="dt">ylim =</span> <span class="kw">st_bbox</span>(DE)[<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">4</span>)])</a>
-<a class="sourceLine" id="cb87-3" title="3"><span class="co"># Warning in sp::proj4string(obj): CRS object has comment, which is lost in output</span></a>
-<a class="sourceLine" id="cb87-4" title="4"><span class="kw">plot</span>(DE, <span class="dt">add=</span><span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb86"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb86-1" title="1"><span class="kw">plot</span>(<span class="kw">st_as_sf</span>(<span class="kw">st_apply</span>(aq, <span class="dv">1</span>, mean, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>)), <span class="dt">reset =</span> <span class="ot">FALSE</span>, <span class="dt">pch =</span> <span class="dv">16</span>,</a>
+<a class="sourceLine" id="cb86-2" title="2">    <span class="dt">ylim =</span> <span class="kw">st_bbox</span>(DE)[<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">4</span>)])</a>
+<a class="sourceLine" id="cb86-3" title="3"><span class="co"># Warning in sp::proj4string(obj): CRS object has comment, which is lost in output</span></a>
+<a class="sourceLine" id="cb86-4" title="4"><span class="kw">plot</span>(DE, <span class="dt">add=</span><span class="ot">TRUE</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:airmap"></span>
 <img src="sds_files/figure-html/airmap-1.png" alt="locations of PM$_{10}$ measurement stations, showing mean values" width="672" />
 <p class="caption">
@@ -862,28 +1598,28 @@ Figure 6.5: locations of PM<span class="math inline">\(_{10}\)</span> measuremen
 <p>We can now aggregate these station time series to area means,
 mostly as a simple exercise. For this, we use the <code>aggregate</code>
 method for <code>stars</code> objects</p>
-<div class="sourceCode" id="cb88"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb88-1" title="1">(<span class="dt">a =</span> <span class="kw">aggregate</span>(aq, <span class="kw">st_as_sf</span>(DE_NUTS1), mean, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>))</a>
-<a class="sourceLine" id="cb88-2" title="2"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb88-3" title="3"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb88-4" title="4"><span class="co">#      PM10       </span></a>
-<a class="sourceLine" id="cb88-5" title="5"><span class="co">#  Min.   :  1    </span></a>
-<a class="sourceLine" id="cb88-6" title="6"><span class="co">#  1st Qu.: 11    </span></a>
-<a class="sourceLine" id="cb88-7" title="7"><span class="co">#  Median : 15    </span></a>
-<a class="sourceLine" id="cb88-8" title="8"><span class="co">#  Mean   : 18    </span></a>
-<a class="sourceLine" id="cb88-9" title="9"><span class="co">#  3rd Qu.: 22    </span></a>
-<a class="sourceLine" id="cb88-10" title="10"><span class="co">#  Max.   :172    </span></a>
-<a class="sourceLine" id="cb88-11" title="11"><span class="co">#  NA&#39;s   :25679  </span></a>
-<a class="sourceLine" id="cb88-12" title="12"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb88-13" title="13"><span class="co">#          from   to     offset  delta                       refsys point</span></a>
-<a class="sourceLine" id="cb88-14" title="14"><span class="co"># geometry    1   16         NA     NA +proj=longlat +datum=WGS8... FALSE</span></a>
-<a class="sourceLine" id="cb88-15" title="15"><span class="co"># time        1 4383 1998-01-01 1 days                         Date FALSE</span></a>
-<a class="sourceLine" id="cb88-16" title="16"><span class="co">#                                                                     values</span></a>
-<a class="sourceLine" id="cb88-17" title="17"><span class="co"># geometry MULTIPOLYGON (((9.65 49.8, ...,...,MULTIPOLYGON (((10.8 51.6, ...</span></a>
-<a class="sourceLine" id="cb88-18" title="18"><span class="co"># time                                                                  NULL</span></a></code></pre></div>
+<div class="sourceCode" id="cb87"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb87-1" title="1">(<span class="dt">a =</span> <span class="kw">aggregate</span>(aq, <span class="kw">st_as_sf</span>(DE_NUTS1), mean, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>))</a>
+<a class="sourceLine" id="cb87-2" title="2"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb87-3" title="3"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb87-4" title="4"><span class="co">#      PM10       </span></a>
+<a class="sourceLine" id="cb87-5" title="5"><span class="co">#  Min.   :  1    </span></a>
+<a class="sourceLine" id="cb87-6" title="6"><span class="co">#  1st Qu.: 11    </span></a>
+<a class="sourceLine" id="cb87-7" title="7"><span class="co">#  Median : 15    </span></a>
+<a class="sourceLine" id="cb87-8" title="8"><span class="co">#  Mean   : 18    </span></a>
+<a class="sourceLine" id="cb87-9" title="9"><span class="co">#  3rd Qu.: 22    </span></a>
+<a class="sourceLine" id="cb87-10" title="10"><span class="co">#  Max.   :172    </span></a>
+<a class="sourceLine" id="cb87-11" title="11"><span class="co">#  NA&#39;s   :25679  </span></a>
+<a class="sourceLine" id="cb87-12" title="12"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb87-13" title="13"><span class="co">#          from   to     offset  delta                       refsys point</span></a>
+<a class="sourceLine" id="cb87-14" title="14"><span class="co"># geometry    1   16         NA     NA +proj=longlat +datum=WGS8... FALSE</span></a>
+<a class="sourceLine" id="cb87-15" title="15"><span class="co"># time        1 4383 1998-01-01 1 days                         Date FALSE</span></a>
+<a class="sourceLine" id="cb87-16" title="16"><span class="co">#                                                                     values</span></a>
+<a class="sourceLine" id="cb87-17" title="17"><span class="co"># geometry MULTIPOLYGON (((9.65 49.8, ...,...,MULTIPOLYGON (((10.8 51.6, ...</span></a>
+<a class="sourceLine" id="cb87-18" title="18"><span class="co"># time                                                                  NULL</span></a></code></pre></div>
 <p>and we can now for instance show the maps for six arbitrarily chosen days
 (figure <a href="raster.html#fig:airagg">6.6</a>),</p>
-<div class="sourceCode" id="cb89"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb89-1" title="1"><span class="kw">library</span>(tidyverse)</a>
-<a class="sourceLine" id="cb89-2" title="2">a <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">filter</span>(time <span class="op">&gt;=</span><span class="st"> &quot;2008-01-01&quot;</span>, time <span class="op">&lt;</span><span class="st"> &quot;2008-01-07&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">plot</span>(<span class="dt">key.pos =</span> <span class="dv">4</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb88"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb88-1" title="1"><span class="kw">library</span>(tidyverse)</a>
+<a class="sourceLine" id="cb88-2" title="2">a <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">filter</span>(time <span class="op">&gt;=</span><span class="st"> &quot;2008-01-01&quot;</span>, time <span class="op">&lt;</span><span class="st"> &quot;2008-01-07&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">plot</span>(<span class="dt">key.pos =</span> <span class="dv">4</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:airagg"></span>
 <img src="sds_files/figure-html/airagg-1.png" alt="areal mean PM$_{10}$ values, for six days" width="672" />
 <p class="caption">
@@ -892,8 +1628,8 @@ Figure 6.6: areal mean PM<span class="math inline">\(_{10}\)</span> values, for 
 </div>
 <p>or a time series of mean values for a single state
 (figure <a href="raster.html#fig:airts">6.7</a>).</p>
-<div class="sourceCode" id="cb90"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb90-1" title="1"><span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(xts))</a>
-<a class="sourceLine" id="cb90-2" title="2"><span class="kw">plot</span>(<span class="kw">as.xts</span>(a)[,<span class="dv">4</span>], <span class="dt">main =</span> DE_NUTS1<span class="op">$</span>NAME_<span class="dv">1</span>[<span class="dv">4</span>])</a></code></pre></div>
+<div class="sourceCode" id="cb89"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb89-1" title="1"><span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(xts))</a>
+<a class="sourceLine" id="cb89-2" title="2"><span class="kw">plot</span>(<span class="kw">as.xts</span>(a)[,<span class="dv">4</span>], <span class="dt">main =</span> DE_NUTS1<span class="op">$</span>NAME_<span class="dv">1</span>[<span class="dv">4</span>])</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:airts"></span>
 <img src="sds_files/figure-html/airts-1.png" alt="areal mean PM$_{10}$ values, for six days" width="672" />
 <p class="caption">
@@ -907,9 +1643,9 @@ Figure 6.7: areal mean PM<span class="math inline">\(_{10}\)</span> values, for 
 origin-destination (OD) counts: the number of persons going from
 region A to region B, by transportation mode. We have feature
 geometries for the 102 origin and destination regions, shown in figure <a href="raster.html#fig:bristol1">6.8</a>.</p>
-<div class="sourceCode" id="cb91"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb91-1" title="1"><span class="kw">library</span>(spDataLarge)</a>
-<a class="sourceLine" id="cb91-2" title="2"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(bristol_zones), <span class="dt">axes =</span> <span class="ot">TRUE</span>, <span class="dt">graticule =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb91-3" title="3"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(bristol_zones)[<span class="dv">33</span>], <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb90"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb90-1" title="1"><span class="kw">library</span>(spDataLarge)</a>
+<a class="sourceLine" id="cb90-2" title="2"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(bristol_zones), <span class="dt">axes =</span> <span class="ot">TRUE</span>, <span class="dt">graticule =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb90-3" title="3"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(bristol_zones)[<span class="dv">33</span>], <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:bristol1"></span>
 <img src="sds_files/figure-html/bristol1-1.png" alt="Origin destination data zones for Bristol, UK, with zone 33 (E02003043) colored red" width="672" />
 <p class="caption">
@@ -918,100 +1654,100 @@ Figure 6.8: Origin destination data zones for Bristol, UK, with zone 33 (E020030
 </div>
 <p>and the OD counts come in a table
 with OD pairs as records, and transportation mode as variables:</p>
-<div class="sourceCode" id="cb92"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb92-1" title="1"><span class="kw">head</span>(bristol_od)</a>
-<a class="sourceLine" id="cb92-2" title="2"><span class="co"># # A tibble: 6 x 7</span></a>
-<a class="sourceLine" id="cb92-3" title="3"><span class="co">#   o         d           all bicycle  foot car_driver train</span></a>
-<a class="sourceLine" id="cb92-4" title="4"><span class="co">#   &lt;chr&gt;     &lt;chr&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;</span></a>
-<a class="sourceLine" id="cb92-5" title="5"><span class="co"># 1 E02002985 E02002985   209       5   127         59     0</span></a>
-<a class="sourceLine" id="cb92-6" title="6"><span class="co"># 2 E02002985 E02002987   121       7    35         62     0</span></a>
-<a class="sourceLine" id="cb92-7" title="7"><span class="co"># 3 E02002985 E02003036    32       2     1         10     1</span></a>
-<a class="sourceLine" id="cb92-8" title="8"><span class="co"># 4 E02002985 E02003043   141       1     2         56    17</span></a>
-<a class="sourceLine" id="cb92-9" title="9"><span class="co"># 5 E02002985 E02003049    56       2     4         36     0</span></a>
-<a class="sourceLine" id="cb92-10" title="10"><span class="co"># 6 E02002985 E02003054    42       4     0         21     0</span></a></code></pre></div>
+<div class="sourceCode" id="cb91"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb91-1" title="1"><span class="kw">head</span>(bristol_od)</a>
+<a class="sourceLine" id="cb91-2" title="2"><span class="co"># # A tibble: 6 x 7</span></a>
+<a class="sourceLine" id="cb91-3" title="3"><span class="co">#   o         d           all bicycle  foot car_driver train</span></a>
+<a class="sourceLine" id="cb91-4" title="4"><span class="co">#   &lt;chr&gt;     &lt;chr&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;</span></a>
+<a class="sourceLine" id="cb91-5" title="5"><span class="co"># 1 E02002985 E02002985   209       5   127         59     0</span></a>
+<a class="sourceLine" id="cb91-6" title="6"><span class="co"># 2 E02002985 E02002987   121       7    35         62     0</span></a>
+<a class="sourceLine" id="cb91-7" title="7"><span class="co"># 3 E02002985 E02003036    32       2     1         10     1</span></a>
+<a class="sourceLine" id="cb91-8" title="8"><span class="co"># 4 E02002985 E02003043   141       1     2         56    17</span></a>
+<a class="sourceLine" id="cb91-9" title="9"><span class="co"># 5 E02002985 E02003049    56       2     4         36     0</span></a>
+<a class="sourceLine" id="cb91-10" title="10"><span class="co"># 6 E02002985 E02003054    42       4     0         21     0</span></a></code></pre></div>
 <p>We see that many combinations of origin and destination are implicit
 zeroes, otherwise these two numbers would have been the same:</p>
-<div class="sourceCode" id="cb93"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb93-1" title="1"><span class="kw">nrow</span>(bristol_zones)<span class="op">^</span><span class="dv">2</span></a>
-<a class="sourceLine" id="cb93-2" title="2"><span class="co"># [1] 10404</span></a>
-<a class="sourceLine" id="cb93-3" title="3"><span class="kw">nrow</span>(bristol_od)</a>
-<a class="sourceLine" id="cb93-4" title="4"><span class="co"># [1] 2910</span></a></code></pre></div>
+<div class="sourceCode" id="cb92"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb92-1" title="1"><span class="kw">nrow</span>(bristol_zones)<span class="op">^</span><span class="dv">2</span></a>
+<a class="sourceLine" id="cb92-2" title="2"><span class="co"># [1] 10404</span></a>
+<a class="sourceLine" id="cb92-3" title="3"><span class="kw">nrow</span>(bristol_od)</a>
+<a class="sourceLine" id="cb92-4" title="4"><span class="co"># [1] 2910</span></a></code></pre></div>
 <p>We will form a three-dimensional vector datacube with origin,
 destination and transportation mode as dimensions. For this, we
 first “tidy” the <code>bristol_od</code> table to have origin (o), destination (d),
 transportation mode (mode), and count (n) as variables, using <code>gather</code>:</p>
-<div class="sourceCode" id="cb94"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb94-1" title="1"><span class="co"># create O-D-mode array:</span></a>
-<a class="sourceLine" id="cb94-2" title="2">bristol_tidy &lt;-<span class="st"> </span>bristol_od <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(<span class="op">-</span>all) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">gather</span>(<span class="st">&quot;mode&quot;</span>, <span class="st">&quot;n&quot;</span>, <span class="op">-</span>o, <span class="op">-</span>d)</a>
-<a class="sourceLine" id="cb94-3" title="3"><span class="kw">head</span>(bristol_tidy)</a>
-<a class="sourceLine" id="cb94-4" title="4"><span class="co"># # A tibble: 6 x 4</span></a>
-<a class="sourceLine" id="cb94-5" title="5"><span class="co">#   o         d         mode        n</span></a>
-<a class="sourceLine" id="cb94-6" title="6"><span class="co">#   &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;   &lt;dbl&gt;</span></a>
-<a class="sourceLine" id="cb94-7" title="7"><span class="co"># 1 E02002985 E02002985 bicycle     5</span></a>
-<a class="sourceLine" id="cb94-8" title="8"><span class="co"># 2 E02002985 E02002987 bicycle     7</span></a>
-<a class="sourceLine" id="cb94-9" title="9"><span class="co"># 3 E02002985 E02003036 bicycle     2</span></a>
-<a class="sourceLine" id="cb94-10" title="10"><span class="co"># 4 E02002985 E02003043 bicycle     1</span></a>
-<a class="sourceLine" id="cb94-11" title="11"><span class="co"># 5 E02002985 E02003049 bicycle     2</span></a>
-<a class="sourceLine" id="cb94-12" title="12"><span class="co"># 6 E02002985 E02003054 bicycle     4</span></a></code></pre></div>
+<div class="sourceCode" id="cb93"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb93-1" title="1"><span class="co"># create O-D-mode array:</span></a>
+<a class="sourceLine" id="cb93-2" title="2">bristol_tidy &lt;-<span class="st"> </span>bristol_od <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(<span class="op">-</span>all) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">gather</span>(<span class="st">&quot;mode&quot;</span>, <span class="st">&quot;n&quot;</span>, <span class="op">-</span>o, <span class="op">-</span>d)</a>
+<a class="sourceLine" id="cb93-3" title="3"><span class="kw">head</span>(bristol_tidy)</a>
+<a class="sourceLine" id="cb93-4" title="4"><span class="co"># # A tibble: 6 x 4</span></a>
+<a class="sourceLine" id="cb93-5" title="5"><span class="co">#   o         d         mode        n</span></a>
+<a class="sourceLine" id="cb93-6" title="6"><span class="co">#   &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;   &lt;dbl&gt;</span></a>
+<a class="sourceLine" id="cb93-7" title="7"><span class="co"># 1 E02002985 E02002985 bicycle     5</span></a>
+<a class="sourceLine" id="cb93-8" title="8"><span class="co"># 2 E02002985 E02002987 bicycle     7</span></a>
+<a class="sourceLine" id="cb93-9" title="9"><span class="co"># 3 E02002985 E02003036 bicycle     2</span></a>
+<a class="sourceLine" id="cb93-10" title="10"><span class="co"># 4 E02002985 E02003043 bicycle     1</span></a>
+<a class="sourceLine" id="cb93-11" title="11"><span class="co"># 5 E02002985 E02003049 bicycle     2</span></a>
+<a class="sourceLine" id="cb93-12" title="12"><span class="co"># 6 E02002985 E02003054 bicycle     4</span></a></code></pre></div>
 <p>Next, we form the three-dimensional array <code>a</code>, filled with zeroes:</p>
-<div class="sourceCode" id="cb95"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb95-1" title="1">od =<span class="st"> </span>bristol_tidy <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">pull</span>(<span class="st">&quot;o&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>unique</a>
-<a class="sourceLine" id="cb95-2" title="2">nod =<span class="st"> </span><span class="kw">length</span>(od)</a>
-<a class="sourceLine" id="cb95-3" title="3">mode =<span class="st"> </span>bristol_tidy <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">pull</span>(<span class="st">&quot;mode&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>unique</a>
-<a class="sourceLine" id="cb95-4" title="4">nmode =<span class="st"> </span><span class="kw">length</span>(mode)</a>
-<a class="sourceLine" id="cb95-5" title="5">a =<span class="st"> </span><span class="kw">array</span>(0L,  <span class="kw">c</span>(nod, nod, nmode), </a>
-<a class="sourceLine" id="cb95-6" title="6">    <span class="dt">dimnames =</span> <span class="kw">list</span>(<span class="dt">o =</span> od, <span class="dt">d =</span> od, <span class="dt">mode =</span> mode))</a></code></pre></div>
+<div class="sourceCode" id="cb94"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb94-1" title="1">od =<span class="st"> </span>bristol_tidy <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">pull</span>(<span class="st">&quot;o&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>unique</a>
+<a class="sourceLine" id="cb94-2" title="2">nod =<span class="st"> </span><span class="kw">length</span>(od)</a>
+<a class="sourceLine" id="cb94-3" title="3">mode =<span class="st"> </span>bristol_tidy <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">pull</span>(<span class="st">&quot;mode&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>unique</a>
+<a class="sourceLine" id="cb94-4" title="4">nmode =<span class="st"> </span><span class="kw">length</span>(mode)</a>
+<a class="sourceLine" id="cb94-5" title="5">a =<span class="st"> </span><span class="kw">array</span>(0L,  <span class="kw">c</span>(nod, nod, nmode), </a>
+<a class="sourceLine" id="cb94-6" title="6">    <span class="dt">dimnames =</span> <span class="kw">list</span>(<span class="dt">o =</span> od, <span class="dt">d =</span> od, <span class="dt">mode =</span> mode))</a></code></pre></div>
 <p>We see that the dimensions are named with the zone names (o, d)
 and the transportation mode name (mode).
 Every row of <code>bristol_tidy</code> denotes an array entry, and we can
 use this to to fill the non-zero entries of the <code>bristol_tidy</code> table
 with their appropriate value (<code>n</code>):</p>
-<div class="sourceCode" id="cb96"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb96-1" title="1">a[<span class="kw">as.matrix</span>(bristol_tidy[<span class="kw">c</span>(<span class="st">&quot;o&quot;</span>, <span class="st">&quot;d&quot;</span>, <span class="st">&quot;mode&quot;</span>)])] =<span class="st"> </span>bristol_tidy<span class="op">$</span>n</a></code></pre></div>
+<div class="sourceCode" id="cb95"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb95-1" title="1">a[<span class="kw">as.matrix</span>(bristol_tidy[<span class="kw">c</span>(<span class="st">&quot;o&quot;</span>, <span class="st">&quot;d&quot;</span>, <span class="st">&quot;mode&quot;</span>)])] =<span class="st"> </span>bristol_tidy<span class="op">$</span>n</a></code></pre></div>
 <p>To be sure that there is not an order mismatch between the zones
 in <code>bristol_zones</code> and the zone names in <code>bristol_tidy</code>, we can
 get the right set of zones by:</p>
-<div class="sourceCode" id="cb97"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb97-1" title="1">order =<span class="st"> </span><span class="kw">match</span>(od, bristol_zones<span class="op">$</span>geo_code) <span class="co"># it happens this equals 1:102</span></a>
-<a class="sourceLine" id="cb97-2" title="2">zones =<span class="st"> </span><span class="kw">st_geometry</span>(bristol_zones)[order]</a></code></pre></div>
+<div class="sourceCode" id="cb96"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb96-1" title="1">order =<span class="st"> </span><span class="kw">match</span>(od, bristol_zones<span class="op">$</span>geo_code) <span class="co"># it happens this equals 1:102</span></a>
+<a class="sourceLine" id="cb96-2" title="2">zones =<span class="st"> </span><span class="kw">st_geometry</span>(bristol_zones)[order]</a></code></pre></div>
 <p>(It happens that the order is already correct, but it is good
 practice to not assume this).</p>
 <p>Next, with zones and modes we can create a stars dimensions object:</p>
-<div class="sourceCode" id="cb98"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb98-1" title="1"><span class="kw">library</span>(stars)</a>
-<a class="sourceLine" id="cb98-2" title="2">(<span class="dt">d =</span> <span class="kw">st_dimensions</span>(<span class="dt">o =</span> zones, <span class="dt">d =</span> zones, <span class="dt">mode =</span> mode))</a>
-<a class="sourceLine" id="cb98-3" title="3"><span class="co">#      from  to offset delta refsys point</span></a>
-<a class="sourceLine" id="cb98-4" title="4"><span class="co"># o       1 102     NA    NA WGS 84 FALSE</span></a>
-<a class="sourceLine" id="cb98-5" title="5"><span class="co"># d       1 102     NA    NA WGS 84 FALSE</span></a>
-<a class="sourceLine" id="cb98-6" title="6"><span class="co"># mode    1   4     NA    NA     NA FALSE</span></a>
-<a class="sourceLine" id="cb98-7" title="7"><span class="co">#                                                                 values</span></a>
-<a class="sourceLine" id="cb98-8" title="8"><span class="co"># o    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
-<a class="sourceLine" id="cb98-9" title="9"><span class="co"># d    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
-<a class="sourceLine" id="cb98-10" title="10"><span class="co"># mode                                                 bicycle,...,train</span></a></code></pre></div>
+<div class="sourceCode" id="cb97"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb97-1" title="1"><span class="kw">library</span>(stars)</a>
+<a class="sourceLine" id="cb97-2" title="2">(<span class="dt">d =</span> <span class="kw">st_dimensions</span>(<span class="dt">o =</span> zones, <span class="dt">d =</span> zones, <span class="dt">mode =</span> mode))</a>
+<a class="sourceLine" id="cb97-3" title="3"><span class="co">#      from  to offset delta refsys point</span></a>
+<a class="sourceLine" id="cb97-4" title="4"><span class="co"># o       1 102     NA    NA WGS 84 FALSE</span></a>
+<a class="sourceLine" id="cb97-5" title="5"><span class="co"># d       1 102     NA    NA WGS 84 FALSE</span></a>
+<a class="sourceLine" id="cb97-6" title="6"><span class="co"># mode    1   4     NA    NA     NA FALSE</span></a>
+<a class="sourceLine" id="cb97-7" title="7"><span class="co">#                                                                 values</span></a>
+<a class="sourceLine" id="cb97-8" title="8"><span class="co"># o    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
+<a class="sourceLine" id="cb97-9" title="9"><span class="co"># d    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
+<a class="sourceLine" id="cb97-10" title="10"><span class="co"># mode                                                 bicycle,...,train</span></a></code></pre></div>
 <p>and finally build or stars object from <code>a</code> and <code>d</code>:</p>
-<div class="sourceCode" id="cb99"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb99-1" title="1">(<span class="dt">odm =</span> <span class="kw">st_as_stars</span>(<span class="kw">list</span>(<span class="dt">N =</span> a), <span class="dt">dimensions =</span> d))</a>
-<a class="sourceLine" id="cb99-2" title="2"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb99-3" title="3"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb99-4" title="4"><span class="co">#        N       </span></a>
-<a class="sourceLine" id="cb99-5" title="5"><span class="co">#  Min.   :   0  </span></a>
-<a class="sourceLine" id="cb99-6" title="6"><span class="co">#  1st Qu.:   0  </span></a>
-<a class="sourceLine" id="cb99-7" title="7"><span class="co">#  Median :   0  </span></a>
-<a class="sourceLine" id="cb99-8" title="8"><span class="co">#  Mean   :   5  </span></a>
-<a class="sourceLine" id="cb99-9" title="9"><span class="co">#  3rd Qu.:   0  </span></a>
-<a class="sourceLine" id="cb99-10" title="10"><span class="co">#  Max.   :1296  </span></a>
-<a class="sourceLine" id="cb99-11" title="11"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb99-12" title="12"><span class="co">#      from  to offset delta refsys point</span></a>
-<a class="sourceLine" id="cb99-13" title="13"><span class="co"># o       1 102     NA    NA WGS 84 FALSE</span></a>
-<a class="sourceLine" id="cb99-14" title="14"><span class="co"># d       1 102     NA    NA WGS 84 FALSE</span></a>
-<a class="sourceLine" id="cb99-15" title="15"><span class="co"># mode    1   4     NA    NA     NA FALSE</span></a>
-<a class="sourceLine" id="cb99-16" title="16"><span class="co">#                                                                 values</span></a>
-<a class="sourceLine" id="cb99-17" title="17"><span class="co"># o    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
-<a class="sourceLine" id="cb99-18" title="18"><span class="co"># d    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
-<a class="sourceLine" id="cb99-19" title="19"><span class="co"># mode                                                 bicycle,...,train</span></a></code></pre></div>
+<div class="sourceCode" id="cb98"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb98-1" title="1">(<span class="dt">odm =</span> <span class="kw">st_as_stars</span>(<span class="kw">list</span>(<span class="dt">N =</span> a), <span class="dt">dimensions =</span> d))</a>
+<a class="sourceLine" id="cb98-2" title="2"><span class="co"># stars object with 3 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb98-3" title="3"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb98-4" title="4"><span class="co">#        N       </span></a>
+<a class="sourceLine" id="cb98-5" title="5"><span class="co">#  Min.   :   0  </span></a>
+<a class="sourceLine" id="cb98-6" title="6"><span class="co">#  1st Qu.:   0  </span></a>
+<a class="sourceLine" id="cb98-7" title="7"><span class="co">#  Median :   0  </span></a>
+<a class="sourceLine" id="cb98-8" title="8"><span class="co">#  Mean   :   5  </span></a>
+<a class="sourceLine" id="cb98-9" title="9"><span class="co">#  3rd Qu.:   0  </span></a>
+<a class="sourceLine" id="cb98-10" title="10"><span class="co">#  Max.   :1296  </span></a>
+<a class="sourceLine" id="cb98-11" title="11"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb98-12" title="12"><span class="co">#      from  to offset delta refsys point</span></a>
+<a class="sourceLine" id="cb98-13" title="13"><span class="co"># o       1 102     NA    NA WGS 84 FALSE</span></a>
+<a class="sourceLine" id="cb98-14" title="14"><span class="co"># d       1 102     NA    NA WGS 84 FALSE</span></a>
+<a class="sourceLine" id="cb98-15" title="15"><span class="co"># mode    1   4     NA    NA     NA FALSE</span></a>
+<a class="sourceLine" id="cb98-16" title="16"><span class="co">#                                                                 values</span></a>
+<a class="sourceLine" id="cb98-17" title="17"><span class="co"># o    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
+<a class="sourceLine" id="cb98-18" title="18"><span class="co"># d    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
+<a class="sourceLine" id="cb98-19" title="19"><span class="co"># mode                                                 bicycle,...,train</span></a></code></pre></div>
 <p>We can take a single slice through from this three-dimensional
 array, e.g. for zone 33 (figure <a href="raster.html#fig:bristol1">6.8</a>), by <code>odm[,,33]</code>,
 and plot it:</p>
-<div class="sourceCode" id="cb100"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb100-1" title="1"><span class="kw">plot</span>(odm[,,<span class="dv">33</span>] <span class="op">+</span><span class="st"> </span><span class="dv">1</span>, <span class="dt">logz =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb100-2" title="2"><span class="co"># Warning in st_as_sf.stars(x): working on the first sfc dimension only</span></a>
-<a class="sourceLine" id="cb100-3" title="3"><span class="co"># Warning in st_bbox.dimensions(st_dimensions(obj), ...): returning the bounding</span></a>
-<a class="sourceLine" id="cb100-4" title="4"><span class="co"># box of the first geometry dimension</span></a>
-<a class="sourceLine" id="cb100-5" title="5"></a>
-<a class="sourceLine" id="cb100-6" title="6"><span class="co"># Warning in st_bbox.dimensions(st_dimensions(obj), ...): returning the bounding</span></a>
-<a class="sourceLine" id="cb100-7" title="7"><span class="co"># box of the first geometry dimension</span></a></code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-92-1.png" width="672" style="display: block; margin: auto;" />
+<div class="sourceCode" id="cb99"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb99-1" title="1"><span class="kw">plot</span>(odm[,,<span class="dv">33</span>] <span class="op">+</span><span class="st"> </span><span class="dv">1</span>, <span class="dt">logz =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb99-2" title="2"><span class="co"># Warning in st_as_sf.stars(x): working on the first sfc dimension only</span></a>
+<a class="sourceLine" id="cb99-3" title="3"><span class="co"># Warning in st_bbox.dimensions(st_dimensions(obj), ...): returning the bounding</span></a>
+<a class="sourceLine" id="cb99-4" title="4"><span class="co"># box of the first geometry dimension</span></a>
+<a class="sourceLine" id="cb99-5" title="5"></a>
+<a class="sourceLine" id="cb99-6" title="6"><span class="co"># Warning in st_bbox.dimensions(st_dimensions(obj), ...): returning the bounding</span></a>
+<a class="sourceLine" id="cb99-7" title="7"><span class="co"># box of the first geometry dimension</span></a></code></pre></div>
+<p><img src="sds_files/figure-html/unnamed-chunk-57-1.png" width="672" style="display: block; margin: auto;" />
 Subsetting this way, we take all attributes (there is only one: N)
 since the first argument is empty, we take all origin regions (second
 argument empty), we take destination zone 33 (third argument),
@@ -1019,83 +1755,83 @@ and all transportation modes (fourth argument empty, or missing).</p>
 <p>We plotted this particular zone because it has the largest number of travelers
 as its destination. We can find this out by summing all origins and
 travel modes by destination:</p>
-<div class="sourceCode" id="cb101"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb101-1" title="1">d =<span class="st"> </span><span class="kw">st_apply</span>(odm, <span class="dv">2</span>, sum)</a>
-<a class="sourceLine" id="cb101-2" title="2"><span class="kw">which.max</span>(d[[<span class="dv">1</span>]])</a>
-<a class="sourceLine" id="cb101-3" title="3"><span class="co"># [1] 33</span></a></code></pre></div>
+<div class="sourceCode" id="cb100"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb100-1" title="1">d =<span class="st"> </span><span class="kw">st_apply</span>(odm, <span class="dv">2</span>, sum)</a>
+<a class="sourceLine" id="cb100-2" title="2"><span class="kw">which.max</span>(d[[<span class="dv">1</span>]])</a>
+<a class="sourceLine" id="cb100-3" title="3"><span class="co"># [1] 33</span></a></code></pre></div>
 <p>Other aggregations we can carry out include: total transportation
 by OD (102 x 102):</p>
-<div class="sourceCode" id="cb102"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb102-1" title="1"><span class="kw">st_apply</span>(odm, <span class="dv">1</span><span class="op">:</span><span class="dv">2</span>, sum)</a>
+<div class="sourceCode" id="cb101"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb101-1" title="1"><span class="kw">st_apply</span>(odm, <span class="dv">1</span><span class="op">:</span><span class="dv">2</span>, sum)</a>
+<a class="sourceLine" id="cb101-2" title="2"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
+<a class="sourceLine" id="cb101-3" title="3"><span class="co"># attribute(s):</span></a>
+<a class="sourceLine" id="cb101-4" title="4"><span class="co">#       sum      </span></a>
+<a class="sourceLine" id="cb101-5" title="5"><span class="co">#  Min.   :   0  </span></a>
+<a class="sourceLine" id="cb101-6" title="6"><span class="co">#  1st Qu.:   0  </span></a>
+<a class="sourceLine" id="cb101-7" title="7"><span class="co">#  Median :   0  </span></a>
+<a class="sourceLine" id="cb101-8" title="8"><span class="co">#  Mean   :  19  </span></a>
+<a class="sourceLine" id="cb101-9" title="9"><span class="co">#  3rd Qu.:  19  </span></a>
+<a class="sourceLine" id="cb101-10" title="10"><span class="co">#  Max.   :1434  </span></a>
+<a class="sourceLine" id="cb101-11" title="11"><span class="co"># dimension(s):</span></a>
+<a class="sourceLine" id="cb101-12" title="12"><span class="co">#   from  to offset delta refsys point</span></a>
+<a class="sourceLine" id="cb101-13" title="13"><span class="co"># o    1 102     NA    NA WGS 84 FALSE</span></a>
+<a class="sourceLine" id="cb101-14" title="14"><span class="co"># d    1 102     NA    NA WGS 84 FALSE</span></a>
+<a class="sourceLine" id="cb101-15" title="15"><span class="co">#                                                              values</span></a>
+<a class="sourceLine" id="cb101-16" title="16"><span class="co"># o MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
+<a class="sourceLine" id="cb101-17" title="17"><span class="co"># d MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a></code></pre></div>
+<p>Origin totals, by mode:</p>
+<div class="sourceCode" id="cb102"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb102-1" title="1"><span class="kw">st_apply</span>(odm, <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>), sum)</a>
 <a class="sourceLine" id="cb102-2" title="2"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
 <a class="sourceLine" id="cb102-3" title="3"><span class="co"># attribute(s):</span></a>
 <a class="sourceLine" id="cb102-4" title="4"><span class="co">#       sum      </span></a>
-<a class="sourceLine" id="cb102-5" title="5"><span class="co">#  Min.   :   0  </span></a>
-<a class="sourceLine" id="cb102-6" title="6"><span class="co">#  1st Qu.:   0  </span></a>
-<a class="sourceLine" id="cb102-7" title="7"><span class="co">#  Median :   0  </span></a>
-<a class="sourceLine" id="cb102-8" title="8"><span class="co">#  Mean   :  19  </span></a>
-<a class="sourceLine" id="cb102-9" title="9"><span class="co">#  3rd Qu.:  19  </span></a>
-<a class="sourceLine" id="cb102-10" title="10"><span class="co">#  Max.   :1434  </span></a>
+<a class="sourceLine" id="cb102-5" title="5"><span class="co">#  Min.   :   1  </span></a>
+<a class="sourceLine" id="cb102-6" title="6"><span class="co">#  1st Qu.:  58  </span></a>
+<a class="sourceLine" id="cb102-7" title="7"><span class="co">#  Median : 214  </span></a>
+<a class="sourceLine" id="cb102-8" title="8"><span class="co">#  Mean   : 490  </span></a>
+<a class="sourceLine" id="cb102-9" title="9"><span class="co">#  3rd Qu.: 771  </span></a>
+<a class="sourceLine" id="cb102-10" title="10"><span class="co">#  Max.   :2903  </span></a>
 <a class="sourceLine" id="cb102-11" title="11"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb102-12" title="12"><span class="co">#   from  to offset delta refsys point</span></a>
-<a class="sourceLine" id="cb102-13" title="13"><span class="co"># o    1 102     NA    NA WGS 84 FALSE</span></a>
-<a class="sourceLine" id="cb102-14" title="14"><span class="co"># d    1 102     NA    NA WGS 84 FALSE</span></a>
-<a class="sourceLine" id="cb102-15" title="15"><span class="co">#                                                              values</span></a>
-<a class="sourceLine" id="cb102-16" title="16"><span class="co"># o MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
-<a class="sourceLine" id="cb102-17" title="17"><span class="co"># d MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a></code></pre></div>
-<p>Origin totals, by mode:</p>
-<div class="sourceCode" id="cb103"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb103-1" title="1"><span class="kw">st_apply</span>(odm, <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>), sum)</a>
+<a class="sourceLine" id="cb102-12" title="12"><span class="co">#      from  to offset delta refsys point</span></a>
+<a class="sourceLine" id="cb102-13" title="13"><span class="co"># o       1 102     NA    NA WGS 84 FALSE</span></a>
+<a class="sourceLine" id="cb102-14" title="14"><span class="co"># mode    1   4     NA    NA     NA FALSE</span></a>
+<a class="sourceLine" id="cb102-15" title="15"><span class="co">#                                                                 values</span></a>
+<a class="sourceLine" id="cb102-16" title="16"><span class="co"># o    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
+<a class="sourceLine" id="cb102-17" title="17"><span class="co"># mode                                                 bicycle,...,train</span></a></code></pre></div>
+<p>Destination totals, by mode:</p>
+<div class="sourceCode" id="cb103"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb103-1" title="1"><span class="kw">st_apply</span>(odm, <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>), sum)</a>
 <a class="sourceLine" id="cb103-2" title="2"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
 <a class="sourceLine" id="cb103-3" title="3"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb103-4" title="4"><span class="co">#       sum      </span></a>
-<a class="sourceLine" id="cb103-5" title="5"><span class="co">#  Min.   :   1  </span></a>
-<a class="sourceLine" id="cb103-6" title="6"><span class="co">#  1st Qu.:  58  </span></a>
-<a class="sourceLine" id="cb103-7" title="7"><span class="co">#  Median : 214  </span></a>
-<a class="sourceLine" id="cb103-8" title="8"><span class="co">#  Mean   : 490  </span></a>
-<a class="sourceLine" id="cb103-9" title="9"><span class="co">#  3rd Qu.: 771  </span></a>
-<a class="sourceLine" id="cb103-10" title="10"><span class="co">#  Max.   :2903  </span></a>
+<a class="sourceLine" id="cb103-4" title="4"><span class="co">#       sum       </span></a>
+<a class="sourceLine" id="cb103-5" title="5"><span class="co">#  Min.   :    0  </span></a>
+<a class="sourceLine" id="cb103-6" title="6"><span class="co">#  1st Qu.:   13  </span></a>
+<a class="sourceLine" id="cb103-7" title="7"><span class="co">#  Median :  104  </span></a>
+<a class="sourceLine" id="cb103-8" title="8"><span class="co">#  Mean   :  490  </span></a>
+<a class="sourceLine" id="cb103-9" title="9"><span class="co">#  3rd Qu.:  408  </span></a>
+<a class="sourceLine" id="cb103-10" title="10"><span class="co">#  Max.   :12948  </span></a>
 <a class="sourceLine" id="cb103-11" title="11"><span class="co"># dimension(s):</span></a>
 <a class="sourceLine" id="cb103-12" title="12"><span class="co">#      from  to offset delta refsys point</span></a>
-<a class="sourceLine" id="cb103-13" title="13"><span class="co"># o       1 102     NA    NA WGS 84 FALSE</span></a>
+<a class="sourceLine" id="cb103-13" title="13"><span class="co"># d       1 102     NA    NA WGS 84 FALSE</span></a>
 <a class="sourceLine" id="cb103-14" title="14"><span class="co"># mode    1   4     NA    NA     NA FALSE</span></a>
 <a class="sourceLine" id="cb103-15" title="15"><span class="co">#                                                                 values</span></a>
-<a class="sourceLine" id="cb103-16" title="16"><span class="co"># o    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
+<a class="sourceLine" id="cb103-16" title="16"><span class="co"># d    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
 <a class="sourceLine" id="cb103-17" title="17"><span class="co"># mode                                                 bicycle,...,train</span></a></code></pre></div>
-<p>Destination totals, by mode:</p>
-<div class="sourceCode" id="cb104"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb104-1" title="1"><span class="kw">st_apply</span>(odm, <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>), sum)</a>
-<a class="sourceLine" id="cb104-2" title="2"><span class="co"># stars object with 2 dimensions and 1 attribute</span></a>
-<a class="sourceLine" id="cb104-3" title="3"><span class="co"># attribute(s):</span></a>
-<a class="sourceLine" id="cb104-4" title="4"><span class="co">#       sum       </span></a>
-<a class="sourceLine" id="cb104-5" title="5"><span class="co">#  Min.   :    0  </span></a>
-<a class="sourceLine" id="cb104-6" title="6"><span class="co">#  1st Qu.:   13  </span></a>
-<a class="sourceLine" id="cb104-7" title="7"><span class="co">#  Median :  104  </span></a>
-<a class="sourceLine" id="cb104-8" title="8"><span class="co">#  Mean   :  490  </span></a>
-<a class="sourceLine" id="cb104-9" title="9"><span class="co">#  3rd Qu.:  408  </span></a>
-<a class="sourceLine" id="cb104-10" title="10"><span class="co">#  Max.   :12948  </span></a>
-<a class="sourceLine" id="cb104-11" title="11"><span class="co"># dimension(s):</span></a>
-<a class="sourceLine" id="cb104-12" title="12"><span class="co">#      from  to offset delta refsys point</span></a>
-<a class="sourceLine" id="cb104-13" title="13"><span class="co"># d       1 102     NA    NA WGS 84 FALSE</span></a>
-<a class="sourceLine" id="cb104-14" title="14"><span class="co"># mode    1   4     NA    NA     NA FALSE</span></a>
-<a class="sourceLine" id="cb104-15" title="15"><span class="co">#                                                                 values</span></a>
-<a class="sourceLine" id="cb104-16" title="16"><span class="co"># d    MULTIPOLYGON (((-2.51 51.4,...,...,MULTIPOLYGON (((-2.55 51.5,...</span></a>
-<a class="sourceLine" id="cb104-17" title="17"><span class="co"># mode                                                 bicycle,...,train</span></a></code></pre></div>
 <p>Origin totals, summed over modes:</p>
-<div class="sourceCode" id="cb105"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb105-1" title="1">o =<span class="st"> </span><span class="kw">st_apply</span>(odm, <span class="dv">1</span>, sum)</a></code></pre></div>
+<div class="sourceCode" id="cb104"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb104-1" title="1">o =<span class="st"> </span><span class="kw">st_apply</span>(odm, <span class="dv">1</span>, sum)</a></code></pre></div>
 <p>Destination totals, summed over modes (we had this):</p>
-<div class="sourceCode" id="cb106"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb106-1" title="1">d =<span class="st"> </span><span class="kw">st_apply</span>(odm, <span class="dv">2</span>, sum)</a></code></pre></div>
+<div class="sourceCode" id="cb105"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb105-1" title="1">d =<span class="st"> </span><span class="kw">st_apply</span>(odm, <span class="dv">2</span>, sum)</a></code></pre></div>
 <p>We take <code>o</code> and <code>d</code> together and plot them by</p>
-<div class="sourceCode" id="cb107"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb107-1" title="1">x =<span class="st"> </span>(<span class="kw">c</span>(o, d, <span class="dt">along =</span> <span class="kw">list</span>(<span class="dt">od =</span> <span class="kw">c</span>(<span class="st">&quot;origin&quot;</span>, <span class="st">&quot;destination&quot;</span>))))</a>
-<a class="sourceLine" id="cb107-2" title="2"><span class="kw">plot</span>(x, <span class="dt">logz =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-99-1.png" width="672" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb106"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb106-1" title="1">x =<span class="st"> </span>(<span class="kw">c</span>(o, d, <span class="dt">along =</span> <span class="kw">list</span>(<span class="dt">od =</span> <span class="kw">c</span>(<span class="st">&quot;origin&quot;</span>, <span class="st">&quot;destination&quot;</span>))))</a>
+<a class="sourceLine" id="cb106-2" title="2"><span class="kw">plot</span>(x, <span class="dt">logz =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<p><img src="sds_files/figure-html/unnamed-chunk-64-1.png" width="672" style="display: block; margin: auto;" /></p>
 <p>There is something to say for the argument that such maps
 give the wrong message, as both amount (color) and polygon
 size give an impression of amount. To take out the amount
 in the count, we can compute densities (count / km<span class="math inline">\(^2\)</span>), by</p>
-<div class="sourceCode" id="cb108"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb108-1" title="1"><span class="kw">library</span>(units)</a>
-<a class="sourceLine" id="cb108-2" title="2"><span class="co"># udunits database from /usr/share/xml/udunits/udunits2.xml</span></a>
-<a class="sourceLine" id="cb108-3" title="3">a =<span class="st"> </span><span class="kw">as.numeric</span>(<span class="kw">set_units</span>(<span class="kw">st_area</span>(<span class="kw">st_as_sf</span>(o)), km<span class="op">^</span><span class="dv">2</span>))</a>
-<a class="sourceLine" id="cb108-4" title="4">dens_o =<span class="st"> </span>o <span class="op">/</span><span class="st"> </span>a</a>
-<a class="sourceLine" id="cb108-5" title="5">dens_d =<span class="st"> </span>d <span class="op">/</span><span class="st"> </span>a</a>
-<a class="sourceLine" id="cb108-6" title="6"><span class="kw">plot</span>(<span class="kw">c</span>(dens_o, dens_d, <span class="dt">along =</span> <span class="kw">list</span>(<span class="dt">od =</span> <span class="kw">c</span>(<span class="st">&quot;origin&quot;</span>, <span class="st">&quot;destination&quot;</span>))), <span class="dt">logz =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-<p><img src="sds_files/figure-html/unnamed-chunk-100-1.png" width="672" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb107"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb107-1" title="1"><span class="kw">library</span>(units)</a>
+<a class="sourceLine" id="cb107-2" title="2"><span class="co"># udunits database from /usr/share/xml/udunits/udunits2.xml</span></a>
+<a class="sourceLine" id="cb107-3" title="3">a =<span class="st"> </span><span class="kw">as.numeric</span>(<span class="kw">set_units</span>(<span class="kw">st_area</span>(<span class="kw">st_as_sf</span>(o)), km<span class="op">^</span><span class="dv">2</span>))</a>
+<a class="sourceLine" id="cb107-4" title="4">dens_o =<span class="st"> </span>o <span class="op">/</span><span class="st"> </span>a</a>
+<a class="sourceLine" id="cb107-5" title="5">dens_d =<span class="st"> </span>d <span class="op">/</span><span class="st"> </span>a</a>
+<a class="sourceLine" id="cb107-6" title="6"><span class="kw">plot</span>(<span class="kw">c</span>(dens_o, dens_d, <span class="dt">along =</span> <span class="kw">list</span>(<span class="dt">od =</span> <span class="kw">c</span>(<span class="st">&quot;origin&quot;</span>, <span class="st">&quot;destination&quot;</span>))), <span class="dt">logz =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<p><img src="sds_files/figure-html/unnamed-chunk-65-1.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
 <div id="are-datacubes-tidy" class="section level3">
 <h3><span class="header-section-number">6.3.3</span> Are datacubes tidy?</h3>
@@ -1178,14 +1914,14 @@ case where one or more of the dimensions refer to space, and/or time.</p>
 gitbook.require(["gitbook"], function(gitbook) {
 gitbook.start({
 "sharing": {
-"github": false,
-"facebook": true,
+"github": true,
+"facebook": false,
 "twitter": true,
 "linkedin": false,
 "weibo": false,
 "instapaper": false,
 "vk": false,
-"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+"all": false
 },
 "fontsettings": {
 "theme": "white",
@@ -1204,7 +1940,7 @@ gitbook.start({
 "link": null,
 "text": null
 },
-"download": ["sds.pdf", "sds.epub"],
+"download": null,
 "toc": {
 "collapse": "subsection"
 }

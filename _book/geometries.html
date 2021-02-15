@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2021-02-12" />
+<meta name="date" content="2021-02-15" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -70,6 +70,742 @@
 <script src="libs/clipboard-0.0.1/setClipboardText.js"></script>
 <link href="libs/mapviewCSS-0.0.1/mapview-popup.css" rel="stylesheet" />
 <link href="libs/mapviewCSS-0.0.1/mapview.css" rel="stylesheet" />
+
+<script>
+/* ========================================================================
+ * Bootstrap: transition.js v3.3.7
+ * http://getbootstrap.com/javascript/#transitions
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // CSS TRANSITION SUPPORT (Shoutout: http://www.modernizr.com/)
+  // ============================================================
+
+  function transitionEnd() {
+    var el = document.createElement('bootstrap')
+
+    var transEndEventNames = {
+      WebkitTransition : 'webkitTransitionEnd',
+      MozTransition    : 'transitionend',
+      OTransition      : 'oTransitionEnd otransitionend',
+      transition       : 'transitionend'
+    }
+
+    for (var name in transEndEventNames) {
+      if (el.style[name] !== undefined) {
+        return { end: transEndEventNames[name] }
+      }
+    }
+
+    return false // explicit for ie8 (  ._.)
+  }
+
+  // http://blog.alexmaccaw.com/css-transitions
+  $.fn.emulateTransitionEnd = function (duration) {
+    var called = false
+    var $el = this
+    $(this).one('bsTransitionEnd', function () { called = true })
+    var callback = function () { if (!called) $($el).trigger($.support.transition.end) }
+    setTimeout(callback, duration)
+    return this
+  }
+
+  $(function () {
+    $.support.transition = transitionEnd()
+
+    if (!$.support.transition) return
+
+    $.event.special.bsTransitionEnd = {
+      bindType: $.support.transition.end,
+      delegateType: $.support.transition.end,
+      handle: function (e) {
+        if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
+      }
+    }
+  })
+
+}(jQuery);
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: collapse.js v3.3.7
+ * http://getbootstrap.com/javascript/#collapse
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+/* jshint latedef: false */
+
++function ($) {
+  'use strict';
+
+  // COLLAPSE PUBLIC CLASS DEFINITION
+  // ================================
+
+  var Collapse = function (element, options) {
+    this.$element      = $(element)
+    this.options       = $.extend({}, Collapse.DEFAULTS, options)
+    this.$trigger      = $('[data-toggle="collapse"][href="#' + element.id + '"],' +
+                           '[data-toggle="collapse"][data-target="#' + element.id + '"]')
+    this.transitioning = null
+
+    if (this.options.parent) {
+      this.$parent = this.getParent()
+    } else {
+      this.addAriaAndCollapsedClass(this.$element, this.$trigger)
+    }
+
+    if (this.options.toggle) this.toggle()
+  }
+
+  Collapse.VERSION  = '3.3.7'
+
+  Collapse.TRANSITION_DURATION = 350
+
+  Collapse.DEFAULTS = {
+    toggle: true
+  }
+
+  Collapse.prototype.dimension = function () {
+    var hasWidth = this.$element.hasClass('width')
+    return hasWidth ? 'width' : 'height'
+  }
+
+  Collapse.prototype.show = function () {
+    if (this.transitioning || this.$element.hasClass('in')) return
+
+    var activesData
+    var actives = this.$parent && this.$parent.children('.panel').children('.in, .collapsing')
+
+    if (actives && actives.length) {
+      activesData = actives.data('bs.collapse')
+      if (activesData && activesData.transitioning) return
+    }
+
+    var startEvent = $.Event('show.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    if (actives && actives.length) {
+      Plugin.call(actives, 'hide')
+      activesData || actives.data('bs.collapse', null)
+    }
+
+    var dimension = this.dimension()
+
+    this.$element
+      .removeClass('collapse')
+      .addClass('collapsing')[dimension](0)
+      .attr('aria-expanded', true)
+
+    this.$trigger
+      .removeClass('collapsed')
+      .attr('aria-expanded', true)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse in')[dimension]('')
+      this.transitioning = 0
+      this.$element
+        .trigger('shown.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    var scrollSize = $.camelCase(['scroll', dimension].join('-'))
+
+    this.$element
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)[dimension](this.$element[0][scrollSize])
+  }
+
+  Collapse.prototype.hide = function () {
+    if (this.transitioning || !this.$element.hasClass('in')) return
+
+    var startEvent = $.Event('hide.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    var dimension = this.dimension()
+
+    this.$element[dimension](this.$element[dimension]())[0].offsetHeight
+
+    this.$element
+      .addClass('collapsing')
+      .removeClass('collapse in')
+      .attr('aria-expanded', false)
+
+    this.$trigger
+      .addClass('collapsed')
+      .attr('aria-expanded', false)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.transitioning = 0
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse')
+        .trigger('hidden.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    this.$element
+      [dimension](0)
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)
+  }
+
+  Collapse.prototype.toggle = function () {
+    this[this.$element.hasClass('in') ? 'hide' : 'show']()
+  }
+
+  Collapse.prototype.getParent = function () {
+    return $(this.options.parent)
+      .find('[data-toggle="collapse"][data-parent="' + this.options.parent + '"]')
+      .each($.proxy(function (i, element) {
+        var $element = $(element)
+        this.addAriaAndCollapsedClass(getTargetFromTrigger($element), $element)
+      }, this))
+      .end()
+  }
+
+  Collapse.prototype.addAriaAndCollapsedClass = function ($element, $trigger) {
+    var isOpen = $element.hasClass('in')
+
+    $element.attr('aria-expanded', isOpen)
+    $trigger
+      .toggleClass('collapsed', !isOpen)
+      .attr('aria-expanded', isOpen)
+  }
+
+  function getTargetFromTrigger($trigger) {
+    var href
+    var target = $trigger.attr('data-target')
+      || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
+
+    return $(target)
+  }
+
+
+  // COLLAPSE PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.collapse')
+      var options = $.extend({}, Collapse.DEFAULTS, $this.data(), typeof option == 'object' && option)
+
+      if (!data && options.toggle && /show|hide/.test(option)) options.toggle = false
+      if (!data) $this.data('bs.collapse', (data = new Collapse(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  var old = $.fn.collapse
+
+  $.fn.collapse             = Plugin
+  $.fn.collapse.Constructor = Collapse
+
+
+  // COLLAPSE NO CONFLICT
+  // ====================
+
+  $.fn.collapse.noConflict = function () {
+    $.fn.collapse = old
+    return this
+  }
+
+
+  // COLLAPSE DATA-API
+  // =================
+
+  $(document).on('click.bs.collapse.data-api', '[data-toggle="collapse"]', function (e) {
+    var $this   = $(this)
+
+    if (!$this.attr('data-target')) e.preventDefault()
+
+    var $target = getTargetFromTrigger($this)
+    var data    = $target.data('bs.collapse')
+    var option  = data ? 'toggle' : $this.data()
+
+    Plugin.call($target, option)
+  })
+
+}(jQuery);
+</script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.sourceCode, pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan');
+  rCodeBlocks.each(function() {
+
+    // if code block has been labeled with class `fold-show`, show the code on init!
+    var classList = $(this).attr('class').split(/\s+/);
+    for (var i = 0; i < classList.length; i++) {
+    if (classList[i] === 'fold-show') {
+        show = true;
+      }
+    }
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    if (show)
+      div.addClass('in');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (show ? 'Hide' : 'Code') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs code-folding-btn pull-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-target', '#' + id)
+        .attr('aria-expanded', show)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // hack: return show to false, otherwise all next codeBlocks will be shown!
+    show = false;
+
+    // update state of button on show/hide
+    div.on('hidden.bs.collapse', function () {
+      showCodeText.text('Code');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+    });
+  });
+
+}
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: dropdown.js v3.3.7
+ * http://getbootstrap.com/javascript/#dropdowns
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // DROPDOWN CLASS DEFINITION
+  // =========================
+
+  var backdrop = '.dropdown-backdrop'
+  var toggle   = '[data-toggle="dropdown"]'
+  var Dropdown = function (element) {
+    $(element).on('click.bs.dropdown', this.toggle)
+  }
+
+  Dropdown.VERSION = '3.3.7'
+
+  function getParent($this) {
+    var selector = $this.attr('data-target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+    }
+
+    var $parent = selector && $(selector)
+
+    return $parent && $parent.length ? $parent : $this.parent()
+  }
+
+  function clearMenus(e) {
+    if (e && e.which === 3) return
+    $(backdrop).remove()
+    $(toggle).each(function () {
+      var $this         = $(this)
+      var $parent       = getParent($this)
+      var relatedTarget = { relatedTarget: this }
+
+      if (!$parent.hasClass('open')) return
+
+      if (e && e.type == 'click' && /input|textarea/i.test(e.target.tagName) && $.contains($parent[0], e.target)) return
+
+      $parent.trigger(e = $.Event('hide.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this.attr('aria-expanded', 'false')
+      $parent.removeClass('open').trigger($.Event('hidden.bs.dropdown', relatedTarget))
+    })
+  }
+
+  Dropdown.prototype.toggle = function (e) {
+    var $this = $(this)
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    clearMenus()
+
+    if (!isActive) {
+      if ('ontouchstart' in document.documentElement && !$parent.closest('.navbar-nav').length) {
+        // if mobile we use a backdrop because click events don't delegate
+        $(document.createElement('div'))
+          .addClass('dropdown-backdrop')
+          .insertAfter($(this))
+          .on('click', clearMenus)
+      }
+
+      var relatedTarget = { relatedTarget: this }
+      $parent.trigger(e = $.Event('show.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this
+        .trigger('focus')
+        .attr('aria-expanded', 'true')
+
+      $parent
+        .toggleClass('open')
+        .trigger($.Event('shown.bs.dropdown', relatedTarget))
+    }
+
+    return false
+  }
+
+  Dropdown.prototype.keydown = function (e) {
+    if (!/(38|40|27|32)/.test(e.which) || /input|textarea/i.test(e.target.tagName)) return
+
+    var $this = $(this)
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    if (!isActive && e.which != 27 || isActive && e.which == 27) {
+      if (e.which == 27) $parent.find(toggle).trigger('focus')
+      return $this.trigger('click')
+    }
+
+    var desc = ' li:not(.disabled):visible a'
+    var $items = $parent.find('.dropdown-menu' + desc)
+
+    if (!$items.length) return
+
+    var index = $items.index(e.target)
+
+    if (e.which == 38 && index > 0)                 index--         // up
+    if (e.which == 40 && index < $items.length - 1) index++         // down
+    if (!~index)                                    index = 0
+
+    $items.eq(index).trigger('focus')
+  }
+
+
+  // DROPDOWN PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this = $(this)
+      var data  = $this.data('bs.dropdown')
+
+      if (!data) $this.data('bs.dropdown', (data = new Dropdown(this)))
+      if (typeof option == 'string') data[option].call($this)
+    })
+  }
+
+  var old = $.fn.dropdown
+
+  $.fn.dropdown             = Plugin
+  $.fn.dropdown.Constructor = Dropdown
+
+
+  // DROPDOWN NO CONFLICT
+  // ====================
+
+  $.fn.dropdown.noConflict = function () {
+    $.fn.dropdown = old
+    return this
+  }
+
+
+  // APPLY TO STANDARD DROPDOWN ELEMENTS
+  // ===================================
+
+  $(document)
+    .on('click.bs.dropdown.data-api', clearMenus)
+    .on('click.bs.dropdown.data-api', '.dropdown form', function (e) { e.stopPropagation() })
+    .on('click.bs.dropdown.data-api', toggle, Dropdown.prototype.toggle)
+    .on('keydown.bs.dropdown.data-api', toggle, Dropdown.prototype.keydown)
+    .on('keydown.bs.dropdown.data-api', '.dropdown-menu', Dropdown.prototype.keydown)
+
+}(jQuery);
+</script>
+<style type="text/css">
+.code-folding-btn {
+  margin-bottom: 4px;
+}
+
+.row { display: flex; }
+.collapse { display: none; }
+.in { display:block }
+.pull-right > .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    float: left;
+    min-width: 160px;
+    padding: 5px 0;
+    margin: 2px 0 0;
+    font-size: 14px;
+    text-align: left;
+    list-style: none;
+    background-color: #fff;
+    -webkit-background-clip: padding-box;
+    background-clip: padding-box;
+    border: 1px solid #ccc;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: 4px;
+    -webkit-box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    box-shadow: 0 6px 12px rgba(0,0,0,.175);
+}
+
+.open > .dropdown-menu {
+    display: block;
+    color: #ffffff;
+    background-color: #ffffff;
+    background-image: none;
+    border-color: #92897e;
+}
+
+.dropdown-menu > li > a {
+  display: block;
+  padding: 3px 20px;
+  clear: both;
+  font-weight: 400;
+  line-height: 1.42857143;
+  color: #000000;
+  white-space: nowrap;
+}
+
+.dropdown-menu > li > a:hover,
+.dropdown-menu > li > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+}
+
+.dropdown-menu > .active > a,
+.dropdown-menu > .active > a:hover,
+.dropdown-menu > .active > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+  outline: 0;
+}
+.dropdown-menu > .disabled > a,
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  color: #aea79f;
+}
+
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  text-decoration: none;
+  cursor: not-allowed;
+  background-color: transparent;
+  background-image: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(enabled = false);
+}
+
+.btn {
+  display: inline-block;
+  margin-bottom: 1;
+  font-weight: normal;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  -ms-touch-action: manipulation;
+      touch-action: manipulation;
+  cursor: pointer;
+  background-image: none;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.42857143;
+  border-radius: 4px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn.active:focus,
+.btn.focus,
+.btn:active.focus,
+.btn.active.focus {
+  outline: 5px auto -webkit-focus-ring-color;
+  outline-offset: -2px;
+}
+.btn:hover,
+.btn:focus,
+.btn.focus {
+  color: #ffffff;
+  text-decoration: none;
+}
+.btn:active,
+.btn.active {
+  background-image: none;
+  outline: 0;
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn.disabled,
+.btn[disabled],
+fieldset[disabled] .btn {
+  cursor: not-allowed;
+  filter: alpha(opacity=65);
+  opacity: 0.65;
+  box-shadow: none;
+}
+a.btn.disabled,
+fieldset[disabled] a.btn {
+  pointer-events: none;
+}
+.btn-default {
+  color: #ffffff;
+  background-color: #aea79f; #important
+  border-color: #aea79f;
+}
+
+.btn-default:focus,
+.btn-default.focus {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #6f675e;
+}
+
+.btn-default:hover {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #92897e;
+}
+.btn-default:active,
+.btn-default.active,
+.btn-group > .btn:not(:first-child):not(:last-child):not(.dropdown-toggle) {
+  border-radius: 0;
+}
+.btn-group > .btn:first-child {
+  margin-left: 0;
+}
+.btn-group > .btn:first-child:not(:last-child):not(.dropdown-toggle) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn:last-child:not(:first-child),
+.btn-group > .dropdown-toggle:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group > .btn-group {
+  float: left;
+}
+.btn-group > .btn-group:not(:first-child):not(:last-child) > .btn {
+  border-radius: 0;
+}
+.btn-group > .btn-group:first-child:not(:last-child) > .btn:last-child,
+.btn-group > .btn-group:first-child:not(:last-child) > .dropdown-toggle {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn-group:last-child:not(:first-child) > .btn:first-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group .dropdown-toggle:active,
+.btn-group.open .dropdown-toggle {
+  outline: 0;
+}
+.btn-group > .btn + .dropdown-toggle {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+.btn-group > .btn-lg + .dropdown-toggle {
+  padding-right: 12px;
+  padding-left: 12px;
+}
+.btn-group.open .dropdown-toggle {
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn-group.open .dropdown-toggle.btn-link {
+  box-shadow: none;
+}
+
+</style>
+<script>
+var str = '<div class="btn-group pull-right" style="position: fixed; right: 50px; top: 10px; z-index: 200"><button type="button" class="btn btn-default btn-xs dropdown-toggle" id="allCodeButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" data-_extension-text-contrast=""><span>Code</span> <span class="caret"></span></button><ul class="dropdown-menu" style="min-width: 50px;"><li><a id="rmd-show-all-code" href="#">Show All Code</a></li><li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li></ul></div>';
+document.write(str);
+</script>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "hide");
+});
+</script>
 
 
 <style type="text/css">
@@ -349,88 +1085,82 @@ types.</p>
 </tr>
 </tbody>
 </table>
-<pre><code># MULTIPOLYGON (((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1), (2 2, 3 3, 4 3, 4 2, 2 2)), ((3 7, 4 7, 5 8, 3 9, 2 8, 3 7)))</code></pre>
+<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb37-1" title="1"><span class="kw">library</span>(sf)</a>
+<a class="sourceLine" id="cb37-2" title="2"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">4</span>))</a>
+<a class="sourceLine" id="cb37-3" title="3"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="fl">1.2</span>,<span class="dv">1</span>))</a>
+<a class="sourceLine" id="cb37-4" title="4"></a>
+<a class="sourceLine" id="cb37-5" title="5"><span class="co"># 1</span></a>
+<a class="sourceLine" id="cb37-6" title="6">p =<span class="st"> </span><span class="kw">st_point</span>(<span class="dv">0</span><span class="op">:</span><span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb37-7" title="7"><span class="kw">plot</span>(p, <span class="dt">pch =</span> <span class="dv">16</span>)</a>
+<a class="sourceLine" id="cb37-8" title="8"><span class="kw">title</span>(<span class="st">&quot;point&quot;</span>)</a>
+<a class="sourceLine" id="cb37-9" title="9"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
+<a class="sourceLine" id="cb37-10" title="10"></a>
+<a class="sourceLine" id="cb37-11" title="11"><span class="co"># 2</span></a>
+<a class="sourceLine" id="cb37-12" title="12">mp =<span class="st"> </span><span class="kw">st_multipoint</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">4</span>)))</a>
+<a class="sourceLine" id="cb37-13" title="13"><span class="kw">plot</span>(mp, <span class="dt">pch =</span> <span class="dv">16</span>)</a>
+<a class="sourceLine" id="cb37-14" title="14"><span class="kw">title</span>(<span class="st">&quot;multipoint&quot;</span>)</a>
+<a class="sourceLine" id="cb37-15" title="15"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
+<a class="sourceLine" id="cb37-16" title="16"></a>
+<a class="sourceLine" id="cb37-17" title="17"><span class="co"># 3</span></a>
+<a class="sourceLine" id="cb37-18" title="18">ls =<span class="st"> </span><span class="kw">st_linestring</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">5</span>), <span class="kw">c</span>(<span class="dv">5</span>, <span class="dv">6</span>), <span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">6</span>), <span class="kw">c</span>(<span class="dv">3</span>, <span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>)))</a>
+<a class="sourceLine" id="cb37-19" title="19"><span class="kw">plot</span>(ls, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb37-20" title="20"><span class="kw">title</span>(<span class="st">&quot;linestring&quot;</span>)</a>
+<a class="sourceLine" id="cb37-21" title="21"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
+<a class="sourceLine" id="cb37-22" title="22"></a>
+<a class="sourceLine" id="cb37-23" title="23"><span class="co"># 4</span></a>
+<a class="sourceLine" id="cb37-24" title="24">mls =<span class="st"> </span><span class="kw">st_multilinestring</span>(<span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb37-25" title="25">  <span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">5</span>), <span class="kw">c</span>(<span class="dv">5</span>, <span class="dv">6</span>), <span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">6</span>), <span class="kw">c</span>(<span class="dv">3</span>, <span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>)),</a>
+<a class="sourceLine" id="cb37-26" title="26">  <span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>))))</a>
+<a class="sourceLine" id="cb37-27" title="27"><span class="kw">plot</span>(mls, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb37-28" title="28"><span class="kw">title</span>(<span class="st">&quot;multilinestring&quot;</span>)</a>
+<a class="sourceLine" id="cb37-29" title="29"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
+<a class="sourceLine" id="cb37-30" title="30"></a>
+<a class="sourceLine" id="cb37-31" title="31"><span class="co"># 5 polygon</span></a>
+<a class="sourceLine" id="cb37-32" title="32">po =<span class="st"> </span><span class="kw">st_polygon</span>(<span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">6</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)),</a>
+<a class="sourceLine" id="cb37-33" title="33">    <span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>))))</a>
+<a class="sourceLine" id="cb37-34" title="34"><span class="kw">plot</span>(po, <span class="dt">border =</span> <span class="st">&#39;black&#39;</span>, <span class="dt">col =</span> <span class="st">&#39;#ff8888&#39;</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb37-35" title="35"><span class="kw">title</span>(<span class="st">&quot;polygon&quot;</span>)</a>
+<a class="sourceLine" id="cb37-36" title="36"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
+<a class="sourceLine" id="cb37-37" title="37"></a>
+<a class="sourceLine" id="cb37-38" title="38"><span class="co"># 6 multipolygon</span></a>
+<a class="sourceLine" id="cb37-39" title="39">mpo =<span class="st"> </span><span class="kw">st_multipolygon</span>(<span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb37-40" title="40">    <span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">6</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)),</a>
+<a class="sourceLine" id="cb37-41" title="41">        <span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>))),</a>
+<a class="sourceLine" id="cb37-42" title="42">    <span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">7</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">7</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">8</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">9</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">8</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">7</span>)))))</a>
+<a class="sourceLine" id="cb37-43" title="43">mpo</a>
+<a class="sourceLine" id="cb37-44" title="44"><span class="co"># MULTIPOLYGON (((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1), (2 2, 3 3, 4 3, 4 2, 2 2)), ((3 7, 4 7, 5 8, 3 9, 2 8, 3 7)))</span></a>
+<a class="sourceLine" id="cb37-45" title="45"><span class="kw">plot</span>(mpo, <span class="dt">border =</span> <span class="st">&#39;black&#39;</span>, <span class="dt">col =</span> <span class="st">&#39;#ff8888&#39;</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb37-46" title="46"><span class="kw">title</span>(<span class="st">&quot;multipolygon&quot;</span>)</a>
+<a class="sourceLine" id="cb37-47" title="47"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
+<a class="sourceLine" id="cb37-48" title="48"></a>
+<a class="sourceLine" id="cb37-49" title="49"><span class="co"># 7 geometrycollection</span></a>
+<a class="sourceLine" id="cb37-50" title="50">gc =<span class="st"> </span><span class="kw">st_geometrycollection</span>(<span class="kw">list</span>(po, ls <span class="op">+</span><span class="st"> </span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">5</span>), <span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">5</span>)), <span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">4</span>))))</a>
+<a class="sourceLine" id="cb37-51" title="51"><span class="kw">plot</span>(gc, <span class="dt">border =</span> <span class="st">&#39;black&#39;</span>, <span class="dt">col =</span> <span class="st">&#39;#ff6666&#39;</span>, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb37-52" title="52"><span class="kw">title</span>(<span class="st">&quot;geometrycollection&quot;</span>)</a>
+<a class="sourceLine" id="cb37-53" title="53"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:sfgeometries"></span>
 <img src="sds_files/figure-html/sfgeometries-1.png" alt="sketches of the main simple feature geometry types" width="672" />
 <p class="caption">
 Figure 3.1: sketches of the main simple feature geometry types
 </p>
 </div>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb26-1" title="1"><span class="kw">library</span>(sf)</a>
-<a class="sourceLine" id="cb26-2" title="2"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">4</span>))</a>
-<a class="sourceLine" id="cb26-3" title="3"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="fl">1.2</span>,<span class="dv">1</span>))</a>
-<a class="sourceLine" id="cb26-4" title="4"></a>
-<a class="sourceLine" id="cb26-5" title="5"><span class="co"># 1</span></a>
-<a class="sourceLine" id="cb26-6" title="6">p =<span class="st"> </span><span class="kw">st_point</span>(<span class="dv">0</span><span class="op">:</span><span class="dv">1</span>)</a>
-<a class="sourceLine" id="cb26-7" title="7"><span class="kw">plot</span>(p, <span class="dt">pch =</span> <span class="dv">16</span>)</a>
-<a class="sourceLine" id="cb26-8" title="8"><span class="kw">title</span>(<span class="st">&quot;point&quot;</span>)</a>
-<a class="sourceLine" id="cb26-9" title="9"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
-<a class="sourceLine" id="cb26-10" title="10"></a>
-<a class="sourceLine" id="cb26-11" title="11"><span class="co"># 2</span></a>
-<a class="sourceLine" id="cb26-12" title="12">mp =<span class="st"> </span><span class="kw">st_multipoint</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">4</span>)))</a>
-<a class="sourceLine" id="cb26-13" title="13"><span class="kw">plot</span>(mp, <span class="dt">pch =</span> <span class="dv">16</span>)</a>
-<a class="sourceLine" id="cb26-14" title="14"><span class="kw">title</span>(<span class="st">&quot;multipoint&quot;</span>)</a>
-<a class="sourceLine" id="cb26-15" title="15"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
-<a class="sourceLine" id="cb26-16" title="16"></a>
-<a class="sourceLine" id="cb26-17" title="17"><span class="co"># 3</span></a>
-<a class="sourceLine" id="cb26-18" title="18">ls =<span class="st"> </span><span class="kw">st_linestring</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">5</span>), <span class="kw">c</span>(<span class="dv">5</span>, <span class="dv">6</span>), <span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">6</span>), <span class="kw">c</span>(<span class="dv">3</span>, <span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>)))</a>
-<a class="sourceLine" id="cb26-19" title="19"><span class="kw">plot</span>(ls, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb26-20" title="20"><span class="kw">title</span>(<span class="st">&quot;linestring&quot;</span>)</a>
-<a class="sourceLine" id="cb26-21" title="21"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
-<a class="sourceLine" id="cb26-22" title="22"></a>
-<a class="sourceLine" id="cb26-23" title="23"><span class="co"># 4</span></a>
-<a class="sourceLine" id="cb26-24" title="24">mls =<span class="st"> </span><span class="kw">st_multilinestring</span>(<span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb26-25" title="25">  <span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">5</span>), <span class="kw">c</span>(<span class="dv">5</span>, <span class="dv">6</span>), <span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">6</span>), <span class="kw">c</span>(<span class="dv">3</span>, <span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>)),</a>
-<a class="sourceLine" id="cb26-26" title="26">  <span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>))))</a>
-<a class="sourceLine" id="cb26-27" title="27"><span class="kw">plot</span>(mls, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb26-28" title="28"><span class="kw">title</span>(<span class="st">&quot;multilinestring&quot;</span>)</a>
-<a class="sourceLine" id="cb26-29" title="29"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
-<a class="sourceLine" id="cb26-30" title="30"></a>
-<a class="sourceLine" id="cb26-31" title="31"><span class="co"># 5 polygon</span></a>
-<a class="sourceLine" id="cb26-32" title="32">po =<span class="st"> </span><span class="kw">st_polygon</span>(<span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">6</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)),</a>
-<a class="sourceLine" id="cb26-33" title="33">    <span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>))))</a>
-<a class="sourceLine" id="cb26-34" title="34"><span class="kw">plot</span>(po, <span class="dt">border =</span> <span class="st">&#39;black&#39;</span>, <span class="dt">col =</span> <span class="st">&#39;#ff8888&#39;</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb26-35" title="35"><span class="kw">title</span>(<span class="st">&quot;polygon&quot;</span>)</a>
-<a class="sourceLine" id="cb26-36" title="36"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
-<a class="sourceLine" id="cb26-37" title="37"></a>
-<a class="sourceLine" id="cb26-38" title="38"><span class="co"># 6 multipolygon</span></a>
-<a class="sourceLine" id="cb26-39" title="39">mpo =<span class="st"> </span><span class="kw">st_multipolygon</span>(<span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb26-40" title="40">    <span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">6</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)),</a>
-<a class="sourceLine" id="cb26-41" title="41">        <span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">3</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>))),</a>
-<a class="sourceLine" id="cb26-42" title="42">    <span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">7</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">7</span>), <span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">8</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">9</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">8</span>), <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">7</span>)))))</a>
-<a class="sourceLine" id="cb26-43" title="43">mpo</a>
-<a class="sourceLine" id="cb26-44" title="44"><span class="kw">plot</span>(mpo, <span class="dt">border =</span> <span class="st">&#39;black&#39;</span>, <span class="dt">col =</span> <span class="st">&#39;#ff8888&#39;</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb26-45" title="45"><span class="kw">title</span>(<span class="st">&quot;multipolygon&quot;</span>)</a>
-<a class="sourceLine" id="cb26-46" title="46"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a>
-<a class="sourceLine" id="cb26-47" title="47"></a>
-<a class="sourceLine" id="cb26-48" title="48"><span class="co"># 7 geometrycollection</span></a>
-<a class="sourceLine" id="cb26-49" title="49">gc =<span class="st"> </span><span class="kw">st_geometrycollection</span>(<span class="kw">list</span>(po, ls <span class="op">+</span><span class="st"> </span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">5</span>), <span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">5</span>)), <span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">4</span>))))</a>
-<a class="sourceLine" id="cb26-50" title="50"><span class="kw">plot</span>(gc, <span class="dt">border =</span> <span class="st">&#39;black&#39;</span>, <span class="dt">col =</span> <span class="st">&#39;#ff6666&#39;</span>, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb26-51" title="51"><span class="kw">title</span>(<span class="st">&quot;geometrycollection&quot;</span>)</a>
-<a class="sourceLine" id="cb26-52" title="52"><span class="kw">box</span>(<span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>)</a></code></pre></div>
-</details>
 <p>Figure <a href="geometries.html#fig:sfgeometries">3.1</a> shows examples of these basic
 geometry types. The human-readable, “well-known-text” (WKT) representation
 of the geometries plotted are:</p>
-<pre><code># POINT (0 1)
-# MULTIPOINT ((1 1), (2 2), (4 1), (2 3), (1 4))
-# LINESTRING (1 1, 5 5, 5 6, 4 6, 3 4, 2 3)
-# MULTILINESTRING ((1 1, 5 5, 5 6, 4 6, 3 4, 2 3), (3 0, 4 1, 2 1))
-# POLYGON ((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1), (2 2, 3 3, 4 3, 4 2, 2 2))
-# MULTIPOLYGON (((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1), (2 2, 3 3, 4 3, 4 2, 2 2)), ((3 7, 4 7, 5 8, 3 9, 2 8, 3 7)))
-# GEOMETRYCOLLECTION (POLYGON ((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1), (2 2, 3 3, 4 3, 4 2, 2 2)), LINESTRING (1 6, 5 10, 5 11, 4 11, 3 9, 2 8), POINT (2 5), POINT (5 4))</code></pre>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb28-1" title="1">p</a>
-<a class="sourceLine" id="cb28-2" title="2">mp</a>
-<a class="sourceLine" id="cb28-3" title="3">ls</a>
-<a class="sourceLine" id="cb28-4" title="4">mls</a>
-<a class="sourceLine" id="cb28-5" title="5">po</a>
-<a class="sourceLine" id="cb28-6" title="6">mpo</a>
-<a class="sourceLine" id="cb28-7" title="7">gc</a></code></pre></div>
-</details>
+<div class="sourceCode" id="cb38"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb38-1" title="1">p</a>
+<a class="sourceLine" id="cb38-2" title="2"><span class="co"># POINT (0 1)</span></a>
+<a class="sourceLine" id="cb38-3" title="3">mp</a>
+<a class="sourceLine" id="cb38-4" title="4"><span class="co"># MULTIPOINT ((1 1), (2 2), (4 1), (2 3), (1 4))</span></a>
+<a class="sourceLine" id="cb38-5" title="5">ls</a>
+<a class="sourceLine" id="cb38-6" title="6"><span class="co"># LINESTRING (1 1, 5 5, 5 6, 4 6, 3 4, 2 3)</span></a>
+<a class="sourceLine" id="cb38-7" title="7">mls</a>
+<a class="sourceLine" id="cb38-8" title="8"><span class="co"># MULTILINESTRING ((1 1, 5 5, 5 6, 4 6, 3 4, 2 3), (3 0, 4 1, 2 1))</span></a>
+<a class="sourceLine" id="cb38-9" title="9">po</a>
+<a class="sourceLine" id="cb38-10" title="10"><span class="co"># POLYGON ((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1), (2 2, 3 3, 4 3, 4 2, 2 2))</span></a>
+<a class="sourceLine" id="cb38-11" title="11">mpo</a>
+<a class="sourceLine" id="cb38-12" title="12"><span class="co"># MULTIPOLYGON (((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1), (2 2, 3 3, 4 3, 4 2, 2 2)), ((3 7, 4 7, 5 8, 3 9, 2 8, 3 7)))</span></a>
+<a class="sourceLine" id="cb38-13" title="13">gc</a>
+<a class="sourceLine" id="cb38-14" title="14"><span class="co"># GEOMETRYCOLLECTION (POLYGON ((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1), (2 2, 3 3, 4 3, 4 2, 2 2)), LINESTRING (1 6, 5 10, 5 11, 4 11, 3 9, 2 8), POINT (2 5), POINT (5 4))</span></a></code></pre></div>
 <p>In this representation, coordinates are separated by space, and
 points by commas. Sets are denoted by parentheses, and separated
 by commas.</p>
@@ -443,14 +1173,11 @@ section <span class="citation">(<span class="citeproc-not-found" data-reference-
 <div id="valid" class="section level3">
 <h3><span class="header-section-number">3.1.2</span> Simple and valid geometries, ring direction</h3>
 <p>Linestrings are called <em>simple</em> when they do not self-intersect:</p>
-<pre><code># LINESTRING (0 0, 1 1, 2 2, 0 2, 1 1, 2 0)
-# is_simple 
-#     FALSE</code></pre>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb30-1" title="1">(<span class="dt">ls =</span> <span class="kw">st_linestring</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">0</span>))))</a>
-<a class="sourceLine" id="cb30-2" title="2"><span class="kw">c</span>(<span class="dt">is_simple =</span> <span class="kw">st_is_simple</span>(ls))</a></code></pre></div>
-</details>
+<div class="sourceCode" id="cb39"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb39-1" title="1">(<span class="dt">ls =</span> <span class="kw">st_linestring</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">0</span>))))</a>
+<a class="sourceLine" id="cb39-2" title="2"><span class="co"># LINESTRING (0 0, 1 1, 2 2, 0 2, 1 1, 2 0)</span></a>
+<a class="sourceLine" id="cb39-3" title="3"><span class="kw">c</span>(<span class="dt">is_simple =</span> <span class="kw">st_is_simple</span>(ls))</a>
+<a class="sourceLine" id="cb39-4" title="4"><span class="co"># is_simple </span></a>
+<a class="sourceLine" id="cb39-5" title="5"><span class="co">#     FALSE</span></a></code></pre></div>
 <p>Valid polygons and multipolygons obey the following properties:</p>
 <ul>
 <li>polygon rings are closed (the last point equals the first)</li>
@@ -484,15 +1211,12 @@ considered for self-intersections.</p>
 <p>Both <code>Z</code> and <code>M</code> are not found often, and software support
 to do something useful with them is (still) rare. Their
 WKT representation are fairly easily understood:</p>
-<pre><code># POINT Z (1 3 2)
-# POINT M (1 3 2)
-# LINESTRING ZM (3 1 2 4, 4 4 2 2)</code></pre>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb32-1" title="1"><span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>,<span class="dv">2</span>))</a>
-<a class="sourceLine" id="cb32-2" title="2"><span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>,<span class="dv">2</span>), <span class="dt">dim =</span> <span class="st">&quot;XYM&quot;</span>)</a>
-<a class="sourceLine" id="cb32-3" title="3"><span class="kw">st_linestring</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">4</span>,<span class="dv">2</span>,<span class="dv">2</span>)))</a></code></pre></div>
-</details>
+<div class="sourceCode" id="cb40"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb40-1" title="1"><span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>,<span class="dv">2</span>))</a>
+<a class="sourceLine" id="cb40-2" title="2"><span class="co"># POINT Z (1 3 2)</span></a>
+<a class="sourceLine" id="cb40-3" title="3"><span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>,<span class="dv">2</span>), <span class="dt">dim =</span> <span class="st">&quot;XYM&quot;</span>)</a>
+<a class="sourceLine" id="cb40-4" title="4"><span class="co"># POINT M (1 3 2)</span></a>
+<a class="sourceLine" id="cb40-5" title="5"><span class="kw">st_linestring</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">4</span>), <span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">4</span>,<span class="dv">2</span>,<span class="dv">2</span>)))</a>
+<a class="sourceLine" id="cb40-6" title="6"><span class="co"># LINESTRING ZM (3 1 2 4, 4 4 2 2)</span></a></code></pre></div>
 </div>
 <div id="empty-geometries" class="section level3">
 <h3><span class="header-section-number">3.1.4</span> Empty geometries</h3>
@@ -501,22 +1225,16 @@ empty geometry.
 Empty geometries arise naturally when we do geometrical
 operations (section <a href="geometries.html#opgeom">3.2</a>), for instance when we want to
 know the intersection of <code>POINT (0 0)</code> and <code>POINT (1 1)</code>:</p>
-<pre><code># GEOMETRYCOLLECTION EMPTY</code></pre>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb34-1" title="1">(<span class="dt">e =</span> <span class="kw">st_intersection</span>(<span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)), <span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>))))</a></code></pre></div>
-</details>
+<div class="sourceCode" id="cb41"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb41-1" title="1">(<span class="dt">e =</span> <span class="kw">st_intersection</span>(<span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)), <span class="kw">st_point</span>(<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>))))</a>
+<a class="sourceLine" id="cb41-2" title="2"><span class="co"># GEOMETRYCOLLECTION EMPTY</span></a></code></pre></div>
 <p>and it represents essentially the empty set: when combining
 (unioning) an empty point it with other non-empty geometries,
 it vanishes.</p>
 <p>All geometry types have a special value representing the empty (typed) geometry:</p>
-<pre><code># POINT EMPTY
-# LINESTRING M EMPTY</code></pre>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb36-1" title="1"><span class="kw">st_point</span>()</a>
-<a class="sourceLine" id="cb36-2" title="2"><span class="kw">st_linestring</span>(<span class="kw">matrix</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">3</span>)[<span class="dv">0</span>,], <span class="dt">dim =</span> <span class="st">&quot;XYM&quot;</span>)</a></code></pre></div>
-</details>
+<div class="sourceCode" id="cb42"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb42-1" title="1"><span class="kw">st_point</span>()</a>
+<a class="sourceLine" id="cb42-2" title="2"><span class="co"># POINT EMPTY</span></a>
+<a class="sourceLine" id="cb42-3" title="3"><span class="kw">st_linestring</span>(<span class="kw">matrix</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">3</span>)[<span class="dv">0</span>,], <span class="dt">dim =</span> <span class="st">&quot;XYM&quot;</span>)</a>
+<a class="sourceLine" id="cb42-4" title="4"><span class="co"># LINESTRING M EMPTY</span></a></code></pre></div>
 <p>but it seems that they all point to the same empty set.</p>
 </div>
 <div id="ten-further-geometry-types" class="section level3">
@@ -645,70 +1363,67 @@ roles are obvious for polygons but e.g. for</p>
 by all non-end points on the line,</li>
 <li><strong>points</strong> have a zero-dimensional inside but no boundary</li>
 </ul>
+<div class="sourceCode" id="cb43"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb43-1" title="1"><span class="kw">library</span>(sf)</a>
+<a class="sourceLine" id="cb43-2" title="2">polygon =<span class="st"> </span>po =<span class="st"> </span><span class="kw">st_polygon</span>(<span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))))</a>
+<a class="sourceLine" id="cb43-3" title="3">p0 =<span class="st"> </span><span class="kw">st_polygon</span>(<span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="op">-</span><span class="dv">1</span>,<span class="op">-</span><span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="op">-</span><span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="op">-</span><span class="dv">1</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="op">-</span><span class="dv">1</span>,<span class="op">-</span><span class="dv">1</span>))))</a>
+<a class="sourceLine" id="cb43-4" title="4">line =<span class="st"> </span>li =<span class="st"> </span><span class="kw">st_linestring</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(.<span class="dv">5</span>, <span class="fl">-.5</span>), <span class="kw">c</span>(.<span class="dv">5</span>, <span class="fl">0.5</span>)))</a>
+<a class="sourceLine" id="cb43-5" title="5">s =<span class="st"> </span><span class="kw">st_sfc</span>(po, li)</a>
+<a class="sourceLine" id="cb43-6" title="6"></a>
+<a class="sourceLine" id="cb43-7" title="7"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">3</span>))</a>
+<a class="sourceLine" id="cb43-8" title="8"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">1</span>))</a>
+<a class="sourceLine" id="cb43-9" title="9"></a>
+<a class="sourceLine" id="cb43-10" title="10"><span class="co"># &quot;1020F1102&quot;</span></a>
+<a class="sourceLine" id="cb43-11" title="11"><span class="co"># 1: 1</span></a>
+<a class="sourceLine" id="cb43-12" title="12"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;I(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;I(line) = 1&quot;</span>)))</a>
+<a class="sourceLine" id="cb43-13" title="13"><span class="kw">lines</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(.<span class="dv">5</span>,<span class="dv">0</span>), <span class="kw">c</span>(.<span class="dv">5</span>,.<span class="dv">495</span>)), <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb43-14" title="14"><span class="kw">points</span>(<span class="fl">0.5</span>, <span class="fl">0.5</span>, <span class="dt">pch =</span> <span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb43-15" title="15"></a>
+<a class="sourceLine" id="cb43-16" title="16"><span class="co"># 2: 0</span></a>
+<a class="sourceLine" id="cb43-17" title="17"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;I(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;B(line) = 0&quot;</span>)))</a>
+<a class="sourceLine" id="cb43-18" title="18"><span class="kw">points</span>(<span class="fl">0.5</span>, <span class="fl">0.5</span>, <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">pch =</span> <span class="dv">16</span>)</a>
+<a class="sourceLine" id="cb43-19" title="19"></a>
+<a class="sourceLine" id="cb43-20" title="20"><span class="co"># 3: 2</span></a>
+<a class="sourceLine" id="cb43-21" title="21"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;I(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;E(line) = 2&quot;</span>)))</a>
+<a class="sourceLine" id="cb43-22" title="22"><span class="kw">plot</span>(po, <span class="dt">col =</span> <span class="st">&#39;#ff8888&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb43-23" title="23"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb43-24" title="24"></a>
+<a class="sourceLine" id="cb43-25" title="25"><span class="co"># 4: 0</span></a>
+<a class="sourceLine" id="cb43-26" title="26"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;B(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;I(line) = 0&quot;</span>)))</a>
+<a class="sourceLine" id="cb43-27" title="27"><span class="kw">points</span>(.<span class="dv">5</span>, <span class="dv">0</span>, <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">pch =</span> <span class="dv">16</span>)</a>
+<a class="sourceLine" id="cb43-28" title="28"></a>
+<a class="sourceLine" id="cb43-29" title="29"><span class="co"># 5: F</span></a>
+<a class="sourceLine" id="cb43-30" title="30"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;B(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;B(line) = F&quot;</span>)))</a>
+<a class="sourceLine" id="cb43-31" title="31"></a>
+<a class="sourceLine" id="cb43-32" title="32"><span class="co"># 6: 1</span></a>
+<a class="sourceLine" id="cb43-33" title="33"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;B(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;E(line) = 1&quot;</span>)))</a>
+<a class="sourceLine" id="cb43-34" title="34"><span class="kw">plot</span>(po, <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb43-35" title="35"></a>
+<a class="sourceLine" id="cb43-36" title="36"><span class="co"># 7: 1</span></a>
+<a class="sourceLine" id="cb43-37" title="37"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;E(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;I(line) = 1&quot;</span>)))</a>
+<a class="sourceLine" id="cb43-38" title="38"><span class="kw">lines</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(.<span class="dv">5</span>, <span class="fl">-.5</span>), <span class="kw">c</span>(.<span class="dv">5</span>, <span class="dv">0</span>)), <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb43-39" title="39"></a>
+<a class="sourceLine" id="cb43-40" title="40"><span class="co"># 8: 0</span></a>
+<a class="sourceLine" id="cb43-41" title="41"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;E(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;B(line) = 0&quot;</span>)))</a>
+<a class="sourceLine" id="cb43-42" title="42"><span class="kw">points</span>(.<span class="dv">5</span>, <span class="fl">-.5</span>, <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">pch =</span> <span class="dv">16</span>)</a>
+<a class="sourceLine" id="cb43-43" title="43"></a>
+<a class="sourceLine" id="cb43-44" title="44"><span class="co"># 9: 2</span></a>
+<a class="sourceLine" id="cb43-45" title="45"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;E(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;E(line) = 2&quot;</span>)))</a>
+<a class="sourceLine" id="cb43-46" title="46"><span class="kw">plot</span>(p0 <span class="op">/</span><span class="st"> </span>po, <span class="dt">col =</span> <span class="st">&#39;#ff8888&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb43-47" title="47"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:de9im"></span>
 <img src="sds_files/figure-html/de9im-1.png" alt="DE-9IM: intersections between the interior, boundary and exterior of a polygon (rows) and of a linestring (columns) indicated by red" width="672" />
 <p class="caption">
 Figure 3.2: DE-9IM: intersections between the interior, boundary and exterior of a polygon (rows) and of a linestring (columns) indicated by red
 </p>
 </div>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb37-1" title="1"><span class="kw">library</span>(sf)</a>
-<a class="sourceLine" id="cb37-2" title="2">polygon =<span class="st"> </span>po =<span class="st"> </span><span class="kw">st_polygon</span>(<span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">0</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))))</a>
-<a class="sourceLine" id="cb37-3" title="3">p0 =<span class="st"> </span><span class="kw">st_polygon</span>(<span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(<span class="op">-</span><span class="dv">1</span>,<span class="op">-</span><span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="op">-</span><span class="dv">1</span>), <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="op">-</span><span class="dv">1</span>,<span class="dv">2</span>), <span class="kw">c</span>(<span class="op">-</span><span class="dv">1</span>,<span class="op">-</span><span class="dv">1</span>))))</a>
-<a class="sourceLine" id="cb37-4" title="4">line =<span class="st"> </span>li =<span class="st"> </span><span class="kw">st_linestring</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(.<span class="dv">5</span>, <span class="fl">-.5</span>), <span class="kw">c</span>(.<span class="dv">5</span>, <span class="fl">0.5</span>)))</a>
-<a class="sourceLine" id="cb37-5" title="5">s =<span class="st"> </span><span class="kw">st_sfc</span>(po, li)</a>
-<a class="sourceLine" id="cb37-6" title="6"></a>
-<a class="sourceLine" id="cb37-7" title="7"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">3</span>,<span class="dv">3</span>))</a>
-<a class="sourceLine" id="cb37-8" title="8"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">1</span>))</a>
-<a class="sourceLine" id="cb37-9" title="9"></a>
-<a class="sourceLine" id="cb37-10" title="10"><span class="co"># &quot;1020F1102&quot;</span></a>
-<a class="sourceLine" id="cb37-11" title="11"><span class="co"># 1: 1</span></a>
-<a class="sourceLine" id="cb37-12" title="12"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;I(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;I(line) = 1&quot;</span>)))</a>
-<a class="sourceLine" id="cb37-13" title="13"><span class="kw">lines</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(.<span class="dv">5</span>,<span class="dv">0</span>), <span class="kw">c</span>(.<span class="dv">5</span>,.<span class="dv">495</span>)), <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb37-14" title="14"><span class="kw">points</span>(<span class="fl">0.5</span>, <span class="fl">0.5</span>, <span class="dt">pch =</span> <span class="dv">1</span>)</a>
-<a class="sourceLine" id="cb37-15" title="15"></a>
-<a class="sourceLine" id="cb37-16" title="16"><span class="co"># 2: 0</span></a>
-<a class="sourceLine" id="cb37-17" title="17"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;I(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;B(line) = 0&quot;</span>)))</a>
-<a class="sourceLine" id="cb37-18" title="18"><span class="kw">points</span>(<span class="fl">0.5</span>, <span class="fl">0.5</span>, <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">pch =</span> <span class="dv">16</span>)</a>
-<a class="sourceLine" id="cb37-19" title="19"></a>
-<a class="sourceLine" id="cb37-20" title="20"><span class="co"># 3: 2</span></a>
-<a class="sourceLine" id="cb37-21" title="21"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;I(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;E(line) = 2&quot;</span>)))</a>
-<a class="sourceLine" id="cb37-22" title="22"><span class="kw">plot</span>(po, <span class="dt">col =</span> <span class="st">&#39;#ff8888&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb37-23" title="23"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb37-24" title="24"></a>
-<a class="sourceLine" id="cb37-25" title="25"><span class="co"># 4: 0</span></a>
-<a class="sourceLine" id="cb37-26" title="26"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;B(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;I(line) = 0&quot;</span>)))</a>
-<a class="sourceLine" id="cb37-27" title="27"><span class="kw">points</span>(.<span class="dv">5</span>, <span class="dv">0</span>, <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">pch =</span> <span class="dv">16</span>)</a>
-<a class="sourceLine" id="cb37-28" title="28"></a>
-<a class="sourceLine" id="cb37-29" title="29"><span class="co"># 5: F</span></a>
-<a class="sourceLine" id="cb37-30" title="30"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;B(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;B(line) = F&quot;</span>)))</a>
-<a class="sourceLine" id="cb37-31" title="31"></a>
-<a class="sourceLine" id="cb37-32" title="32"><span class="co"># 6: 1</span></a>
-<a class="sourceLine" id="cb37-33" title="33"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;B(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;E(line) = 1&quot;</span>)))</a>
-<a class="sourceLine" id="cb37-34" title="34"><span class="kw">plot</span>(po, <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb37-35" title="35"></a>
-<a class="sourceLine" id="cb37-36" title="36"><span class="co"># 7: 1</span></a>
-<a class="sourceLine" id="cb37-37" title="37"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;E(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;I(line) = 1&quot;</span>)))</a>
-<a class="sourceLine" id="cb37-38" title="38"><span class="kw">lines</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(.<span class="dv">5</span>, <span class="fl">-.5</span>), <span class="kw">c</span>(.<span class="dv">5</span>, <span class="dv">0</span>)), <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">lwd =</span> <span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb37-39" title="39"></a>
-<a class="sourceLine" id="cb37-40" title="40"><span class="co"># 8: 0</span></a>
-<a class="sourceLine" id="cb37-41" title="41"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;E(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;B(line) = 0&quot;</span>)))</a>
-<a class="sourceLine" id="cb37-42" title="42"><span class="kw">points</span>(.<span class="dv">5</span>, <span class="fl">-.5</span>, <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">pch =</span> <span class="dv">16</span>)</a>
-<a class="sourceLine" id="cb37-43" title="43"></a>
-<a class="sourceLine" id="cb37-44" title="44"><span class="co"># 9: 2</span></a>
-<a class="sourceLine" id="cb37-45" title="45"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">main =</span> <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;E(pol)&quot;</span>,<span class="kw">intersect</span>(),<span class="st">&quot;E(line) = 2&quot;</span>)))</a>
-<a class="sourceLine" id="cb37-46" title="46"><span class="kw">plot</span>(p0 <span class="op">/</span><span class="st"> </span>po, <span class="dt">col =</span> <span class="st">&#39;#ff8888&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb37-47" title="47"><span class="kw">plot</span>(s, <span class="dt">col =</span> <span class="kw">c</span>(<span class="ot">NA</span>, <span class="st">&#39;darkgreen&#39;</span>), <span class="dt">border =</span> <span class="st">&#39;blue&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-</details>
 <p>Figure <a href="geometries.html#fig:de9im">3.2</a> shows the intersections between the I,
 B and E components of a polygon and a linestring indicated by red;
 the sub-plot title gives the dimension of these intersections (0,
 1, 2 or F). The relationship between the two geometries is the
 concatenation of these dimensions:</p>
-<div class="sourceCode" id="cb38"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb38-1" title="1"><span class="kw">st_relate</span>(polygon, line)</a>
-<a class="sourceLine" id="cb38-2" title="2"><span class="co">#      [,1]       </span></a>
-<a class="sourceLine" id="cb38-3" title="3"><span class="co"># [1,] &quot;1020F1102&quot;</span></a></code></pre></div>
+<div class="sourceCode" id="cb44"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb44-1" title="1"><span class="kw">st_relate</span>(polygon, line)</a>
+<a class="sourceLine" id="cb44-2" title="2"><span class="co">#      [,1]       </span></a>
+<a class="sourceLine" id="cb44-3" title="3"><span class="co"># [1,] &quot;1020F1102&quot;</span></a></code></pre></div>
 <p>Using the ability to express relationships, we can also query
 pairs of geometries about particular conditions expressed in a
 <em>mask string</em>; e.g. the string <code>"*0*******"</code> would evaluate <code>TRUE</code>
@@ -975,24 +1690,21 @@ explained in section <a href="geometries.html#de9im">3.2.2</a>.</p>
 </tr>
 </tbody>
 </table>
+<div class="sourceCode" id="cb45"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb45-1" title="1"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">rep</span>(<span class="dv">0</span>,<span class="dv">4</span>), <span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</a>
+<a class="sourceLine" id="cb45-2" title="2"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(nc)[<span class="dv">1</span>], <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;black&#39;</span>)</a>
+<a class="sourceLine" id="cb45-3" title="3"><span class="kw">plot</span>(<span class="kw">st_convex_hull</span>(<span class="kw">st_geometry</span>(nc)[<span class="dv">1</span>]), <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>)</a>
+<a class="sourceLine" id="cb45-4" title="4"><span class="kw">box</span>()</a>
+<a class="sourceLine" id="cb45-5" title="5"><span class="kw">set.seed</span>(<span class="dv">131</span>)</a>
+<a class="sourceLine" id="cb45-6" title="6">mp =<span class="st"> </span><span class="kw">st_multipoint</span>(<span class="kw">matrix</span>(<span class="kw">runif</span>(<span class="dv">20</span>), <span class="dv">10</span>))</a>
+<a class="sourceLine" id="cb45-7" title="7"><span class="kw">plot</span>(mp)</a>
+<a class="sourceLine" id="cb45-8" title="8"><span class="kw">plot</span>(<span class="kw">st_voronoi</span>(mp), <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>)</a>
+<a class="sourceLine" id="cb45-9" title="9"><span class="kw">box</span>()</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:vor"></span>
 <img src="sds_files/figure-html/vor-1.png" alt="left: convex hull (red) around a polygon (black); right: voronoi diagram (red) from a `MULTIPOINT` (black)" width="60%" />
 <p class="caption">
 Figure 3.3: left: convex hull (red) around a polygon (black); right: voronoi diagram (red) from a <code>MULTIPOINT</code> (black)
 </p>
 </div>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb39"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb39-1" title="1"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">rep</span>(<span class="dv">0</span>,<span class="dv">4</span>), <span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</a>
-<a class="sourceLine" id="cb39-2" title="2"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(nc)[<span class="dv">1</span>], <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;black&#39;</span>)</a>
-<a class="sourceLine" id="cb39-3" title="3"><span class="kw">plot</span>(<span class="kw">st_convex_hull</span>(<span class="kw">st_geometry</span>(nc)[<span class="dv">1</span>]), <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>)</a>
-<a class="sourceLine" id="cb39-4" title="4"><span class="kw">box</span>()</a>
-<a class="sourceLine" id="cb39-5" title="5"><span class="kw">set.seed</span>(<span class="dv">131</span>)</a>
-<a class="sourceLine" id="cb39-6" title="6">mp =<span class="st"> </span><span class="kw">st_multipoint</span>(<span class="kw">matrix</span>(<span class="kw">runif</span>(<span class="dv">20</span>), <span class="dv">10</span>))</a>
-<a class="sourceLine" id="cb39-7" title="7"><span class="kw">plot</span>(mp)</a>
-<a class="sourceLine" id="cb39-8" title="8"><span class="kw">plot</span>(<span class="kw">st_voronoi</span>(mp), <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>)</a>
-<a class="sourceLine" id="cb39-9" title="9"><span class="kw">box</span>()</a></code></pre></div>
-</details>
 </div>
 <div id="bintrans" class="section level3">
 <h3><span class="header-section-number">3.2.6</span> Binary Transformers</h3>
@@ -1053,38 +1765,32 @@ two geometries intersect.
 Figure @(fig:boxes) (right) shows the n-ary intersection: the 7
 unique, non-overlapping geometries originating from intersection
 of one, two, <em>or more</em> geometries.</p>
+<div class="sourceCode" id="cb46"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb46-1" title="1"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">rep</span>(.<span class="dv">1</span>, <span class="dv">4</span>), <span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</a>
+<a class="sourceLine" id="cb46-2" title="2">sq =<span class="st"> </span><span class="cf">function</span>(pt, <span class="dt">sz =</span> <span class="dv">1</span>) <span class="kw">st_polygon</span>(<span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(pt <span class="op">-</span><span class="st"> </span>sz), </a>
+<a class="sourceLine" id="cb46-3" title="3">  <span class="kw">c</span>(pt[<span class="dv">1</span>] <span class="op">+</span><span class="st"> </span>sz, pt[<span class="dv">2</span>] <span class="op">-</span><span class="st"> </span>sz), <span class="kw">c</span>(pt <span class="op">+</span><span class="st"> </span>sz), <span class="kw">c</span>(pt[<span class="dv">1</span>] <span class="op">-</span><span class="st"> </span>sz, pt[<span class="dv">2</span>] <span class="op">+</span><span class="st"> </span>sz), <span class="kw">c</span>(pt <span class="op">-</span><span class="st"> </span>sz))))</a>
+<a class="sourceLine" id="cb46-4" title="4">x =<span class="st"> </span><span class="kw">st_sf</span>(<span class="dt">box =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">3</span>, <span class="kw">st_sfc</span>(<span class="kw">sq</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)), <span class="kw">sq</span>(<span class="kw">c</span>(<span class="fl">1.7</span>, <span class="fl">-0.5</span>)), <span class="kw">sq</span>(<span class="kw">c</span>(<span class="fl">0.5</span>, <span class="dv">1</span>))))</a>
+<a class="sourceLine" id="cb46-5" title="5"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(x), <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="kw">sf.colors</span>(<span class="dv">3</span>, <span class="dt">categorical=</span><span class="ot">TRUE</span>), <span class="dt">lwd =</span> <span class="dv">3</span>)</a>
+<a class="sourceLine" id="cb46-6" title="6"><span class="kw">plot</span>(<span class="kw">st_intersection</span>(<span class="kw">st_geometry</span>(x)), <span class="dt">col =</span> <span class="kw">sf.colors</span>(<span class="dv">7</span>, <span class="dt">categorical=</span><span class="ot">TRUE</span>, <span class="dt">alpha =</span> <span class="fl">.5</span>))</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:boxes"></span>
 <img src="sds_files/figure-html/boxes-1.png" alt="left: three overlapping boxes -- how do we identify the small box where all three overlap? right: unique, non-overlapping n-ary intersections" width="50%" />
 <p class="caption">
 Figure 3.4: left: three overlapping boxes – how do we identify the small box where all three overlap? right: unique, non-overlapping n-ary intersections
 </p>
 </div>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb40"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb40-1" title="1"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">rep</span>(.<span class="dv">1</span>, <span class="dv">4</span>), <span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</a>
-<a class="sourceLine" id="cb40-2" title="2">sq =<span class="st"> </span><span class="cf">function</span>(pt, <span class="dt">sz =</span> <span class="dv">1</span>) <span class="kw">st_polygon</span>(<span class="kw">list</span>(<span class="kw">rbind</span>(<span class="kw">c</span>(pt <span class="op">-</span><span class="st"> </span>sz), </a>
-<a class="sourceLine" id="cb40-3" title="3">  <span class="kw">c</span>(pt[<span class="dv">1</span>] <span class="op">+</span><span class="st"> </span>sz, pt[<span class="dv">2</span>] <span class="op">-</span><span class="st"> </span>sz), <span class="kw">c</span>(pt <span class="op">+</span><span class="st"> </span>sz), <span class="kw">c</span>(pt[<span class="dv">1</span>] <span class="op">-</span><span class="st"> </span>sz, pt[<span class="dv">2</span>] <span class="op">+</span><span class="st"> </span>sz), <span class="kw">c</span>(pt <span class="op">-</span><span class="st"> </span>sz))))</a>
-<a class="sourceLine" id="cb40-4" title="4">x =<span class="st"> </span><span class="kw">st_sf</span>(<span class="dt">box =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">3</span>, <span class="kw">st_sfc</span>(<span class="kw">sq</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)), <span class="kw">sq</span>(<span class="kw">c</span>(<span class="fl">1.7</span>, <span class="fl">-0.5</span>)), <span class="kw">sq</span>(<span class="kw">c</span>(<span class="fl">0.5</span>, <span class="dv">1</span>))))</a>
-<a class="sourceLine" id="cb40-5" title="5"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(x), <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="kw">sf.colors</span>(<span class="dv">3</span>, <span class="dt">categorical=</span><span class="ot">TRUE</span>), <span class="dt">lwd =</span> <span class="dv">3</span>)</a>
-<a class="sourceLine" id="cb40-6" title="6"><span class="kw">plot</span>(<span class="kw">st_intersection</span>(<span class="kw">st_geometry</span>(x)), <span class="dt">col =</span> <span class="kw">sf.colors</span>(<span class="dv">7</span>, <span class="dt">categorical=</span><span class="ot">TRUE</span>, <span class="dt">alpha =</span> <span class="fl">.5</span>))</a></code></pre></div>
-</details>
 <p>Similarly, one can compute an n-ary <em>difference</em> from a set <span class="math inline">\(\{s_1, s_2, s_3, ...\}\)</span> by creating differences <span class="math inline">\(\{s_1, s_2-s_1, s_3-s_2-s_1, ...\}\)</span>. This is shown in figure <a href="geometries.html#fig:diff">3.5</a>, left for the original
 set, right for the set after reversing its order to make clear that
 the result here depends on the ordering of the input geometries. Again,
 resulting geometries do not overlap.</p>
+<div class="sourceCode" id="cb47"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb47-1" title="1"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">rep</span>(.<span class="dv">1</span>, <span class="dv">4</span>), <span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>)) </a>
+<a class="sourceLine" id="cb47-2" title="2">xg =<span class="st"> </span><span class="kw">st_geometry</span>(x)</a>
+<a class="sourceLine" id="cb47-3" title="3"><span class="kw">plot</span>(<span class="kw">st_difference</span>(xg), <span class="dt">col =</span> <span class="kw">sf.colors</span>(<span class="dv">3</span>, <span class="dt">alpha =</span> <span class="fl">.5</span>, <span class="dt">categorical=</span><span class="ot">TRUE</span>))</a>
+<a class="sourceLine" id="cb47-4" title="4"><span class="kw">plot</span>(<span class="kw">st_difference</span>(xg[<span class="dv">3</span><span class="op">:</span><span class="dv">1</span>]), <span class="dt">col =</span> <span class="kw">sf.colors</span>(<span class="dv">3</span>, <span class="dt">alpha =</span> <span class="fl">.5</span>, <span class="dt">categorical=</span><span class="ot">TRUE</span>))</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:diff"></span>
 <img src="sds_files/figure-html/diff-1.png" alt="difference between subsequent boxes, left: in original order; right: in reverse order" width="50%" />
 <p class="caption">
 Figure 3.5: difference between subsequent boxes, left: in original order; right: in reverse order
 </p>
 </div>
-<details>
-<p><summary style="color:blue;">Click for Code</summary></p>
-<div class="sourceCode" id="cb41"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb41-1" title="1"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">rep</span>(.<span class="dv">1</span>, <span class="dv">4</span>), <span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>)) </a>
-<a class="sourceLine" id="cb41-2" title="2">xg =<span class="st"> </span><span class="kw">st_geometry</span>(x)</a>
-<a class="sourceLine" id="cb41-3" title="3"><span class="kw">plot</span>(<span class="kw">st_difference</span>(xg), <span class="dt">col =</span> <span class="kw">sf.colors</span>(<span class="dv">3</span>, <span class="dt">alpha =</span> <span class="fl">.5</span>, <span class="dt">categorical=</span><span class="ot">TRUE</span>))</a>
-<a class="sourceLine" id="cb41-4" title="4"><span class="kw">plot</span>(<span class="kw">st_difference</span>(xg[<span class="dv">3</span><span class="op">:</span><span class="dv">1</span>]), <span class="dt">col =</span> <span class="kw">sf.colors</span>(<span class="dv">3</span>, <span class="dt">alpha =</span> <span class="fl">.5</span>, <span class="dt">categorical=</span><span class="ot">TRUE</span>))</a></code></pre></div>
-</details>
 </div>
 </div>
 <div id="precision" class="section level2">
@@ -1245,14 +1951,14 @@ e.g. computing shortest or fastest routes through a network.</p>
 gitbook.require(["gitbook"], function(gitbook) {
 gitbook.start({
 "sharing": {
-"github": false,
-"facebook": true,
+"github": true,
+"facebook": false,
 "twitter": true,
 "linkedin": false,
 "weibo": false,
 "instapaper": false,
 "vk": false,
-"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+"all": false
 },
 "fontsettings": {
 "theme": "white",
@@ -1271,7 +1977,7 @@ gitbook.start({
 "link": null,
 "text": null
 },
-"download": ["sds.pdf", "sds.epub"],
+"download": null,
 "toc": {
 "collapse": "subsection"
 }

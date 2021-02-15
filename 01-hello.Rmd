@@ -13,7 +13,7 @@ should be easy to follow when understanding R at the level of, say,
 The typical way to graph spatial data is by creating a map. Let us consider
 a simple map:
 
-```{r first-map, fig.cap="a first map", eval=TRUE, echo=FALSE, fig=TRUE, cache=FALSE, message=FALSE}
+```{r first-map, fig.cap="a first map", eval=TRUE, fig=TRUE, cache=FALSE, message=FALSE}
 library(tidyverse)
 library(sf)
 system.file("gpkg/nc.gpkg", package="sf") %>%
@@ -23,19 +23,6 @@ nc.32119 %>%
 	select(BIR74) %>%
 	plot(graticule = TRUE, axes = TRUE)
 ```
-<details>
-<summary style="color:blue;">Click for Code</summary>
-```{r eval=FALSE}
-library(tidyverse)
-library(sf)
-system.file("gpkg/nc.gpkg", package="sf") %>%
-	read_sf() -> nc
-nc.32119 <- st_transform(nc, 32119)
-nc.32119 %>%
-	select(BIR74) %>%
-	plot(graticule = TRUE, axes = TRUE)
-```
-</details>
 
 A number of graphical elements are present, in this case:
 
@@ -70,15 +57,9 @@ in this case from a file (section \@ref(reading)). Printing a data
 summary for the first three records of three attribute variables
 shows:
 
-```{r first_ten, echo=FALSE}
+```{r first_ten, echo=TRUE}
 nc %>% select(AREA, BIR74, SID74) %>% print(n = 3)
 ```
-<details>
-<summary style="color:blue;">Click for Code</summary>
-```{r eval=FALSE}
-nc %>% select(AREA, BIR74, SID74) %>% print(n = 3)
-```
-</details>
 
 The printed output shows 
 
@@ -92,7 +73,7 @@ The printed output shows
 More complicated plots can involve facet plots with a map in each
 facet, as shown in figure \@ref(fig:firstgather).
 
-```{r firstgather,fig.cap="ggplot with facet maps", echo=FALSE, cache=FALSE}
+```{r firstgather,fig.cap="ggplot with facet maps", echo=TRUE, cache=FALSE}
 year_labels = c("SID74" = "1974 - 1978", "SID79" = "1979 - 1984")
 nc.32119 %>% select(SID74, SID79) %>% gather(VAR, SID, -geom) -> nc2
 ggplot() + geom_sf(data = nc2, aes(fill = SID)) + 
@@ -101,31 +82,12 @@ ggplot() + geom_sf(data = nc2, aes(fill = SID)) +
   scale_fill_gradientn(colors = sf.colors(20)) +
   theme(panel.grid.major = element_line(color = "white"))
 ```
-<details>
-<summary style="color:blue;">Click for Code</summary>
-```{r eval=FALSE}
-year_labels = c("SID74" = "1974 - 1978", "SID79" = "1979 - 1984")
-nc.32119 %>% select(SID74, SID79) %>% gather(VAR, SID, -geom) -> nc2
-ggplot() + geom_sf(data = nc2, aes(fill = SID)) + 
-  facet_wrap(~VAR, ncol = 1, labeller = labeller(VAR = year_labels)) +
-  scale_y_continuous(breaks = 34:36) +
-  scale_fill_gradientn(colors = sf.colors(20)) +
-  theme(panel.grid.major = element_line(color = "white"))
-```
-</details>
 
 An interactive, leaflet-based map is obtained in figure \@ref(fig:mapviewfigure).
-```{r mapviewfigure, cache=FALSE, echo=FALSE}
+```{r mapviewfigure, cache=FALSE, echo=TRUE}
 suppressPackageStartupMessages(library(mapview))
 nc.32119 %>% mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
 ```
-<details>
-<summary style="color:blue;">Click for Code</summary>
-```{r eval=FALSE}
-suppressPackageStartupMessages(library(mapview))
-nc.32119 %>% mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
-```
-</details>
 
 ## Coordinate reference systems
 
@@ -168,7 +130,7 @@ anywhere. Raster data on the other hand describe data where values
 are aligned on a _raster_, meaning on a regularly laid out lattice of
 usually square pixels. An example is shown in figure \@ref(fig:ras).
 
-```{r ras,echo=FALSE,fig.cap="raster maps: Landsat-7 blue band, with color values derived from data values (a), the top-left 10x10 sub-image from (a) with numeric values shown (b), and overlayed by two different types of vector data: three sample points (c), and a 500m radius around the points represented as polygons (d)", message=FALSE}
+```{r ras,echo=TRUE,fig.cap="raster maps: Landsat-7 blue band, with color values derived from data values (a), the top-left 10x10 sub-image from (a) with numeric values shown (b), and overlayed by two different types of vector data: three sample points (c), and a 500m radius around the points represented as polygons (d)", message=FALSE}
 library(stars)
 par(mfrow = c(2, 2))
 par(mar = rep(1, 4))
@@ -183,45 +145,16 @@ plot(pts, add = TRUE, pch = 3, col = 'blue')
 image(x, main = "(d)")
 plot(st_buffer(pts, 500), add = TRUE, pch = 3, border = 'blue', col = NA, lwd = 2)
 ```
-<details>
-<summary style="color:blue;">Click for Code</summary>
-```{r eval=FALSE}
-library(stars)
-par(mfrow = c(2, 2))
-par(mar = rep(1, 4))
-tif <- system.file("tif/L7_ETMs.tif", package = "stars")
-x <- read_stars(tif)[,,,1]
-image(x, main = "(a)")
-image(x[,1:10,1:10], text_values = TRUE, border = 'grey', main = "(b)")
-image(x, main = "(c)")
-set.seed(131)
-pts = st_sample(st_as_sfc(st_bbox(x)), 3)
-plot(pts, add = TRUE, pch = 3, col = 'blue')
-image(x, main = "(d)")
-plot(st_buffer(pts, 500), add = TRUE, pch = 3, border = 'blue', col = NA, lwd = 2)
-```
-</details>
 
 Vector and raster data can be combined in different ways; for instance we can query the raster at the three points of figure \@ref(fig:ras)(c), 
-```{r raspts,echo=FALSE}
+```{r raspts,echo=TRUE}
 st_extract(x, pts)
 ```
-<details>
-<summary style="color:blue;">Click for Code</summary>
-```{r eval=FALSE}
-st_extract(x, pts)
-```
-</details>
+
 or compute an aggregate, such as the average, over arbitrary regions such as the circles shown in figure \@ref(fig:ras)(d):
-```{r rasbuffers,echo=FALSE}
+```{r rasbuffers,echo=TRUE}
 aggregate(x, st_buffer(pts, 500), FUN = mean) %>% st_as_sf()
 ```
-<details>
-<summary style="color:blue;">Click for Code</summary>
-```{r eval=FALSE}
-aggregate(x, st_buffer(pts, 500), FUN = mean) %>% st_as_sf()
-```
-</details>
 
 Other raster-to-vector conversions are discussed in \@ref(raster-to-vector) and include
 
@@ -230,15 +163,9 @@ Other raster-to-vector conversions are discussed in \@ref(raster-to-vector) and 
 * generating lines or polygons that delineate continuous pixel areas with a certain value _range_ (contouring)
 
 
-```{r vectoras,echo=FALSE,fig.cap="The map obtained by rasterizing county total number of births for the period 1974-1979  shown in figure 1.1"}
+```{r vectoras,echo=TRUE,fig.cap="The map obtained by rasterizing county total number of births for the period 1974-1979  shown in figure 1.1"}
 plot(st_rasterize(nc["BIR74"], dx = 0.1), col =sf.colors(), breaks = "equal")
 ```
-<details>
-<summary style="color:blue;">Click for Code</summary>
-```{r eval=FALSE}
-plot(st_rasterize(nc["BIR74"], dx = 0.1), col =sf.colors(), breaks = "equal")
-```
-</details>
 
 Vector-to-raster conversions can be as simple as rasterizing polygons, as shown in figure \@ref(fig:vectoras). Other, more general vector-to-raster conversions include
 
@@ -253,7 +180,7 @@ Raster dimensions describe how the rows and columns relate to
 spatial coordinates. Figure \@ref(rastertypes01) shows a number
 of different possibilities.
 
-```{r rastertypes01, echo=FALSE, fig.cap="various raster types"}
+```{r rastertypes01, echo=TRUE, fig.cap="various raster types"}
 x = 1:5
 y = 1:4
 d = st_dimensions(x = x, y = y, .raster = c("x", "y"))
@@ -286,42 +213,6 @@ plot(st_geometry(st_as_sf(r3)), main = "sheared")
 plot(st_geometry(st_as_sf(r4, as_points = FALSE)), main = "rectilinear")
 plot(st_geometry((r5)), main = "curvilinear")
 ```
-<details>
-<summary style="color:blue;">Click for Code</summary>
-```{r eval=FALSE}
-x = 1:5
-y = 1:4
-d = st_dimensions(x = x, y = y, .raster = c("x", "y"))
-m = matrix(runif(20),5,4)
-r1 = st_as_stars(r = m, dimensions = d)
-
-r = attr(d, "raster")
-r$affine = c(0.2, -0.2)
-attr(d, "raster") = r
-r2 = st_as_stars(r = m, dimensions = d)
-
-r = attr(d, "raster")
-r$affine = c(0.1, -0.3)
-attr(d, "raster") = r
-r3 = st_as_stars(r = m, dimensions = d)
-
-x = c(1, 2, 3.5, 5, 6)
-y = c(1, 1.5, 3, 3.5)
-d = st_dimensions(x = x, y = y, .raster = c("x", "y"))
-r4 = st_as_stars(r = m, dimensions = d)
-
-grd = st_make_grid(cellsize = c(10,10), offset = c(-130,10), n= c(8,5), crs=st_crs(4326))
-r5 = st_transform(grd, "+proj=laea +lon_0=-70 +lat_0=35")
-
-par(mfrow = c(2,3), mar = c(0.1, 1, 1.1, 1))
-r1 = st_make_grid(cellsize = c(1,1), n = c(5,4), offset = c(0,0))
-plot(r1, main = "regular")
-plot(st_geometry(st_as_sf(r2)), main = "rotated")
-plot(st_geometry(st_as_sf(r3)), main = "sheared")
-plot(st_geometry(st_as_sf(r4, as_points = FALSE)), main = "rectilinear")
-plot(st_geometry((r5)), main = "curvilinear")
-```
-</details>
 
 Regular rasters like shown in figure \@ref(ras) have a constant,
 not necessarily square cell size and axes aligned with the x and y

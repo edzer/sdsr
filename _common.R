@@ -3,7 +3,7 @@ options(digits = 3)
 
 knitr::opts_chunk$set(
   comment = "#",
-  collapse = TRUE,
+#  collapse = TRUE,
   cache = FALSE,
 #  out.width = "70%",
   fig.align = 'center',
