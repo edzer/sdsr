@@ -13,3 +13,7 @@ knitr::opts_chunk$set(
 )
 
 options(dplyr.print_min = 6, dplyr.print_max = 6)
+mapview::mapviewOptions(fgb = FALSE)
+
+# for units: (?)
+Sys.setenv(UDUNITS2_XML_PATH="")

@@ -1,22 +1,80 @@
-# Coordinate systems {#cs}
+# Coordinates {#cs}
+
+"_Data are not just numbers, they are numbers with a context_";
+"_In data analysis, context provides meaning_"  [@cobbmoore]
 
 Before we can try to understand geometries like points, lines,
-polygons, coverages and grids, it is useful to review coordinate
-system so that we have an idea what exactly coordinates of a point
-reflect.  For spatial data, the location of observations are
-characterised by coordinates, and coordinates are defined in a
-coordinate system.  Different coordinate systems can be used for
-this, and the most important difference is whether coordinates
-are defined over a 2-dimensional or 3-dimensional space referenced
+polygons, coverage and grids, it is useful to review coordinate
+system so that we have an idea what exactly coordinates of a
+point reflect.  For spatial data, the location of observations
+are characterized by coordinates, and coordinates are defined in
+a coordinate system.  Different coordinate systems can be used for
+this, and the most important difference is whether coordinates are
+defined over a 2-dimensional or 3-dimensional space referenced
 to orthogonal axes (Cartesian coordinates), or using distance
 and directions (polar coordinates, spherical and ellipsoidal
 coordinates). Besides a location of observation, all observations
 are associated with time of observation, and so time coordinate
-systems are also briefly discussed.
+systems are also briefly discussed. First we will briefly review
+_quantities_, to learn what units and datum are.
 
-## Polar and Cartesian coordinates
+## Quantities and units {#units}
 
-```{r polar, out.width = '50%', fig.cap="Two-dimensional polar (red) and Cartesian (blue) coordinates", eval=TRUE, fig=TRUE, echo=TRUE}
+The VIM (International vocabulary of metrology, @vim)
+defines a _quantity_ as a "property of a phenomenon, body, or
+substance, where the property has a magnitude that can be expressed
+as a number and a reference", where "[a] reference can be a measurement
+unit, a measurement procedure, a reference material, or a combination
+of such."
+
+Although one could argue whether all data is constituted of
+quantities, there is no need to argue that proper data handling
+requires that numbers (or symbols) are accompanied by information
+on what they mean, in particular what they refer to.
+
+A measurement system consist of _base units_ for base quantities, and
+_derived units_ for derived quantities. For instance, the SI system
+of units [@SI] consist of the seven base units length (metre,
+m), mass (kilogram, kg), time (second, s), electric current
+(ampere, A), thermodynamic temperature (kelvin, K), amount of
+substance (mole, mol), and luminous intensity (candela, cd).
+Derived units are composed of products of integer powers of base
+units; exampes are speed ($\mbox{m}~\mbox{s}^{-1}$) and density
+($\mbox{kg}~\mbox{m}^{-3}$).
+
+### Unitless measures
+
+The special case of unitless measures can refer to either cases
+where units cancel out (e.g. mass fraction: kg/kg, or angle measured
+in rad: m/m) or to cases where objects or events were counted
+(e.g. 5 apples).  Adding an angle to a count of apples would not
+make sense; adding 5 apples to 3 oranges may make sense if the
+result is reinterpreted as a superclass, e.g. as _pieces of fruit_.
+
+Many data variables have units that are not expressable as SI base
+units or derived units. @hand discusses many such measurement scales,
+e.g. those used to measure intelligence in social sciences, in the
+context of measurement units.
+
+### Datum {#datum}
+
+For many quantities, the natural origin of values is zero. This
+works for amounts, where differences between amounts result in
+meaningful negative values. For locations and times, differences
+have a natural zero interpretation: distance and duration.  Absolute
+location (position) and time need a fixed origin, from which we
+can meaningfully measure other absolute space-time points: a datum.
+For space, a datum involves more than one dimension. The combination
+of a datum and a measurement unit (scale) is a _reference system_.
+
+We will now elaborate how spatial locations can be expressed as
+either ellipsoidal or cartesian coordinates.  The next sections will
+deal with temporal and spatial reference systems, and how they are
+handled in R.
+
+## Ellipsoidal coordinates
+
+```{r polar, out.width = '50%', fig.cap="Two-dimensional polar (red) and Cartesian (blue) coordinates", Eva=TRUE, fig=TRUE, echo=TRUE}
 par(mar = rep(0,4))
 plot(3, 4, xlim = c(-6,6), ylim = c(-6,6), asp = 1)
 axis(1, pos = 0, at = 0:6)
@@ -50,7 +108,7 @@ $$\phi = \mbox{atan2}(y, x)$$
 where $\mbox{atan2}$ is used in favor of $\mbox{atan}(y/x)$ to take care
 of the right quadrant.
 
-## Ellipsoidal coordinates
+### Ellipsoidal coordinates
 
 In three dimensions, where Cartesian coordinates are expressed as
 $(x,y,z)$, spherical coordinates are the three-dimensional equivalent
@@ -61,9 +119,9 @@ of polar coordinates and can be expressed as $(r,\lambda,\phi)$, where
 * $\phi$ is the latitude, the angle between the vector and the $(x,y)$ plane.
 
 Figure \@ref(fig:sphere) illustrates Cartesian geocentric and
-geographic coordinates.
+ellipsoidal coordinates.
 
-```{r sphere,echo=TRUE,fig.cap="Cartesian geocentric coordinates (left) measure three distances, geographic coordinates (right) measure two angles"}
+```{r sphere,echo=TRUE,fig.cap="Cartesian geocentric coordinates (left) measure three distances, ellipsoidal coordinates (right) measure two angles, and possibly an ellipsoidal height"}
 suppressPackageStartupMessages(library(sf))
 e = cbind(-90:90,0) # equator
 f1 = rbind(cbind(0, -90:90)) # 0/antimerid.
@@ -180,7 +238,7 @@ the vector and $z$, instead of latitude. There is also a long
 tradition of specifying points as $(\phi,\lambda)$ but throughout
 this book we will stick to longitude-latitude, $(\lambda,\phi)$.
 The point denoted in figure \@ref(fig:sphere) has $(\lambda,\phi)$
-or geographic coordinates with values
+or ellipsoidal coordinates with values
 ```{r echo=TRUE}
 p = st_as_sfc("POINT(60 47)", crs = 4326)
 p[[1]]
@@ -198,7 +256,7 @@ expressed (figure \@ref(fig:ellipse)): measured from the center of
 the ellipse ($\psi$), or measured perpendicular to the tangent on
 the ellipse at the target point ($\phi$).
 
-```{r ellipse, out.width = '50%', fig.cap="Angles on an ellipse: geographic (blue) and geocentric (red) latitude", eval=TRUE, fig=TRUE, echo=TRUE}
+```{r ellipse, out.width = '50%', fig.cap="Angles on an ellipse: geodetic (blue) and geocentric (red) latitude", eval=TRUE, fig=TRUE, echo=TRUE}
 par(mar = rep(0,4))
 x = 4
 y = 5/8 * sqrt(48)
@@ -228,9 +286,9 @@ this model, longitude is always measured along a circle (as in
 figure \@ref(fig:sphere)), and latitude along an ellipse (as in
 figure \@ref(fig:ellipse)). If we
 think of figure \@ref(fig:ellipse) as a cross section of the Earth
-passing through the poles, the _geographic_ latitude measure $\phi$ is the one
-used when no further specification is given. The latitude measure $\psi$ is called the
-_geocentric latitude_.
+passing through the poles, the _geodetic_ latitude measure $\phi$
+is the one used when no further specification is given. The latitude
+measure $\psi$ is called the _geocentric latitude_.
 
 In addition to longitude and latitude we can add _altitude_
 or elevation to define points that are not on the spheroid, and
@@ -251,17 +309,15 @@ the Earth in different ways are being used. Such ellipsoids are called
 _datums_, and are briefly discussed in section \@ref(datum), along
 with _coordinate reference systems_.
 
-## Projected coordinates
+### Projected coordinates, distances {#projections}
 
 Because paper maps and computer screens are much more abundant
 and practical than globes, most of the time we look at spatial
-data we see it _projected_ on a two-dimensional surface. Computing
-the locations on a two-dimensional space means that we work with
-_projected_ coordinates. Projecting ellipsoidal coordinates means
-that shapes, directions, areas, or even all three, are distorted
-[@iliffelott].
-
-## Distances
+data we see it _projected_: drawn on a flat, two-dimensional
+surface. Computing the locations in a two-dimensional space means
+that we work with _projected_ coordinates. Projecting ellipsoidal
+coordinates means that shapes, directions, areas, or even all three,
+are distorted [@iliffelott].
 
 Distances between two points $p_i$ and $p_j$ in Cartesian coordinates are computed
 as Euclidian distances, in two dimensions by
@@ -312,12 +368,12 @@ p2 = st_transform(pts, "+proj=longlat +ellps=sphere") %>% st_transform("+proj=ge
 d4 = c(straight_sphere = units::set_units(sqrt(sum(apply(do.call(cbind, p2), 1, diff)^2)), m))
 res = c(d1,d3,d2,d4)
 # print as km, re-add names:
-res %>% units::set_units(km) %>% setNames(names(res))
+res %>% units::set_units(km) %>% setNames(names(res)) %>% print(digits = 5)
 ```
 
-## Bounded and unbounded spaces {#bounded}
+### Bounded and unbounded spaces {#bounded}
 
-Two-dimensinal and three-dimensional Euclidean spaces ($R^2$ and
+Two-dimensional and three-dimensional Euclidean spaces ($R^2$ and
 $R^3$) are unbounded: every line in this space has infinite length,
 distances, areas or volumes are unbounded. In contrast, spaces
 defined on a circle ($S^1$) or sphere ($S^2$) define a bounded set:
@@ -331,32 +387,178 @@ the sphere in two parts, and which of these two is to be considered
 inside and which outside is ambiguous and needs to be defined
 e.g. by the traversal direction.
 
-## Time
 
-When we describe over which "space" a certain phenomenon is
-characterised, time forms an integral component: existing things do not exists
-forever or never. It is tempting to think that compared to geographical
-"space", time is one-dimensional "linear", and that is often the way we address
-time, e.g. in R where `Date` is represented by the number of days
-since 1970-01-01
-```{r}
-(d = as.Date("1970-02-01"))
-as.numeric(d)
+## Coordinate Reference Systems {#crs}
+
+We follow @lott2015 when defining the following concepts (italics indicate literal quoting):
+
+* a **coordinate system** is a _set of mathematical rules for specifying how coordinates are to be assigned to points_
+* a **datum** is a _parameter or set of parameters that define the position of the origin, the scale, and the orientation of a coordinate system_, 
+* a **geodetic datum** is a _datum describing the relationship of a two- or three-dimensional coordinate system to the Earth_, and
+* a **coordinate reference system** is a _coordinate system that is related to an object by a datum; for geodetic and vertical datums, the object will be the Earth._
+
+A readable text that further explains these concepts is @iliffelott.
+
+The Earth does not follow a regular shape. The topography of the
+Earth is of course known to vary strongly, but also the surface
+formed by constant gravity at mean sea level, the geoid, is
+irregular. A commonly used model that is fit to the geoid is an
+ellipsoid of revolution, which is an ellipse with two identical
+minor axes. Fitting such an ellipsoid to the Earth gives a datum.
+However, fitting it to different areas, or based on different sets of
+reference points gives different fits, and hence different datums:
+a datum can for instance be fixed to a particular tectonic plate
+(like ETRS89), others can be globally fit (like WGS84). More local
+fits lead to smaller approximation errors.
+
+The definitions above imply that coordinates in degrees longitude
+and latitude only have a meaning, i.e. can only be interpreted
+unambiguously as Earth coordinates, when the datum they are
+associated with is given.
+
+Note that for projected data, the data that _were_ projected
+are associated with a reference ellipsoid (datum). Going from
+one projection to the other without changing datum is called
+_coordinate conversion_, and passes through the ellipsoidal
+coordinates associated with the datum involved. This process is
+lossless and invertible: the parameters and equations associated
+with a _conversion_ are not empirical. Recomputing coordinates in a
+new datum is called _coordinate transformation_, and is approximate:
+because datums are a result of model fitting, transformations
+between datums are models too that have been fit; the equations
+involved are empirical.
+
+Plate tectonics imply that within a global datum, fixed objects may
+have coordinates that change over time, and that transformations
+from one datum to another may be time-dependent. Eartquakes are a
+cause for more local changes in coordinates.
+
+## PROJ and mapping accuracy
+
+Very few living people active in open source geospatial software
+can remember the time before PROJ. PROJ [@evenden:90] started in the
+1970s as a Fortran project, and was released in 1985 as a C library
+for cartographic projections. It came with a few command line tools
+for direct and inverse projections, and could be linked to software
+to let it support (re)projection directly. Originally, datums were
+considered implicit, and no datum transformations were allowed.
+
+In the early 2000s, amongst others motivated by the rise of GPS,
+the need for datum transformations increased and PROJ was extended
+with rudimentary datum support. PROJ definitions for coordinate
+reference systems would look like this:
 ```
-and `POSIXt` time by the number of seconds since the start of that date
-```{r}
-(t = as.POSIXct("1970-01-02 00:00", tz = "UTC"))
-as.numeric(t)
++proj=utm +zone=33 +datum=WGS84 +units=m +no_defs
 ```
-In practical cases however, we may be interested in how certain
-phenomena vary over the day, or over the year, in which case it may
-be more convenient to represent time as the tuple (year, day-of-year),
-or (day, time-of-day), where day-of-year or time-of-day have a cyclic 
-nature, like angles. When we study for instance traffic patterns,
-day of week plays a role, in which we may end up with (year,
-week-of-year, day-of-week, time-of-day) in order to quantify hourly,
-daily, weekly, and yearly signals. This decomposes time essentially
-multiple components, with typically some of them being cyclic.
+where _key_=_value_ pairs are preceded by a `+` and separated by
+a space. This form came to be known as "PROJ.4 string", since the
+PROJ project stayed at version 4.x for several decades. Other datums
+would come with a fields like
+```
++ellps=bessel +towgs84=565.417,50.3319,465.552,-0.398957,0.343988,-1.8774,4.0725
+```
+indicationg another ellipse, as well as the seven (or three)
+parameters for transforming from this ellipse to WGS84 (the "World
+Geodetic System 1984" global datum once popularized by GPS),
+effectively defining the datum in terms of a transformation to WGS84.
+
+Along with PROJ came a set of databases with known (registered)
+projections, from which the best known is the EPSG registry.
+National mapping agencies would provide (and update over time)
+their best guesses of `+towgs84=` parameters for national coordinate
+reference systems, and distribute it through the EPSG registry,
+which was part of PROJ distributions.
+For some transformations, _datum grids_ were available and
+distributed as part of PROJ: such grids are raster maps that provide
+for every location pre-computed values for the shift in longitude
+and latitude for a particular datum transformation.
+
+This way, every coordinate transformation had to go through a
+conversion to and from WGS84; even reprojecting data associated with
+a datum different from WGS84 had to go through a transformation to
+and from WGS84. The associated errors of up to 100 m were acceptable
+for mapping purposes for not too small areas, but applications that
+need high accuracy transformations, e.g. precision agriculture,
+planning flights of UAV's, or object tracking are often more
+demanding in terms of accuracy.
+
+In 2018, after a succesful "GDAL Coordinate System Barn Raising"
+initiative, a number of companies profiting from the open source
+geospatial software stack supported the development of a more modern,
+mature coordinate transformation system in PROJ. Over a few years,
+PROJ.4 evolved through versions 5, 6, 7 and 8 and was hence renamed
+into PROJ (or PR$\phi$J).
+
+The most notable changes include:
+
+* although PROJ.4 strings can still be used to initialise certain
+coordinate reference systems, they are no longer sufficient to
+represent all of them; a new format, WKT2 (described in next section)
+replaces it.
+* WGS84 as a hub datum is dropped: coordinate transformation no longer
+need to go through a particular datum
+* Multiple conversion or transformation paths (so-called pipelines)
+to go from CRS A to CRS B are possible, and can be reported along
+with the associated accuracy; PROJ will by default use the most accurate
+one but user control is possible
+* transformation pipelines can chain an arbitrary number of
+elementary transformation operations, including swapping of axes
+or unit transformations 
+* datum grids, of which there are now _many_ more, are no longer distributed
+with the library but are accessible from a CDN; PROJ allows to switch on
+network access to access these grids: only the section of the grid needed
+is accessed, and is stored in a cache on the user's machine
+* coordinate transformations receive support for epochs, time-dependent
+transformations (and hence: four-dimensional coordinates, including the
+source and target time)
+* the set of files with registered coordinate reference systems is handled
+in an SQLite database.
+* instead of always handling axis order (longitude, latitude),
+when the authority defines differently this is now obeyed (with the
+most notable example: EPSG:4326 defines axis order to be latitude,
+longitude.)
+
+All these points sound like massive improvements, and accuracies of
+transformation can be as good as 1 metre. An interesting point is
+the last: Where we could safely assume for many decades that spatial
+data with ellipsoidal coordinates would have axis order (longitude,
+latitude), this is no longer the case. We will see in section
+\@ref(axisorder) how to deal with this.
+
+### WKT2
+
+@lott2015 describes a standard for encoding coordinate reference
+system, as well as transformations between them using _well known
+text_; the standard (and format) is referred to as WKT2. As mentioned
+above, GDAL and PROJ fully support this encoding.  An example of
+WKT2 for CRS `OGC:CRS84` is:
+
+```
+GEOGCRS["WGS 84",
+    DATUM["World Geodetic System 1984",
+        ELLIPSOID["WGS 84",6378137,298.257223563,
+            LENGTHUNIT["metre",1]],
+        ID["EPSG",6326]],
+    PRIMEM["Greenwich",0,
+        ANGLEUNIT["degree",0.0174532925199433],
+        ID["EPSG",8901]],
+    CS[ellipsoidal,2],
+        AXIS["longitude",east,
+            ORDER[1],
+            ANGLEUNIT["degree",0.0174532925199433,
+                ID["EPSG",9122]]],
+        AXIS["latitude",north,
+            ORDER[2],
+            ANGLEUNIT["degree",0.0174532925199433,
+                ID["EPSG",9122]]]]
+```
+This shows a WGS84 ellipsoid, and a coordinate system with the axis
+order (longitude, latitude) that can be used to replace `EPSG:4326`
+when one wants unambiguously "traditional" (GIS) axis order.
+
+A longer introduction on the history and recent changes in PROJ is
+given in [@rogerCRS], building upon the work of [@knudsen+evers17;
+@evers+knudsen17]
 
 ## Exercises
 
