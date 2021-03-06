@@ -19,9 +19,10 @@ tangle:
 
 pdf:
 	Rscript --quiet _render.R "bookdown::pdf_book"
+	evince _book/sds.pdf
 
 push:
-	make
+	# make
 	git add _book/*html _book/sds_files/figure-html/* _book/libs _book/search_index.json _book/style.css _book/images/*png
 	git commit -a -m 'commit'
 	git push || true
