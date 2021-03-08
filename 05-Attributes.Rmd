@@ -1,78 +1,77 @@
-# Attributes, Up- and Downscaling {#featureattributes}
+# Attributes and Support {#featureattributes}
 
 Feature _attributes_ refer to the properties of features ("things")
 that do not describe the feature's geometry. Feature attributes can
 be _derived_ from geometry (e.g. length of a `LINESTRING`, area
-of a `POLYGON`) but they can also refer to completely different
-properties, such as 
+of a `POLYGON`) but they can also refer to non-derived properties,
+such as
 
 * the name of a street or a county, 
 * the number of people living in a country, 
 * the type of a road
 * the soil type in a polygon from a soil map.
 * the opening hours of a shop
-* the body weight or heart beat of an animal
+* the body weight or heart beat rate of an animal
 * the NO$_2$ concentration measured at an air quality monitoring station
 
-Although temporal properties of features are no less fundamental
-than their spatial properties, the _simple feature access_ standard
-does not give time a similar role as space; more on that in chapter
-\@ref(raster).
+In some cases, time properties can be seen as attributes of features,
+e.g. the date of birth of a person or the construction year of
+a road. When an attribute such as for instance air quality is a
+function of both space and time, time is best handled on equal
+footing with geometry (see chapter \@ref(raster)).
 
-Spatial data science software implementing simple features typically
-organizes data in tables that contain both geometries and attributes
-for features; this is true for `geopandas` in Python, `PostGIS`
-tables in PostgreSQL, and `sf` objects in R.  The geometric
-operations described in the previous chapter (\@ref(opgeom))
-operate on geometries _only_, and may occasionally yield attributes
-(predicates or measures), but will not modify attributes present.
+Spatial data science software implementing simple features
+typically organizes data in tables that contain both geometries and
+attributes for features; this is true for `geopandas` in Python,
+`PostGIS` tables in PostgreSQL, and `sf` objects in R.  The geometric
+operations described in the previous chapter (\@ref(opgeom)) operate
+on geometries _only_, and may occasionally yield new attributes
+(predicates, measures or transformations), but do not operate on
+attributes present.
 
-In all these cases, while manipulating geometries, attribute _values_
-remain unmodified. At first sight, that looks rather harmless. But
-if we look into a simple case of replacing a county boundary with
-a county centroid, we may see a warning is emitted:
-```{r countycentroid, echo=TRUE}
+When, while manipulating geometries, attribute _values_ are retained
+unmodified, support problems may arise.
+If we look into a simple case of replacing a county polygon with
+the centroid of that polygon on a dataset that has attributes,
+we see that R package `sf` issues a warning:
+```{r countycentroid, cache = FALSE, echo = !knitr::is_latex_output()}
 library(sf)
 library(dplyr)
 system.file("gpkg/nc.gpkg", package="sf") %>%
 	read_sf() %>%
 	st_transform(32119) %>%
 	select(BIR74, SID74, NAME) %>%
-	st_centroid() %>%
-	head(n = 1) -> x # save as x
-st_geometry(x)[[1]]
+	st_centroid() -> x
 ```
-This warning is justified for the first two variables shown (total
-births and number of SID disease cases, 1974) which, as such, are
-_not associated with_ a feature whose geometry is `POINT (385605.4
-300303.5)`. The third variable, `NAME` is however still the county
-name for the point indicated, but the point geometry no longer _is_
-the county geometry.
+The reason for this is that the dataset contains variables with
+values that are associated with entire polygons -- in this case:
+population counts -- meaning they are not associated with with a
+`POINT` geometry replacing the polygon.
 
 In section \@ref(support) we already described that for non-point
-geometries, feature attribute values may either have _point support_,
-meaning that the value applies to _every point_, or they may have
-_block support_, meaning that the value _summarizes all points_
-in the geometry. More complex options, e.g. inbetween these two
-extremes, may also occur. This chapter will describe different
-ways in which an attribute may relate to the geometry, its
-consequences on analysing such data, and ways to derive attribute
-data for different geometries (up- and downscaling).
+geometries (lines, polygons), feature attribute values either
+have _point support_, meaning that the value applies to _every
+point_, or they have _block support_, meaning that the value
+_summarizes all points_ in the geometry. (More complex options,
+e.g. inbetween these two extremes, may also occur.) This chapter
+will describe different ways in which an attribute may relate to
+the geometry, its consequences on analysing such data, and ways to
+derive attribute data for different geometries (up- and downscaling).
 
-## Attribute-geometry relationships {#agr}
+## Attribute-geometry relationships and support {#agr}
 
 Changing the feature geometry without changing the feature attributes
 does change the _feature_, since the feature is characterised by
 the combination of geometry and attributes. Can we, ahead of time,
 predict whether the resulting feature will still meaningfully relate
-to the attribute data when we replace all geometries for instance
+to the attribute value when we replace all geometries for instance
 with their convex hull or centroid? It depends.
 
 Take the example of a road, represented by a `LINESTRING`, which has
 an attribute property _road width_ equal to 10 m. What can we say about
 the road width of an arbitray subsectin of this road? That depends
 on whether the attribute road length describes, for instance the
-road width everywhere, meaning that road width is constant along the
+road width _everywhere_, meaning that road width is constant along the
 road, or whether it describes an aggregate property, such as minimum
 or average road width.  In case of the minimum, for an arbitrary
 subsection of the road one could still argue that the minimum
@@ -81,10 +80,17 @@ the whole segment, but it may no longer be _the minimum_ for that
 subsection. This gives us two "types" for the attribute-geometry
 relationship (**AGR**):
 
-* **constant** the attribute value is valid everywhere in or over the geometry
-* **aggregate** the attribute is an aggregate, a summary value over the geometry
+* **constant** the attribute value is valid everywhere in or over the
+geometry; we can think of the feature as consisting of an infinite
+number of points that all have this attribute value; in the geostatistical
+literature this is known as _point support_;
+* **aggregate** the attribute is an aggregate, a summary value over
+the geometry; we can think of the feature as a _single_ observation
+with a value that is associated with the _entire_ geometry; this is
+also known as _block support_.
 
-For polygon data, typical examples of **constant** AGR are
+For polygon data, typical examples of **constant** AGR (point
+support) variabes are
 
 * land use for a land use polygon
 * rock units or geologic strata in a geological map
@@ -92,101 +98,62 @@ For polygon data, typical examples of **constant** AGR are
 * elevation class in a elevation map that shows elevation as classes
 * climate zone in a climate zone map
 
-Typical examples for the **aggregate** AGR are
+A typical property of such variables is that they have geometries
+that are not man-made or associated with a sensor device (such as
+remote sensing image pixel boundaries).  
+
+Typical examples for the **aggregate** AGR (block support) variables
+are
 
 * population, either as number of persons or as population density
 * other socio-economic variables, summarised by area
+* average reflectance over a remote sensing pixel
 * total emission of pollutants by region
-* block mean NO$_2$ concentrations, as e.g. obtained by block kriging or a dispersion model that predicts areal means
+* block mean NO$_2$ concentrations, as e.g. obtained by block kriging 
+  over square blocks or a dispersion model that predicts areal means
 
-A third type of AGR is that where an attribute identifies a feature
-geometry. The example above is county `NAME`: the name identifies
-the county, and is still the county `NAME` for any sub-area. 
+A typical property of such variables is that boundaries come from
+legislation, observation devices or analysis choices.
 
-* **identity** the attribute value uniquely identifies the geometry
-as a whole, there are no other geometries with the same value
+A third type of AGR arises when an attribute _identifies_ a feature
+geometry; we call an attribute an **identity** variable when
+the associated geometry uniquely identifies the variable's value
+(there are no other geometries with the same value). An example is
+county name: the name identifies the county, and is still the county
+for any sub-area (point support), but for arbitrary sub-areas, the
+attributes loses the **identity** property to become a **constant**
+attribute. An example is:
 
-For arbitrary sub-areas, the attribute will lose the **identity**
-property but becomes a **constant** attribute. An example is:
-
-* any point inside a county is still part of the county and must have
-the same value for county name, but it does not longer represent the
-(entire) geometry corresponding to that county.
-
+* an arbitrary point (or region) inside a county is still part of the
+county and must have the same value for county name, but it does not
+longer identify the (entire) geometry corresponding to that county.
 
 The challenge here is that spatial information (ignoring time for
 simplicity) belongs to different phenomena types [e.g. @scheider2016],
 including
 
-* **fields**: where over _continuous_ space, every location corresponds to a single value, e.g. elevation
-* **objects**: found a _discrete_ set of locations, e.g. houses or persons
-* **aggregations**: e.g. sums, totals, averages of fields, or spatial densities of objects 
+* **fields**: where over _continuous_ space, every location corresponds to a single value, e.g. elevation, air quality, or land use
+* **objects**: found at a _discrete_ set of locations, e.g. houses or persons
+* **aggregations**: e.g. sums, totals, averages of fields, counts or densities of objects, associated with lines or regions
 
 but that different spatial geometry types (points, lines, polygons,
 raster cells) do not correspond to either of these:
 
-* points may refer to samples of fields (air quality) or locations of objects
-* lines may be used for objects (roads) or contours of a field
+* points may refer to sample locations of observations on fields (air quality) or to locations of objects
+* lines may be used for objects (roads, rivers), contours of a field, or admininistrative borders
 * raster pixels and polygons may reflect fields of a categorical
 variable such as land use (_coverage_), but also aggregates such
 as population density
 
 Properly specifying attribute-geometry relationships, and warning
-against their absence or cases when change of geometry (support)
-implies a change of information can help avoiding a large class of
-common spatial data analysis mistakes [@stasch2014] associated with
-the support of spatial data.
-
-## Spatial join
-
-In regular (left, right or inner) joins, _joined_ records from a
-pair of tables are reported when one or more selected attributes
-match (are identical) in both tables. A spatial join is similar,
-but the criterion to join records is not equality of attributes but
-a spatial predicate. This leaves a wide variety of options in order
-to define _spatially_ matching records, using binary predicates
-listed in section \@ref(de9im). The concepts of "left", "right",
-"inner" or "full" joins remain identical to the non-spatial join
-as the options for handling records that have no spatial match.
-
-When using spatial joins, each record may have many matched records,
-yielding a large result table. A way to reduce this complexity may
-be to select the matching record with the largest overlap with the
-target geometry.  An example of this is shown (visually) in figure
-\@ref(fig:largest).
-
-(ref:foo) example of `st_join` with `largest = TRUE`: the label of the polygon in the top figure with the largest intersection with polygons in the bottom figure is assigned to the polygons of the bottom figure
-
-```{r largest, out.width='60%', fig.cap='(ref:foo)', echo=TRUE}
-# example of largest = TRUE:
-nc <- st_transform(read_sf(system.file("shape/nc.shp", package="sf")), 2264)
-gr = st_sf(
-         label = apply(expand.grid(1:10, LETTERS[10:1])[,2:1], 1, paste0, collapse = " "),
-         geom = st_make_grid(nc))
-gr$col = sf.colors(10, categorical = TRUE, alpha = .3)
-# cut, to check, NA's work out:
-gr = gr[-(1:30),]
-suppressWarnings(nc_j <- st_join(nc, gr, largest = TRUE))
-# the two datasets:
-opar = par(mfrow = c(2,1), mar = rep(0,4))
-plot(st_geometry(nc_j))
-plot(st_geometry(gr), add = TRUE, col = gr$col)
-text(st_coordinates(st_centroid(st_geometry(gr))), labels = gr$label)
-# the joined dataset:
-plot(st_geometry(nc_j), border = 'black', col = nc_j$col)
-text(st_coordinates(st_centroid(st_geometry(nc_j))), labels = nc_j$label, cex = .8)
-plot(st_geometry(gr), border = 'green', add = TRUE)
-par(opar)
-```
-
-Another way to reduce the result set is to aggregate, after a join,
-all matching records, and union their geometry; this will now be
-discussed.
+against their absence or cases when change in geometry (change
+of support) implies a change of information can help avoiding a
+large class of common spatial data analysis mistakes [@stasch2014]
+associated with the _support_ of spatial data.
 
 ## Aggregating and Summarising
 
-Aggregating records in a table (or `data.frame`) involves two
-steps
+Aggregating records in a table (or `data.frame`) involves two steps
 
 * grouping records based on a grouping predicate, and
 * applying an aggregation function to the attribute values of a
@@ -196,26 +163,28 @@ In SQL, this looks for instance like
 ```
 SELECT GroupID, SUM(population) FROM table GROUP BY GroupID;
 ```
-indicating that the aggregation function (`SUM`) and the grouping
-predicate (`region`). R package `dplyr` for instance offers two
-functions: `group_by` which specifies the group membership of records
-and `summarize` which computes data summaries (such as `sum` or
-`mean`) for each of the groups. R (base) function `aggregate` does
-both in a single function that takes the data table, the grouping
-predicate(s) and the aggregation function.
+indicating that the aggregation _function_ (`SUM`) and the
+_grouping predicate_ (`GroupID`). 
 
-An example for the North Caroline counties is shown in figure
+R package `dplyr` for instance uses two steps to accomplish this:
+function `group_by` specifies the group membership of records,
+`summarize` computes data summaries (such as `sum` or `mean`) for
+each of the groups. R (base) function `aggregate` does both in a
+single function that takes the data table, the grouping predicate(s)
+and the aggregation function.
+
+An example for the North Carolina counties is shown in figure
 \@ref(fig:ncaggregation). Here, we group counties by their position
 (according to the quadrant in which the county centroid is with
-respect to geographical coordinate `POINT(-79, 35.5)`) and
-count the number of disease cases per group. The result shows that
+respect to geographical coordinate `POINT(-79, 35.5)`) and count
+the number of disease cases per group. The result shows that
 the geometries of the resulting group have been unioned (section
-\@ref(bintrans)), which is necessary because the `MULTIPOLYGON`
+\@ref(bintrans)): this is necessary because the `MULTIPOLYGON`
 formed by just putting all the county geometries together would
 have many duplicate boundaries, and hence not be _valid_ (section
 \@ref(valid)).
 
-```{r ncaggregation, fig.cap="top: SID74 disease cases by county, bottom: summed values by county quadrant, county polygons unioned by county quadrant", echo=TRUE}
+```{r ncaggregation, fig.cap="top: SID74 disease cases by county, bottom: summed values by county quadrant, county polygons unioned by county quadrant", echo=!knitr::is_latex_output()}
 nc <- read_sf(system.file("gpkg/nc.gpkg", package="sf"))
 plot(nc["SID74"], axes = TRUE)
 sf_use_s2(TRUE)
@@ -239,16 +208,19 @@ for variables that reflect _amount_, nothing gets lost and nothing
 is added. The newly formed geometry is the result of unioning the
 geometries of the records.
 
-When we need an aggregate for a new area that is _not_ a union
-of the geometries for a group of records, and we use a spatial
-predicate then we may end up with a case where records are matched to
-multiple groups. When taking the rectangles of figure \@ref(largest)
-as the target areas, and we sum for each rectangle the disease cases
-of the counties that _intersect_ with the rectangle, the sum of these
-will be much larger:
+When we need an aggregate for a new area that is _not_ a union of the
+geometries for a group of records, and we use a spatial predicate
+then single records may be matched to multiple groups. When taking
+the rectangles of figure \@ref(largest) as the target areas, and
+we sum for each rectangle the disease cases of the counties that
+_intersect_ with the rectangle, the sum of these will be much larger:
 
 ```{r echo=TRUE}
 nc <- st_transform(nc, 2264)
+gr = st_sf(
+         label = apply(expand.grid(1:10, LETTERS[10:1])[,2:1], 1, paste0, collapse = " "),
+         geom = st_make_grid(nc))
+gr = gr[-(1:30),]
 a = aggregate(nc["SID74"], gr, sum)
 c(sid74_sum_counties = sum(nc$SID74), sid74_sum_rectangles = sum(a$SID74, na.rm = TRUE))
 ```
@@ -259,7 +231,7 @@ are not contained by _any_ the target geometries. However, there are
 a few cases where this approach might be good or satisfactory:
 
 * when we want to aggregate `POINT` geometries by a set of polygons,
-and all points are contained by a polygon. If points fall on a
+and all points are contained by a single polygon. If points fall on a
 shared boundary than they are assigned to both polygons (this is
 the case for DE-9IM-based GEOS library; the s2geometry library has
 the option to define polygons as "semi-open", which implies that
@@ -422,6 +394,46 @@ Alternative disaggregation methods include
 smoothing methods [@toblerpyc; @martin89]
 * statistical, model-based approaches: area-to-area and area-to-point
 kriging [@kyriakidis04], see section \@ref(areatopoint)
+
+## Up- and Downscaling {#updownscaling}
+
+Up- and downscaling refers in general to obtaining high-resolution
+information from low-resolution data (downscaling) or obtaining
+low-resolution information from high-resolution data (upscaling).
+Both are activities involve attributes' relation to geometries and
+both change support.
+
+Area-weighted interpolation can go either way: interpolate to
+larger, smaller or similar sized areas, and may include up- and
+downscaling as special cases. Aggregation is typically a matter
+of upscaling. 
+
+The simplest form of downscaling is sampling (or extracting)
+polygon, line or grid cell values at point locations. This works
+well for variables with point-support ("constant" AGR), but is at
+best approximate when the values are aggregates. 
+
+In such cases, statistical approaches could use area-to-point kriging
+to estimate values with point support (section \@ref(atpk)). Block
+kriging (section \@ref(blockkriging)) estimates block averages from
+point values that are not necessarily located within the target
+block geometries.
+
+Interesting challenges for downscaling include high-resolution
+prediction of variables obtained by low-resolution weather prediction
+models or climate change models, and the high-resolution prediction
+of satellite image derived variables based on the fusion of sensors
+with different spatial and temporal resolutions.
+
+<!--
+REFS for both? Second: David Frantz, First: ...
+[@sillmann2017understanding]
+-->
+
+<!--
+for largest sub-geometry?
+-->
+
 
 ## Exercises
 
