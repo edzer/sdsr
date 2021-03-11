@@ -5,7 +5,7 @@
 
 Before we can try to understand geometries like points, lines,
 polygons, coverage and grids, it is useful to review coordinate
-system so that we have an idea what exactly coordinates of a
+systems so that we have an idea what exactly coordinates of a
 point reflect.  For spatial data, the location of observations
 are characterized by coordinates, and coordinates are defined in
 a coordinate system.  Different coordinate systems can be used for
@@ -39,8 +39,8 @@ m), mass (kilogram, kg), time (second, s), electric current
 (ampere, A), thermodynamic temperature (kelvin, K), amount of
 substance (mole, mol), and luminous intensity (candela, cd).
 Derived units are composed of products of integer powers of base
-units; exampes are speed ($\mbox{m}~\mbox{s}^{-1}$) and density
-($\mbox{kg}~\mbox{m}^{-3}$).
+units; exampes are speed ($\mbox{m}~\mbox{s}^{-1}$), density
+($\mbox{kg}~\mbox{m}^{-3}$) and area ($\mbox{m}^2$).
 
 The special case of unitless measures can refer to either cases
 where units cancel out (e.g. mass fraction: kg/kg, or angle measured
@@ -64,7 +64,7 @@ For space, a datum involves more than one dimension. The combination
 of a datum and a measurement unit (scale) is a _reference system_.
 
 We will now elaborate how spatial locations can be expressed as
-either ellipsoidal or cartesian coordinates.  The next sections will
+either ellipsoidal or Cartesian coordinates.  The next sections will
 deal with temporal and spatial reference systems, and how they are
 handled in R.
 
@@ -287,13 +287,13 @@ is the one used when no further specification is given. The latitude
 measure $\psi$ is called the _geocentric latitude_.
 
 In addition to longitude and latitude we can add _altitude_
-or elevation to define points that are not on the spheroid, and
+or elevation to define points that are not on the ellipsoid, and
 obtain a three dimensional space again. When defining altitude,
 we need to choose
 
 * where zero altitude is: on the ellipsoid, or relative to the surface approximating mean sea level (the geoid)?
 * which direction is positive, and 
-* which direction is "straight up": perpendicular to the spheroid surface,
+* which direction is "straight up": perpendicular to the ellipsoid surface,
 or in the direction perpendicular to the surface of the geoid?
 
 All these choices may matter, depending on the application area
@@ -381,8 +381,8 @@ when handling spatial data. A polygon on $R^2$ has unambiguously an
 inside and an outside. On a sphere, $S^2$, any polygon divides
 the sphere in two parts, and which of these two is to be considered
 inside and which outside is ambiguous and needs to be defined
-e.g. by the traversal direction.
-
+e.g. by the traversal direction. Chapter \@ref(spherical) will
+further discuss consequences when working with geometries on $S^2$.
 
 ## Coordinate Reference Systems {#crs}
 
@@ -414,7 +414,7 @@ associated with is given.
 
 Note that for projected data, the data that _were_ projected
 are associated with a reference ellipsoid (datum). Going from
-one projection to the other without changing datum is called
+one projection to another _without_ changing datum is called
 _coordinate conversion_, and passes through the ellipsoidal
 coordinates associated with the datum involved. This process is
 lossless and invertible: the parameters and equations associated
@@ -422,25 +422,28 @@ with a _conversion_ are not empirical. Recomputing coordinates in a
 new datum is called _coordinate transformation_, and is approximate:
 because datums are a result of model fitting, transformations
 between datums are models too that have been fit; the equations
-involved are empirical.
+involved are empirical, and multiple transformation paths, based
+on different model fits and associated with different accuracies,
+are possible.
 
 Plate tectonics imply that within a global datum, fixed objects may
 have coordinates that change over time, and that transformations
 from one datum to another may be time-dependent. Eartquakes are a
-cause for more local changes in coordinates.
+cause of more local and sudden changes in coordinates.
 
 ## PROJ and mapping accuracy
 
 Very few living people active in open source geospatial software
 can remember the time before PROJ. PROJ [@evenden:90] started in the
 1970s as a Fortran project, and was released in 1985 as a C library
-for cartographic projections. It came with a few command line tools
-for direct and inverse projections, and could be linked to software
+for cartographic projections. It came with command line tools for
+direct and inverse projections, and could be linked to software
 to let it support (re)projection directly. Originally, datums were
 considered implicit, and no datum transformations were allowed.
 
-In the early 2000s, amongst others motivated by the rise of GPS,
-the need for datum transformations increased and PROJ was extended
+In the early 2000s, PROJ was known as PROJ.4, after its never changing
+major version number.  Amongst others motivated by the rise of GPS,
+the need for datum transformations increased and PROJ.4 was extended
 with rudimentary datum support. PROJ definitions for coordinate
 reference systems would look like this:
 ```
@@ -458,18 +461,39 @@ parameters for transforming from this ellipse to WGS84 (the "World
 Geodetic System 1984" global datum once popularized by GPS),
 effectively defining the datum in terms of a transformation to WGS84.
 
-Along with PROJ came a set of databases with known (registered)
+Along with PROJ.4 came a set of databases with known (registered)
 projections, from which the best known is the EPSG registry.
 National mapping agencies would provide (and update over time)
 their best guesses of `+towgs84=` parameters for national coordinate
 reference systems, and distribute it through the EPSG registry,
 which was part of PROJ distributions.
 For some transformations, _datum grids_ were available and
-distributed as part of PROJ: such grids are raster maps that provide
+distributed as part of PROJ.4: such grids are raster maps that provide
 for every location pre-computed values for the shift in longitude
-and latitude for a particular datum transformation.
+and latitude, or elevation, for a particular datum transformation.
 
-This way, every coordinate transformation had to go through a
+```{r horizontalgrid, fig.cap="UK horizontal datum grid, from datum OSGB 1936 (EPSG:4277) to datum ETRS89 (EPSG:4258); units arc-seconds", echo=!knitr::is_latex_output() }
+library(stars)
+library(rnaturalearth)
+countries110 = st_as_sf(countries110)
+uk = countries110[countries110$admin %in% c("United Kingdom"),] %>%
+		st_geometry()
+r = read_stars("data/uk_os_OSTN15_NTv2_OSGBtoETRS.tif")
+# r = read_stars("/vsicurl/https://cdn.proj.org/uk_os_OSTN15_NTv2_OSGBtoETRS.tif")
+hook = function() {
+		plot(uk, border = "orange", col = NA, add = TRUE)
+}
+plot(r[,,,1:2], axes = TRUE, hook = hook, key.pos = 4)
+```
+
+```{r verticalgrid, fig.cap="UK vertical datum grid, from ETRS89 (EPSG:4937) to ODN height (EPSG:5701), units m", echo=!knitr::is_latex_output() }
+h = read_stars("data/uk_os_OSGM15_GB.tif")
+# h = read_stars("/vsicurl/https://cdn.proj.org/uk_os_OSGM15_GB.tif")
+plot(h, axes = TRUE, reset = FALSE)
+plot(uk, border = "orange", col = NA, add = TRUE)
+```
+
+In PROJ.4, every coordinate transformation had to go through a
 conversion to and from WGS84; even reprojecting data associated with
 a datum different from WGS84 had to go through a transformation to
 and from WGS84. The associated errors of up to 100 m were acceptable
@@ -499,11 +523,12 @@ with the associated accuracy; PROJ will by default use the most accurate
 one but user control is possible
 * transformation pipelines can chain an arbitrary number of
 elementary transformation operations, including swapping of axes
-or unit transformations 
+and unit transformations 
 * datum grids, of which there are now _many_ more, are no longer distributed
-with the library but are accessible from a CDN; PROJ allows to switch on
-network access to access these grids: only the section of the grid needed
-is accessed, and is stored in a cache on the user's machine
+with the library but are accessible from a CDN; PROJ allows to enabling and
+disabling network access to access these grids, and only downloads the section 
+of the grid actually needed, storing it in a cache on the user's machine for 
+future use 
 * coordinate transformations receive support for epochs, time-dependent
 transformations (and hence: four-dimensional coordinates, including the
 source and target time)
@@ -514,20 +539,25 @@ when the authority defines differently this is now obeyed (with the
 most notable example: EPSG:4326 defines axis order to be latitude,
 longitude.)
 
-All these points sound like massive improvements, and accuracies of
-transformation can be as good as 1 metre. An interesting point is
-the last: Where we could safely assume for many decades that spatial
-data with ellipsoidal coordinates would have axis order (longitude,
-latitude), this is no longer the case. We will see in section
-\@ref(axisorder) how to deal with this.
+All these points sound like massive improvements, and accuracies
+of transformation can be below 1 metre. An interesting point
+is the last: Where we could safely assume for many decades that
+spatial data with ellipsoidal coordinates would have axis order
+(longitude, latitude), this is no longer the case. We will see in
+section \@ref(axisorder) how to deal with this.
 
-### WKT2
+Examples of a horizontal datum grids, downloaded from cdn.proj.org,
+are shown in figure \@ref(fig:horizontalgrid) and for a vertical
+datum grid in figure \@ref(fig:verticalgrid). Datum grids may carry
+per-pixel accuracy values.
+
+## WKT-2
 
 @lott2015 describes a standard for encoding coordinate reference
-system, as well as transformations between them using _well known
-text_; the standard (and format) is referred to as WKT2. As mentioned
-above, GDAL and PROJ fully support this encoding.  An example of
-WKT2 for CRS `OGC:CRS84` is:
+systems, as well as transformations between them using _well known
+text_; the standard (and format) is referred to informally as
+WKT-2. As mentioned above, GDAL and PROJ fully support this encoding.
+An example of WKT2 for CRS `OGC:CRS84` is:
 
 ```
 GEOGCRS["WGS 84",
@@ -558,6 +588,9 @@ given in [@rogerCRS], building upon the work of [@knudsen+evers17;
 
 ## Exercises
 
+* list three geographic measures that do not have a natural zero origin
+<!-- latitude, longitude, elevation -->
 * convert the $(x,y)$ points $(10,2)$, $(-10,-2)$, $(10,-2)$ and $(0,10)$ to polar coordinates
 * convert the polar $(r,\phi)$ points $(10,45^{\circ})$, $(0,100^{\circ})$ and $(5,359^{\circ})$ to Cartesian coordinates
 * assuming the Earth is a sphere with a radius of 6371 km, compute for $(\lambda,\phi)$ points the great circle distance between $(10,10)$ and $(11,10)$, between $(10,80)$ and $(11,80)$, between $(10,10)$ and $(10,11)$ and between $(10,80)$ and $(10,81)$ (units: degree). What are the distance units?
+<!-- relevant? Too difficult? -->
