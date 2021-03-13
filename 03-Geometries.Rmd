@@ -8,9 +8,11 @@ chapter will explain
 geometries along with operations on them, 
 * operations on geometries
 * coverages, subdivisions of larger regions into sub-regions
-* rasters, rectangular subdivisions of space
 * networks
-* geometries on the sphere
+
+Geometries on the sphere are discussed in chapter \@ref(spherical),
+Rasters and other rectangular subdivisions of space are discussed
+in chapter \@ref(raster).
 
 ## Simple feature geometries
 
@@ -19,7 +21,7 @@ _features_.  By _features_ we mean _things_ that have a geometry,
 potentially some time properties, and other attributes that could
 include a label describing the thing and quantitative measures of it.
 The main application of simple feature geometries is to describe
-two-dimensional geometries by points, lines, or polygons. The
+geometries in two-dimensional space by points, lines, or polygons. The
 "simple" adjective refers to the fact that the line or polygon
 geometries are represented by sequences of points connected with
 straight lines that do not self-intersect.
@@ -106,7 +108,7 @@ Figure \@ref(fig:sfgeometries) shows examples of these basic
 geometry types. The human-readable, "well-known-text" (WKT) representation
 of the geometries plotted are:
 
-```{r echo=!knitr::is_latex_output()}
+```{r echo=!knitr::is_latex_output(), eval=FALSE}
 p
 mp
 ls
@@ -116,15 +118,32 @@ mpo
 gc
 ```
 
+```
+POINT (0 1)
+MULTIPOINT ((1 1), (2 2), (4 1), (2 3), (1 4))
+LINESTRING (1 1, 5 5, 5 6, 4 6, 3 4, 2 3)
+MULTILINESTRING ((1 1, 5 5, 5 6, 4 6, 3 4, 2 3), (3 0, 4 1, 2 1))
+POLYGON ((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1), (2 2, 3 3, 4 3, 4 2, 2 2))
+MULTIPOLYGON (((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1),
+    (2 2, 3 3, 4 3, 4 2, 2 2)), ((3 7, 4 7, 5 8, 3 9, 2 8, 3 7)))
+GEOMETRYCOLLECTION (
+    POLYGON ((2 1, 3 1, 5 2, 6 3, 5 3, 4 4, 3 4, 1 3, 2 1),
+      (2 2 , 3 3, 4 3, 4 2, 2 2)),
+    LINESTRING (1 6, 5 10, 5 11, 4 11, 3 9, 2 8),
+	POINT (2 5),
+	POINT (5 4)
+)
+```
+
 In this representation, coordinates are separated by space, and
-points by commas. Sets are denoted by parentheses, and separated
+points by commas. Sets are grouped by parentheses, and separated
 by commas.
 
 Individual points in a geometry contain at least two coordinates:
-x and y, in that order.  If these coordinates refer to geographic
+x and y, in that order.  If these coordinates refer to ellipsoidal
 coordinates, x and y usually refer to longitude and latitude,
 respectively, although sometimes to latitude and longitude (see
-section \@ref(axisorder)).
+sections \@ref(proj) and \@ref(axisorder)).
 
 ### Simple and valid geometries, ring direction {#valid}
 
@@ -142,7 +161,9 @@ Valid polygons and multipolygons obey all of the following properties:
 * a polygon ring does not repeat its own path
 * in a multipolygon, an external ring maximally touches another exterior ring in single points, not over a line
 
-If this is not the case, the geometry concerned is not valid.
+If this is not the case, the geometry concerned is not valid. Invalid
+geometries typically cause errors when they are processed, but can
+usually be repared to make them valid.
 
 A further convention is that the outer ring of a polygon is winded
 counter-clockwise, while the holes are winded clockwise, but polygons
@@ -161,10 +182,10 @@ simple feature geometries may have
 * an `M` value, denoting some "measure"
 
 The `M` attribute shall be a property of the vertex. It sounds
-attractive to encode a time stamp in it, e.g. to pack trajectories
-in `LINESTRING`s. These become however invalid (or "non-simple")
-once the trajectory self-intersects, as only `X` and `Y` are
-considered for self-intersections.
+attractive to encode a time stamp in it, e.g. to pack movement data
+(trajectories) in `LINESTRING`s. These become however invalid (or
+"non-simple") once the trajectory self-intersects, which easily
+happens when only `X` and `Y` are considered for self-intersections.
 
 Both `Z` and `M` are not found often, and software support
 to do something useful with them is (still) rare. Their
@@ -194,7 +215,8 @@ All geometry types have a special value representing the empty (typed) geometry:
 st_point()
 st_linestring(matrix(1,1,3)[0,], dim = "XYM")
 ```
-but it seems that they all point to the same empty set.
+and so on, but they all point to the empty set, differing only in their
+dimension (section \@ref(de9im)).
 
 ### Ten further geometry types
 
@@ -224,17 +246,17 @@ manual](http://postgis.net/docs/using_postgis_dbmanagement.html).
 Part of the simple feature standard are two encodings: a text and
 a binary encoding. The well-known text encoding, used above, is
 human-readable, the well-known binary encoding is machine-readable.
-Binary encodings are lossless and typically faster than text encoding
-(and parsing), and are used for instance in all communications
-between R package `sf` and the GDAL, GEOS, liblwgeom and s2geometry
-libraries.
+Binary encodings are lossless and typically faster to work with
+than text encoding (and decoding), and are used for instance in all
+communications between R package `sf` and the GDAL, GEOS, liblwgeom
+and s2geometry libraries (figure \@ref(fig:gdal-fig-nodetails)).
 
 ## Operations on geometries {#opgeom}
 
 Simple feature geometries can be queried for properties,
 transformed into new geometries, and combinations of geometries can
 be queried for properties. This section gives an overview of the
-operations entirely focusing on _geometrical_ properties.  Chapter,
+operations entirely focusing on _geometrical_ properties.  Chapter
 \@ref(featureattributes), focuses on the analysis of non-geometrical
 feature properties, in relationship to their geometries. Some of
 the material in this section appeared in [@rjsf].
@@ -244,7 +266,7 @@ take as input, and what they return as output. In terms of output
 we have operations that return
 
 * **predicates**: a logical asserting a certain property is `TRUE`,
-* **measures**: a value (e.g. a numeric value with measurement unit), or
+* **measures**: a quantity (e.g. a numeric value with measurement unit), or
 * **transformations**: newly generated geometries
 
 and in terms of what they operate on, we distinguish operations
@@ -257,7 +279,7 @@ that are
 ### Unary predicates
 
 Unary predicates describe a certain property of a geometry.
-The predicates `is_simple`, `is_valid`, and `is_empty` returns
+The predicates `is_simple`, `is_valid`, and `is_empty` return
 respectively whether a geometry is simple, valid or empty.  Given a
 coordinate reference system, `is_longlat` returns whether the
 coordinates are geographic or projected. `is(geometry, class)`
@@ -347,7 +369,8 @@ when the second geometry has one or more boundary points in common
 with the interior of the first geometry; the symbol `*` standing for
 "any dimensionality" (0, 1, 2 or F). The mask string `"T********"`
 matches pairs of geometry with intersecting interiors. Here, the
-symbol `T` stands for any intersection (of dimensionality 0, 1 or 2).
+symbol `T` stands for any non-empty intersection (of dimensionality
+0, 1 or 2).
 
 Binary predicates are further described using normal-language verbs,
 using DE-9IM definitions.  For instance, the predicate `equals`
@@ -357,23 +380,24 @@ have a different ordering of nodes.
 
 A list of binary predicates is
 
-|predicate                 |meaning                                                          |inverse of      |
-|--------------------------|-----------------------------------------------------------------|----------------|
-|`equals`                  |Two geometries A and B are topologically identical|
-|`contains`                |None of the points of A are outside B| `within`|
-|`contains_properly`       |A contains B and B has no points in common with the boundary of A| |
-|`covers`                  |No points of B lie in the exterior of A| `covered_by`|
-|`covered_by`              |inverse of `covers`| |
-|`crosses`                 |A and B have some but not all interior points in common| |
-|`disjoint`                |A and B have no points in common| `intersects`|
-|`equals`                  |A and B are geometrically equal; node order number of nodes may differ; identical to A contains B AND A within B|
-|`equals_exact`            |A and B are geometrically equal, and have identical node order| |
-|`intersects`              |A and B are not disjoint| `disjoint`|
-|`is_within_distance`      |A is closer to B than a given distance|
-|`within`                  |None of the points of B are outside A| `contains`|
-|`touches`                 |A and B have at least one boundary point in common, but no interior points|  |
-|`overlaps`                |A and B have some points in common; the dimension of these is identical to that of A and B|  |
-|`relate`                  |given a mask pattern, returns whether A and B adhere to this pattern| |
+|predicate                   |meaning                                                          |inverse of      |
+|----------------------------|-----------------------------------------------------------------|----------------|
+|`equals`                    |Two geometries A and B are topologically identical|
+|`contains`                  |None of the points of A are outside B| `within`|
+|`contains_properly`         |A contains B and B has no points in common with the boundary of A| |
+|`covers`                    |No points of B lie in the exterior of A| `covered_by`|
+|`covered_by`                |inverse of `covers`| |
+|`crosses`                   |A and B have some but not all interior points in common| |
+|`disjoint`                  |A and B have no points in common| `intersects`|
+|`equals`                    |A and B are geometrically equal; node order number of nodes may differ; identical to A contains B AND A within B|
+|`equals_exact`              |A and B are geometrically equal, and have identical node order| |
+|`intersects`                |A and B are not disjoint| `disjoint`|
+|`is_within_distance`        |A is closer to B than a given distance|
+|`within`                    |None of the points of B are outside A| `contains`|
+|`touches`                   |A and B have at least one boundary point in common, but no interior points|  |
+|`overlaps`                  |A and B have some points in common; the dimension of these is identical to that of A and B|  |
+|`relate`                    |given a mask pattern, return whether A and B adhere to this pattern| |
+
 
 The [Wikipedia DE-9IM page](https://en.wikipedia.org/wiki/DE-9IM)
 provides the `relate` patterns for each of these verbs. They are
@@ -386,23 +410,21 @@ boundary_ of A
 
 ### Unary Measures
 
-Unary measures return a single value that describes a property of
+Unary measures return a measure or quantity that describes a property of
 the geometry:
 
 |measure              |returns                                                       |
 |---------------------|--------------------------------------------------------------|
-|`dimension`|0 for points, 1 for linear, 2 for polygons, `NA` for empty geometries|
-|`area`|the area of a geometry|
-|`length`|the length of a linear geometry|
-|`geohash`|the [geohash](https://en.wikipedia.org/wiki/Geohash) for a geometry|
-|`geometry_type`|the type of a geometries|
+|`dimension`          |0 for points, 1 for linear, 2 for polygons, possibly `NA` for empty geometries|
+|`area`               |the area of a geometry|
+|`length`             |the length of a linear geometry|
 
 ### Binary Measures
 
-`distance` returns the distances between pairs of geometries.
-`relate` (without mask) returns the relation pattern, a qualitative
-description of the geometrical relationship between two geometries
-explained in section \@ref(de9im).
+`distance` returns the distance between pairs of geometries.
+The qualitative measure `relate` (without mask) gives the relation
+pattern, a description of the geometrical relationship between two
+geometries explained in section \@ref(de9im).
 
 
 ### Unary Transformers
@@ -427,14 +449,14 @@ Unary transformations work on a per-geometry basis, and for each geometry return
 |`split`|that has been split with a splitting linestring|
 |`transform`|transformed or convert to a new coordinate reference system (chapter \@ref(cs))|
 |`triangulate`|with triangulated polygon(s)|
-|`voronoi`|with the voronoi tesselation of an input geometry (figure \@ref(fig:vor))|
+|`voronoi`|with the Voronoi tesselation of an input geometry (figure \@ref(fig:vor))|
 |`zm`|with removed or added `Z` and/or `M` coordinates|
 |`collection_extract`|with subgeometries from a `GEOMETRYCOLLECTION` of a particular type|
 |`cast`|that is converted to another type|
 |`+`|that is shifted over a given vector|
 |`*`|that is multiplied by a scalar or matrix|
 
-```{r vor, out.width='60%', fig.cap="left: convex hull (red) around a polygon (black); right: voronoi diagram (red) from a `MULTIPOINT` (black)", echo=!knitr::is_latex_output()}
+```{r vor, out.width='60%', fig.cap="left: convex hull (red) around a polygon (black); right: Voronoi diagram (red) from a `MULTIPOINT` (black)", echo=!knitr::is_latex_output()}
 par(mar = rep(0,4), mfrow = c(1, 2))
 plot(st_geometry(nc)[1], col = NA, border = 'black')
 plot(st_convex_hull(st_geometry(nc)[1]), add = TRUE, col = NA, border = 'red')
@@ -448,7 +470,8 @@ box()
 
 ### Binary Transformers {#bintrans}
 
-Binary functions that return a geometry include
+Binary transformers are functions that return a geometry based on
+operating on a pair of geometries.  They include
 
 |function           |returns                                                    |infix operator|
 |-------------------|-----------------------------------------------------------|:------------:|
@@ -460,7 +483,7 @@ Binary functions that return a geometry include
 
 ### N-ary Transformers {#nary}
 
-N-ary operate on sets of geometries.
+N-ary transformers operate on sets of geometries.
 `union` can be applied to a set of geometries to return its
 geometrical union.  Otherwise, any set of geometries can be combined
 into a `MULTI`-type geometry when they have equal dimension, or
@@ -472,7 +495,7 @@ N-ary `intersection` and `difference` take a single argument,
 but operate (sequentially) on all pairs, triples, quadruples etc.
 Consider the plot in figure \@ref(fig:boxes): how do we identify
 the area where all three boxes overlap?  Using binary intersections
-gives us intersections for all pairs: 1-1, 1-1, 1-3, 2-1, 2-2, 2-3,
+gives us intersections for all pairs: 1-1, 1-2, 1-3, 2-1, 2-2, 2-3,
 3-1, 3-2, 3-3, but does not let us identify areas where more than
 two geometries intersect.
 Figure \@(fig:boxes) (right) shows the n-ary intersection: the 7
@@ -518,50 +541,43 @@ regular grid with spacing $1/p$, which is beneficial for geometric
 computations. Of course, it also affects all computations like
 areas and distances, and may turn valid geometries into invalid
 ones. Which precision values are best for which application is
-often a matter of common sense combined with trial and error. A
-reproducible example illustrating the need for setting precision
-is found [here](https://github.com/r-spatial/sf/issues/275).
-
+often a matter of common sense combined with trial and error. 
 
 ## Coverages: tesselations and rasters {#coverages}
 
-(FIXME: discuss DE9-IM and uniquely assigning _all_ points!!
-"Spatial predicates are topologically-invariant binary spatial relations based on the DE-9IM"
-invariant under homeomorphisms. Projections are, in general, no homeomorphisms.
-(mappings that preserve all the topological properties of a given space)
-)
-
-OGC [@ogccov] defines a _coverage_ as a ``feature that acts as a
-function to return values from its range for any direct position
-within its spatiotemporal domain''. Having a _function_ implies that
-for every spatiotemporal "point" (spatial point and moment in time)
-of the domain we have _single_ value for the range. This is a very
-common situation for many spatiotemporal phenomena, a few examples
-can be given:
+The Open Geospatial Consortium defines a _coverage_ as a ``feature
+that acts as a function to return values from its range for any
+direct position within its spatiotemporal domain'' [@ogccov]. Having
+a _function_ implies that for every "point", i.e. every combination
+of spatial point and a moment in time of the spatiotemporal domain,
+we have _single_ value for the range. This is a very common situation
+for spatiotemporal phenomena, a few examples can be given:
 
 * boundary disputes aside, every point in a region (domain) belongs to a single adminstrative unit (range)
 * at any given moment in time, every point in a region (domain) has a certain _land cover type_ (range)
 * every point in an area (domain) has a single elevation (range), e.g. measured with respect to a given mean sea level surface
 * every spatiotemporal point in a threedimensional body of air (domain) has single value for temperature (range)
 
-(A caveat here is that because measurement always takes time
-and requires space, measured values are always an average over
+A caveat here is that because observation or measurement always takes
+time and requires space, measured values are always an average over
 a spatiotemporal volume, and hence range variables can rarely be
 measured for true, zero-volume "points"; for many practical cases
 however the measured volume is small enough to be considered a
 "point"; for a variable like _land cover type_ the volume needs to
 be chosen such that the types distinguished make sense with respect
-to the measured units).
+to the measured units.
 
 In the first two of the given examples the range variable is
 _categorical_, in the last two the range variable is _continuous_.
 For categorical range variables, if large connected areas have a
 constant range value, an efficient way to represent these data
-is by storing the boundaries of the areas with constant value,
-such as country boundaries.  Although this can be done by a set of
-simple feature geometries (polygons or multipolygons), it is hard
-to guarantee for such a set of simple feature polygons that they
-do not overlap, or that there are no gaps between them.
+is by storing the boundaries of the areas with constant value, such
+as country boundaries. Although this can be done (and is often done)
+by a set of simple feature geometries (polygons or multipolygons),
+but this brings along some challenges:
+
+* it is hard to guarantee for such a set of simple feature polygons that they do not overlap, or that there are no gaps between them,
+* simple features have no way of assigning points _on_ the boundary of two adjacent polygons uniquely to a single polygon, which introduces ambiguity in terms the interpretation as coverage.
 
 ### Topological models
 
@@ -574,8 +590,8 @@ of a boundary.
 
 Deriving the set of (multi)polygons for each area with a constant
 range value from a topological model is straightforward; the other
-way around: deriving topology from a set of polygons involves
-setting thresholds and handling gaps and overlaps.
+way around: reconstructing topology from a set of polygons typcially
+involves setting thresholds on errors and handling gaps or overlaps.
 
 ### Raster tesselations
 
@@ -587,7 +603,7 @@ and are called _raster data_. Raster data
 tesselate each spatial dimension $d$ into regular cells,
 formed e.g. by left-closed and right-open intervals $d_i$:
 \begin{equation}
-d_i = d_0 + [~ i \cdot \delta, (i+1) \cdot \delta~)
+d_i = d_0 + [i \times \delta, (i+1) \times \delta)
 \end{equation}
 with $d_0$ an offset, $\delta$ the interval (cell or
 pixel) size, and where the cell index $i$ is an arbitrary but
@@ -596,19 +612,45 @@ negative for the $y$-axis (Northing), indicating that raster
 row numbers increasing Southwards correspond to $y$-coordinates
 increasing Northwards.
 
-In arbitrary polygon tesselations, assigning points to polygons
-when they fall on a boundary shared by two polygons is ambiguous.
-Using left-closed "[" and right-open ")" intervals in regular
-tesselations removes this ambiguity.
+Where in arbitrary polygon tesselations the assignment of points
+to polygons is ambiguous for points falling on a boundary shared
+by two polygons, using left-closed "[" and right-open ")" intervals
+in regular tesselations removes this ambiguity. This means that for
+rasters with negative $\delta$ values for the $y$-coordinate and
+postive for the $x$-coordinate, only the top-left corner point
+is part of each raster cell. An artifact resulting from this is
+shown in figure \@ref(fig:rasterizeline).
+
+```{r rasterizeline, fig.cap = "rasterization artifact: as only top-left corners are part of the raster cell, only cells below the diagonal line are rasterized", echo=!knitr::is_latex_output()}
+library(stars)
+ls = st_sf(a = 1:2, st_sfc(st_linestring(rbind(c(0.1, 0), c(1, .9)))))
+grd = st_as_stars(st_bbox(ls), nx = 10, ny = 10, xlim = c(0, 1.0), ylim = c(0, 1),
+   values = -1)
+r = st_rasterize(ls, grd, options = "ALL_TOUCHED=TRUE")
+r[r == -1] = NA
+plot(st_geometry(st_as_sf(grd)), border = 'orange', col = NA, 
+	 reset = FALSE, key.pos=NULL)
+plot(r, axes = TRUE, add = TRUE) # ALL_TOUCHED=FALSE;
+plot(ls, add = TRUE, col = "red", lwd = 2)
+```
 
 Tesselating the time dimension with left-closed, right-open intervals
 is very common, and reflects the implicit assumption underlying
-time series packages such as `xts` in R, where time stamps indicate
-the start of time intervals.  Different models can be combined:
-one could use simple feature polygons to tesselate space, and
-combine this with a regular tesselation of time in order to cover
-a space-time _vector datacube_.  Raster data and data cubes are
-discussed in chapter \@ref(raster).
+time series software such as the `xts` package in R, where time
+stamps indicate the start of time intervals.  Different models can
+be combined: one could use simple feature polygons to tesselate
+space, and combine this with a regular tesselation of time in order
+to cover a space-time _vector data cube_.  Raster and vector data
+cubes are discussed in chapter \@ref(raster).
+
+As mentioned above, besides square cells the other two shapes
+that can lead to regular tesselations of $R^2$ are triangles
+and hexagons. On the sphere, there are few more, including cube,
+octahedron, icosahedron and dodecahedron. A spatial index that
+builds on the cube is [s2geometry](https://s2geometry.io/), the
+[H3 library](https://eng.uber.com/h3/) uses the icosahedron and
+densifies that with (mostly) hexagons. Mosaics that cover the entire
+Earth are also called _discrete global grids_.
 
 ## Networks
 
@@ -618,8 +660,8 @@ the network coherence:
 
 * start and endpoints of a linestring may be connected to other linestring
 start or end points, forming a set of nodes and edges
-* edges may be directed, and allow for connections (flow, transport)
-in only one way.
+* edges may be directed, to only allow for connection (flow,
+transport) in one way.
 
 Several R packages (`osmar`, `stplanr`, `sfnetworks`) have functionality
 available for constructing network objects, and working with them,
