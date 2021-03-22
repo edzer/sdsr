@@ -6,43 +6,45 @@ refer to
 [@appel2019demand]
 -->
  
-Time information may sometimes be considered an attribute of
-a feature, e.g. when we register the year of construction
-of a building, or date of birth of a person (chapter
+Data cubes arise naturally when we observe properties of a set of
+geometries repeatedly over time. Time information may sometimes be
+considered as an attribute of a feature, e.g. when we register the year
+of construction of a building, or the date of birth of a person (chapter
 \@ref(featureattributes)). In other cases it may refer to the time
 of observing an attribute, or the time for which a prediction of an
 attribute has been made. In these cases, time is on equal footing
 with space, and time and space together describe the physical
-dimensions over which we observe, model, or make predictions.
+dimensions over which we observe, model, make predictions or make
+forecasts.
 
 One way of considering our world is that of a four-dimensionsal
-space, with three space- and one time-dimension. In that view,
-events become "things" or "objects" [@galton]. Although such a view
-does not align well with how we experience and describe the world,
+space, with three space and one time dimension. In that view,
+events become "things" or "objects" that have as duration their
+size on the time dimension [@galton]. Although such a view does
+not align well with how we experience and describe the world,
 from a data analytic perspective, four numbers, along with their
 reference systems, suffice to describe space and time coordinates
 of an observation associated with a point location and time instance.
 
-Data cubes naturally arise when we observe properties of a set of
-geometries repeatedly over time. We define them here as array data
-with one or more array dimensions associated with space and/or time
-[@lu2018multidimensional], implying that raster data, features with
-attributes, and time series data are all special cases of data
-cubes. Since we don't restrict to three-dimensionsal structures,
-we actually mean _hypercubes_ rather than cubes, and as the cube
-size in the different dimensions does not have to be identical,
-the better term would be _hyperrectangle_.  For simplicity, we talk
-about data cubes instead.
+We define data cubes as array data with one or more array dimensions
+associated with space and/or time [@lu2018multidimensional]. This
+implies that raster data, features with attributes, and time series
+data are all special cases of data cubes. Since we don't restrict
+to three-dimensionsal structures, we actually mean _hypercubes_
+rather than cubes, and as the cube extent of the different dimensions
+does not have to be identical, or have comparable units, the better
+term would be _hyperrectangle_.  For simplicity, we talk about data
+cubes instead.
 
 A cannonical form of a data cube is shown in figure \@ref(fig:cube):
 it shows in a perspective plot a set of raster layers for the same
 region that were collected (observed, or modelled) at different time
 steps. The three cube dimensions, longitude, latitude and time are
-thought of as being perpendicular. Arbitrary two-dimensional cube
+thought of as being orthogonal. Arbitrary two-dimensional cube
 slices are obtained by fixing one of the dimensions at a particular
 value, one-dimensional slices are obtained by fixing two of the
 dimensions at a particular value, and a scalar is obtained by fixing
-three dimensions.
+three dimensions at a particular value.
 
 ```{r cube, out.width='70%', fig.cap="Raster data cube with dimensions latitude, longitude and time", echo=!knitr::is_latex_output()}
 # (C) 2019, Edzer Pebesma, CC-BY-SA
@@ -278,16 +280,17 @@ text(3.5 + offset, y, "2020-10-13", col = "black")
 text(3.5 + 2*offset, y, "2020-10-25", col = "black")
 ```
 
-Figure \@ref(fig:cube4d) shows an example of a four-dimensional data
-cube, where three-dimensional data cubes with a spectral dimension
-("bands") are organised along a fourth dimension, a time axis. Color
-image data always has three bands (R, G, B), this example has
-a fourth bands (near infrared, NIR) which is common for remote
-sensing data.
+Figure \@ref(fig:cube4d) depicts a four-dimensional raster data
+cube, where three-dimensional raster data cubes with a spectral
+dimension ("bands") are organised along a fourth dimension, a time
+axis. Color image data always has three bands (Blue, Green, Red),
+and this example has a fourth band (near infrared, NIR), which is
+commonly found in spectral remote sensing data.
 
 Figure \@ref(fig:cube4d2) shows exactly the same data, but layed out
 flat as a facet plot (or scatterplot matrix), where two dimensions
-(x and y) are over within the bands and time dimension.
+($x$ and $y$) are aligned with (or nested within) the dimensions
+_bands_ and _time_, respectively.
 
 ```{r cube4d2, fig.height=10, fig.width=10, fig.cap="Four-dimensional raster data cube layed out flat over two dimensions", echo=!knitr::is_latex_output()}
 # flat ----
@@ -338,21 +341,23 @@ text(3, 3.5, "2020-10-25", col = "black")
 ```
 
 
-## Cube dimensions and support
+## Dimensions, attributes, and support
 
 Phenomena in space and time can be thought of as functions
 with domain space and time, and with range one or more observed
-attributes.  For discrete events or objects, the range is typically
-discrete, and precise delineation involves describes the precise
-coordinates where it starts or stops, which is best suited by vector
-geometries.  For continuous phenomena, there are infinitely many
-values to represent and a common approach is to discretize space
-and time regularly over the domain extent of interest. This leads
-to a number of familiar data structures:
+attributes. For clearly identifiable discrete events or objects,
+the range is typically discrete, and precise delineation involves
+describing the precise coordinates where a thing starts or stops,
+which is best suited by vector geometries.  For continuous phenomena,
+variables that take on a value everywhere such as air temperature
+or land use type, there are infinitely many values to represent and
+a common approach is to discretize space and time _regularly_ over
+the spatiotemporal domain (extent) of interest. This leads to a
+number of familiar data structures:
 
-* time series, depicted as time lines for functions of time
-* image or raster data for two-dimensional spatial data
-* time sequences of images for dynamic spatial data
+* time series, depicted as time lines for functions of time,
+* image or raster data for two-dimensional spatial data, and
+* time sequences of images for dynamic spatial data.
 
 The third form of this, where a variable $Z$ depends on $x$, $y$
 and $t$, as in
@@ -368,21 +373,26 @@ $$\{Z_1,Z_2,...,Z_p\} = f(x, y, t)$$
 
 and if $Z$ is functional, e.g. reflectance values measured over
 the electromagnetic spectrum, the spectral wavelengths $\lambda$
-may form an additional dimension, as in $Z = f(x,y,t,\lambda)$.
-Multiple time dimensions arise when making forecasts for different
-times in the future $t'$ at different times $t$. The most general
-definition of a data cube is a functional mapping from $n$ dimensions
-to $p$ attributes:
+may form an additional dimension, as in $Z = f(x,y,t,\lambda)$;
+section \@ref(switching) discusses the alternative of representing
+color bands as attributes. 
+
+Multiple time dimensions arise for instance when making forecasts for
+different times in the future $t'$ at different times $t$, or when
+time is split into multiple dimensions (e.g. year, day-of-year,
+hour-of-day). The most general definition of a data cube is a
+functional mapping from $n$ dimensions to $p$ attributes:
 
 $$\{Z_1,Z_2,...,Z_p\} = f(D_1,D_2,...,D_n)$$
 
 Here, we will consider any dataset with one or more space dimensions
 and zero or more time dimensions a data cubes. That includes
 
+* simple features (section \@ref(simplefeatures)),
 * time series for sets of features,
 * raster data, 
 * multi-spectral raster data (images), or
-* time series of multi-spectral raster data (video)
+* time series of multi-spectral raster data (video).
 
 ### Regular dimensions, GDAL's geotransform
 
@@ -410,7 +420,7 @@ of a grid cell, and the cell area (pixel) spans a range corresponding to
 index values ranging from $i$ (inclusive) to $i+1$ (exclusive). 
 For most common imagery formats, $d_y$ is negative,
 indicating that image row index increases with decreasing $y$
-values (southward).  To get the $x-$ and $y-$coordinate of the grid
+values (southward).  To get the $x$- and $y$-coordinate of the grid
 cell _center_ of the top left grid cell (in case of a negative $d_y$),
 we use $i=1.5$ and $j=1.5$.
 
@@ -420,22 +430,22 @@ of spatial dimension variables that correspond to the center of
 spatial grid cells, and may in addition store grid cell boundaries
 (which is needed to define rectlinear dimensions unambiguously).
 
-For curvilinear rasters an array that maps every combinations of
-$i,j$ into $x,y$ pairs is needed, or a parametric function that
-does this (e.g. a projection). NetCDF files often provide both,
+For curvilinear rasters an array that maps every combination of $i,j$
+into $x,y$ pairs is needed, or a parametric function that does this
+(e.g. an projection or its inverse). NetCDF files often provide both,
 when available.
 
 ### Support along cube dimensions
 
 Section \@ref(agr) defined _spatial_ support of an attribute variable
 as the size (length, area, volume) of a geometry a particular
-observation or prediction is associated with, but the same notion
+observation or prediction is associated with. The same notion
 applies to temporal support. Although time is rarely reported by
 explicit time periods having a start- en end-time, in many cases
-either the time stamp implies a period (e.g. "2021" a full year,
-"2021-01" a month) or the time period is taken as the period from
-the time stamp of the current record up to but not including the
-time stamp of the next record.
+either the time stamp implies a period (e.g. ISO-8601 indications
+like "2021" for a full year, "2021-01" for full month) or the time
+period is taken as the period from the time stamp of the current
+record up to but not including the time stamp of the next record.
 
 An example is MODIS satellite imagery, where vegetation indexes (NDVI
 and EVI) are available as 16-day composites, meaning that over 16-day
@@ -456,13 +466,13 @@ interpolation but over the time dimension.
 
 Data cubes can be sliced into subcubes by fixing a dimension at a
 particular value. Figure \@ref(fig:cube4filter) shows the sub-cubes
-obtained by that. In this figure, the spatial filtering does not
-happen by fixing a single spatial dimension at a particular value,
-but by selecting a particular subregion, which is a more common
-operation. Fixing x or y would give a subcube along a transect of
-constant x or y, which can be used to show a Hovm\"{o}ller diagram,
-where an attribute is plotted in the space of one space dimension
-and time.
+obtained by doing with each of the dimensions. In this figure,
+the spatial filtering does not happen by fixing a single spatial
+dimension at a particular value, but by selecting a particular
+subregion, which is a more common operation. Fixing $x$ or $y$ would
+give a sub-cube along a transect of constant $x$ or $y$, which can
+be used to show a Hovmöller diagram, where an attribute is plotted
+(colored) in the space of one space and one time dimension.
 
 ```{r cube4filter, fig.width=10,fig.height=11, fig.cap="Data cube filtering by time, band or spatially", echo=!knitr::is_latex_output()}
 # filter ----
@@ -501,7 +511,7 @@ print_alpha_grid <- function(x,y, alp = 0.2, geom = FALSE) {
   pl(f, 14+x, 20+y, pal = alpha(reds, alp), print_geom = geom,  m = r3, border = 1)
   pl(f, 21+x, 0+y, pal = alpha(purples, alp), print_geom = geom,  m = n1, border = 1)
   pl(f, 21+x, 10+y, pal = alpha(purples, alp), print_geom = geom,  m = n2, border = 1)
-  pl(f, 21+x, 20+y, pal = alpha(purples, alp), print_geom = geom,  m = n3, border = 1)
+  invisible(pl(f, 21+x, 20+y, pal = alpha(purples, alp), print_geom = geom,  m = n3, border = 1))
 }
 
 print_grid_filter <- function(x, y) {
@@ -571,16 +581,17 @@ print_labels(x = x/2-28/2 + 30, y = y-26.5, off = 1, lab = ylabels,
 
 ### Applying functions to dimensions
 
-A common analysis case is where one wants to apply a function over
-one or more cube dimensions. Simple cases arise where a function
-such as `abs` or `sin` is applied to all values in the cube, or
-when a function takes all values in the cube and returns a single
-scalar, e.g. when one computes the mean or maximum value over the
-entire cube. Other options include applying the function to selected
-dimensions, e.g. applying a low-pass filter to every individual
-(pixel/band) time series (figure \@ref(fig:cube4apply1)) or applying
-a _spatial_ low-pass filter to every spatial slice (i.e. every
-band/time combination), shown in figure \@ref(fig:cube4apply2).
+A common analysis involves applying a function over one or more
+cube dimensions. Simple cases arise where a function such as `abs`,
+`sin` or `sqrt` is applied to all values in the cube, or when a function
+takes all values in the cube and returns a single scalar, e.g. when
+one computes the mean or maximum value over the entire cube. Other
+options include applying the function to selected dimensions,
+e.g. applying a temporal low-pass filter to every individual
+(pixel/band) time series as shown in figure \@ref(fig:cube4apply1),
+or applying a _spatial_ low-pass filter to every spatial
+slice (i.e. every band/time combination), shown in figure
+\@ref(fig:cube4apply2).
 
 ```{r cube4apply2, cache = TRUE, fig.height=6, fig.width=10, fig.cap="Low pass filtering of spatial slices", echo=!knitr::is_latex_output()}
 # apply ----
@@ -717,14 +728,15 @@ print_segments(25.7, 1.7, seg = time_arrow_seg, col = "forestgreen")
 
 ### Reducing dimensions
 
-When applying function mean to an entire datacube, all dimensions
-vanish. We can also apply functions to a limited set of dimensions
-such that the dimensions vanishes, or is _reduced_. We already saw
-filtering as a special case of this, but more in general we could
-for instance compute the maximum of every time series, the mean
-over every spatial slice, or a band index that summarizes different
-spectral values into a single value. Figure \@ref(fig:cube4reduce)
-illustrates these options.
+When applying function `mean` to an entire data cube, all dimensions
+vanish: the resulting "data cube" has dimensionality zero. We
+can also apply functions to a limited set of dimensions such that
+selected dimensions vanish, or are _reduced_. We already saw that
+filtering is a special case of this, but more in general we could
+for instance compute the maximum of every time series, the mean over
+every spatial slice, or a band index such as NDVI that summarizes
+different spectral values into a single new "band" with the index
+value. Figure \@ref(fig:cube4reduce) illustrates these options.
 
 ```{r cube4reduce, fig.width=10, fig.height=10, cache = TRUE, fig.cap="Reducing data cube dimensions", echo=!knitr::is_latex_output()}
 # reduce ----
@@ -836,12 +848,13 @@ data cube can be aggregated to a three-dimensional _vector data
 cube_. Pixels in the raster are grouped by spatial intersection
 with a set of vector geometries, and each group is then reduced
 to a single value by an aggregation function such as `mean` or
-`max`. Grouping geometries can also be `POINT` geometries, in which
-case the aggregation function is obsolete as single values at the
-`POINT` locations are extracted. In this case, the _two_ spatial
-dimensions $x$ and $y$ reduce to a single dimension, the sequence
-of feature geometries, which consists of geometries that are defined
-in the space of $x$ and $y$.
+`max`.  In the example, the _two_ spatial dimensions $x$ and $y$
+reduce to a single dimension, the one-dimensional sequence of feature
+geometries, with geometries that are defined in the space of $x$
+and $y$.  Grouping geometries can also be `POINT` geometries, in
+which case the aggregation function is obsolete as single values
+at the `POINT` locations are _extracted_, e.g. by querying a pixels
+value or by interpolating from the nearest pixels.
 
 ```{r cube4agg, fig.width=10, fig.height=8, cache = TRUE, fig.cap="Aggregating a raster data cube to a vector data cube", echo=!knitr::is_latex_output()}
 # aggregate ----
@@ -967,59 +980,40 @@ arrows(69.5, 15, 72.5, 12, angle = 20, lwd = 2)
 
 ```
 
-Besides Earth Observation/satellite imagery data, a large class
-of data cubes come from modelling data, e.g. from oceanographic,
-meteorologic or climate models, where dimensions may include
-
-* latitude and longitude
-* altitude, or depth
-* pressure level (substituting altitude)
-* time 
-* time to forecast, in addition to time when a forecast was made
-
-we can add to this as an additional dimension
-
-* variable of interest (pressure, temperature, humidity, wind speed, salinity, ...)
-
 Further examples of vector data cubes include be air quality data,
-where we could have $PM_{10}$ measurements for
+where we could have $PM_{10}$ measurements over two dimensions:
 
-* a set of monitoring stations, and
+* a sequence of monitoring stations, and
 * a sequence of time intervals
 
-aligned in a vector data cube, or where we consider time series
-of demographic or epidemiological data, consisting of (population,
-disease) counts, with number of persons
+or where we consider time series of demographic or epidemiological
+data, consisting of (population, disease) counts, with number
+of persons
 
-* by region, for $n$ regions
+* by region, for a sequence of $n$ regions
 * by age class, for $m$ age classes, and
 * by year, for $p$ years.
 
 which forms an array with $n m p$ elements. 
 
-Thinking along the classical GIS lines, where we would have either
-raster or vector data, one is left with the question what to do
-when we have a raster time series data cube (e.g.  a climate model
-forecast) and want to obtain a vector time series data cube with
-aggregates of the model forecast over polygons, as time series.
 For spatial data science, support of vector and raster data cubes
 is extremely useful, because many variables are both spatially
 and temporaly varying, and because we often want to either change
 dimensions or aggregate them out, but in a fully flexible manner
 and order. Examples of changing dimensions are
 
-* interpolating air quality measurements to values on a regular grid (raster)
-* estimating density maps from points or lines, e.g. with the number of flights passing by per week within a range of 1 km
+* interpolating air quality measurements to values on a regular grid (raster; chapter \@ref(interpolation))
+* estimating density maps from points or lines, e.g. with the number of flights passing by per week within a range of 1 km (chapter \@ref(pointpatterns)
 * aggregating climate model predictions to summary indicators for administrative regions
 * combining Earth observation data from different sensors, e.g. Modis (250 m pixels, every 16 days) with Sentinel-2 (10 m, every 5 days).
 
 Examples of aggregating one ore more full dimensions are assessments of
 
-* which air quality monitoring stations indicate unhealthy conditions
-* which region has the highest increase in disease incidence
-* global warming (e.g. in degrees per year)
+* which air quality monitoring stations indicate unhealthy conditions (time),
+* which region has the highest increase in disease incidence (space, time),
+* global warming (e.g. in degrees per year).
 
-## Switching dimension with attributes
+## Switching dimension with attributes {#switching}
 
 When we accept that a dimension can also reflect an unordered,
 categorical variable, then one can easily swap a set of attributes
@@ -1032,12 +1026,14 @@ with
 $$Z = f(D_1,D_2,...,D_n, D_{n+1})$$
 
 where $D_{n+1}$ has cardinality $p$ and has as labels (the names
-of) $Z_1,Z_2,...,Z_p$. When the $Z_i$ have incompatible measurement
-units, one would have to take care when reducing $D_{n+1}$: numeric
-functions like `mean` or `max` would be typically meaningless.
-
-Figure \@ref(fig:aqdc) shows a vector data cube for air quality
-stations where one cube dimension reflects air quality parameters.
+of) $Z_1,Z_2,...,Z_p$.  Figure \@ref(fig:aqdc) shows a vector data
+cube for air quality stations where one cube dimension reflects
+air quality parameters. When the $Z_i$ have incompatible measurement
+units, as in figure \@ref(fig:aqdc), one would have to take care
+when reducing the "parameter" dimension $D_{n+1}$: numeric functions
+like `mean` or `max` would be meaningless. Counting the number of
+variables that exceed their respective threshold values may however
+be meaningful.
 
 ```{r aqdc, out.width='70%', fig.cap="Vector data cube with air quality time series", echo=!knitr::is_latex_output()}
 set.seed(1331)
@@ -1123,11 +1119,36 @@ seg = cbind(p, cent[1:8,])
 segments(seg[,1], seg[,2], seg[,3], seg[,4], col = 'grey')
 ```
 
-
 Being able to swap dimensions to attributes flexibly and vice-versa
 leads to extremely flexible analysis possibilities, as e.g. shown
 by the array database SciDB [@brown2010overview].
 
 ## Exercises 
 
-* order of reduction, using `mean`, using `max`, when does it matter?
+* Why is it difficult to represent trajectories, sequences of
+$(x,y,t)$ obtained by tracking moving objects, by data cubes as
+described in this chapter?
+* In a socio-economic vector data cube with variables population,
+life expectancy, and gross domestic ordered by dimensions country and
+year, which variables have block support for the spatial dimension,
+and which have block support for the temporal dimension?
+* The Sentinel-2 satellites collect images in 12 spectral bands;
+list advantages and disadvantages to represent them as (i) different
+data cubes, (ii) a data cube with 12 attributes, one for each band,
+and (iii) a single attribute data cube with a spectral dimension.
+* Explain why a curvilinear raster as shown in figure
+\@ref(fig:rastertypes01) can be considered a special case of a
+data cube.
+* Explain how the following problems can be solved with data cube
+operatsion filter, applying functions to dimensions, or reducing
+dimensions, or aggregating dimensions:
+    * from hourly $PM_{10}$ measurements for a set of air quality
+	monitoring stations, compute per station the amount of days
+	per year that the average daily $PM_{10}$ value exceeds
+	50 $\mu g/m^3$
+    * for a sequence of aerial images of an oil spill, find the
+    time at which the oil spill had its largest extent, and the
+	corresponding extent
+    * from a 10-year period with global daily sea surface temperature
+    (SST) raster maps, find the area with the 10% largest and 10%
+	smallest temporal trends in SST values.
