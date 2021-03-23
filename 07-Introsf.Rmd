@@ -17,40 +17,57 @@ command line completion.
 
 ## Package `sf` {#sfintro}
 
-R Package `sf` [@rjsf] was developed to succeed and, over time,
-replace R packages `sp`, `rgeos` and the vector parts of `rgdal`. It
-provides simple features access [@herring2011opengis], natively,
-to R. It provides an interface to several `tidyverse` packages,
-in particular by `ggplot2`, `dplyr` and `tidyr`. It can read
-and write data through GDAL, use geometrical operations using
-GEOS or s2geometry, and carry out coordinate transformations or
-conversions using PROJ (figure \@ref(fig:gdal-fig-nodetails)). These
-libraries are interfaced using Rcpp [@eddelbuettel2013seamless].
+Inteded to succeed and replace R packages `sp`, `rgeos` and the
+vector parts of `rgdal`, R Package `sf` [@rjsf] was developed to
+move spatial data analysis in R closer to standards-based approaches
+seen in the industry and open source projects, to build upon more
+modern versions of the open source geospatial software stack, and
+to allow for integration of R spatial software with the tidyverse.
+
+To do so, R package `sf` provides simple features access
+[@herring2011opengis], natively, to R. It provides an interface
+to several `tidyverse` packages, in particular by `ggplot2`,
+`dplyr` and `tidyr`. It can read and write data through GDAL, use
+geometrical operations using GEOS (for Cartesian coordinates)
+or s2geometry (for ellipsoidal coordinates), and carry out
+coordinate transformations or conversions using PROJ (figure
+\@ref(fig:gdal-fig-nodetails)). External C++ libraries are interfaced
+using `Rcpp` [@eddelbuettel2013seamless].
 
 Package `sf` represents sets of simple features in `sf` objects,
-a sub-class of a `data.frame` or tibble. `sf` objects contain
-at least one geometry list-column of class `sfc`, which for each
+a sub-class of a `data.frame` or tibble. `sf` objects contain at
+least one _geometry list-column_ of class `sfc`, which for each
 element contains the geometry as an R object that subclasses `sfg`.
-An `sf` object has the following meta-data held in attributes:
+Geometry list-columns act as a simple variable in a `data.frame`
+or tibble, but have a more complex structure than e.g. numeric or
+character variables.  Following the convention of `PostGIS`, all
+operations (functions, method) that operate on `sf` objects or
+related start with `st_`.
 
-* the name of the (active) geometry column in `sf_column`
-* the attribute-geometry relationships in `agr`
+An `sf` object has the following meta-data:
 
-An `sfc` geometry list-column has the following meta-data held in attributes:
+* the name of the (active) geometry column, held in attribute `sf_column`
+* for each non-geometry variable, the attribute-geometry relationships, held in attribute `agr`
 
-* the coordinate reference system in `crs`
-* the bounding box in `bbox`
-* the precision in `precision`
-* the number of empty geometries in `n_empty`
+An `sfc` geometry list-column has the following meta-data:
+
+* the coordinate reference system held in attribute `crs`
+* the bounding box held in attribute `bbox`
+* the precision held in attriute `precision`
+* the number of empty geometries held in attribute `n_empty`
 
 The most safe way to access or set these attributes is to use
 functions like `st_bbox`, `st_crs`, `st_set_crs`, `st_agr`,
 `st_set_agr`, `st_precision`, and `st_set_precision`.
 
+### Creation
+
 One could create an `sf` object from scratch e.g. by
 ```{r echo=TRUE}
 library(sf)
-p1 = st_point(c(7.35, 52.42)); p2 = st_point(c(7.22, 52.18)); p3 = st_point(c(7.44, 52.19))
+p1 = st_point(c(7.35, 52.42))
+p2 = st_point(c(7.22, 52.18))
+p3 = st_point(c(7.44, 52.19))
 sfc = st_sfc(p1, p2, p3, crs = 'EPSG:4326')
 st_sf(elev = c(33.2, 52.1, 81.2), marker = c("Id01", "Id02", "Id03"), geom = sfc)
 ```
@@ -61,14 +78,142 @@ Figure \@ref(fig:sfobj) gives an explanation of the components printed.
 knitr::include_graphics("images/sf_obj.png")
 ```
 
+More typically, spatial data in R are read from an external source,
+which can be
 
-### Creation
+* an external file,
+* a request to a web service, or
+* a dataset held in some form in another R package.
 
 ### Reading and writing
 
+Reading datasets from an exteral "data source" (file, web service,
+or even string) is done using `st_read`:
+
+```{r stread}
+library(sf)
+(file = system.file("gpkg/nc.gpkg", package="sf"))
+nc = st_read(file)
+```
+Here, the file name and path `file` is read from the `sf` package,
+which has a different path on every machine, and hence is guaranteed
+to be present on every `sf` installation.
+
+Command `st_read` has two arguments: the _data set name_ (`dsn`)
+and the _layer_.  In the example above, the _geopackage_ file
+contains only a single layer that is being read. If it had contained
+multiple layers, then the first layer would have been read and a 
+warning would have been emitted. The available layers of a data
+set can be queried by
+```{r}
+st_layers(file)
+```
+
+Simple feature objects can be written with `st_write`, as in
+```{r}
+(file = tempfile(fileext = ".gpkg"))
+st_write(nc, file, layer = "layer_nc")
+```
+where the file format (GPKG) is derived from the file name extension.
+
+### Binary predicates
+
+Binary predicates like `st_intersects`, `st_covers` etc (section
+\@ref(de9im)) take two sets of feature (geometries) and return for
+all pairs whether the predicate is `TRUE` or `FALSE`. For large
+sets this would yield a very large matrix, mostly filled with `FALSE`
+values and for that reason a sparse representation is returned by
+default:
+```{r}
+nc5 = nc %>% head(5)
+nc7 = nc %>% head(7)
+(i = st_intersects(nc5, nc7))
+```
+which we could transform into a logical matrix by
+```{r}
+as.matrix(i)
+```
+The number of countries that each of `nc5` intersects with is
+```{r}
+lengths(i)
+```
+and the other way around it is
+```{r}
+lengths(t(i))
+```
+The object `i` is of class `sgbp` (sparse geometrical binary
+predicate), and is a list of integer vectors, with each element
+representing a row in the logical predicate matrix holding the column
+indices of the `TRUE` values for that row. It further holds some
+metadata like the predicate used, and the total number of columns.
+
 ### Subsetting
 
+A very common operation is to subset objects; base R can use `[`
+for this. The rules that apply to `data.frame` objects also apply to
+`sf` objects, with a few additional features, in particular
+
+* the `drop` argument when set to `TRUE` drops the geometry column when not selected,
+  meaning that a `data.frame` is returned; the default is `FALSE` meaning that the
+  geometry column is _always_ selected, and an `sf` object is returned.
+* selection with a spatial (`sf`, `sfc` or `sfg`) object as first argument leads to
+  selection of the features that spatially _intersect_ with that
+  object; other predicates than _intersects_ can be chosen by setting
+  parameter `op` to a binary predicate function, such as `st_covers`.
+
 ### tidyverse 
+
+The tidyverse is a collection of data science packages that work
+together, described e.g. in [@r4ds]. Package `sf` has tidy-verse
+style read and write functions, `read_sf` and `write_sf`, that
+return a tibble rather than a `data.frame`, do not print any output,
+and overwrite by default. 
+
+Further `tidyverse` generics with methods for `sf` objects include
+`filter`, `select`, `group_by`, `ungroup`, `mutate`, `transmute`,
+`rowwise`, `rename`, `slice` and `summarise`, `distinct`, `gather`,
+`spread`, `nest`, `unnest`, `unite`, `separate`, `separate_rows`,
+`sample_n`, and `sample_frac`. Most of these methods simply manage
+the metadata of `sf` objects, and make sure the geometry remains
+present. In case a user wants the geometry to be removed, one can
+use `st_set_geometry(nc, NULL)` or simply coerce to a tibble before
+selecting:
+```{r}
+library(tidyverse)
+nc %>% as_tibble() %>% select(BIR74) %>% head(3)
+```
+
+The `summarise` method for `sf` has two special arguments:
+
+* `do_union` (default `TRUE`) determines whether grouped geometries are unioned on return, so that they form a valid geometry;
+* `is_coverage` (default `FALSE`) in case the geometries grouped form a coverage (do not have overlaps), setting this to `TRUE` speeds up the unioning
+
+The `distinct` method selects distinct records, where `st_equals`
+is used to evaluate distinctness of geometries.
+
+`filter` can be used with the usual predicates; when one wants to
+use it with a spatial predicate, e.g. to select all counties less
+than 50 km away from Orange county, one could use
+
+```{r}
+orange <- nc %>% filter(NAME == "Orange")
+wd = st_is_within_distance(nc, orange, units::set_units(50, km))
+o50 <- nc %>% filter(lengths(wd) > 0)
+nrow(o50)
+```
+
+Figure \@ref(fig:orangebuffer) shows the results of this analysis,
+and in addition a buffer around the county; note that this buffer
+serves illustration, it was _not_ used in this analysis.
+
+```{r orangebuffer, echo=FALSE, fig.cap="Orange county (orange), counties within a 50 km radius (black), a 50 km buffer around Orange county (brown), and remaining counties (grey)"}
+sf_use_s2(TRUE)
+og = st_geometry(orange)
+plot(st_geometry(o50), lwd = 2)
+plot(og, col = 'orange', add = TRUE)
+plot(st_buffer(og, units::set_units(50, km)), add = TRUE, col = NA, border = 'brown')
+plot(st_geometry(nc), add = TRUE, border = 'grey')
+```
 
 ## Spatial joins
 
@@ -86,7 +231,8 @@ When using spatial joins, each record may have several matched
 records, yielding a large result table. A way to reduce this
 complexity may be to select from the matching records the one with
 the largest overlap with the target geometry.  An example of this
-is shown (visually) in figure \@ref(fig:largest).
+is shown (visually) in figure \@ref(fig:largest); this is done using
+`st_join` with argument `largest = TRUE`.
 
 (ref:foo) example of `st_join` with `largest = TRUE`: the label of the polygon in the top figure with the largest intersection with polygons in the bottom figure is assigned to the polygons of the bottom figure
 
@@ -112,10 +258,28 @@ plot(st_geometry(gr), border = 'green', add = TRUE)
 par(opar)
 ```
 
-Another way to reduce the result set is to aggregate, after a
+Another way to reduce the result set is to use `aggregate` after a
 join, all matching records, and union their geometry; see Section
 \@ref(aggregate).
 
+### sampling, gridding, interpolating
+
+Several convenience functions are available in package `sf`, some
+of which will be discussed here. Function `st_sample` generates
+a sample of points randomly sampled from target geometries, where
+target geometries can be point, line or polygon geometries. Sampling
+strategies can be (completely) random, regular or (with polygons)
+triangular.  Chapter \@ref(spatstat) explains how spatial sampling
+(or point pattern generation) methods available in package `spatstat`
+are interfaced through `st_sample`.
+
+Function `st_make_grid` creates a square, rectangular or hexagonal
+grid over a region, or points with the grid centers or corners. It
+was used to create the rectangular grid in figure \@ref(fig:largest).
+
+Function `st_interpolate_aw` "interpolates" area values to new areas,
+as explained in section \@ref{area-weighted), both for intensive
+and extensive variables.
 
 ## `stars` basics
 
@@ -130,37 +294,36 @@ and comes as time series of rasters for different themes. A raster
 stack does not meaningfully reflect this, requiring the user to
 keep a register of which layer represents what.  
 
-Also, the `raster` package does an excellent job in scaling
-computations up to datasizes no larger than the local storage
-(the computer's hard drives). Recent datasets however, including
-satellite imagery, climate model or weather forecasting data, often
-no longer fit in local storage. 
+Also, the `raster` package, and its successer `terra` do an excellent
+job in scaling computations up to datasizes no larger than the local
+storage (the computer's hard drives), and doing this fast. Recent
+datasets however, including satellite imagery, climate model or
+weather forecasting data, often no longer fit in local storage.
 
 Package `spacetime` addresses the analysis of time series of
 vector geometries or raster grid cells, but does not extend to
 higher-dimensional arrays.
 
-We introduce a new package for analysing data cubes (with raster
-analysis as a special case), called `stars` (for scalable,
-spatiotemporal tidy arrays). The package
+We introduce package `stars` here for analysing raster and vector
+data cubes.  The package
 
-* allows for representing dynamic raster stacks,
+* allows for representing dynamic (time varying) raster stacks,
 * in addition to regular grids handles rotated, sheared, rectilinear and curvilinear rasters,
 * provides a tight integration with package `sf`,
 * follows the tidyverse design principles,
 * aims at being scalable, also beyond local disk size,
-* also handles array data with non-raster spatial dimensions,  the _vector datacubes_,
-* provides further integration of novel features in the GDAL
-library than other R packages have given so far.
+* also handles array data with non-raster spatial dimensions, the _vector data cubes_,
+* provides a strong integration of raster functions in the GDAL
+library.
 
 Vector data cubes include for instance time series for simple
-features, or spatial graph data such as origin-destination matrices.
-The wider concept of spatial vector and raster data cubes is
-explained in section \@ref(datacube)
+features, or spatial graph data such as potentially dynamic
+origin-destination matrices.  The concept of spatial vector and
+raster data cubes was explained in chapter \@ref(datacube)
 
 ### Reading and writing raster data
 
-Raster data typically are read from a file. We read an example
+Raster data typically are read from a file. We can read an example
 file of a regular, non-rotated grid from the package `stars`:
 ```{r}
 tif = system.file("tif/L7_ETMs.tif", package = "stars")
@@ -193,10 +356,10 @@ st_bbox(x)
 ```
 Raster data can be written to local disk using `write_stars`:
 ```{r}
-tf = tempfile(fileext=".tif")
+tf = tempfile(fileext = ".tif")
 write_stars(x, tf)
 ```
-where the format (in this case, GeoTIFF) is derived from the file
+where again the data format (in this case, GeoTIFF) is derived from the file
 extension. As for simple features, reading and writing uses the GDAL
 library; the list of available drivers for raster data is obtained
 by 
@@ -256,7 +419,7 @@ we can do
 ```{r}
 as.data.frame(st_apply(x, c("band"), mean))
 ```
-which is so small it can be printed here as a `data.frame`. In these
+which is small enough to be printed here as a `data.frame`. In these
 two examples, entire dimensions disappear. Sometimes, this does not
 happen; we can for instance compute the three quartiles for each band
 ```{r}
@@ -276,9 +439,10 @@ There are several reasons why non-regular rasters occur. For one,
 when the data is Earth-bound, a regular raster does not fit the Earth
 surface, which is curved. Other reasons are:
 
-* when we convert or transform a regular raster data into another coordinate reference system,
-it will become curvilinear unless we resample; resampling always
-goes at the cost of some loss of data and is not reversible.
+* when we convert or transform a regular raster data into another
+coordinate reference system, it will become curvilinear unless we
+resample; resampling always goes at the cost of some loss of data
+and is not reversible.
 * observation may lead to irregular rasters; e.g. for satellite swaths, we
 may have a regular raster in the direction of the satellite (not
 aligned with $x$ or $y$), and rectilinear perpendicular to that
