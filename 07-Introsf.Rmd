@@ -125,9 +125,9 @@ where the file format (GPKG) is derived from the file name extension.
 Binary predicates like `st_intersects`, `st_covers` etc (section
 \@ref(de9im)) take two sets of feature (geometries) and return for
 all pairs whether the predicate is `TRUE` or `FALSE`. For large
-sets this would yield a very large matrix, mostly filled with `FALSE`
-values and for that reason a sparse representation is returned by
-default:
+sets this would potentially result in a huge matrix, typically filled 
+mostly with `FALSE` values and for that reason a sparse representation 
+is returned by default:
 ```{r}
 nc5 = nc %>% head(5)
 nc7 = nc %>% head(7)
@@ -141,7 +141,8 @@ The number of countries that each of `nc5` intersects with is
 ```{r}
 lengths(i)
 ```
-and the other way around it is
+and the other way around, the number of counties in `nc5` that
+intersect with each of the counties in `nc7`  is
 ```{r}
 lengths(t(i))
 ```
@@ -150,6 +151,13 @@ predicate), and is a list of integer vectors, with each element
 representing a row in the logical predicate matrix holding the column
 indices of the `TRUE` values for that row. It further holds some
 metadata like the predicate used, and the total number of columns.
+Methods available for `sgbp` objects include
+```{r}
+methods(class = "sgbp")
+```
+where the only `Ops` method available is `!`, the negation operation.
+Chapter \@ref(area) explains how `sgbp` objects can be converted into
+`nb` objects for use in spatial regression models.
 
 ### Subsetting
 
@@ -163,7 +171,8 @@ for this. The rules that apply to `data.frame` objects also apply to
 * selection with a spatial (`sf`, `sfc` or `sfg`) object as first argument leads to
   selection of the features that spatially _intersect_ with that
   object; other predicates than _intersects_ can be chosen by setting
-  parameter `op` to a binary predicate function, such as `st_covers`.
+  parameter `op` to a function such as `st_covers` or or any other
+  binary predicate function listed in section \@ref(de9im)
 
 ### tidyverse 
 
@@ -208,7 +217,7 @@ nrow(o50)
 
 Figure \@ref(fig:orangebuffer) shows the results of this analysis,
 and in addition a buffer around the county; note that this buffer
-serves illustration, it was _not_ used in this analysis.
+serves illustration, it was _not_ used to select the counties. 
 
 ```{r orangebuffer, echo=FALSE, fig.cap="Orange county (orange), counties within a 50 km radius (black), a 50 km buffer around Orange county (brown), and remaining counties (grey)"}
 sf_use_s2(TRUE)
@@ -673,11 +682,236 @@ case where one or more of the dimensions refer to space, and/or time.
 
 ## raster-to-vector, vector-to-raster {#raster-to-vector}
 
-(see Ch 1)
+Section \@ref(rasterize) already showed some examples of
+raster-to-vector and vector-to-raster conversions, this section
+will add some code details and examples.
 
-* direct rasterization of points, lines or polygons (section \@ref(raster-to-vector))
+### vector-to-raster
+
+`st_as_stars` is meant as a method to transform objects into `stars`
+objects. However, not all stars objects are `raster` objects,
+and the method for `sf` objects creates a vector data cube with
+the geometry as its spatial (vector) dimension, and attributes
+as attributes.  When given a feature _geometry_ (`sfc`) object,
+`st_as_stars` will rasterize it, as shown in section \@ref(warp),
+and in figure \@ref(fig:asstars).
+
+(ref:rasterize) rasterizing vector geometry using `st_as_stars`
+
+```{r asstars, fig.cap = '(ref:rasterize)' }
+sf_use_s2(TRUE)
+(file = system.file("gpkg/nc.gpkg", package="sf"))
+read_sf(file) %>% 
+	st_geometry() %>%
+	st_as_stars() %>%
+	plot()
+```
+Here, `st_as_stars` can be parameterized to control cell size,
+number of cells, and/or extent. The cell values returned are 0 for
+cells with center point outside the geometry and 1 for cell with
+center point inside or on the border of the geometry.  Rasterizing
+existing features is done using `st_rasterize`, as also shown in
+figure \@ref(fig:vectoras):
+
+```{r}
+library(dplyr)
+read_sf(file) %>%
+	mutate(name = as.factor(NAME)) %>%
+	select(SID74, SID79, name) %>%
+	st_rasterize()
+```
+Similarly, line and point geometries can be rasterized, as shown
+in figure \@ref(fig:lineras).
+
+```{r lineras, fig.cap="rasterization of North Carolina boundaries"}
+read_sf(file) %>%
+	st_cast("MULTILINESTRING") %>%
+	select(CNTY_ID) %>%
+	st_rasterize() %>%
+	plot()
+```
+
+## coordinate transformations and conversions {#projsf}
+
+### `st_crs`
+
+Spatial objects of class `sf` or `stars` contain a coordinate
+reference system that can be get or replaced with `st_crs`, or be
+set or replaced in a pipe with `st_set_crs`. Coordinate reference
+systems can be set with an EPSG code, like `st_crs(4326)` which
+will be converted to `st_crs('EPSG:4326')`, or with a PROJ.4 string
+like `""+proj=utm +zone=25 +south"`, a name like "WGS84", or a name
+preceded by an authority like "OGC:CRS84"; alternatives include
+a coordinate reference system definition in WKT, WKT2 (section
+\@ref(wkt2)) or PROJJSON.
+
+The object returned contains two fields, `wkt` with the WKT2
+representation, and `input` with the user input, if any, or else
+a copy of the wkt field. Note that PROJ.4 strings can be used to
+_define_ some coordinate reference systems, but they cannot be used
+to _represent_ coordinate reference systems. Conversion of a
+WKT2 in a `crs` object to a proj4string using the `$proj4string`
+method, as in
+```{r}
+x = st_crs("OGC:CRS84")
+x$proj4string
+```
+may succeed but is not in general lossless or invertible.
+
+### `st_transform`, `sf_project`
+
+Coordinate transformations or conversions (section \@ref(proj))
+for `sf` or `stars` objects are carried out with `st_transform`,
+which takes as its first argument a spatial object of class `sf` or
+`stars` that has a coordinate reference system set, and as a second
+argument with an `crs` object (or something that can be converted
+to it with `st_crs`). When PROJ finds more than one possibility
+to transform or convert from the source `crs` to the target `crs`,
+it choosed the options with the highest accuracy. More finegrained
+control over the options is explained in section \@ref(pipelines).
+
+A lower-level function to transform or convert coordinates _not_
+in `sf` or `stars` objects is `sf_project`: it takes a matrix with
+coordinates and a source and target `crs`, and returns transformed
+or converted coordinates.
+
+### `sf_proj_info`
+
+Function `sf_proj_info` can be used to query available projections,
+ellipsoids, units and prime meridians available in the PROJ
+software. It takes a single parameter, `type`, which can have the
+following values:
+
+* `type = "proj"` lists the short and long names of available
+projections; short names can be used in a "+proj=name" string.
+* `type = "ellps"` lists available ellipses, with name, long name,
+and ellipsoidal parameters.
+* `type = "units"` lists the available length units, with conversion
+constant to meters
+* `type = "prime_meridians"` lists the prime meridians with their
+position with respect to the Greenwich meridian.
+
+
+### proj.db, datum grids, cdn.proj.org, local cache
+
+Datum grids (section \@ref(proj)) can be installed locally, or
+be read from the PROJ datum grid CDN at https://cdn.proj.org/. If
+installed locally, they are read from the PROJ search path, which
+is shown by
+```{r}
+sf_proj_search_paths()
+```
+The main PROJ database is `proj.db`, an sqlite3 database typically
+found at
+```{r}
+paste0(tail(sf_proj_search_paths(), 1), .Platform$file.sep, "proj.db")
+```
+which can be read, and even edited (with care!) to add projections.
+
+If for a particular coordinate transformation datum grids are not
+locally found, PROJ will search for online datum grids in the PROJ
+CDN when
+
+```{r}
+sf_proj_network()
+```
+returns `TRUE`. By default it is set to `FALSE`, but
+```{r}
+sf_proj_network(TRUE)
+```
+sets it to `TRUE` and returns the URL of the network resource used;
+this resource can also be set to another resource, that may be
+faster or less limited.
+
+After querying a datum grid on the CDN, PROJ writes the _portion_ of
+the grid queried (not, by default, the entire grid) to a local cache,
+which is another sqlite3 database found locally in a user directory,
+e.g. at
+```{r}
+list.files(sf_proj_search_paths()[1], full.names = TRUE)
+```
+that will be searched first in subsequent datum grid queries.
+
+### transformation pipelines {#pipelines}
+
+Internally, PROJ uses a so-called _coordinate operation pipeline_,
+to represent the sequence of operations to get from a source CRS to
+a target CRS.  Given multiple options to go from source to target,
+`st_transform` chooses the one with highest accuracy. We can query
+the options available by
+```{r}
+(p = sf_proj_pipelines("EPSG:4326", "EPSG:22525"))
+```
+and see that pipeline with the highest accuracy is summarised; we
+can see that it specifies use of a datum grid.  Had we not switched
+on the network search, we would have obtained a different result:
+```{r}
+sf_proj_network(FALSE)
+sf_proj_pipelines("EPSG:4326", "EPSG:22525")
+```
+and a report that a datum grid is missing 
+The object returned by `sf_proj_pipelines` is a sub-classed `data.frame`, with columns
+```{r}
+names(p)
+```
+and we can list for instance the accuracies by
+```
+p$accuracy
+```
+Here, `NA` refers to "ballpark accuracy", which may be anything in the
+30-100 m range:
+```{r}
+p[is.na(p$accuracy),]
+```
+The default, most accurate pipeline chosen by `st_transform` can
+be overriden by specifying `pipeline` argument, as selected from
+the set of options in `p$definition`.
 
 ## transforming and warping rasters {#warp}
+
+When using `st_transform` on a raster data set, as e.g. in
+```{r}
+tif = system.file("tif/L7_ETMs.tif", package = "stars")
+read_stars(tif) %>%
+	st_transform(4326)
+```
+we see that a _curvilinear_ is created, which means that for every
+grid cell the coordinates are computed in the new CRS, which no
+longer form a _regular_ grid. Plotting such data is extremely slow,
+as small polygons are computed for every grid cell and then plotted.
+The advantage of this is that no information is lost: grid cell
+values remain identical after the projection.
+
+When we start with a raster on a regular grid and want to obtain
+a _regular_ grid in a new coordinate reference system, we need
+to _warp_ the grid: we need to recreate a grid at new locations,
+and use some rule to assign values to new grid cells. Rules can
+involve using the nearest value, or using some form of interpolation.
+This operation is not lossless and not invertible. 
+
+The best options for warping is to specify the target grid as a
+`stars` object. When only a target CRS is specified, default options
+for the target grid are picked that may be completely inappropriate
+for the problem at hand. An example workflow that uses only a
+target CRS is
+```{r}
+read_stars(tif) %>%
+	st_warp(crs = st_crs(4326)) %>%
+	st_dimensions()
+```
+which creates a pretty close raster, but then the transformation
+is also relatively modest.  For a workflow that creates a target 
+raster first, here with exactly the same number of rows and columns
+as the original raster one could use:
+```{r}
+r = read_stars(tif)
+grd = st_bbox(r) %>%
+		st_as_sfc() %>%
+		st_transform(4326) %>%
+		st_bbox() %>%
+		st_as_stars(nx = dim(r)["x"], ny = dim(r)["y"])
+st_warp(r, grd)
+```
 
 ## Exercises 
 
