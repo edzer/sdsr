@@ -60,17 +60,16 @@ some computatational cost.
 
 ### Reading from databases, dbplyr
 
+```{r echo=FALSE}
+nc = read_sf(file)
+write_sf(nc, "PG:dbname=postgis", "nc")
+```
+
 Although GDAL has support for several spatial databases, and as
 mentioned above it passes on SQL in the `query` argument to the
 database, it is sometimes beneficial to directly read and 
 to a spatial database using the R database drivers for this. An
 example of this is:
-
-```{r echo=FALSE}
-nc = st_read(file)
-write_sf(nc, "PG:dbname=postgis", "nc")
-```
-
 ```{r}
 pg <- DBI::dbConnect(
     RPostgres::Postgres(),
@@ -78,7 +77,6 @@ pg <- DBI::dbConnect(
     dbname = "postgis")
 st_read(pg, query = "select BIR74,wkb_geometry from nc limit 3")
 ```
-
 A spatial query might look like
 ```{r}
 q = "SELECT BIR74,wkb_geometry FROM nc WHERE \
@@ -154,12 +152,12 @@ that have significant tags, `lines` with non-area "way" features,
 bounding box query to OpenStreetMap could look like
 
 ```{r,eval=FALSE}
-download.file("https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970",
-			  "data/ms.osm")
+q = "https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970" %>%
+download.file(q, "data/ms.osm")
 ```
 and from this file we can read the layer `lines`, and plot its
 first attribute by
-```{r}
+```{r overpass, fig.cap = "OpenStreetMap vector data"}
 o = read_sf("data/ms.osm", "lines")
 p = read_sf("data/ms.osm", "multipolygons")
 bb = st_bbox(c(xmin=7.595, ymin = 51.969, xmax = 7.598, ymax = 51.970),
@@ -168,7 +166,8 @@ plot(st_as_sfc(bb), axes = TRUE, lwd = 2, lty = 2)
 plot(o[,1], lwd = 2, add = TRUE)
 plot(st_geometry(p), border = NA, col = '#88888888', add = TRUE)
 ```
-The overpass API provides a much more generic and powerful query
+the result of which is shown in figure \@ref(fig:overpass).
+The overpass API provides a more generic and powerful query
 functionality to OpenStreetMap data.
 
 ## Raster data: `stars`
