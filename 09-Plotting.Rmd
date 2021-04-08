@@ -3,7 +3,7 @@
 Together with timelines, maps belong to the most powerful graphs,
 perhaps because we can immediately relate where we are, or have
 been, on the space of the plot. Two recent books on visualisation
-[@Healy, @Wilke] contain chapters on visualising geospatial data or
+[@Healy; @Wilke] contain chapters on visualising geospatial data or
 maps. Here, we will not try to preach the do's and don'ts of maps,
 but rather point out a number of possibilities how to do things,
 point out challenges along the way and ways to mitigate them.
@@ -18,47 +18,26 @@ where we think we "do nothing" (figure \@ref(fig:world), left),
 or where show the world "as it is", e.g. as seen from space (figure
 \@ref(fig:world), right).
 
-```{r world,fig.cap="Earth country boundaries; left: mapping long/lat to x and y; right: as seen from space", fig=TRUE,echo=FALSE,message=FALSE}
+```{r world,fig.cap="Earth country boundaries; left: mapping long/lat linearly to $x$ and $y$ (plate carrée); right: ``as seen from space'' (orthographic)", fig=TRUE, echo=knitr::is_latex_output(), message=FALSE}
 library(sf)
 library(rnaturalearth)
-sf_use_s2(FALSE) # FIXME:
+#sf_use_s2(FALSE) # FIXME:
 w <- ne_countries(scale = "medium", returnclass = "sf")
 suppressWarnings(st_crs(w) <- st_crs(4326))
 layout(matrix(1:2, 1, 2), c(2,1))
+par(mar = rep(0, 4))
 plot(st_geometry(w))
 
-circ = function(l = c(-180:180), lon0 = 0, lat0 = 30) {
-	deg2rad = pi / 180
-	lat = atan(-cos((l - lon0) * deg2rad)/tan(lat0 * deg2rad)) / deg2rad
-	xy = if (lat0 == 0) {
-		l1 = lon0 - 90
-		l2 = lon0 + 90
-		rbind(c(l1,-90), c(l2,-90), c(l2,0), c(l2,90), c(l1,90), c(l1,0), c(l1,-90))
-	} else if (lat0 > 0) {
-		xy = cbind(lon = l, lat = lat)
-		rbind(c(-180,90),xy,c(180,90),c(-180,90))
-	} else {
-		xy = cbind(lon = l, lat = lat)[length(l):1,]
-		rbind(c(180,-90), xy, c(-180,-90),c(180,-90))
-	}
-	st_sfc(st_polygon(list(xy)), crs = st_crs(4326))
-	# TODO: break at dateline, guarantee within -180,180
-}
-
-m = st_make_grid()
-m = st_segmentize(m, 4e5)
-
-i = 0
-par(mar = rep(0,4))
-lat=30+(i/2)
-lon=-10-(i/2)
-p4s=paste0("+proj=ortho +lat_0=", lat, " +lon_0=", lon)
-plot(st_transform(m, st_crs(p4s), check = TRUE), col = 'lightblue', border = 'grey')
-crc = circ(lat0 = lat, lon0 = lon)
-st_crs(w) <- 4326 # added RSB to handle use of PROJ 6.1.0
-w0 = suppressWarnings(st_intersection(st_make_valid(w), crc))
-w0 = st_cast(w0, "MULTIPOLYGON")
-plot(st_transform(st_geometry(w0), st_crs(p4s), check = TRUE), add = TRUE)
+# sphere:
+library(s2)
+g = as_s2_geography(TRUE) # Earth
+co = s2_data_countries()
+oc = s2_difference(g, s2_union_agg(co)) # oceans
+b = s2_buffer_cells(as_s2_geography("POINT(-30 -10)"), 9800000) # visible half
+i = s2_intersection(b, oc) # visible ocean
+co = s2_intersection(b, co)
+plot(st_transform(st_as_sfc(i), "+proj=ortho +lat_0=-10 +lon_0=-30"), col = 'lightblue')
+plot(st_transform(st_as_sfc(co), "+proj=ortho +lat_0=-10 +lon_0=-30"), col = NA, add = TRUE)
 ```
 
 The left plot of figure \@ref(fig:world) was obtained by
@@ -70,38 +49,38 @@ plot(st_geometry(w))
 ```
 and we see that this is the default projection for data with ellipsoidal coordinates, as indicated by
 ```{r}
-st_crs(w)
+st_is_longlat(w)
 ```
 
-The projection taken here is the equirectangular (or equidistant
-cylindrical) projection, which maps longitude and latitude linear
-to the x and y axis, keeping an aspect ratio of 1. Were we to do
-this for smaller areas not on the equator, it makes sense to choose
-a plot ratio such that one distance unit E-W equals one distance
-unit N-S on the center of the plotted area.
+The projection taken in figure \@ref(fig:world) (left) is the
+equirectangular (or equidistant cylindrical) projection, which maps
+longitude and latitude linearly to the $x$ and $y$ axis, keeping
+an aspect ratio of 1. Were we to do this for smaller areas not on
+the equator, it makes sense to choose a plot ratio such that one
+distance unit E-W equals one distance unit N-S on the center of
+the plotted area, and this is the default behaviour of the `plot()`
+method for unprojected `sf` or `stars` datasets, as well as the
+default for `ggplot2::geom_sf()` (section \@rer(geomsf)).
 
 We can also carry out this projection before plotting. Say we want to
-do this for Germany, then after loading the (rough) country outline,
+plot Germany, then after loading the (rough) country outline,
 we use `st_transform` to project:
 ```{r}
 DE = st_geometry(ne_countries(country = "germany", returnclass = "sf"))
 DE.eqc = st_transform(DE, "+proj=eqc +lat_ts=51.14 +lon_0=90w")
 ```
-`st_transform` takes an `sf` or `sfc` object, and as second
-argument the projection. This can either be a number of a known EPSG
-projection, e.g. listed at http://spatialreference.org/ref/epsg/ ,
-or a string describing the projection (`+proj=...`) with further
-parameters. The parameter here is `lat_ts`, the latitude of true
+The `eqc` refers to the "equidistant cylindrical" projection of PROJ;
+the projection parameter here is `lat_ts`, the latitude of true
 scale (i.e., one length unit N-S equals one length unit E-W),
 which was here chosen as the middle of the bounding box latitudes
 ```{r}
-mean(st_bbox(DE)[c("ymin", "ymax")])
+print(mean(st_bbox(DE)[c("ymin", "ymax")]), digits = 4)
 ```
-When we now plot both maps (figure \@ref(fig:eqc)), they look the
-same up to their values along the axes: degrees for ellipsoidal (left),
-and metres for Cartesian coordinates.
+When we now plot both maps (figure \@ref(fig:eqc)), they look
+identical up to the values along the axes: degrees for ellipsoidal
+(left), and metres for projected (Cartesian) coordinates.
 
-```{r eqc,out.width='60%', fig.cap="Germany in equidistant cylindrical projection: left with degrees, right with metres along the axes"}
+```{r eqc,out.width='60%', fig.cap="Germany in equirectangular projection: with axis units degrees (left) and metres in the equidistant cylindrical projection (right)"}
 par(mfrow = c(1, 2))
 plot(DE, axes = TRUE)
 plot(DE.eqc, axes = TRUE)
@@ -129,78 +108,55 @@ projection varieties, it may be preferrable to choose a well-known or
 less surprising projection, and move the discussion which projection
 should be preferred to a decision process on its own.
 
-### Does projection always work?
-
-No. Look for instance at the figure \@ref(fig:world), right. Countries
-like the USA are half out-of-sight. Where is the California coast
-line drawn?
-
-The PROJ string used here was `"+proj=ortho +lat_0=30 +lon_0=-10"`
-and we can easily check what happens to a polygon that crosses the
-visible area by setting both parameters to 0:
-```{r error=TRUE}
-sq = rbind(c(-89,0), c(-89,1), c(-91,1), c(-91,0), c(-89,0))
-pol = st_sfc(st_polygon(list(sq)), crs = 4326)
-(pol.o = st_transform(pol, "+proj=ortho +lat_0=0 +lon_0=0"))[[1]]
-st_is_valid(pol.o, NA_on_exception=FALSE)
-```
-where we see that the polygon is not nicely cut along the visibility
-line, but that the invisible points are simply dropped. This
-leads in this case to an invalid geometry, and may in the case of
-\@ref(fig:world) lead to straight lines that do not follow the map
-border circle.
-
-How was figure \@ref(fig:world) created? By using a rather ugly
-script that used a projected half-sphere circle to first cooky-cut
-the part of the countries that would
-remain visible on this projection. The
-[script](https://github.com/r-spatial/sf/blob/master/demo/twitter.R)
-is available, and so is its
-[output](https://gist.github.com/edzer/9c5c24434ffcaf42917796a98c4dd9a6).
-
 ## Plotting points, lines, polygons, grid cells
 
 Since maps are just a special form of plots of statistical data,
 the usual rules hold. Frequently occuring challenges include:
 
-* polygons may be very small, and vanish when plotted
+* polygons may be very small, and vanish when plotted, 
 * depending on the data, polygons for different features may well
 overlap, and be visible only partially; using transparent fill
 colors may help indentify them
 * when points are plotted with symbols, they may easily overlap and be hidden; density maps (chapter \@ref(pointpatterns)) may be more helpful
 * lines may be hard to read when coloured and may overlap regardless line width
 
+### Colors
+
 When plotting polygons filled with colors, one has the choice to plot
 polygon boundaries, or to suppress these. If polygon boundaries draw
 too much attention, an alternative is to colour them in a grey tone,
 or another color that doesn't interfere with the fill colors. When
 suppressing boundaries entirely, polygons with (nearly) identical
-colors will melt together.  If the property indicating the fill
-color is constant over the region, such as land cover type, this is
-OK. If the property is an aggregation, the region over which it was
-aggregated gets lost. Especially for extensive variables, e.g. the
-amount of people living in a polygon, this strongly misleads. But
-even with polygon boundaries, using filled polygons for such
-variables may not be a good idea.
+colors will no longer be visually distinguishable. If the property
+indicating the fill color is constant over the region, such as land
+cover type, then this is not a problem but if the property is an
+aggregation, the region over which it was aggregated gets lost,
+and by that the proper interpretation: especially for extensive
+variables, e.g. the amount of people living in a polygon, this
+strongly misleads. But even with polygon boundaries, using filled
+polygons for such variables may not be a good idea.
 
-The use of continuous color scales for continuously varying variables
-may look attractive, but is often more fancy than useful: 
+The use of continuous color scales that have no noticable color
+breaks for continuously varying variables may look attractive,
+but is often more fancy than useful:
 
 * it impracticle to match a color on the map with a legend value
-* colors ramps often stretch non-linearly over the value range
+* colors ramps often stretch non-linearly over the value range,
+making it hard to convey magnitude
 
-Only for cases where the identification of values is less important
-than the continuity of the map, such as the coloring of a high
-resolution digital terrain model, it does serve its goal.
+Only for cases where the identification of values is less
+important than the continuity of the map, such as the coloring of
+a high resolution digital terrain model, it does serve its goal.
+Good colors scales are e.g. found in packages `RColorBrewer`
+[@R-RColorBrewer], viridis [@R-viridis] or colorspace
+[@R-colorspace; @colorspace].
 
-## Color palettes and class intervals {#classintervals}
-
-FIXME: discuss color palettes, continuous/categorical, diverging, RColorBrewer, viridis, ...
+### Color breaks: `classInt` {#classintervals}
 
 When plotting continuous geometry attributes using a limited set
-of colors (or symbols), classes need to be made from the data. The
+of colors (or symbols), classes need to be made from the data.
 R package `classInt` [@R-classInt] provides a number of methods to
-do so. Using it is quite simple:
+do so. The default method is "quantile":
 ```{r}
 library(classInt)
 # set.seed(1) needed ?
@@ -208,7 +164,7 @@ r = rnorm(100)
 (cI <- classIntervals(r))
 cI$brks
 ```
-and it takes argument `n` for the number of intervals, and a `style`
+it takes argument `n` for the number of intervals, and a `style`
 that can be one of "fixed", "sd", "equal", "pretty", "quantile",
 "kmeans", "hclust", "bclust", "fisher" or "jenks".  Style "pretty"
 may not obey `n`; if `n` is missing, ‘nclass.Sturges’ is used;
@@ -216,83 +172,7 @@ two other methods are available for choosing `n` automatically. If
 the number of observations is greater than 3000, a 10\% sample is used
 to create the breaks for "fisher" and "jenks".
 
-## Poles and datelines
-
-Given the linestring
-```{r}
-(ls = st_sfc(st_linestring(rbind(c(-179.5, 52), c(179.5, 52))), crs = 4326))
-```
-How long a distance does it span? Let's see:
-```{r}
-st_length(ls)
-```
-which seems sensible. But does `ls` actually intersect with the dateline?
-```{r}
-dateline = st_sfc(st_linestring(rbind(c(180, 51), c(180, 53))), crs = 4326)
-st_intersects(ls, dateline)
-```
-... it seems not? How can this be? The warning said it all: if
-`ls` is not in spherical coordinates, it means it follows the 52th
-parallel, crossing `(0, 52)` half way. This is as if we drew a straight
-line between the two points on the left figure of \@ref(fig:world),
-almost across the complete 52N parallel.
-
-Where do these inconsistencies come from? The software `sf` is built
-upon (see the C/C++ libraries box in figure \@ref(fig:gdal-fig-nodetails)) is a
-GIS software stack that originally targeted flat, 2D geometries. The
-simple feature standard assumes straight lines between points,
-but great circle segments are not straight.  
-
-The functions that deal with spherical geometry, such as
-`st_length`, use PostGIS extensions in liblwgeom that were
-added later on to PostGIS, without rewriting the entire
-geometry core for ellipsoidal coordinates.  More recent systems,
-including Google's S2^[http://s2geometry.io/], BigQuery
-GIS^[https://cloud.google.com/bigquery/docs/gis-intro] and Ubers
-H3^[https://eng.uber.com/h3/] were written from scratch with global
-data in mind, and work exclusively with ellipsoidal coordinates.
-
-### `st_wrap_dateline`
-
-The `st_wrap_dateline` function can be convenient,
-```{r}
-(ls.w = st_wrap_dateline(ls))[[1]]
-```
-as it cuts any geometry crossing the dateline into MULTI-geometries
-of which the sub-geometries touch on, but no longer cross the
-dateline. This is in particular convenient for plotting ellipsoidal
-coordinates using naive approaches such as that of figure
-\@ref(fig:world) left, where they would have crossed the entire
-plotting area. Note that by cutting the line at `(180,52)`,
-`st_wrap_dateline` does not follow a great circle; for this, it
-should be preceded by `st_segmentize`, as e.g. in
-```{r}
-(ls.w2 = st_wrap_dateline(st_segmentize(ls, units::set_units(30, km))))[[1]]
-```
-
-Also note that bounding boxes like
-```{r}
-st_bbox(ls.w)
-```
-simply take the coordinate ranges, and are pretty much meaningless
-as descriptors of the extent of a geometry for geometries that
-cross the dateline.
-
-Similar notions hold for the poles; a polygon enclosing the North pole
-```{r}
-pole = st_sfc(st_polygon(list(rbind(c(0,80), c(120,80), c(240,80), c(0,80)))), crs = 4326)
-```
-does not include the pole
-```{r}
-st_intersects(pole, st_sfc(st_point(c(0,90)), crs = 4326))
-```
-(Cartesian interpretation) but has a positive area
-```{r}
-st_area(pole)
-```
-indicating again a geographic interpretation.
-
-## Graticules and other navigation aids {#graticule}
+### Graticules and other navigation aids {#graticule}
 
 Graticules are lines on a map that follow constant latitude or
 longitude values. On figure \@ref(fig:world) left they are drawn
@@ -314,3 +194,188 @@ outlines, coast lines, rivers, roads, railways and so on. If these
 are added sparsely and sufficiently, a graticule can as well be
 omitted. In such cases, maps look good without axes, tics, and labels,
 leaving up a lot of plotting space to be filled with actual map data.
+
+## Base `plot`
+
+The `plot` method for `sf` and `stars` objects try to make quick,
+useful, exploratory plots; for production quality, alternatives
+with more control and/or better defaults are offered by packages
+`ggplot2` [@R-ggplot2] or `tmap` [@R-tmap; @tmap].
+
+By default, the plot method tries to plot "all" it is given.
+This means that
+
+* given a geometry only (`sfc`), the geometry is plotted, without colors,
+* given a geometry and an attribute, the geometry is colored according to
+  the values of the attribute, using a qualitative color scale for `factor`
+  or `logical` attributes and a continuous scale otherwise,
+* given multiple attributes, multiple maps are plotted, each with a color
+  scale but a legend is omitted by default, as color assignment is
+  done on a per sub-map basis,
+* for `stars` objects with multiple attributes, only the first
+  attribute is plotted; for three-dimensional raster cubes, all
+  slices over the third dimension are plotted.
+
+### Adding to plots with legends
+
+The `plot` methods for `stars` and `sf` objects may show a color key
+on one of the sides (e.g., figure \@ref(fig:first-map)). To do this
+with `base::plot`, the plot region is split in two and two plots are
+created: one with the map, and one with the legend.  By default, the
+`plot` function resets the graphics device (using `layout(matrix(1))`
+so that subsequent plots are not hindered by the device being split
+in two. If one wants to _add_ to an existing plot having a color
+legend, this is however what is needed, and resetting the plotting
+device needs to be prevented by setting argument `reset = FALSE`,
+and use `add = TRUE` in a subsequent call to `plot`, an example
+is 
+
+```{r figreset, fig.cap = "Annotating base plots that have a legend"}
+sf_use_s2(TRUE)
+library(sf)
+nc = read_sf(system.file("gpkg/nc.gpkg", package="sf"))
+plot(nc["BIR74"], reset = FALSE, key.pos = 4)
+plot(st_buffer(nc[1,1], units::set_units(10, km)), col = 'NA', 
+	 border = 'red', lwd = 2, add = TRUE)
+```
+which is shown in figure \@ref(fig:figreset).  Annotating `stars`
+plots can be done in the same way when a _single_ stars layer is
+shown. Annotating `stars` plots with multiple cube slices can be
+done by adding a "hook" function that will be called on every slice
+shown, as in
+```{r starshook, fig.cap = "annotated multi-slice stars plot"}
+library(stars)
+r = read_stars(system.file("tif/L7_ETMs.tif", package = "stars"))
+circ = st_bbox(r) %>% st_as_sfc() %>% st_sample(5) %>% st_buffer(300)
+hook = function() plot(circ, col = NA, border = 'yellow', add = TRUE)
+plot(r, hook = hook, key.pos = 4)
+```
+and as shown in figure \@ref(fig:starshook).
+
+Base plot methods have access to the resolution of the screen device
+and hence the base plot method for `stars` and `stars_proxy` object
+will downsample dense rasters and only plot pixels at a density
+that makes sense for the device available.
+
+### Projections in base plots
+
+The base `plot` method plots data with ellipsoidal coordinates
+using the equirectangular projection, using a latitude parameter
+equal to the middle latitude of the data bounding box (figure
+\@ref(fig:eqc)). To control this parameter, either a projection
+to another equirectangular can be applied before plotting, or the
+parameter `asp` can be set to override, e.g. `asp=1` would lead to
+plate carrée (figure \@ref(fig:world) left). Subsequent plots need
+to be in the same coordinate reference system in order to make
+sense with overplotting, this is not being checked.
+
+### Colors and color breaks
+
+In base plots, `nbreaks` can be used to set the number of color
+breaks, and `breaks` either to the numeric vector with actual breaks,
+or to a value for the `style` argument in `classInt::classIntervals`.
+
+## Maps with `ggplot2`
+
+Package `ggplot2` [@R-ggplot2; @ggplot2] can be used to create
+more complex an nicer looking graphs; it has a geometry `geom_sf`
+that was developed in conjunction with the development of `sf`, and
+helps creating beautiful maps; an introduction to this is found in
+[@moreno], a first example is shown in figure \@ref(fig:figgather).
+The code used for this plot is:
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+nc.32119 = st_transform(nc, 32119) 
+year_labels = c("SID74" = "1974 - 1978", "SID79" = "1979 - 1984")
+nc.32119 %>% select(SID74, SID79) %>% gather(VAR, SID, -geom) -> nc2
+```
+```{r eval=FALSE}
+ggplot() + geom_sf(data = nc2, aes(fill = SID)) + 
+  facet_wrap(~VAR, ncol = 1, labeller = labeller(VAR = year_labels)) +
+  scale_y_continuous(breaks = 34:36) +
+  scale_fill_gradientn(colors = sf.colors(20)) +
+  theme(panel.grid.major = element_line(color = "white"))
+```
+where we see that two attributes had to be stacked (`gather`)
+before plotting them as facets: this is the idea of "tidy" data,
+and the `gather` method for `sf` objects automatically stacks the
+geometry column too.
+
+Because `ggplot2` creates graphics _objects_ before plotting them,
+it can control the cooordinate reference system of all elements
+involved, and will transform or convert all subsequent objects to
+the coordinate reference system of the first. It will also draw a
+graticule for the (default) thin white lines on a grey background,
+and uses a datum (by default: WGS84) for this. `geom_sf()` can be
+combined with
+
+For package `stars`, a `geom_stars` has, at the moment of writing
+this, very limited scope: it wraps `geom_sf` for vector data
+cubes, and calls `geom_raster` for regular rasters and `geom_rect`
+for rectilinear rasters. It downsamples if the user specifies a
+downsampling rate, but has no access to the screen dimensions to
+automatically do this. This may be just enough, for instance figure
+\@ref(fig:ggplotstars) is created by the following commands:
+```{r ggplotstars,fig.cap="Simple raster plot with ggplot2"}
+library(ggplot2)
+library(stars)
+r = read_stars(system.file("tif/L7_ETMs.tif", package = "stars"))
+ggplot() + geom_stars(data = r) +
+		facet_wrap(~band) + coord_equal() +
+		theme_void() +
+        scale_x_discrete(expand=c(0,0)) + 
+        scale_y_discrete(expand=c(0,0)) +
+		scale_fill_viridis_c()
+```
+More elaborate `ggplot2`-based plots with `stars` objects may be
+obtained using package `ggspatial` [@R-ggspatial]; non-compatible
+but nevertheless `ggplot2`-style plots can be created with `tmap`.
+
+## Maps with `tmap`
+
+Package `tmap` [@R-tmap; @tmap] takes a fresh look on plotting
+spatial data in R; it resembles `ggplot2` in the sense that it
+composes graphics objects before printing, by building on the `grid`
+package, and by concatenating map elements with a `+` between them,
+but otherwise it is entirely independent from, and incompetible
+with, `ggplot2`. It has a number of options that allow for highly
+professional looking maps, and many defaults have been carefully
+chosen. To recreate figure \@ref{fig:figgather}, for instance,
+we use
+```{r tmapnc tmapnc2,fig.cap = "tmap: using tm_polygons with two attributes"}
+tm_shape(nc.32119) + tm_polygons(c("SID74", "SID79"))
+```
+to create figure \@ref(fig:tmapnc) and
+```{r tmapnc2,fig.cap = "tmap: using tm_facets"}
+tm_shape(nc2) + tm_polygons("SID") + tm_facets(by = "VAR")
+```
+to create figure \@ref(fig:tmapnc2).
+
+Package `tmap` also has support for `stars` objects, an example created with
+```{r tmapstars, fig.cap = "Simple raster plot with tmap"}
+library(tmap)
+tm_shape(r) + tm_raster("L7_ETMs.tif")
+```
+is shown in figure \@ref(fig:tmapstars).
+
+
+## Interactive maps: `leaflet`, `mapview`, `tmap`
+
+Interactive maps as shown in figure \@ref(fig:mapviewfigure) can be
+created with R packages `leaflet`, `mapview` or `tmap`. `mapview`
+adds a number of capabilities to `leaflet` including a map legend,
+configurable pop-up windows when clicking features, support for
+raster data, and scalable maps with very large feature sets using
+the filegeobuf file format, as well as facet maps that react
+synchronously to zoom and pan actions.  Package `tmap` has the nice
+option that after giving
+```{r eval=FALSE}
+tmap_mode("view")
+```
+all usual `tmap` commands are applied to an interactive html/leaflet widget, 
+whereas after
+```{r eval=FALSE}
+tmap_mode("plot")
+```
+again all output is sent to R own graphics device.
+

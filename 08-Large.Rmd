@@ -162,7 +162,7 @@ o = read_sf("data/ms.osm", "lines")
 p = read_sf("data/ms.osm", "multipolygons")
 bb = st_bbox(c(xmin=7.595, ymin = 51.969, xmax = 7.598, ymax = 51.970),
 	crs = 4326)
-plot(st_as_sfc(bb), axes = TRUE, lwd = 2, lty = 2)
+plot(st_as_sfc(bb), axes = TRUE, lwd = 2, lty = 2, cex.axis = .5)
 plot(o[,1], lwd = 2, add = TRUE)
 plot(st_geometry(p), border = NA, col = '#88888888', add = TRUE)
 ```
@@ -231,14 +231,17 @@ provides `stars_proxy` objects.  To demonstrate its use, we will
 use the `starsdata` package, an R data package with larger datasets
 (around 1 Gb total). It can be installed by
 ```{r eval=FALSE}
-install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")
+install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", 
+	type = "source")
 ```
 We can "load" a Sentinel-2 image from it by
 ```{r}
-granule = system.file("sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip", package = "starsdata")
+f = "sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip"
+granule = system.file(file = f, package = "starsdata")
 file.size(granule)
 base_name = strsplit(basename(granule), ".zip")[[1]]
-s2 = paste0("SENTINEL2_L1C:/vsizip/", granule, "/", base_name, ".SAFE/MTD_MSIL1C.xml:10m:EPSG_32632")
+s2 = paste0("SENTINEL2_L1C:/vsizip/", granule, "/", base_name, 
+	".SAFE/MTD_MSIL1C.xml:10m:EPSG_32632")
 (p = read_stars(s2, proxy = TRUE))
 object.size(p)
 ```
@@ -270,20 +273,20 @@ pixels available, and
 Downsampling and chunking is implemented for spatially dense images,
 not e.g. for dense time series, or other dense dimensions.
 
-As an example,
-```{r}
+As an example, the output of `plot(p)`, shown in figure \@ref(fig:plotp)
+```{r plotp, fig.cap="Plot of downsampled 10 m bands of a Sentinel-2 scene", echo=!knitr::is_latex_output()}
 plot(p)
 ```
 only fetches the pixels that can be seen on the plot device, rather
 than the 10980 x 10980 pixels available in each band. The downsampling
 ratio taken is
 ```{r}
-floor(sqrt(prod(dim(p)) / prod(dev.size("px"))))
+(ds = floor(sqrt(prod(dim(p)) / prod(dev.size("px")))))
 ```
-meaning that for every 19 x 19 sub-image in the original image,
-only one pixel is read, and plotted. This value is still a bit too
-high as it ignores the white space and space for the key on the
-plotting device.
+meaning that for every `r ds` $\times$ `r ds` sub-image in the
+original image, only one pixel is read, and plotted. This value is
+still a bit too low as it ignores the white space and space for
+the key on the plotting device.
 
 ### Operations on proxy objects
 

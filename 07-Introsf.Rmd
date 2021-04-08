@@ -70,9 +70,9 @@ p1 = st_point(c(7.35, 52.42))
 p2 = st_point(c(7.22, 52.18))
 p3 = st_point(c(7.44, 52.19))
 sfc = st_sfc(p1, p2, p3, crs = 'EPSG:4326')
-st_sf(elev = c(33.2, 52.1, 81.2), marker = c("Id01", "Id02", "Id03"), geom = sfc)
+st_sf(elev = c(33.2, 52.1, 81.2), marker = c("Id01", "Id02", "Id03"),
+	  geom = sfc)
 ```
-
 
 (ref:sfcomp) components of an `sf` object
 ```{r sfobj, out.width = '100%', echo = FALSE, fig.cap = '(ref:sfcomp)', echo = FALSE}
@@ -526,30 +526,34 @@ object with the predicted values.
 We will illustrate this with a trivial two-class example mapping
 land from sea in the example Landsat data set, using the sample
 points extracted above, shown in figure \@ref(fig:rsample).
-```{r rsample,fig.cap = "randomly chosen sample locations for training data; red: water, green: land"}
+```{r rsample,fig.cap = "randomly chosen sample locations for training data; red: water, green: land", echo=!knitr::is_latex_output()}
 plot(r[,,,1], reset = FALSE)
 col = rep("green", 20)
 col[c(8, 14, 15, 18, 19)] = "red"
 st_as_sf(e) %>% st_coordinates() %>% text(labels = 1:20, col = col)
 ```
-From this figure, we read "by eye" that the points 8, 14, 15,
-18 and 19 are on water, the others on land. Using a linear
-discriminant ("maximum likelyhood") classifier, we find model
-predictions as shown in figure \@ref(fig:lda).
+From this figure, we read "by eye" that the points 8, 14, 15, 18 and
+19 are on water, the others on land. Using a linear discriminant
+("maximum likelyhood") classifier, we find model predictions as
+shown in figure \@ref(fig:lda).
 
-(ref:cap) Linear discriminant classifier for land/water, based on training data of figure \@ref(fig:rsample)
-
-```{r lda,fig.cap='(ref:cap)'}
+```{r ldapr,fig.cap='(ref:cap)'}
 rs = split(r)
 trn = st_extract(rs, pts)
 trn$cls = rep("land", 20)
 trn$cls[c(8, 14, 15, 18, 19)] = "water"
-library(MASS, warn.conflicts = FALSE) # masks "select"
-model = lda(cls ~ ., st_set_geometry(trn, NULL))
+model = MASS::lda(cls ~ ., st_set_geometry(trn, NULL))
 pr = predict(rs, model)
-detach(2) # we remove MASS from search path, so "select" is again dplyr's
+```
+Here, we used the `MASS::` prefix to avoid loading `MASS`, as that
+would mask `select` from `dplyr`. Another way would be to load
+`MASS` and unload it later on with `detach()`.
+
+(ref:cap) Linear discriminant classifier for land/water, based on training data of figure \@ref(fig:rsample)
+```{r lda,fig.cap = '(ref:cap)',  echo=!knitr::is_latex_output()}
 plot(pr[1], key.pos = 4, key.width = lcm(3.5), key.length = lcm(2))
 ```
+
 We also see that the layer plotted in figure \@ref(fig:lda) is a
 `factor` variable, with class labels.
 
@@ -558,15 +562,16 @@ We also see that the layer plotted in figure \@ref(fig:lda) is a
 
 ### Plotting raster data
 We can use the base `plot` method for `stars` objects, where the plot created with
-```{r firststars,fig.cap="6 30m Landsat bands downsampled to 90m for Olinda, Br."}
+`plot(r)` is shown in figure \@ref(fig:firststars).
+```{r firststars,fig.cap="6 30m Landsat bands downsampled to 90m for Olinda, Br.", echo=!knitr::is_latex_output()}
 plot(r)
 ```
 is shown in figure \@ref(fig:firststars).
 The default color scale uses grey tones, and stretches these such
 that color breaks correspond to data quantiles over all bands
-("histogram equalization").
-A more familiar view is the rgb or false color composite:
-```{r starsrgb, out.width = '100%', fig.cap = "two RGB composites", fig = 3, fig.show = 'hold'}
+("histogram equalization").  A more familiar view is the RGB or 
+false color composite shown in figure \@ref(fig:starsrgb).
+```{r starsrgb, out.width = '100%', fig.cap = "Two color composites", echo=!knitr::is_latex_output()}
 par(mfrow = c(1, 2))
 plot(r, rgb = c(3,2,1), reset = FALSE, main = "RGB")    # rgb
 plot(r, rgb = c(4,3,2), main = "False color (NIR-R-G)") # false color
@@ -675,7 +680,7 @@ quite long, but also have large missing value gaps.
 Figure \@ref(fig:airmap) shows the spatial distribution measurement stations and
 mean PM$_{10}$ values.
 
-```{r airst, fig.cap="space-time diagram of PM$_{10}$ measurements by time and station", echo=!knitr::is_latex_output()
+```{r airst, fig.cap="space-time diagram of PM$_{10}$ measurements by time and station", echo=!knitr::is_latex_output()}
 image(aperm(log(aq), 2:1), main = "NA pattern (white) in PM10 station time series")
 ```
 
