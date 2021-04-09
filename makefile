@@ -19,7 +19,7 @@ tangle:
 
 pdf:
 	Rscript --quiet _render.R "bookdown::pdf_book"
-	evince _book/sds.pdf
+	# evince _book/sds.pdf
 
 push:
 	# make

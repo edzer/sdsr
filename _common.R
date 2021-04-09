@@ -13,9 +13,11 @@ knitr::opts_chunk$set(
 )
 
 options(dplyr.print_min = 6, dplyr.print_max = 6)
+options(stars.crs = 17)
 mapview::mapviewOptions(fgb = FALSE)
 
 # for units: (?)
 Sys.setenv(UDUNITS2_XML_PATH="")
 if (knitr::is_latex_output())
-	options(width = 72)
+	options(width = 66)
+	#options(width = 72)
