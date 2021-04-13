@@ -449,8 +449,9 @@ c <- table(pol_pres15$hs_cp_q)
 t(rbind("Moran plot quadrants"=a, "Unadjusted analytical"=b, "Bonferroni cond. perm."=c))
 ```
 
+(ref:morani) Local Moran's I hotspot maps $\alpha = 0.05$: left panel: unadjusted analytical standard deviates; right panel: Bonferroni adjusted conditional permutation standard deviates, first round turnout, row-standardised neighbours
 
-```{r Iihotspots, out.width='100%', fig.cap="Local Moran's I hotspot maps $\alpha = 0.05$: left panel: unadjusted analytical standard deviates; right panel: Bonferroni adjusted conditional permutation standard deviates, first round turnout, row-standardised neighbours", fig=TRUE}
+```{r Iihotspots, out.width='100%', fig.cap='(ref:morani)' }
 tm_shape(pol_pres15) + tm_fill(c("hs_an_q", "hs_cp_q"), colorNA="grey95", textNA="Not significant", title="Turnout hotspot status\nLocal Moran's I") + tm_facets(free.scales=FALSE) + tm_layout(panel.labels=c("Unadjusted analytical", "Cond. perm. with Bonferroni"))
 ```
 The figure shows the impact of using analytical or conditional permutation standard deviates, and no or Bonferroni adjustment, reducing the counts of observations in "Low-Low clusters" from 370 to 14, and "High-High clusters" from 342 to 54; the "High-High clusters" are metropolitan areas.
@@ -472,14 +473,14 @@ apply(pvsp, 2, function(x) sum(x < 0.05))
 ```
 In the $G_i$ case, however, there is no systematic differencce between the analytical and conditional permutation standard deviates.
 
-```{r local_Z_values, out.width='100%', fig.cap="Plots of analytical against conditional permutation standard deviates; left: local Moran's I; right: local G; first round turnout, row-standardised neighbours", fig=TRUE}
+```{r localZvalues, out.width='100%', fig.cap="Plots of analytical against conditional permutation standard deviates; left: local Moran's I; right: local G; first round turnout, row-standardised neighbours"}
 library(ggplot2)
 p1 <- ggplot(data.frame(Zi=locm[,4], Zi_perm=locm_p[,4])) + geom_point(aes(x=Zi, y=Zi_perm), alpha=0.2) + xlab("Analytical") + ylab("Conditional permutation") + coord_fixed() + ggtitle("Local Moran's I")
 p2 <- ggplot(data.frame(Zi=c(locG), Zi_perm=c(locG_p))) + geom_point(aes(x=Zi, y=Zi_perm), alpha=0.2) + xlab("Analytical") + ylab("Conditional permutation") + coord_fixed() + ggtitle("Local G")
 gridExtra::grid.arrange(p1, p2, nrow=1)
 ```
 
-The figure shows that, keeping fixed aspect in both panels, conditional permutation changes the range and distribution of the standard deviate values for $I_i$, but that for $G_i$, the two sets of standard deviates are equivalent.
+Figure \@ref(fig:localZvalues) shows that, keeping fixed aspect in both panels, conditional permutation changes the range and distribution of the standard deviate values for $I_i$, but that for $G_i$, the two sets of standard deviates are equivalent.
 
 ```{r}
 pol_pres15$locG_Z <- c(locG)
@@ -504,7 +505,8 @@ The contiguity neighbours it constructs are the same as those found by `poly2nb(
 library(rgeoda)
 system.time(Geoda_w <- queen_weights(pol_pres15))
 summary(Geoda_w)
-system.time(lisa <- local_moran(Geoda_w, pol_pres15["I_turnout"], cpu_threads=ifelse(detectCores() == 1, 1, detectCores()-1L), permutations=499, seed=1))
+system.time(lisa <- local_moran(Geoda_w, pol_pres15["I_turnout"], 
+    cpu_threads=ifelse(parallel::detectCores() == 1, 1, parallel::detectCores()-1L), permutations=499, seed=1))
 all.equal(card(nb_q), lisa_num_nbrs(lisa), check.attributes=FALSE)
 all.equal(lisa_values(lisa), localmoran(pol_pres15$I_turnout, listw=lw_q_W, mlvar=FALSE)[,1], check.attributes=FALSE)
 ```
