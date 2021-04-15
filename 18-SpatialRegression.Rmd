@@ -27,6 +27,7 @@ Here we shall use the Boston housing data set, which has been restructured and f
 
 ```{r}
 library(sf)
+library(spatialreg)
 ```
 ```{r}
 boston_506 <- st_read(system.file("shapes/boston_tracts.shp", package="spData")[1])
@@ -194,7 +195,6 @@ For models with single spatial coefficients (SEM and SDEM using `errorsarlm()`, 
 The estimating functions `errorsarlm()` and `lagsarlm()` take similar arguments, where the first two, `formula=` and `data=` are shared by most model estimating functions. The third argument is a `listw` spatial weights object, while `na.action=` behaves as in other model estimating functions if the spatial weights can reasonably be subsetted to avoid observations with missing values. The `weights=` argument may be used to provide weights indicating the known degree of per-observation variability in the variance term - this is not available for `lagsarlm()`.
 
 ```{r}
-library(spatialreg)
 args(errorsarlm)
 ```
 ```{r}
@@ -214,10 +214,10 @@ args(sacsarlm)
 ```
 Where larger data sets are used, a numerical Hessian approach is used to calculate the variance-covariance matrix of coefficients, rather than an analytical asymptotic approach. 
 
-Apart from `spautolm()` which returns an `"spautolm"` object, the model fitting functions return `"sarlm"` objects. Standard methods for fitted models are provided, such as `summary()`:
+Apart from `spautolm()` which returns an `"spautolm"` object, the model fitting functions return `"Sarlm"` objects. Standard methods for fitted models are provided, such as `summary()`:
 
 ```{r}
-args(summary.sarlm)
+args(getS3method("summary", "Sarlm"))
 ```
 The `Nagelkerke=` argument permits the return of a value approximately corresponding to a coefficient of determination, although the summary method anyway provides the value of `stats::AIC()` because a `stats::logLik()` method is provided for `"sarlm"` and `"spautolm"` objects. If the `"sarlm"` object is a SEM or SDEM, the Hausman test may be performed by setting `Hausman=TRUE` to see whether the regression coefficients are sufficiently like least squares coefficients, indicating absence of mis-specification from that source. As an example, we may fit SEM and SDEM to the 94 and 489 observation Boston data sets, and present the Hausman test results:
 
@@ -235,8 +235,8 @@ Here we are using the `control=` list argument to pass through pre-computed eige
 
 ```{r}
 cbind(data.frame(model=c("SEM", "SDEM")), 
-      rbind(broom::tidy(LR1.sarlm(SEM_489)), 
-            broom::tidy(LR1.sarlm(SDEM_489))))[,c(1, 4:6)]
+      rbind(broom::tidy(LR1.Sarlm(SEM_489)), 
+            broom::tidy(LR1.Sarlm(SDEM_489))))[,c(1, 4:6)]
 ```
 For the 94 air pollution model output zones, the Hausman tests find little difference between coefficients, but this is related to the fact that the SEM and SDEM models add little to least squares or SLX using likelihood ratio tests.
 
@@ -250,7 +250,7 @@ cbind(data.frame(model=c("SEM", "SDEM")),
             broom::tidy(Hausman.test(SDEM_94))))[, 1:4]
 ```
 ```{r}
-cbind(data.frame(model=c("SEM", "SDEM")), rbind(broom::tidy(LR1.sarlm(SEM_94)), broom::tidy(LR1.sarlm(SDEM_94))))[,c(1, 4:6)]
+cbind(data.frame(model=c("SEM", "SDEM")), rbind(broom::tidy(LR1.Sarlm(SEM_94)), broom::tidy(LR1.Sarlm(SDEM_94))))[,c(1, 4:6)]
 ```
 We can use `spatialreg::LR.sarlm()` to apply a likelihood ratio test between nested models, but here choose `lmtest::lrtest()`, which gives the same results, preferring models including spatially lagged covariates.
 
@@ -293,8 +293,7 @@ The estimation methods used for fitting SLM and the spatially lagged response pa
 Let us first compare the ML and GMM estimates of the SEM regression coefficients for rescaled squared NOX values. We use the `sphet::spreg()` wrapper function, and fit a SEM model. Extracting the matching rows from the summary objects for these models, we can see that the values are not dissimilar, despite the difference in estimation methods.
 
 ```{r}
-library(sphet)
-SEM1_94 <- spreg(form, data=boston_94, listw=lw_q_94, model="error")
+SEM1_94 <- sphet::spreg(form, data=boston_94, listw=lw_q_94, model="error")
 res <- rbind(summary(SEM_94)$Coef["I((NOX * 10)^2)",], 
              summary(SEM1_94)$CoefTable["I((NOX * 10)^2)",])
 rownames(res) <- c("ML", "GMM")
@@ -307,7 +306,7 @@ formiv <- update(form, . ~ . - I((NOX*10)^2))
 boston_94$NOX2 <- (boston_94$NOX*10)^2
 suppressWarnings(ccoords <- st_coordinates(st_centroid(st_geometry(boston_94))))
 iform <- formula(~poly(ccoords, degree=2) + DIS + RAD)
-SEM1_94iv <- spreg(formiv, data=boston_94, listw=lw_q_94, endog = ~NOX2, 
+SEM1_94iv <- sphet::spreg(formiv, data=boston_94, listw=lw_q_94, endog = ~NOX2, 
                    instruments=iform, model="error")
 summary(SEM1_94iv)$CoefTable["NOX2",]
 ```
@@ -422,12 +421,12 @@ Global impacts have been seen as crucial for reporting results from fitting mode
 Impacts are calculated using model object class specific `impacts()` methods, here taking the method for `"sarlm"` objects as an example. In the **sphet** package, the impacts method for `"gstsls"` uses the **spatialreg** `impacts()` framework, as does the **splm** package for `"splm"` fitted model objects. `impacts()` methods require either a `tr=` - a vector of traces of the power series of the weights object typically computed with `trW()` or a `listw=` argument. If `listw=` is given, dense matrix methods are used. The `evalues=` argument is experimental, does not yet work for all model types, and takes the eigenvalues of the weights matrix. The `R=` argument gives the number of samples to be taken from the fitted model. The `Q=` permits the decomposition of impacts to components of the power series of the weights matrix [@lesage+pace:09].
 
 ```{r}
-args(impacts.sarlm)
+args(getS3method("impacts", "Sarlm"))
 ```
 The summary method for the output of `impacts()` methods where inference from samples was requested by default uses the `summary()` method for `"mcmc"` objects defined in the **coda** package. It can instead report just matrices of standard errors, z-values and p-values by setting `zstats=` and `short=` to `TRUE`.
 
 ```{r}
-args(summary.lagImpact)
+args(getS3method("summary", "LagImpact"))
 ```
 Since sampling is not required for inference for SLX and SDEM models, linear combination is used for models fitted using maximum likelihood; results are shown here for the air pollution variable only. The literature has not yet resolved the question of how to report model output, as each covariate is now represented by three impacts. Where spatially lagged covariates are included, two coefficients are replaced by three impacts.
 
@@ -497,7 +496,7 @@ Impacts are crucial to the interpretation of Durbin models including spatially l
 We will use the `predict()` method for `"sarlm"` objects to double-check impacts, here for the pupil-teacher ratio (`PTRATIO`). The method was re-written by Martin Gubri based on Goulard, Laurent and Thomas-Agnan [-@goulardetal:17]. The `pred.type=` argument specifies the prediction strategy among those presented in the article.
 
 ```{r}
-args(predict.sarlm)
+args(getS3method("predict", "sarlm"))
 ```
 First we'll increment `PTRATIO` by one to show that, using least squares, the mean difference between predictions from the incremented new data and fitted values is equal to the regression coefficient.
 

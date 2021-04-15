@@ -60,7 +60,11 @@ some computatational cost.
 
 ### Reading from databases, dbplyr
 
-```{r echo=FALSE}
+```{r, echo=FALSE}
+has_PG <- any("PostgreSQL" %in% st_drivers()$name)
+```
+
+```{r echo=FALSE, eval=has_PG}
 nc = read_sf(file)
 write_sf(nc, "PG:dbname=postgis", "nc")
 ```
@@ -70,7 +74,7 @@ mentioned above it passes on SQL in the `query` argument to the
 database, it is sometimes beneficial to directly read and 
 to a spatial database using the R database drivers for this. An
 example of this is:
-```{r}
+```{r, eval=has_PG}
 pg <- DBI::dbConnect(
     RPostgres::Postgres(),
     host = "localhost",
@@ -78,7 +82,7 @@ pg <- DBI::dbConnect(
 st_read(pg, query = "select BIR74,wkb_geometry from nc limit 3")
 ```
 A spatial query might look like
-```{r}
+```{r, eval=has_PG}
 q = "SELECT BIR74,wkb_geometry FROM nc WHERE \
   ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.49826 36.4314)');"
 st_read(pg, query = q)
@@ -87,13 +91,13 @@ Here, the intersection is done in the database, and uses the spatial
 index typically present.
 
 The same mechanism works when using `dplyr` with a database backend:
-```{r}
+```{r, eval=has_PG}
 library(dplyr, warn.conflicts = FALSE)
 nc_db = tbl(pg, "nc")
 ```
 
 Spatial queries can be formulated and are passed on to the database:
-```{r}
+```{r, eval=has_PG}
 nc_db %>% 
 	 filter(ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.49826 36.4314)')) %>%
 	 collect()
@@ -153,7 +157,10 @@ bounding box query to OpenStreetMap could look like
 
 ```{r,eval=FALSE}
 q = "https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970" %>%
-download.file(q, "data/ms.osm")
+download.file("data/ms.osm")
+# download.file(q, "data/ms.osm") does not work
+#Error in match.arg(method, c("auto", "internal", "libcurl", "wget", "curl",  : 
+#  'arg' should be one of "auto", "internal", "libcurl", "wget", "curl", "lynx"
 ```
 and from this file we can read the layer `lines`, and plot its
 first attribute by

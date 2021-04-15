@@ -8,8 +8,8 @@ carried in a list-column.  R package `stars` was written to support
 raster and vector datacubes (Chapter \@ref(datacube)), and has
 raster data stacks and feature time series as special cases.  `sf`
 first appeared on CRAN in 2016, `stars` in 2018.  Development of both
-packages received support from the R Consortium as well as a strong
-of community engagement. The packages were designed to work together.
+packages received support from the R Consortium as well as strong
+community engagement. The packages were designed to work together.
 
 All functions operating on `sf` or `stars` objects start with `st_`,
 making it easy to recognize them or to search for them when using
@@ -17,18 +17,18 @@ command line completion.
 
 ## Package `sf` {#sfintro}
 
-Inteded to succeed and replace R packages `sp`, `rgeos` and the
+Intended to succeed and replace R packages `sp`, `rgeos` and the
 vector parts of `rgdal`, R Package `sf` [@rjsf] was developed to
 move spatial data analysis in R closer to standards-based approaches
 seen in the industry and open source projects, to build upon more
 modern versions of the open source geospatial software stack (figure
 \@ref(fig:gdal-fig-nodetails)), and to allow for integration of R
-spatial software with the tidyverse.
+spatial software with the tidyverse if desired.
 
 To do so, R package `sf` provides simple features access
 [@herring2011opengis], natively, to R. It provides an interface
-to several `tidyverse` packages, in particular by `ggplot2`,
-`dplyr` and `tidyr`. It can read and write data through GDAL, use
+to several `tidyverse` packages, in particular to `ggplot2`,
+`dplyr` and `tidyr`. It can read and write data through GDAL, execute
 geometrical operations using GEOS (for projected coordinates)
 or s2geometry (for ellipsoidal coordinates), and carry out
 coordinate transformations or conversions using PROJ. External C++
@@ -38,8 +38,8 @@ Package `sf` represents sets of simple features in `sf` objects,
 a sub-class of a `data.frame` or tibble. `sf` objects contain at
 least one _geometry list-column_ of class `sfc`, which for each
 element contains the geometry as an R object of class `sfg`.
-Geometry list-columns act as a simple variable in a `data.frame`
-or tibble, but have a more complex structure than e.g. numeric or
+A geometry list-column acts as a variable in a `data.frame`
+or tibble, but has a more complex structure than e.g. numeric or
 character variables.  Following the convention of `PostGIS`, all
 operations (functions, method) that operate on `sf` objects or
 related start with `st_`.
@@ -57,7 +57,7 @@ An `sfc` geometry list-column has the following meta-data:
 * the precision held in attribute `precision`
 * the number of empty geometries held in attribute `n_empty`
 
-The most safe way to access or set these attributes is to use
+These attributes may best be accessed or set by using
 functions like `st_bbox`, `st_crs`, `st_set_crs`, `st_agr`,
 `st_set_agr`, `st_precision`, and `st_set_precision`.
 
@@ -69,7 +69,7 @@ library(sf)
 p1 = st_point(c(7.35, 52.42))
 p2 = st_point(c(7.22, 52.18))
 p3 = st_point(c(7.44, 52.19))
-sfc = st_sfc(p1, p2, p3, crs = 'EPSG:4326')
+sfc = st_sfc(list(p1, p2, p3), crs = 'OGC:CRS84')
 st_sf(elev = c(33.2, 52.1, 81.2), marker = c("Id01", "Id02", "Id03"),
 	  geom = sfc)
 ```
@@ -135,6 +135,12 @@ nc5 = nc %>% head(5)
 nc7 = nc %>% head(7)
 (i = st_intersects(nc5, nc7))
 ```
+/* RSB consider adding figure something like:
+plot(st_geometry(nc7))
+plot(st_geometry(nc5), add=TRUE, border="brown")
+text(xy, labels=1:nrow(nc7), cex=0.8, col="blue")
+and explain the link to the sparse representation */
+
 which we could transform into a logical matrix by
 ```{r}
 as.matrix(i)
@@ -158,11 +164,11 @@ Methods available for `sgbp` objects include
 methods(class = "sgbp")
 ```
 where the only `Ops` method available is `!`, the negation operation.
-Chapter \@ref(area) explains how `sgbp` objects can be converted into
-`nb` objects for use in spatial regression models.
+/* RSB sgbp not mentioned in 17 */
 
 ### Subsetting
 
+/* RSB consider moving to before 7.1.3 and use to create subsets */
 A very common operation is to subset objects; base R can use `[`
 for this. The rules that apply to `data.frame` objects also apply to
 `sf` objects, e.g. that records 2-5 and columns 3-7 are selected by
@@ -214,17 +220,16 @@ is used to evaluate distinctness of geometries.
 `filter` can be used with the usual predicates; when one wants to
 use it with a spatial predicate, e.g. to select all counties less
 than 50 km away from Orange county, one could use
-
+/* RSB should sf_use_s2(TRUE) be in this block rather than the next? */
 ```{r}
 orange <- nc %>% filter(NAME == "Orange")
 wd = st_is_within_distance(nc, orange, units::set_units(50, km))
 o50 <- nc %>% filter(lengths(wd) > 0)
 nrow(o50)
 ```
-
 Figure \@ref(fig:orangebuffer) shows the results of this analysis,
-and in addition a buffer around the county; note that this buffer
-serves illustration, it was _not_ used to select the counties. 
+and in addition a buffer around the county borders; note that this buffer
+serves for illustration, it was _not_ used to select the counties. 
 
 ```{r orangebuffer, echo=FALSE, fig.cap="Orange county (orange), counties within a 50 km radius (black), a 50 km buffer around Orange county (brown), and remaining counties (grey)"}
 sf_use_s2(TRUE)
@@ -279,7 +284,7 @@ par(opar)
 ```
 
 Another way to reduce the result set is to use `aggregate` after a
-join, all matching records, and union their geometry; see Section
+join, all matching records, and union their geometries; see Section
 \@ref(updownscaling).
 
 ### sampling, gridding, interpolating
@@ -329,18 +334,18 @@ Here, we introduce package `stars` for analysing raster and vector
 data cubes.  The package
 
 * allows for representing dynamic (time varying) raster stacks,
-* in addition to regular grids handles rotated, sheared, rectilinear and curvilinear rasters (figure \@ref(fig:rastertypes01)),
-* provides a tight integration with package `sf`,
-* follows the tidyverse design principles,
 * aims at being scalable, also beyond local disk size,
-* also handles array data with non-raster spatial dimensions, the _vector data cubes_, and
 * provides a strong integration of raster functions in the GDAL
-library.
+library
+* in addition to regular grids handles rotated, sheared, rectilinear and curvilinear rasters (figure \@ref(fig:rastertypes01)),
+* provides a tight integration with package `sf`, 
+* also handles array data with non-raster spatial dimensions, the _vector data cubes_, and
+* follows the tidyverse design principles.
 
 Vector data cubes include for instance time series for simple
 features, or spatial graph data such as potentially dynamic
 origin-destination matrices.  The concept of spatial vector and
-raster data cubes was explained in chapter \@ref(datacube)
+raster data cubes was explained in chapter \@ref(datacube).
 
 ### Reading and writing raster data
 
@@ -450,8 +455,8 @@ b = st_bbox(r) %>%
 r[b]
 ```
 selects the circular center region with a diameter of 500 metre, for
-the first band shown in figure \ref(fig:circr),
-```{r circr,echo=FALSE,fig.cap = "circular center region of the Landsat 7 scene (band 1)"}
+the first band shown in figure \@ref(fig:circr),
+```{r circr, echo=FALSE,fig.cap = "circular center region of the Landsat 7 scene (band 1)"}
 plot(r[b][,,,1], reset = FALSE)
 plot(b, border = 'brown', lwd = 2, col = NA, add = TRUE)
 ```
@@ -534,7 +539,7 @@ st_as_sf(e) %>% st_coordinates() %>% text(labels = 1:20, col = col)
 ```
 From this figure, we read "by eye" that the points 8, 14, 15, 18 and
 19 are on water, the others on land. Using a linear discriminant
-("maximum likelyhood") classifier, we find model predictions as
+("maximum likelihood") classifier, we find model predictions as
 shown in figure \@ref(fig:lda).
 
 ```{r ldapr,fig.cap='(ref:cap)'}
@@ -662,11 +667,18 @@ aligned with $x$ or $y$), and rectilinear in the direction perpendicular to that
 Air quality data from package `spacetime` were
 obtained from the [airBase European air quality data
 base](https://www.eea.europa.eu/data-and-maps/data/aqereporting-8).
-Downloaded were daily average PM$_{10}$ values for rural background
+Daily average PM$_{10}$ values were downloaded for rural background
 stations in Germany, 1998-2009.  
 
 We can create a `stars` object from the `air` matrix, the `dates`
 Date vector and the `stations` `SpatialPoints` objects by
+
+```{r, echo=FALSE}
+options("rgdal_show_exportToProj4_warnings"="none") # led to:
+# Warning in sp::proj4string(obj): CRS object has comment, which is
+# lost in output
+```
+
 
 ```{r}
 library(spacetime)
@@ -932,7 +944,7 @@ read_sf(file) %>%
 	plot()
 ```
 
-## coordinate transformations and conversions {#projsf}
+## Coordinate transformations and conversions {#projsf}
 
 ### `st_crs`
 
@@ -968,7 +980,7 @@ which takes as its first argument a spatial object of class `sf` or
 argument with an `crs` object (or something that can be converted
 to it with `st_crs`). When PROJ finds more than one possibility
 to transform or convert from the source `crs` to the target `crs`,
-it choosed the options with the highest accuracy. More finegrained
+it chooses the one with the highest declared accuracy. More fine-grained
 control over the options is explained in section \@ref(pipelines).
 
 A lower-level function to transform or convert coordinates _not_
@@ -1007,7 +1019,13 @@ found at
 ```{r}
 paste0(tail(sf_proj_search_paths(), 1), .Platform$file.sep, "proj.db")
 ```
-which can be read, and even edited (with care!) to add projections.
+which can be read. The version of the snapshot of the EPSG database 
+included in each PROJ release is stated in the `"metadata"` table of 
+`proj.db`; the version of the PROJ runtime used by **sf** is shown by
+/* RSB patch sf source proj.4 -> PROJ ? */
+```{r}
+sf_extSoftVersion()["proj.4"]
+```
 
 If for a particular coordinate transformation datum grids are not
 locally found, PROJ will search for online datum grids in the PROJ
