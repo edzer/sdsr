@@ -28,7 +28,7 @@ The **spdep** package provides an `nb` class for neighbours, a list of length eq
 
 **spdep** builds on the `nb` representation (undirected or directed graphs) with the `listw` object, a list with three components, an `nb` object, a matching list of numerical weights, and a single element character vector containing the single letter name of the way in which the weights were calculated. The most frequently used approach in the social sciences is calculating weights by row standardization, so that all the non-zero weights for one observation will be the inverse of the cardinality of its set of neighbours (`1/card(nb[[i]])`).
 
-We will be using election data from the 2015 Polish Presidential election in this chapter, with 2495 municipalities and Warsaw boroughs, and complete count data from polling stations aggregated to these areal units. The data are an **sf** `sf` object:
+We will be using election data from the 2015 Polish Presidential election in this chapter, with 2495 municipalities and Warsaw boroughs (see Figure \@ref(fig:plotpolpres15) for a **tmap** map (section \@ref(tmap)) of the municipality types) , and complete count data from polling stations aggregated to these areal units. The data are an **sf** `sf` object:
 
 ```{r}
 library(sf)
@@ -38,8 +38,8 @@ library(sf)
 data(pol_pres15, package="spDataLarge")
 head(pol_pres15[, c(1, 4, 6)])
 ```
-
-```{r plotpolpres15, out.width='100%', fig.cap="Polish municipality types 2015", fig=TRUE}
+(ref:plotpolpres15fc) Polish municipality types 2015
+```{r plotpolpres15, out.width='100%', fig.cap='(ref:plotpolpres15fc)', fig=TRUE, echo=TRUE}
 library(tmap)
 tm_shape(pol_pres15) + tm_fill("types")
 ```
@@ -137,9 +137,10 @@ The SoI algorithm has stripped out longer edges leading to urban and rural munic
 table(n_comp$comp.id)
 ```
 
-The largest length edges along the convex hull have been removed, but "holes" have appeared where the unconnected pairs of neighbours have appeared. The differences between `nb_tri` and `nb_soi` are shown in orange in the figure.
+The largest length edges along the convex hull have been removed, but "holes" have appeared where the unconnected pairs of neighbours have appeared. The differences between `nb_tri` and `nb_soi` are shown in orange in Figure \@ref(fig:plotnbdiff).
 
-```{r plotnbdiff, out.width='100%', fig.cap="Triangulated (orange + black) and sphere of influence neighbours (black)", fig=TRUE}
+(ref:plotnbdifffc) Triangulated (orange + black) and sphere of influence neighbours (black)
+```{r plotnbdiff, out.width='100%', fig.cap='(ref:plotnbdifffc)', fig=TRUE}
 opar <- par(mar=c(0,0,0,0)+0.5)
 plot(st_geometry(pol_pres15), border="grey", lwd=0.5)
 plot(nb_soi, coords=st_coordinates(coords), add=TRUE, points=FALSE, lwd=0.5)
@@ -257,7 +258,7 @@ Note that by default the `adjust.n=` argument to `spweights.constants()` is set 
 
 ## Measures of spatial autocorrelation
 
-Measures of spatial autocorrelation unfortunately pick up other mis-specifications in the way that we model data [@WallerGotway:2004; @McMillen:2003]. For reference, Moran's $I$ is given as [@cliff+ord:81, page 17]:
+Measures of spatial autocorrelation unfortunately pick up other mis-specifications in the way that we model data [@schabenberger+gotway:2005; @McMillen:2003]. For reference, Moran's $I$ is given as [@cliff+ord:81, page 17]:
 
 $$
 I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
@@ -373,14 +374,16 @@ Global measures of spatial autocorrelation using spatial weights objects based o
 
 ### Local measures
 
-Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s [@anselin:95; @getis+ord:92; @getis+ord:96]. In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable [@anselin:96]. The `moran.plot()` function also returns an influence measures object used to label observations exerting more than propotional influence on the slope of the line representing global Moran's $I$. In this case, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. 
+Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s [@anselin:95; @getis+ord:92; @getis+ord:96]. In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable [@anselin:96]. The `moran.plot()` function also returns an influence measures object used to label observations exerting more than propotional influence on the slope of the line representing global Moran's $I$. In Figure \@ref(fig:moranplot), we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. 
 
-```{r moranplot, out.width='100%', fig.cap="Moran plot of I round turnout, row standardised weights", fig=TRUE}
+(ref:moranplotfc) Moran plot of I round turnout, row standardised weights
+```{r moranplot, out.width='100%', fig.cap='(ref:moranplotfc)', fig=TRUE}
 infl_W <- moran.plot(pol_pres15$I_turnout, listw=lw_q_W, labels=pol_pres15$TERYT, cex=1, pch=".", xlab="I round turnout", ylab="lagged turnout")
 ```
-If we extract the hat value influence measure from the returned object, a map suggests that some edge entities exert more than proportional influence, as do entities in or near larger urban areas.
+If we extract the hat value influence measure from the returned object, Figure \@ref(fig:moranhat) suggests that some edge entities exert more than proportional influence (perhaps because of row standardisation), as do entities in or near larger urban areas.
 
-```{r moranhat, out.width='100%', fig.cap="Moran plot hat values, row standardised neighbours", fig=TRUE}
+(ref:moranhat) Moran plot hat values, row standardised neighbours
+```{r moranhat, out.width='100%', fig.cap='(ref:moranhat)', fig=TRUE}
 pol_pres15$hat_value <- infl_W$hat
 tm_shape(pol_pres15) + tm_fill("hat_value")
 ```
@@ -427,13 +430,13 @@ sum(tab[c(1:5, 8:12)])
 sum(tab[c(1, 12)])
 ```
 
-
-```{r localmoranZ, out.width='100%', fig.cap="Analytical and conditional permutation standard deviates of local Moran's I for first round turnout, row-standardised neighbours", fig=TRUE}
+(ref:localmoranZfc) Analytical and conditional permutation standard deviates of local Moran's I for first round turnout, row-standardised neighbours
+```{r localmoranZ, out.width='100%', fig.cap='(ref:localmoranZfc)', fig=TRUE}
 pol_pres15$locm_Z <- locm[,4]
 pol_pres15$locm_p_Z <- locm_p[,4]
 tm_shape(pol_pres15) + tm_fill(c("locm_Z", "locm_p_Z"), breaks=brks, midpoint=0, title="Standard deviates of\nLocal Moran's I") + tm_facets(free.scales=FALSE) + tm_layout(panel.labels=c("Analytical", "Conditional permutation"))
 ```
-The figure shows that conditional permutation scales back the proportion of standard deviate values taking high values, especially positive values. As we will see below, the analytical standard deviates of local Moran's $I$ should probably not be used if alternatives are available.
+Figure \@ref(fig:localmoranZ) shows that conditional permutation scales back the proportion of standard deviate values taking extreme values, especially positive values. As we will see below, the analytical standard deviates of local Moran's $I$ should probably not be used if alternatives are available.
 
 In presenting local Moran's $I$, use is often made of "hotspot" maps. Because $I_i$ takes high values both for strong positive autocorrelation of low and high values of the input variable, it is hard to show where "clusters" of similar neighbours with low or high values of the input variable occur. The quadrants of the Moran plot are used, by creating a categorical quadrant variable interacting the input variable and its spatial lag split at their means. The quadrant categories are then set to NA if, for the chosen standard deviate and adjustment, $I_i$ would be considered insignificant. Here, for the conditional permutation standard deviates, Bonferroni adjusted, 14 observations belong to "Low-Low clusters", and 54 to "High-High clusters":
 
@@ -454,7 +457,7 @@ t(rbind("Moran plot quadrants"=a, "Unadjusted analytical"=b, "Bonferroni cond. p
 ```{r Iihotspots, out.width='100%', fig.cap='(ref:morani)' }
 tm_shape(pol_pres15) + tm_fill(c("hs_an_q", "hs_cp_q"), colorNA="grey95", textNA="Not significant", title="Turnout hotspot status\nLocal Moran's I") + tm_facets(free.scales=FALSE) + tm_layout(panel.labels=c("Unadjusted analytical", "Cond. perm. with Bonferroni"))
 ```
-The figure shows the impact of using analytical or conditional permutation standard deviates, and no or Bonferroni adjustment, reducing the counts of observations in "Low-Low clusters" from 370 to 14, and "High-High clusters" from 342 to 54; the "High-High clusters" are metropolitan areas.
+Figure \@ref(fig:Iihotspots) shows the impact of using analytical or conditional permutation standard deviates, and no or Bonferroni adjustment, reducing the counts of observations in "Low-Low clusters" from 370 to 14, and "High-High clusters" from 342 to 54; the "High-High clusters" are metropolitan areas.
 
 The local Getis-Ord $G$ measure is reported as a standard deviate, and may also take the $G^*$ form where self-neighbours are inserted into the neighbour object using `include.self()`. The observed and expected values of local $G$ with their analytical variances may also be returned if `return_internals=TRUE`. 
 
@@ -473,7 +476,8 @@ apply(pvsp, 2, function(x) sum(x < 0.05))
 ```
 In the $G_i$ case, however, there is no systematic differencce between the analytical and conditional permutation standard deviates.
 
-```{r localZvalues, out.width='100%', fig.cap="Plots of analytical against conditional permutation standard deviates; left: local Moran's I; right: local G; first round turnout, row-standardised neighbours"}
+(ref:localZvaluesfc) Plots of analytical against conditional permutation standard deviates; left: local Moran's I; right: local G; first round turnout, row-standardised neighbours
+```{r localZvalues, out.width='100%', fig.cap='(ref:localZvaluesfc)'}
 library(ggplot2)
 p1 <- ggplot(data.frame(Zi=locm[,4], Zi_perm=locm_p[,4])) + geom_point(aes(x=Zi, y=Zi_perm), alpha=0.2) + xlab("Analytical") + ylab("Conditional permutation") + coord_fixed() + ggtitle("Local Moran's I")
 p2 <- ggplot(data.frame(Zi=c(locG), Zi_perm=c(locG_p))) + geom_point(aes(x=Zi, y=Zi_perm), alpha=0.2) + xlab("Analytical") + ylab("Conditional permutation") + coord_fixed() + ggtitle("Local G")
@@ -488,14 +492,14 @@ pol_pres15$hs_G <- cut(c(locG), c(-Inf, brks[2], brks[12], Inf), labels=c("Low",
 table(pol_pres15$hs_G)
 ```
 
-
-```{r localG, out.width='100%', fig.cap="Left: analytical standard deviates of local G; right: Bonferroni hotspots; first round turnout, row-standardised neighbours", fig=TRUE}
+(ref:localGfc) Left: analytical standard deviates of local G; right: Bonferroni hotspots; first round turnout, row-standardised neighbours
+```{r localG, out.width='100%', fig.cap='(ref:localGfc)', fig=TRUE}
 m1 <- tm_shape(pol_pres15) + tm_fill(c("locG_Z"), midpoint=0, title="Standard\ndeviate")
 m2 <- tm_shape(pol_pres15) + tm_fill(c("hs_G"), title="Bonferroni\nhotspot status")
 tmap_arrange(m1, m2, nrow=1)
 ```
 
-In this case, we do not need to contrast the two estimation methods, and showing the mapped standard deviate is as informative as the "hotspot" status for the chosen adjustment. In the case of $G_i$, the values taken by the measure reflect the values of the input variable, so a "High cluster" is found for observations with high values of the input variable, here high turnout in metropolitan areas.
+As can be seen from Figure \@ref(fig:localZvalues), we do not need to contrast the two estimation methods, and showing the mapped standard deviate is as informative as the "hotspot" status for the chosen adjustment (Figure \@ref(fig:localG)). In the case of $G_i$, the values taken by the measure reflect the values of the input variable, so a "High cluster" is found for observations with high values of the input variable, here high turnout in metropolitan areas.
 
 Very recently, Geoda has been wrapped for R as **rgeoda** [@rgeoda-package], and will provide very similar functionalities for the exploration of spatial autocorrelation in areal data as **spdep**. The active objects are kept as pointers to a compiled code workspace; using compiled code for all operations (as in Geoda itself) makes **rgeoda** perform fast, but leaves less flexible when modifications or enhancements are desired.
 
