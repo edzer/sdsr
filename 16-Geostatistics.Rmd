@@ -1,5 +1,9 @@
 # Interpolation and Geostatistics {#interpolation}
 
+```{r load16, eval = Sys.getenv("USER") == "edzer", echo=FALSE}
+# try(load("data/ch16.rda"))
+```
+
 Geostatistics is concerned with the modelling, prediction and
 simulation of spatially continuous phenomena.  The typical problem
 is a missing value problem: we observe a property of a phenomenon
@@ -281,16 +285,15 @@ As a potential predictor for NO2 in the air, we use population
 density. NO2 is mostly caused by traffic, and traffic is stronger
 in more densely populated areas.
 Population density is obtained from the [2011 census](https://www.zensus2011.de/DE/Home/Aktuelles/DemografischeGrunddaten.html), and is downloaded as a csv file with the number of inhabitants per 100 m grid cell. We can aggregate these data to the target grid cells by summing the inhabitants:
-```{r, eval=FALSE}
-library(vroom)
-v = vroom("aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv")
+```{r vroom1, , eval = Sys.getenv("USER") == "edzer"}
+v = vroom::vroom("aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv")
 v %>% filter(Einwohner > 0) %>% 
 	select(-Gitter_ID_100m) %>%
 	st_as_sf(coords = c("x_mp_100m", "y_mp_100m"), crs = 3035) %>%
 	st_transform(st_crs(grd)) -> b
 a = aggregate(b, st_as_sf(grd, na.rm = FALSE), sum)
 ```
-```{r, echo=FALSE}
+```{r vroom2, echo=FALSE, eval = Sys.getenv("USER") != "edzer"}
 v = vroom::vroom("aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv")
 v1 <- v[v$Einwohner > 0,-1]
 rm(v); gc(full=TRUE)
@@ -301,7 +304,6 @@ rm(v2); gc()
 a = aggregate(b, st_as_sf(grd, na.rm = FALSE), sum)
 gc()
 ```
-
 
 Now we have the population counts per grid cell in `a`. To get to
 population density, we need to find the area of each cell; for cells
@@ -445,7 +447,7 @@ Starting with the spatiotemporal matrix of NO$_2$ data in `aq`
 constructed at the beginning of this chapter, we will first select
 the rural background stations:
 
-```{r computespacetimesamplevariogram}
+```{r computespacetimesamplevariogram, eval = !exists("v.st")}
 aqx = aq[ , colnames(aq) %in% a2$station_european_code]
 sfc = st_geometry(a2.sf)[match(colnames(aqx), a2.sf$station_european_code)]
 st_as_stars(NO2 = as.matrix(aqx)) %>%
@@ -510,7 +512,7 @@ st_as_stars(list(pts = matrix(1, length(t), length(pt)))) %>%
 ```
 
 and obtain the corresponding spatiotemporal predictions using `krigeST` with
-```{r spacetimekriging}
+```{r spacetimekriging, eval = !exists("new_ts")}
 no2.st <- st_transform(no2.st, crs)
 new_ts <- krigeST(NO2~1, data = no2.st["NO2"], newdata = new_pt,
 	     nmax = 50, stAni = StAni, modelList = fitProdSumModel,
@@ -532,16 +534,19 @@ st_as_stars(pts = array(1, c(d[1], d[2], time=length(t4)))) %>%
 ```
 and the subsequent predictions are obtained by
 
-```{r spatiotemporalpredictions}
+```{r spatiotemporalpredictions, eval = !exists("new_int") }
 new_int <- krigeST(NO2~1, data = no2.st["NO2"], newdata = grd.st,
          nmax = 200, stAni = StAni, modelList = fitProdSumModel,
          progress = FALSE)
 names(new_int)[2] = "NO2"
+```
+```{r plotspatiotemporalpredictions}
 g + geom_stars(data = new_int, aes(fill = NO2, x = x, y = y)) + 
     facet_wrap(~time) +
     geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
     geom_sf(data = no2.sf, col = 'grey', cex = .5)
 ```
+and shown in figure \@ref(fig:plotspatiotemporalpredictions).
 
 A larger value for `nmax` was needed here to decrease the visible
 disturbance (sharp edges) caused by discrete neighbourhood

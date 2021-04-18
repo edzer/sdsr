@@ -122,6 +122,26 @@ st_write(nc, file, layer = "layer_nc")
 ```
 where the file format (GPKG) is derived from the file name extension.
 
+### Subsetting
+
+A very common operation is to subset objects; base R can use `[`
+for this. The rules that apply to `data.frame` objects also apply to
+`sf` objects, e.g. that records 2-5 and columns 3-7 are selected by
+```{r eval=FALSE}
+nc[2:5, 3:7]
+```
+but with a few additional features, in particular
+
+* the `drop` argument is by default `FALSE` meaning that the
+  geometry column is _always_ selected, and an `sf` object is
+  returned; when it is set to `TRUE` and the geometry column _not_ selected,
+  it is dropped and a `data.frame` is returned;
+* selection with a spatial (`sf`, `sfc` or `sfg`) object as first argument leads to
+  selection of the features that spatially _intersect_ with that
+  object (see next section); other predicates than _intersects_ can be chosen by setting
+  parameter `op` to a function such as `st_covers` or or any other
+  binary predicate function listed in section \@ref(de9im)
+
 ### Binary predicates
 
 Binary predicates like `st_intersects`, `st_covers` etc (section
@@ -131,17 +151,20 @@ sets this would potentially result in a huge matrix, typically filled
 mostly with `FALSE` values and for that reason a sparse representation 
 is returned by default:
 ```{r}
-nc5 = nc %>% head(5)
-nc7 = nc %>% head(7)
+nc5 = nc[1:5, ]
+nc7 = nc[1:7, ]
 (i = st_intersects(nc5, nc7))
 ```
-/* RSB consider adding figure something like:
-plot(st_geometry(nc7))
-plot(st_geometry(nc5), add=TRUE, border="brown")
-text(xy, labels=1:nrow(nc7), cex=0.8, col="blue")
-and explain the link to the sparse representation */
 
-which we could transform into a logical matrix by
+```{r fig57, echo=FALSE, fig.cap = "First seven North Carolina counties"}
+plot(st_geometry(nc7))
+plot(st_geometry(nc5), add = TRUE, border = "brown")
+cc = st_coordinates(st_centroid(nc7))
+text(cc, labels=1:nrow(nc7), col="blue")
+```
+Figure \@ref(fig:fig57) shows how the intersections of the first
+five with the first seven counties can be understood.
+We can transform the sparse logical matrix into a dense matrix by
 ```{r}
 as.matrix(i)
 ```
@@ -164,28 +187,6 @@ Methods available for `sgbp` objects include
 methods(class = "sgbp")
 ```
 where the only `Ops` method available is `!`, the negation operation.
-/* RSB sgbp not mentioned in 17 */
-
-### Subsetting
-
-/* RSB consider moving to before 7.1.3 and use to create subsets */
-A very common operation is to subset objects; base R can use `[`
-for this. The rules that apply to `data.frame` objects also apply to
-`sf` objects, e.g. that records 2-5 and columns 3-7 are selected by
-```{r eval=FALSE}
-nc[2:5, 3:7]
-```
-but with a few additional features, in particular
-
-* the `drop` argument is by default `FALSE` meaning that the
-  geometry column is _always_ selected, and an `sf` object is
-  returned; when it is set to `TRUE` and the geometry column _not_ selected,
-  it is dropped and a `data.frame` is returned;
-* selection with a spatial (`sf`, `sfc` or `sfg`) object as first argument leads to
-  selection of the features that spatially _intersect_ with that
-  object; other predicates than _intersects_ can be chosen by setting
-  parameter `op` to a function such as `st_covers` or or any other
-  binary predicate function listed in section \@ref(de9im)
 
 ### tidyverse 
 
@@ -220,8 +221,8 @@ is used to evaluate distinctness of geometries.
 `filter` can be used with the usual predicates; when one wants to
 use it with a spatial predicate, e.g. to select all counties less
 than 50 km away from Orange county, one could use
-/* RSB should sf_use_s2(TRUE) be in this block rather than the next? */
 ```{r}
+sf_use_s2(TRUE)
 orange <- nc %>% filter(NAME == "Orange")
 wd = st_is_within_distance(nc, orange, units::set_units(50, km))
 o50 <- nc %>% filter(lengths(wd) > 0)
@@ -232,7 +233,6 @@ and in addition a buffer around the county borders; note that this buffer
 serves for illustration, it was _not_ used to select the counties. 
 
 ```{r orangebuffer, echo=FALSE, fig.cap="Orange county (orange), counties within a 50 km radius (black), a 50 km buffer around Orange county (brown), and remaining counties (grey)"}
-sf_use_s2(TRUE)
 og = st_geometry(orange)
 plot(st_geometry(o50), lwd = 2)
 plot(og, col = 'orange', add = TRUE)
@@ -1022,9 +1022,8 @@ paste0(tail(sf_proj_search_paths(), 1), .Platform$file.sep, "proj.db")
 which can be read. The version of the snapshot of the EPSG database 
 included in each PROJ release is stated in the `"metadata"` table of 
 `proj.db`; the version of the PROJ runtime used by **sf** is shown by
-/* RSB patch sf source proj.4 -> PROJ ? */
 ```{r}
-sf_extSoftVersion()["proj.4"]
+sf_extSoftVersion()["PROJ"]
 ```
 
 If for a particular coordinate transformation datum grids are not
