@@ -1,22 +1,15 @@
-# Area Data and Spatial Autocorrelation {#area}
+# Proximity and Areal Data  {#area}
 
-Areal units of observation are very often used when simultaneous observations are aggregated within non-overlapping boundaries. The boundaries may be those of administrative entities, and may be related to underlying spatial processes, such as commuting flows, but are usually arbitrary. If they do not match the underlying and unobserved spatial processes in one or more variables of interest, proximate areal units will contain parts of the underlying processes, engendering spatial autocorrelation. This is at least in part because the aggregated observations are driven by autocorrelated factors which may or may not themselves have been observed.
+Areal units of observation are very often used when simultaneous observations are aggregated within non-overlapping boundaries. The boundaries may be those of administrative entities, and may be related to underlying spatial processes, such as commuting flows, but are usually arbitrary. If they do not match the underlying and unobserved spatial processes in one or more variables of interest, proximate areal units will contain parts of the underlying processes, engendering spatial autocorrelation. By proximity, we mean _closeness_ in ways that make sense for the data generation processes thought to be involved. In cross-sectional geostatistical analysis with point support, measured distance makes sense for typical data generation processes. In similar analysis of areal data, sharing a border may make more sense, because that is what we do know, but we cannot measure the distance between the areas in as adequate a way.  
 
-With support of data we mean the physical size (lenth, area, volume) associated with an individual observational unit (measurement).  It is possible to represent the support of areal data by a point, despite the fact that the data have polygonal support. The centroid of the polygon may be taken as a representative point, or the centroid of the largest polygon in a multi-polygon object. When data with intrinsic point support are treated as areal data, the change of support goes the other way, from the known point to a non-overlapping tesselation such as a Voronoi diagram or Dirichlet tessellation or Thiessen polygons often through a Delaunay triangulation and using a Euclidean plane (projected coordinates). Here, different metrics may also be chosen, or distances measured on a network rather than on the plane. There is also a literature using weighted Voronoi diagrams in local spatial analysis [see for example @doi:10.1080/13658810601034267; @doi:10.1080/13658810701587891; @SHE201570].
+With support of data we mean the physical size (lenth, area, volume) associated with an individual observational unit (measurement).  It is possible to represent the support of areal data by a point, despite the fact that the data have polygonal support. The centroid of the polygon may be taken as a representative point, or the centroid of the largest polygon in a multi-polygon object. When data with intrinsic point support are treated as areal data, the change of support goes the other way, from the known point to a non-overlapping tesselation such as a Voronoi diagram or Dirichlet tessellation or Thiessen polygons often through a Delaunay triangulation using projected coordinates. Here, different metrics may also be chosen, or distances measured on a network rather than on the plane. There is also a literature using weighted Voronoi diagrams in local spatial analysis [see for example @doi:10.1080/13658810601034267; @doi:10.1080/13658810701587891; @SHE201570].
 
 When the intrinsic support of the data is as points, but the underlying process is between proximate observations rather than driven chiefly by distance however measured between observations, the data may be aggregate counts or totals (polling stations, retail turnover) or represent a directly observed characteristic of the observation (opening hours of the polling station). Obviously, the risk of mis-representing the footprint of the underlying spatial processes remains in all of these cases, not least because the observations are taken as encompassing the entirety of the underlying process in the case of tesselation of the whole area of interest. This is distinct from the geostatistical setting in which observations are rather samples taken using some scheme within the area of interest. It is also partly distinct from the practice of taking areal sample plots within the area of interest but covering only a small proportion of the area, typically used in ecological and environmental research.
 
-This chapter then considers a subset of the methods potentially available for exploring spatial autocorrelation in areal data, or data being handled as areal, where the spatial processes are considered as working through proximity understood in the first instance as contiguity, as a graph linking observations taken as neighbours. This graph is typically undirected and unweighted, but may be directed and/or weighted in certain settings, which then leads to further issues with regard to symmetry. In principle, proximity would be expected to operate symmetrically in space, that is that the influence of $i$ on $j$ and of $j$ on $i$ based on their relative positions should be equivalent. Edge effects are not considered in standard treatments.
+In order to explore and analyse areal data of these kinds in Chapters \@ref(spatautocorr), \@ref{spatglmm} and \@ref{spatecon}, methods are needed to represent the proximity of observations. This chapter then considers a subset of the such methods, where the spatial processes are considered as working through proximity understood in the first instance as contiguity, as a graph linking observations taken as neighbours. This graph is typically undirected and unweighted, but may be directed and/or weighted in certain settings, which then leads to further issues with regard to symmetry. In principle, proximity would be expected to operate symmetrically in space, that is that the influence of $i$ on $j$ and of $j$ on $i$ based on their relative positions should be equivalent. Edge effects are not considered in standard treatments.
 
 
-## Spatial autocorrelation
-
-When analysing areal data, it has long been recognised that, if present, spatial autocorrelation changes how we may infer, relative to the default position of independent observations. In the presence of spatial autocorrelation, we can predict the values of observation $i$ from the values observed at $j \in N_i$, the set of its proximate neighbours. Early results [@moran48; @geary:54], entered into research practice gradually, for example the social sciences [@duncanetal61]. These results were then collated and extended to yield a set of basic tools of analysis [@cliff+ord:73; @cliff+ord:81]. 
-
-Cliff and Ord [-@cliff+ord:73] generalised and extended the expression of the spatial weights matrix representation as part of the framework for establishing the distribution theory for join count, Moran's $I$ and Geary's $C$ statistics. This development of what have become known as global measures, returning a single value of autocorrelation for the total study area, has been supplemented by local measures returning values for each areal unit [@getis+ord:92; @anselin:95].
-
-
-## Spatial weight matrices
+## Representing proximity in **spdep**
 
 Handling spatial autocorrelation using relationships to neighbours on a graph takes the graph as given, chosen by the analyst. This differs from the geostatistical approach in which the analyst chooses the binning of the empirical variogram and function used, and then the way the fitted variogram is fitted. Both involve a priori choices, but represent the underlying correlation in different ways [@wall:04]. In Bavaud [-@bavaud:98] and work citing his contribution, attempts have been made to place graph-based neighbours in a broader context.
 
@@ -50,7 +43,7 @@ Between early 2002 and April 2019, **spdep** contained functions for constructin
 library(spdep)
 ```
 
-### Contiguous neighbours
+## Contiguous neighbours
 
 The `poly2nb()` function in **spdep** takes the boundary points making up the polygon boundaries in the object passed as the `pl=` argument, and for each observation checks whether at least one (`queen=TRUE`, default), or at least two (rook, `queen=FALSE`) points are within `snap=` distance units of each other. The distances are planar in the raw coordinate units, ignoring geographical projections. Once the required number of sufficiently close points is found, the search is stopped.
 
@@ -87,6 +80,16 @@ We can also check that this undirected graph is connected using the `n.comp.nb()
 n.comp.nb(nb_q)$nc
 ```
 
+This approach is equivalent to treating the neighbour object as a graph and using graph analysis on that graph [@csardi+nepusz:06], by first coercing to a binary sparse matrix:
+
+```{r}
+library(Matrix)
+smat <- as(nb2listw(nb_q, style="B"), "CsparseMatrix")
+library(igraph)
+g1 <- graph.adjacency(smat)
+count_components(g1)
+```
+
 Neighbour objects may be exported and imported in GAL format for exchange with other software, using `write.nb.gal()` and `read.gal()`:
 
 ```{r}
@@ -96,7 +99,7 @@ write.nb.gal(nb_q, tf)
 
 
 
-### Graph-based neighbours
+## Graph-based neighbours
 
 If areal units are an appropriate representation, but only points have been observed, contiguity relationships may be approximated using graph-based neighbours. In this case, the imputed boundaries tesselate the plane such that points closer to one observation than any other fall within its polygon. The simplest form is by using triangulation, here using the `deldir()` function in the **deldir** package. Because the function returns from and to identifiers, it is easy to construct a long representation of a `listw` object, as used in the S-Plus SpatialStats module and the `sn2listw()` function internally to construct an `nb` object (ragged wide representation). Alternatives often fail to return sufficient information to permit the neighbours to be identified.
 
@@ -149,7 +152,7 @@ plot(diffnb(nb_tri, nb_soi), coords=st_coordinates(coords), col="orange",
 par(opar)
 ```
 
-### Distance-based neighbours
+## Distance-based neighbours
 
 Distance-based neighbours can be constructed using `dnearneigh()`, with a distance band with lower `d1=` and upper `d2=` bounds controlled by the `bounds=` argument. If spherical coordinates are used and either specified in the coordinates object `x` or with `x` as a two column matrix and `longlat=TRUE`, great circle distances in km will be calculated assuming the WGS84 reference ellipsoid. From **spdep** 1.1-7, two arguments have been added, to use functionality in the **dbscan** package for finding neighbours using a kd-tree in two or three dimensions by default, and not to test the symmetry of the output neighbour object. 
 
@@ -211,7 +214,7 @@ n_comp <- n.comp.nb(nb_k6s)
 n_comp$nc
 ```
 
-### Weights specification
+## Weights specification
 
 Once neighbour objects are available, further choices need to made in specifying the weights objects. The `nb2listw()` function is used to create a `listw` weights object with an `nb` object, a matching list of weights vectors, and a style specification. Because handling no-neighbour observations now begins to matter, the `zero.policy=` argument is introduced. By default, this is `FALSE`, indicating that no-neighbour observations will cause an error, as the spatially lagged value for an observation with no neighbours is not available. By convention, zero is substituted for the lagged value, as the cross product of a vector of zero-valued weights and a data vector, hence the name of `zero.policy`.
 
@@ -256,7 +259,75 @@ unlist(spweights.constants(lw_d16_B,  zero.policy=TRUE))[c(1,6:8)]
 ```
 Note that by default the `adjust.n=` argument to `spweights.constants()` is set by default to `TRUE`, subtracting the count of no-neighbour observations from the observation count, so $n$ is smaller with possible consequences for inference. The complete count can be retrieved by changing the argument.
 
-## Measures of spatial autocorrelation
+## Higher order neighbours
+
+We recall the characteristics of the neighbour object based on Queen contiguities:
+
+```{r}
+nb_q
+```
+If we wish to create an object showing $i$ to $k$ neighbours, where $i$ is a neighbour of $j$, and $j$ in turn is a neighbour of $k$, so taking two steps on the neighbour graph, we can use `nblag()`, which automatically removes $i$ to $i$ self-neighbours:
+
+```{r}
+nb_q2 <- nblag(nb_q, 2)
+nb_q2[[2]]
+```
+The `nblag_cumul()` function cumulates the list of neighbours for the whole list of lags:
+
+```{r}
+nblag_cumul(nb_q2)
+```
+while the set operation `union.nb()` takes two objects, giving here the same outcome:
+
+```{r}
+union.nb(nb_q2[[2]], nb_q2[[1]])
+```
+Returning to the graph representation of the same neighbour object, we can ask how many steps might be needed to traverse the graph:
+
+```{r}
+diameter(g1)
+```
+We step out from each observation across the graph to establish the number of steps needed to reach each other observation by the shortest path, once again finding the same count, and that the municipality is called Lutowiska, close to the Ukrainian border in the far south east of the country.
+
+```{r}
+sps <- shortest.paths(g1)
+spmax <- apply(sps, 2, max)
+max(spmax)
+```
+
+```{r}
+mr <- which.max(spmax)
+pol_pres15$name0[mr]
+```
+
+```{r, echo=FALSE}
+pol_pres15$sps1 <- sps[,mr]
+tm1 <- tm_shape(pol_pres15) + tm_fill("sps1", title="Shortest path\ncount")
+```
+
+
+```{r, echo=FALSE}
+pol_pres15$dist_52 <- c(st_distance(coords[mr], coords))/1000
+units(pol_pres15$dist_52) <-  NULL
+library(ggplot2)
+g1 <- ggplot(pol_pres15, aes(x=sps1, y=dist_52)) + geom_point() + xlab("shortest path count") +  ylab("km distance")
+```
+
+Figure \@ref(fig:shortestpath) shows that contiguity neighbours represent the same kinds of relationships with other observations as distance. Some approaches prefer distance neighbours on the basis that, for example, inverse distance neighbours show clearly how all observations are related to each other. However, the development of both tests for spatial autocorrelation, and spatial regression models has involved the inverse of a spatial process model, which in turn can be represented as the sum of a power series of the neighbour object and a coefficient, so intrinsically acknowledging the relationships of all with all other. Sparse contiguity neighbour objects accommodate rich dependency structures without the need to make the structures explicit.
+
+(ref:shortestpathfc) Relationship of shortest paths to distance for Lutowiska; left panel: shortest path counts from Lutowiska; right panel: plot of shortest paths from Lutowiska to other observations and distances (km) from Lutowiska to other observations
+```{r shortestpath, out.width='100%', fig.cap='(ref:shortestpathfc)', fig=TRUE, echo=TRUE}
+gridExtra::grid.arrange(tmap_grob(tm1), g1, nrow=1)
+```
+
+
+# Measures of spatial autocorrelation {#spatautocorr}
+
+When analysing areal data, it has long been recognised that, if present, spatial autocorrelation changes how we may infer, relative to the default position of independent observations. In the presence of spatial autocorrelation, we can predict the values of observation $i$ from the values observed at $j \in N_i$, the set of its proximate neighbours. Early results [@moran48; @geary:54], entered into research practice gradually, for example the social sciences [@duncanetal61]. These results were then collated and extended to yield a set of basic tools of analysis [@cliff+ord:73; @cliff+ord:81]. 
+
+Cliff and Ord [-@cliff+ord:73] generalised and extended the expression of the spatial weights matrix representation as part of the framework for establishing the distribution theory for join count, Moran's $I$ and Geary's $C$ statistics. This development of what have become known as global measures, returning a single value of autocorrelation for the total study area, has been supplemented by local measures returning values for each areal unit [@getis+ord:92; @anselin:95].
+
+## Measures and process mis-specification
 
 Measures of spatial autocorrelation unfortunately pick up other mis-specifications in the way that we model data [@schabenberger+gotway:2005; @McMillen:2003]. For reference, Moran's $I$ is given as [@cliff+ord:81, page 17]:
 
@@ -296,7 +367,7 @@ glance_htest(lmt)
 
 A comparison of implementations of measures of spatial autocorrelation shows that a wide range of measures is available in R in a number of packages, chiefly in the **spdep** package, and that differences from other implementations can be attributed to design decisions [@Bivand2018]. The **spdep** package also includes the only implementations of exact and Saddlepoint approximations to global and local Moran's I for regression residuals [@tiefelsdorf:02; @bivandetal:09].
 
-### Global measures
+## Global measures
 
 We will begin by examining join count statistics, where `joincount.test()` takes a `factor` vector of values `fx=` and a `listw` object, and returns a list of `htest` (hypothesis test) objects defined in the **stats** package, one `htest` object for each level of the `fx=` argument. The observed counts are of neighbours with the same factor levels, known as same-colour joins.
 
@@ -372,7 +443,7 @@ Finally, the empirical Bayes Moran's $I$ takes account of the denominator in ass
 Global measures of spatial autocorrelation using spatial weights objects based on graphs of neighbours are, as we have seen, rather blunt tools, which for interpretation depend critically on a reasoned mean model of the variable in question. If the mean model is just the intercept, the global measures will respond to all kinds of mis-specification, not only spatial autocorrelation. A key source of mis-specification will typically also include the choice of entities for aggregation of data.
 
 
-### Local measures
+## Local measures
 
 Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s [@anselin:95; @getis+ord:92; @getis+ord:96]. In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable [@anselin:96]. The `moran.plot()` function also returns an influence measures object used to label observations exerting more than propotional influence on the slope of the line representing global Moran's $I$. In Figure \@ref(fig:moranplot), we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. 
 
