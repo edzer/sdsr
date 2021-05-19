@@ -207,7 +207,7 @@ use `st_set_geometry(nc, NULL)` or simply coerce to a tibble before
 selecting:
 ```{r}
 library(tidyverse)
-nc %>% as_tibble() %>% select(BIR74) %>% head(3)
+nc |> as_tibble() |> select(BIR74) |> head(3)
 ```
 
 The `summarise` method for `sf` objects has two special arguments:
@@ -223,9 +223,9 @@ use it with a spatial predicate, e.g. to select all counties less
 than 50 km away from Orange county, one could use
 ```{r}
 sf_use_s2(TRUE)
-orange <- nc %>% filter(NAME == "Orange")
+orange <- nc |> filter(NAME == "Orange")
 wd = st_is_within_distance(nc, orange, units::set_units(50, km))
-o50 <- nc %>% filter(lengths(wd) > 0)
+o50 <- nc |> filter(lengths(wd) > 0)
 nrow(o50)
 ```
 Figure \@ref(fig:orangebuffer) shows the results of this analysis,
@@ -424,8 +424,8 @@ Selecting discontinuous ranges supported when it it is a regular
 sequence. By default, `drop` is FALSE, when set to `TRUE` dimensions
 with a single value are dropped:
 ```{r}
-r[,1:100, seq(1, 250, 5), 4] %>% dim()
-r[,1:100, seq(1, 250, 5), 4, drop = TRUE] %>% dim()
+r[,1:100, seq(1, 250, 5), 4] |> dim()
+r[,1:100, seq(1, 250, 5), 4, drop = TRUE] |> dim()
 ```
 
 For selecting particular ranges of dimension _values_, one can use
@@ -448,9 +448,9 @@ drops existing ones.
 Further subsetting can be done using spatial objects of class `sf`, `sfc`
 or `bbox`, e.g. when using the sample raster,
 ```{r}
-b = st_bbox(r) %>%
-	st_as_sfc() %>%
-	st_centroid() %>%
+b = st_bbox(r) |>
+	st_as_sfc() |>
+	st_centroid() |>
 	st_buffer(units::set_units(500, m))
 r[b]
 ```
@@ -464,7 +464,7 @@ where we see that pixels outside the spatial object are assigned `NA` values.
 This object still has dimension indexes relative to the `offset` and `delta`
 values of `r`; we can reset these to a new `offset` with
 ```{r}
-r[b] %>% st_normalize() %>% st_dimensions()
+r[b] |> st_normalize() |> st_dimensions()
 ```
 By default, the resulting raster is cropped to the extent of the
 selection object; an object with the same dimensions as the input
@@ -510,7 +510,7 @@ for a few randomly sampled points over the bounding  box of `r`:
 set.seed(115517)
 ```
 ```{r}
-pts = st_bbox(r) %>% st_as_sfc() %>% st_sample(20)
+pts = st_bbox(r) |> st_as_sfc() |> st_sample(20)
 (e = st_extract(r, pts))
 ```
 which results in a vector data cube with 4 points and 6 bands.
@@ -535,7 +535,7 @@ points extracted above, shown in figure \@ref(fig:rsample).
 plot(r[,,,1], reset = FALSE)
 col = rep("green", 20)
 col[c(8, 14, 15, 18, 19)] = "red"
-st_as_sf(e) %>% st_coordinates() %>% text(labels = 1:20, col = col)
+st_as_sf(e) |> st_coordinates() |> text(labels = 1:20, col = col)
 ```
 From this figure, we read "by eye" that the points 8, 14, 15, 18 and
 19 are on water, the others on land. Using a linear discriminant
@@ -715,7 +715,7 @@ and we can now for instance show the maps for six arbitrarily chosen days
 
 ```{r airagg, fig.cap="areal mean PM$_{10}$ values, for six days"}
 library(tidyverse)
-a %>% filter(time >= "2008-01-01", time < "2008-01-07") %>% 
+a |> filter(time >= "2008-01-01", time < "2008-01-07") |> 
 	plot(key.pos = 4)
 ```
 or create a time series plot of mean values for a single state 
@@ -754,16 +754,16 @@ first "tidy" the `bristol_od` table to have origin (o), destination (d),
 transportation mode (mode), and count (n) as variables, using `gather`:
 ```{r bristol_tidy}
 # create O-D-mode array:
-bristol_tidy <- bristol_od %>% 
-	select(-all) %>% 
+bristol_tidy <- bristol_od |> 
+	select(-all) |> 
 	gather("mode", "n", -o, -d)
 head(bristol_tidy)
 ```
 Next, we form the three-dimensional array `a`, filled with zeroes:
 ```{r}
-od = bristol_tidy %>% pull("o") %>% unique()
+od = bristol_tidy |> pull("o") |> unique()
 nod = length(od)
-mode = bristol_tidy %>% pull("mode") %>% unique()
+mode = bristol_tidy |> pull("mode") |> unique()
 nmode = length(mode)
 a = array(0L,  c(nod, nod, nmode), 
 	dimnames = list(o = od, d = od, mode = mode))
@@ -914,9 +914,9 @@ and in figure \@ref(fig:asstars).
 ```{r asstars, fig.cap = '(ref:rasterize)' }
 sf_use_s2(TRUE)
 (file = system.file("gpkg/nc.gpkg", package="sf"))
-read_sf(file) %>% 
-	st_geometry() %>%
-	st_as_stars() %>%
+read_sf(file) |> 
+	st_geometry() |>
+	st_as_stars() |>
 	plot()
 ```
 Here, `st_as_stars` can be parameterized to control cell size,
@@ -928,19 +928,19 @@ figure \@ref(fig:vectoras):
 
 ```{r}
 library(dplyr)
-read_sf(file) %>%
-	mutate(name = as.factor(NAME)) %>%
-	select(SID74, SID79, name) %>%
+read_sf(file) |>
+	mutate(name = as.factor(NAME)) |>
+	select(SID74, SID79, name) |>
 	st_rasterize()
 ```
 Similarly, line and point geometries can be rasterized, as shown
 in figure \@ref(fig:lineras).
 
 ```{r lineras, fig.cap="rasterization of North Carolina boundaries"}
-read_sf(file) %>%
-	st_cast("MULTILINESTRING") %>%
-	select(CNTY_ID) %>%
-	st_rasterize() %>%
+read_sf(file) |>
+	st_cast("MULTILINESTRING") |>
+	select(CNTY_ID) |>
+	st_rasterize() |>
 	plot()
 ```
 
@@ -1090,7 +1090,7 @@ the set of options in `p$definition`.
 When using `st_transform` on a raster data set, as e.g. in
 ```{r}
 tif = system.file("tif/L7_ETMs.tif", package = "stars")
-read_stars(tif) %>%
+read_stars(tif) |>
 	st_transform(4326)
 ```
 we see that a _curvilinear_ is created, which means that for every
@@ -1113,8 +1113,8 @@ for the target grid are picked that may be completely inappropriate
 for the problem at hand. An example workflow that uses only a
 target CRS is
 ```{r}
-read_stars(tif) %>%
-	st_warp(crs = st_crs(4326)) %>%
+read_stars(tif) |>
+	st_warp(crs = st_crs(4326)) |>
 	st_dimensions()
 ```
 which creates a pretty close raster, but then the transformation
@@ -1123,10 +1123,10 @@ raster first, here with exactly the same number of rows and columns
 as the original raster one could use:
 ```{r}
 r = read_stars(tif)
-grd = st_bbox(r) %>%
-		st_as_sfc() %>%
-		st_transform(4326) %>%
-		st_bbox() %>%
+grd = st_bbox(r) |>
+		st_as_sfc() |>
+		st_transform(4326) |>
+		st_bbox() |>
 		st_as_stars(nx = dim(r)["x"], ny = dim(r)["y"])
 st_warp(r, grd)
 ```
