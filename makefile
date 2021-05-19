@@ -28,8 +28,8 @@ push:
 	git push || true
 
 purl:
-	#Rscript -e 'knitr::purl("16-Geostatistics.Rmd")'
-	Rscript -e 'knitr::purl("17-Areal.Rmd")'
+	Rscript -e 'knitr::purl("16-Geostatistics.Rmd")'
+	#Rscript -e 'knitr::purl("17-Areal.Rmd")'
 
 objects = 01-hello.Rmd
 
