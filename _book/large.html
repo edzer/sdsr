@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2021-05-11" />
+<meta name="date" content="2021-05-24" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -62,6 +62,10 @@
 <script src="libs/leaflet-binding-2.0.4.1/leaflet.js"></script>
 <script src="libs/leaflet-providers-1.9.0/leaflet-providers_1.9.0.js"></script>
 <script src="libs/leaflet-providers-plugin-2.0.4.1/leaflet-providers-plugin.js"></script>
+<script src="libs/FlatGeoBuf-3.3.3/fgb.js"></script>
+<script src="libs/FlatGeoBuf-3.3.3/flatgeobuf-geojson.min.js"></script>
+<script src="libs/chromajs-2.1.0/chroma.min.js"></script>
+<link id="_-BIR74-1-attachment" rel="attachment" href="libs/_-BIR74-0.0.1/_-BIR74_layer.fgb"/>
 <link href="libs/HomeButton-0.0.1/home-button.css" rel="stylesheet" />
 <script src="libs/HomeButton-0.0.1/home-button.js"></script>
 <script src="libs/HomeButton-0.0.1/easy-button-src.min.js"></script>
@@ -1046,11 +1050,11 @@ read parts of the file. The first is to set argument <code>wkt_filter</code>
 with a WKT text string containing a geometry; only geometries from
 the target file that intersect with this geometry will be returned.
 An example is</p>
-<div class="sourceCode" id="cb275"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb275-1" title="1"><span class="kw">library</span>(sf)</a>
-<a class="sourceLine" id="cb275-2" title="2">(<span class="dt">file =</span> <span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb273"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb273-1" title="1"><span class="kw">library</span>(sf)</a>
+<a class="sourceLine" id="cb273-2" title="2">(<span class="dt">file =</span> <span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>))</a></code></pre></div>
 <pre><code># [1] &quot;/home/edzer/R/x86_64-pc-linux-gnu-library/4.0/sf/gpkg/nc.gpkg&quot;</code></pre>
-<div class="sourceCode" id="cb277"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb277-1" title="1">bb =<span class="st"> &quot;POLYGON ((-81.7 36.2, -80.4 36.2, -80.4 36.5, -81.7 36.5, -81.7 36.2))&quot;</span></a>
-<a class="sourceLine" id="cb277-2" title="2">nc<span class="fl">.1</span> =<span class="st"> </span><span class="kw">st_read</span>(file, <span class="dt">wkt_filter =</span> bb)</a></code></pre></div>
+<div class="sourceCode" id="cb275"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb275-1" title="1">bb =<span class="st"> &quot;POLYGON ((-81.7 36.2, -80.4 36.2, -80.4 36.5, -81.7 36.5, -81.7 36.2))&quot;</span></a>
+<a class="sourceLine" id="cb275-2" title="2">nc<span class="fl">.1</span> =<span class="st"> </span><span class="kw">st_read</span>(file, <span class="dt">wkt_filter =</span> bb)</a></code></pre></div>
 <pre><code># Reading layer `nc.gpkg&#39; from data source 
 #   `/home/edzer/R/x86_64-pc-linux-gnu-library/4.0/sf/gpkg/nc.gpkg&#39; 
 #   using driver `GPKG&#39;
@@ -1062,8 +1066,8 @@ An example is</p>
 <p>The second option is to use the <code>query</code> argument to <code>st_read</code>,
 which can be any query in “OGR SQL” dialect, which can be used to
 select features from a layer, and limit fields. An example is:</p>
-<div class="sourceCode" id="cb279"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb279-1" title="1">q =<span class="st"> </span><span class="kw">paste</span>(<span class="st">&quot;select BIR74,SID74,geom from &#39;nc.gpkg&#39; where BIR74 &gt; 1500&quot;</span>)</a>
-<a class="sourceLine" id="cb279-2" title="2">nc<span class="fl">.2</span> =<span class="st"> </span><span class="kw">st_read</span>(file, <span class="dt">query =</span> q)</a></code></pre></div>
+<div class="sourceCode" id="cb277"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb277-1" title="1">q =<span class="st"> </span><span class="kw">paste</span>(<span class="st">&quot;select BIR74,SID74,geom from &#39;nc.gpkg&#39; where BIR74 &gt; 1500&quot;</span>)</a>
+<a class="sourceLine" id="cb277-2" title="2">nc<span class="fl">.2</span> =<span class="st"> </span><span class="kw">st_read</span>(file, <span class="dt">query =</span> q)</a></code></pre></div>
 <pre><code># Reading layer `nc.gpkg&#39; from data source 
 #   `/home/edzer/R/x86_64-pc-linux-gnu-library/4.0/sf/gpkg/nc.gpkg&#39; 
 #   using driver `GPKG&#39;
@@ -1074,8 +1078,8 @@ select features from a layer, and limit fields. An example is:</p>
 # Geodetic CRS:  NAD27</code></pre>
 <p>note that <code>nc.pgkg</code> is the <em>layer name</em>, which can be obtained from <code>file</code> using <code>st_layers</code>.
 Sequences of records can be read using <code>LIMIT</code> and <code>OFFSET</code>, to read records 51-60 use</p>
-<div class="sourceCode" id="cb281"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb281-1" title="1">q =<span class="st"> </span><span class="kw">paste</span>(<span class="st">&quot;select BIR74,SID74,geom from &#39;nc.gpkg&#39; LIMIT 10 OFFSET 50&quot;</span>)</a>
-<a class="sourceLine" id="cb281-2" title="2">nc<span class="fl">.2</span> =<span class="st"> </span><span class="kw">st_read</span>(file, <span class="dt">query =</span> q)</a></code></pre></div>
+<div class="sourceCode" id="cb279"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb279-1" title="1">q =<span class="st"> </span><span class="kw">paste</span>(<span class="st">&quot;select BIR74,SID74,geom from &#39;nc.gpkg&#39; LIMIT 10 OFFSET 50&quot;</span>)</a>
+<a class="sourceLine" id="cb279-2" title="2">nc<span class="fl">.2</span> =<span class="st"> </span><span class="kw">st_read</span>(file, <span class="dt">query =</span> q)</a></code></pre></div>
 <pre><code># Reading layer `nc.gpkg&#39; from data source 
 #   `/home/edzer/R/x86_64-pc-linux-gnu-library/4.0/sf/gpkg/nc.gpkg&#39; 
 #   using driver `GPKG&#39;
@@ -1103,11 +1107,11 @@ mentioned above it passes on SQL in the <code>query</code> argument to the
 database, it is sometimes beneficial to directly read and
 to a spatial database using the R database drivers for this. An
 example of this is:</p>
-<div class="sourceCode" id="cb283"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb283-1" title="1">pg &lt;-<span class="st"> </span>DBI<span class="op">::</span><span class="kw">dbConnect</span>(</a>
-<a class="sourceLine" id="cb283-2" title="2">    RPostgres<span class="op">::</span><span class="kw">Postgres</span>(),</a>
-<a class="sourceLine" id="cb283-3" title="3">    <span class="dt">host =</span> <span class="st">&quot;localhost&quot;</span>,</a>
-<a class="sourceLine" id="cb283-4" title="4">    <span class="dt">dbname =</span> <span class="st">&quot;postgis&quot;</span>)</a>
-<a class="sourceLine" id="cb283-5" title="5"><span class="kw">st_read</span>(pg, <span class="dt">query =</span> <span class="st">&quot;select BIR74,wkb_geometry from nc limit 3&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb281"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb281-1" title="1">pg &lt;-<span class="st"> </span>DBI<span class="op">::</span><span class="kw">dbConnect</span>(</a>
+<a class="sourceLine" id="cb281-2" title="2">    RPostgres<span class="op">::</span><span class="kw">Postgres</span>(),</a>
+<a class="sourceLine" id="cb281-3" title="3">    <span class="dt">host =</span> <span class="st">&quot;localhost&quot;</span>,</a>
+<a class="sourceLine" id="cb281-4" title="4">    <span class="dt">dbname =</span> <span class="st">&quot;postgis&quot;</span>)</a>
+<a class="sourceLine" id="cb281-5" title="5"><span class="kw">st_read</span>(pg, <span class="dt">query =</span> <span class="st">&quot;select BIR74,wkb_geometry from nc limit 3&quot;</span>)</a></code></pre></div>
 <pre><code># Simple feature collection with 3 features and 1 field
 # Geometry type: MULTIPOLYGON
 # Dimension:     XY
@@ -1118,9 +1122,9 @@ example of this is:</p>
 # 2   487 MULTIPOLYGON (((-81.2 36.4,...
 # 3  3188 MULTIPOLYGON (((-80.5 36.2,...</code></pre>
 <p>A spatial query might look like</p>
-<div class="sourceCode" id="cb285"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb285-1" title="1">q =<span class="st"> &quot;SELECT BIR74,wkb_geometry FROM nc WHERE \</span></a>
-<a class="sourceLine" id="cb285-2" title="2"><span class="st">  ST_Intersects(wkb_geometry, &#39;SRID=4267;POINT (-81.49826 36.4314)&#39;);&quot;</span></a>
-<a class="sourceLine" id="cb285-3" title="3"><span class="kw">st_read</span>(pg, <span class="dt">query =</span> q)</a></code></pre></div>
+<div class="sourceCode" id="cb283"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb283-1" title="1">q =<span class="st"> &quot;SELECT BIR74,wkb_geometry FROM nc WHERE \</span></a>
+<a class="sourceLine" id="cb283-2" title="2"><span class="st">  ST_Intersects(wkb_geometry, &#39;SRID=4267;POINT (-81.49826 36.4314)&#39;);&quot;</span></a>
+<a class="sourceLine" id="cb283-3" title="3"><span class="kw">st_read</span>(pg, <span class="dt">query =</span> q)</a></code></pre></div>
 <pre><code># Simple feature collection with 1 feature and 1 field
 # Geometry type: MULTIPOLYGON
 # Dimension:     XY
@@ -1131,19 +1135,19 @@ example of this is:</p>
 <p>Here, the intersection is done in the database, and uses the spatial
 index typically present.</p>
 <p>The same mechanism works when using <code>dplyr</code> with a database backend:</p>
-<div class="sourceCode" id="cb287"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb287-1" title="1"><span class="kw">library</span>(dplyr, <span class="dt">warn.conflicts =</span> <span class="ot">FALSE</span>)</a>
-<a class="sourceLine" id="cb287-2" title="2">nc_db =<span class="st"> </span><span class="kw">tbl</span>(pg, <span class="st">&quot;nc&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb285"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb285-1" title="1"><span class="kw">library</span>(dplyr, <span class="dt">warn.conflicts =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb285-2" title="2">nc_db =<span class="st"> </span><span class="kw">tbl</span>(pg, <span class="st">&quot;nc&quot;</span>)</a></code></pre></div>
 <p>Spatial queries can be formulated and are passed on to the database:</p>
-<div class="sourceCode" id="cb288"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb288-1" title="1">nc_db <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb288-2" title="2"><span class="st">     </span><span class="kw">filter</span>(<span class="kw">ST_Intersects</span>(wkb_geometry, <span class="st">&#39;SRID=4267;POINT (-81.49826 36.4314)&#39;</span>)) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb288-3" title="3"><span class="st">     </span><span class="kw">collect</span>()</a></code></pre></div>
+<div class="sourceCode" id="cb286"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb286-1" title="1">nc_db <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb286-2" title="2"><span class="st">     </span><span class="kw">filter</span>(<span class="kw">ST_Intersects</span>(wkb_geometry, <span class="st">&#39;SRID=4267;POINT (-81.49826 36.4314)&#39;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb286-3" title="3"><span class="st">     </span><span class="kw">collect</span>()</a></code></pre></div>
 <pre><code># # A tibble: 1 x 16
 #   ogc_fid  area perimeter cnty_ cnty_id name  fips  fipsno cress_id bir74 sid74
 #     &lt;int&gt; &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;  &lt;dbl&gt;    &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;
 # 1       1 0.114      1.44  1825    1825 Ashe  37009  37009        5  1091     1
 # # … with 5 more variables: nwbir74 &lt;dbl&gt;, bir79 &lt;dbl&gt;, sid79 &lt;dbl&gt;,
-# #   nwbir79 &lt;dbl&gt;, wkb_geometry &lt;chr&gt;</code></pre>
-<div class="sourceCode" id="cb290"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb290-1" title="1">nc_db <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">filter</span>(<span class="kw">ST_Area</span>(wkb_geometry) <span class="op">&gt;</span><span class="st"> </span><span class="fl">0.1</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">head</span>(<span class="dv">3</span>)</a></code></pre></div>
+# #   nwbir79 &lt;dbl&gt;, wkb_geometry &lt;pq_gmtry&gt;</code></pre>
+<div class="sourceCode" id="cb288"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb288-1" title="1">nc_db <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">filter</span>(<span class="kw">ST_Area</span>(wkb_geometry) <span class="op">&gt;</span><span class="st"> </span><span class="fl">0.1</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">head</span>(<span class="dv">3</span>)</a></code></pre></div>
 <pre><code># # Source:   lazy query [?? x 16]
 # # Database: postgres [edzer@localhost:5432/postgis]
 #   ogc_fid  area perimeter cnty_ cnty_id name   fips  fipsno cress_id bir74 sid74
@@ -1203,18 +1207,18 @@ that have significant tags, <code>lines</code> with non-area “way” features,
 <code>multilinestrings</code> with “relation” features, <code>multipolygons</code> with
 “relation” features and <code>other_relations</code>. A simple and very small
 bounding box query to OpenStreetMap could look like</p>
-<div class="sourceCode" id="cb292"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb292-1" title="1"><span class="kw">download.file</span>(</a>
-<a class="sourceLine" id="cb292-2" title="2">  <span class="st">&quot;https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970&quot;</span></a>
-<a class="sourceLine" id="cb292-3" title="3">  <span class="st">&quot;data/ms.osm&quot;</span>, <span class="dt">method =</span> <span class="st">&quot;auto&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb290"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb290-1" title="1"><span class="kw">download.file</span>(</a>
+<a class="sourceLine" id="cb290-2" title="2">  <span class="st">&quot;https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970&quot;</span></a>
+<a class="sourceLine" id="cb290-3" title="3">  <span class="st">&quot;data/ms.osm&quot;</span>, <span class="dt">method =</span> <span class="st">&quot;auto&quot;</span>)</a></code></pre></div>
 <p>and from this file we can read the layer <code>lines</code>, and plot its
 first attribute by</p>
-<div class="sourceCode" id="cb293"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb293-1" title="1">o =<span class="st"> </span><span class="kw">read_sf</span>(<span class="st">&quot;data/ms.osm&quot;</span>, <span class="st">&quot;lines&quot;</span>)</a>
-<a class="sourceLine" id="cb293-2" title="2">p =<span class="st"> </span><span class="kw">read_sf</span>(<span class="st">&quot;data/ms.osm&quot;</span>, <span class="st">&quot;multipolygons&quot;</span>)</a>
-<a class="sourceLine" id="cb293-3" title="3">bb =<span class="st"> </span><span class="kw">st_bbox</span>(<span class="kw">c</span>(<span class="dt">xmin=</span><span class="fl">7.595</span>, <span class="dt">ymin =</span> <span class="fl">51.969</span>, <span class="dt">xmax =</span> <span class="fl">7.598</span>, <span class="dt">ymax =</span> <span class="fl">51.970</span>),</a>
-<a class="sourceLine" id="cb293-4" title="4">    <span class="dt">crs =</span> <span class="dv">4326</span>)</a>
-<a class="sourceLine" id="cb293-5" title="5"><span class="kw">plot</span>(<span class="kw">st_as_sfc</span>(bb), <span class="dt">axes =</span> <span class="ot">TRUE</span>, <span class="dt">lwd =</span> <span class="dv">2</span>, <span class="dt">lty =</span> <span class="dv">2</span>, <span class="dt">cex.axis =</span> <span class="fl">.5</span>)</a>
-<a class="sourceLine" id="cb293-6" title="6"><span class="kw">plot</span>(o[,<span class="dv">1</span>], <span class="dt">lwd =</span> <span class="dv">2</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb293-7" title="7"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(p), <span class="dt">border =</span> <span class="ot">NA</span>, <span class="dt">col =</span> <span class="st">&#39;#88888888&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb291"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb291-1" title="1">o =<span class="st"> </span><span class="kw">read_sf</span>(<span class="st">&quot;data/ms.osm&quot;</span>, <span class="st">&quot;lines&quot;</span>)</a>
+<a class="sourceLine" id="cb291-2" title="2">p =<span class="st"> </span><span class="kw">read_sf</span>(<span class="st">&quot;data/ms.osm&quot;</span>, <span class="st">&quot;multipolygons&quot;</span>)</a>
+<a class="sourceLine" id="cb291-3" title="3">bb =<span class="st"> </span><span class="kw">st_bbox</span>(<span class="kw">c</span>(<span class="dt">xmin=</span><span class="fl">7.595</span>, <span class="dt">ymin =</span> <span class="fl">51.969</span>, <span class="dt">xmax =</span> <span class="fl">7.598</span>, <span class="dt">ymax =</span> <span class="fl">51.970</span>),</a>
+<a class="sourceLine" id="cb291-4" title="4">    <span class="dt">crs =</span> <span class="dv">4326</span>)</a>
+<a class="sourceLine" id="cb291-5" title="5"><span class="kw">plot</span>(<span class="kw">st_as_sfc</span>(bb), <span class="dt">axes =</span> <span class="ot">TRUE</span>, <span class="dt">lwd =</span> <span class="dv">2</span>, <span class="dt">lty =</span> <span class="dv">2</span>, <span class="dt">cex.axis =</span> <span class="fl">.5</span>)</a>
+<a class="sourceLine" id="cb291-6" title="6"><span class="kw">plot</span>(o[,<span class="dv">1</span>], <span class="dt">lwd =</span> <span class="dv">2</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb291-7" title="7"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(p), <span class="dt">border =</span> <span class="ot">NA</span>, <span class="dt">col =</span> <span class="st">&#39;#88888888&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:overpass"></span>
 <img src="sds_files/figure-html/overpass-1.png" alt="OpenStreetMap vector data" width="672" />
 <p class="caption">
@@ -1282,17 +1286,17 @@ devices will create a plot at target density.</p>
 provides <code>stars_proxy</code> objects. To demonstrate its use, we will
 use the <code>starsdata</code> package, an R data package with larger datasets
 (around 1 Gb total). It can be installed by</p>
-<div class="sourceCode" id="cb294"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb294-1" title="1"><span class="kw">install.packages</span>(<span class="st">&quot;starsdata&quot;</span>, <span class="dt">repos =</span> <span class="st">&quot;http://pebesma.staff.ifgi.de&quot;</span>, </a>
-<a class="sourceLine" id="cb294-2" title="2">    <span class="dt">type =</span> <span class="st">&quot;source&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb292"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb292-1" title="1"><span class="kw">install.packages</span>(<span class="st">&quot;starsdata&quot;</span>, <span class="dt">repos =</span> <span class="st">&quot;http://pebesma.staff.ifgi.de&quot;</span>, </a>
+<a class="sourceLine" id="cb292-2" title="2">    <span class="dt">type =</span> <span class="st">&quot;source&quot;</span>)</a></code></pre></div>
 <p>We can “load” a Sentinel-2 image from it by</p>
-<div class="sourceCode" id="cb295"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb295-1" title="1">f =<span class="st"> &quot;sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip&quot;</span></a>
-<a class="sourceLine" id="cb295-2" title="2">granule =<span class="st"> </span><span class="kw">system.file</span>(<span class="dt">file =</span> f, <span class="dt">package =</span> <span class="st">&quot;starsdata&quot;</span>)</a>
-<a class="sourceLine" id="cb295-3" title="3"><span class="kw">file.size</span>(granule)</a></code></pre></div>
+<div class="sourceCode" id="cb293"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb293-1" title="1">f =<span class="st"> &quot;sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip&quot;</span></a>
+<a class="sourceLine" id="cb293-2" title="2">granule =<span class="st"> </span><span class="kw">system.file</span>(<span class="dt">file =</span> f, <span class="dt">package =</span> <span class="st">&quot;starsdata&quot;</span>)</a>
+<a class="sourceLine" id="cb293-3" title="3"><span class="kw">file.size</span>(granule)</a></code></pre></div>
 <pre><code># [1] 7.69e+08</code></pre>
-<div class="sourceCode" id="cb297"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb297-1" title="1">base_name =<span class="st"> </span><span class="kw">strsplit</span>(<span class="kw">basename</span>(granule), <span class="st">&quot;.zip&quot;</span>)[[<span class="dv">1</span>]]</a>
-<a class="sourceLine" id="cb297-2" title="2">s2 =<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;SENTINEL2_L1C:/vsizip/&quot;</span>, granule, <span class="st">&quot;/&quot;</span>, base_name, </a>
-<a class="sourceLine" id="cb297-3" title="3">    <span class="st">&quot;.SAFE/MTD_MSIL1C.xml:10m:EPSG_32632&quot;</span>)</a>
-<a class="sourceLine" id="cb297-4" title="4">(<span class="dt">p =</span> <span class="kw">read_stars</span>(s2, <span class="dt">proxy =</span> <span class="ot">TRUE</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb295"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb295-1" title="1">base_name =<span class="st"> </span><span class="kw">strsplit</span>(<span class="kw">basename</span>(granule), <span class="st">&quot;.zip&quot;</span>)[[<span class="dv">1</span>]]</a>
+<a class="sourceLine" id="cb295-2" title="2">s2 =<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;SENTINEL2_L1C:/vsizip/&quot;</span>, granule, <span class="st">&quot;/&quot;</span>, base_name, </a>
+<a class="sourceLine" id="cb295-3" title="3">    <span class="st">&quot;.SAFE/MTD_MSIL1C.xml:10m:EPSG_32632&quot;</span>)</a>
+<a class="sourceLine" id="cb295-4" title="4">(<span class="dt">p =</span> <span class="kw">read_stars</span>(s2, <span class="dt">proxy =</span> <span class="ot">TRUE</span>))</a></code></pre></div>
 <pre><code># stars_proxy object with 1 attribute in 1 file(s):
 # $`MTD_MSIL1C.xml:10m:EPSG_32632`
 # [1] &quot;[...]/MTD_MSIL1C.xml:10m:EPSG_32632&quot;
@@ -1302,7 +1306,7 @@ use the <code>starsdata</code> package, an R data package with larger datasets
 # x       1 10980  3e+05    10 WGS 84 / UTM z...    NA      NULL [x]
 # y       1 10980  6e+06   -10 WGS 84 / UTM z...    NA      NULL [y]
 # band    1     4     NA    NA                NA    NA B4,...,B8</code></pre>
-<div class="sourceCode" id="cb299"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb299-1" title="1"><span class="kw">object.size</span>(p)</a></code></pre></div>
+<div class="sourceCode" id="cb297"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb297-1" title="1"><span class="kw">object.size</span>(p)</a></code></pre></div>
 <pre><code># 11160 bytes</code></pre>
 <p>and we see that this does not actually load <em>any</em> of the pixel
 values, but keeps the reference to the dataset and fills the
@@ -1310,7 +1314,7 @@ dimensions table. (The convoluted <code>s2</code> name is needed to point
 GDAL to the right file inside the <code>.zip</code> file containing 115 files
 in total).</p>
 <p>The idea of a proxy object is that we can build expressions like</p>
-<div class="sourceCode" id="cb301"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb301-1" title="1">p2 =<span class="st"> </span>p <span class="op">*</span><span class="st"> </span><span class="dv">2</span></a></code></pre></div>
+<div class="sourceCode" id="cb299"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb299-1" title="1">p2 =<span class="st"> </span>p <span class="op">*</span><span class="st"> </span><span class="dv">2</span></a></code></pre></div>
 <p>but that the computations for this are postponed. Only when we
 really need the data, e.g. because we want to plot it, is <code>p * 2</code> evaluated. We need data when either</p>
 <ul>
@@ -1328,7 +1332,7 @@ pixels available, and</li>
 <p>Downsampling and chunking is implemented for spatially dense images,
 not e.g. for dense time series, or other dense dimensions.</p>
 <p>As an example, the output of <code>plot(p)</code>, shown in figure <a href="large.html#fig:plotp">8.2</a></p>
-<div class="sourceCode" id="cb302"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb302-1" title="1"><span class="kw">plot</span>(p)</a></code></pre></div>
+<div class="sourceCode" id="cb300"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb300-1" title="1"><span class="kw">plot</span>(p)</a></code></pre></div>
 <pre><code># downsample set to c(19)</code></pre>
 <div class="figure" style="text-align: center"><span id="fig:plotp"></span>
 <img src="sds_files/figure-html/plotp-1.png" alt="Plot of downsampled 10 m bands of a Sentinel-2 scene" width="672" />
@@ -1339,7 +1343,7 @@ Figure 8.2: Plot of downsampled 10 m bands of a Sentinel-2 scene
 <p>only fetches the pixels that can be seen on the plot device, rather
 than the 10980 x 10980 pixels available in each band. The downsampling
 ratio taken is</p>
-<div class="sourceCode" id="cb304"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb304-1" title="1">(<span class="dt">ds =</span> <span class="kw">floor</span>(<span class="kw">sqrt</span>(<span class="kw">prod</span>(<span class="kw">dim</span>(p)) <span class="op">/</span><span class="st"> </span><span class="kw">prod</span>(<span class="kw">dev.size</span>(<span class="st">&quot;px&quot;</span>)))))</a></code></pre></div>
+<div class="sourceCode" id="cb302"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb302-1" title="1">(<span class="dt">ds =</span> <span class="kw">floor</span>(<span class="kw">sqrt</span>(<span class="kw">prod</span>(<span class="kw">dim</span>(p)) <span class="op">/</span><span class="st"> </span><span class="kw">prod</span>(<span class="kw">dev.size</span>(<span class="st">&quot;px&quot;</span>)))))</a></code></pre></div>
 <pre><code># [1] 19</code></pre>
 <p>meaning that for every 19 <span class="math inline">\(\times\)</span> 19 sub-image in the
 original image, only one pixel is read, and plotted. This value is
@@ -1349,7 +1353,7 @@ the key on the plotting device.</p>
 <div id="operations-on-proxy-objects" class="section level3">
 <h3><span class="header-section-number">8.2.2</span> Operations on proxy objects</h3>
 <p>A few dedicated methods are available for <code>stars_proxy</code> objects:</p>
-<div class="sourceCode" id="cb306"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb306-1" title="1"><span class="kw">methods</span>(<span class="dt">class =</span> <span class="st">&quot;stars_proxy&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb304"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb304-1" title="1"><span class="kw">methods</span>(<span class="dt">class =</span> <span class="st">&quot;stars_proxy&quot;</span>)</a></code></pre></div>
 <pre><code>#  [1] [              [[&lt;-           [&lt;-            adrop          aggregate     
 #  [6] aperm          as.data.frame  c              coerce         dim           
 # [11] droplevels     filter         initialize     is.na          mapView       

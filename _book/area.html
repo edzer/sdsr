@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2021-05-11" />
+<meta name="date" content="2021-05-24" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -62,6 +62,10 @@
 <script src="libs/leaflet-binding-2.0.4.1/leaflet.js"></script>
 <script src="libs/leaflet-providers-1.9.0/leaflet-providers_1.9.0.js"></script>
 <script src="libs/leaflet-providers-plugin-2.0.4.1/leaflet-providers-plugin.js"></script>
+<script src="libs/FlatGeoBuf-3.3.3/fgb.js"></script>
+<script src="libs/FlatGeoBuf-3.3.3/flatgeobuf-geojson.min.js"></script>
+<script src="libs/chromajs-2.1.0/chroma.min.js"></script>
+<link id="_-BIR74-1-attachment" rel="attachment" href="libs/_-BIR74-0.0.1/_-BIR74_layer.fgb"/>
 <link href="libs/HomeButton-0.0.1/home-button.css" rel="stylesheet" />
 <script src="libs/HomeButton-0.0.1/home-button.js"></script>
 <script src="libs/HomeButton-0.0.1/easy-button-src.min.js"></script>
@@ -1042,9 +1046,9 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <p>The <strong>spdep</strong> package provides an <code>nb</code> class for neighbours, a list of length equal to the number of observations, with integer vector components. No-neighbours are encoded as an integer vector with a single element <code>0L</code>, and observations with neighbours as sorted integer vectors containing values in <code>1L:n</code> pointing to the neighbouring observations. This is a typical row-oriented sparse representation of neighbours. <strong>spdep</strong> provides many ways of constructing <code>nb</code> objects, and the representation and construction functions are widely used in other packages.</p>
 <p><strong>spdep</strong> builds on the <code>nb</code> representation (undirected or directed graphs) with the <code>listw</code> object, a list with three components, an <code>nb</code> object, a matching list of numerical weights, and a single element character vector containing the single letter name of the way in which the weights were calculated. The most frequently used approach in the social sciences is calculating weights by row standardization, so that all the non-zero weights for one observation will be the inverse of the cardinality of its set of neighbours (<code>1/card(nb[[i]])</code>).</p>
 <p>We will be using election data from the 2015 Polish Presidential election in this chapter, with 2495 municipalities and Warsaw boroughs (see Figure <a href="area.html#fig:plotpolpres15">13.1</a> for a <strong>tmap</strong> map (section <a href="plotting.html#tmap">9.5</a>) of the municipality types) , and complete count data from polling stations aggregated to these areal units. The data are an <strong>sf</strong> <code>sf</code> object:</p>
-<div class="sourceCode" id="cb401"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb401-1" title="1"><span class="kw">library</span>(sf)</a></code></pre></div>
-<div class="sourceCode" id="cb402"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb402-1" title="1"><span class="kw">data</span>(pol_pres15, <span class="dt">package=</span><span class="st">&quot;spDataLarge&quot;</span>)</a>
-<a class="sourceLine" id="cb402-2" title="2"><span class="kw">head</span>(pol_pres15[, <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">6</span>)])</a></code></pre></div>
+<div class="sourceCode" id="cb400"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb400-1" title="1"><span class="kw">library</span>(sf)</a></code></pre></div>
+<div class="sourceCode" id="cb401"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb401-1" title="1"><span class="kw">data</span>(pol_pres15, <span class="dt">package=</span><span class="st">&quot;spDataLarge&quot;</span>)</a>
+<a class="sourceLine" id="cb401-2" title="2"><span class="kw">head</span>(pol_pres15[, <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">6</span>)])</a></code></pre></div>
 <pre><code># Simple feature collection with 6 features and 3 fields
 # Geometry type: MULTIPOLYGON
 # Dimension:     XY
@@ -1058,8 +1062,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 # 5 020105          OSIECZNICA       Rural MULTIPOLYGON (((263424 4060...
 # 6 020106 WARTA BOLESŁAWIECKA       Rural MULTIPOLYGON (((267031 3870...</code></pre>
 
-<div class="sourceCode" id="cb404"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb404-1" title="1"><span class="kw">library</span>(tmap)</a>
-<a class="sourceLine" id="cb404-2" title="2"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;types&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb403"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb403-1" title="1"><span class="kw">library</span>(tmap)</a>
+<a class="sourceLine" id="cb403-2" title="2"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;types&quot;</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:plotpolpres15"></span>
 <img src="sds_files/figure-html/plotpolpres15-1.png" alt="Polish municipality types 2015" width="100%" />
 <p class="caption">
@@ -1067,142 +1071,142 @@ Figure 13.1: Polish municipality types 2015
 </p>
 </div>
 <p>Between early 2002 and April 2019, <strong>spdep</strong> contained functions for constructing and handling neighbour and spatial weights objects, tests for spatial autocorrelation, and model fitting functions. The latter have been split out into <strong>spatialreg</strong>, and will be discussed in the next chapter. <strong>spdep</strong> now accommodates objects represented using <strong>sf</strong> classes and <strong>sp</strong> classes directly.</p>
-<div class="sourceCode" id="cb405"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb405-1" title="1"><span class="kw">library</span>(spdep)</a></code></pre></div>
+<div class="sourceCode" id="cb404"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb404-1" title="1"><span class="kw">library</span>(spdep)</a></code></pre></div>
 <pre><code># Loading required package: sp</code></pre>
 <pre><code># Loading required package: spData</code></pre>
 <div id="contiguous-neighbours" class="section level3">
 <h3><span class="header-section-number">13.2.1</span> Contiguous neighbours</h3>
 <p>The <code>poly2nb()</code> function in <strong>spdep</strong> takes the boundary points making up the polygon boundaries in the object passed as the <code>pl=</code> argument, and for each observation checks whether at least one (<code>queen=TRUE</code>, default), or at least two (rook, <code>queen=FALSE</code>) points are within <code>snap=</code> distance units of each other. The distances are planar in the raw coordinate units, ignoring geographical projections. Once the required number of sufficiently close points is found, the search is stopped.</p>
-<div class="sourceCode" id="cb408"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb408-1" title="1"><span class="kw">args</span>(poly2nb)</a></code></pre></div>
+<div class="sourceCode" id="cb407"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb407-1" title="1"><span class="kw">args</span>(poly2nb)</a></code></pre></div>
 <pre><code># function (pl, row.names = NULL, snap = sqrt(.Machine$double.eps), 
 #     queen = TRUE, useC = TRUE, foundInBox = NULL, small_n = 500) 
 # NULL</code></pre>
 <p>Two other arguments are also worth discussing, <code>foundInBox=</code> and <code>small_n=</code>. The first, <code>foundInBox=</code>, accepted the output of the <strong>rgeos</strong> <code>gUnarySTRtreeQuery()</code> function to list candidate neighbours, that is polygons whose bounding boxes intersect the bounding boxes of other polygons. From <strong>spdep</strong> 1.1-7, the GEOS interface of the <strong>sf</strong> package is used within <code>poly2nb()</code> if <code>foundInBox=NULL</code> and the number of observations is greater than <code>small_n=</code>, to find the candidate neighbours and populate <code>foundInBox</code> internally. In this case, this use of spatial indexing (STRtree queries) in GEOS through <strong>sf</strong> is the default, as the number of observations is greater than <code>small_n</code>:</p>
-<div class="sourceCode" id="cb410"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb410-1" title="1"><span class="kw">system.time</span>(nb_q &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb409"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb409-1" title="1"><span class="kw">system.time</span>(nb_q &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.847   0.001   0.855</code></pre>
+#   0.895   0.000   0.896</code></pre>
 <p>The print method shows the summary structure of the neighbour object:</p>
-<div class="sourceCode" id="cb412"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb412-1" title="1">nb_q</a></code></pre></div>
+<div class="sourceCode" id="cb411"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb411-1" title="1">nb_q</a></code></pre></div>
 <pre><code># Neighbour list object:
 # Number of regions: 2495 
 # Number of nonzero links: 14242 
 # Percentage nonzero weights: 0.229 
 # Average number of links: 5.71</code></pre>
 <p>Raising <code>small_n=</code> above the observation count, we see that the processing time is increased a little; the benefits of indexing are more apparent with larger data sets.</p>
-<div class="sourceCode" id="cb414"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb414-1" title="1"><span class="kw">system.time</span>(nb_q_legacy &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>, <span class="dt">small_n=</span><span class="dv">2500</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb413"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb413-1" title="1"><span class="kw">system.time</span>(nb_q_legacy &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>, <span class="dt">small_n=</span><span class="dv">2500</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   1.126   0.001   1.135</code></pre>
+#    1.03    0.00    1.03</code></pre>
 <p>The output objects are identical:</p>
-<div class="sourceCode" id="cb416"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb416-1" title="1"><span class="kw">all.equal</span>(nb_q, nb_q_legacy, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb415"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb415-1" title="1"><span class="kw">all.equal</span>(nb_q, nb_q_legacy, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
 <pre><code># [1] TRUE</code></pre>
 <p>Much of the work involved in finding contiguous neighbours is spent on finding candidate neighbours with intersecting bounding boxes. Note that <code>nb</code> objects record both symmetric neighbour relationships, because these objects admit asymmetric relationships as well, but these duplications are not needed for object construction.</p>
 <p>Most of the <strong>spdep</strong> functions for constructing neighbour objects take a <code>row.names=</code> argument, the value of which is stored as a <code>region.id</code> attribute. If not given, the values are taken from <code>row.names()</code> of the first argument. These can be used to check that the neighbours object is in the same order as data. If <code>nb</code> objects are subsetted, the indices change to continue to be within <code>1:length(subsetted_nb)</code>, but the <code>region.id</code> attribute values point back to the object from which it was constructed.</p>
 <p>We can also check that this undirected graph is connected using the <code>n.comp.nb()</code> function; while some model estimation techniques do not support graphs that are not connected, it is helpful to be aware of possible problems <span class="citation">(Freni-Sterrantino, Ventrucci, and Rue <a href="#ref-FRENISTERRANTINO201825">2018</a>)</span>:</p>
-<div class="sourceCode" id="cb418"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb418-1" title="1"><span class="kw">n.comp.nb</span>(nb_q)<span class="op">$</span>nc</a></code></pre></div>
+<div class="sourceCode" id="cb417"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb417-1" title="1"><span class="kw">n.comp.nb</span>(nb_q)<span class="op">$</span>nc</a></code></pre></div>
 <pre><code># [1] 1</code></pre>
 <p>Neighbour objects may be exported and imported in GAL format for exchange with other software, using <code>write.nb.gal()</code> and <code>read.gal()</code>:</p>
-<div class="sourceCode" id="cb420"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb420-1" title="1">tf &lt;-<span class="st"> </span><span class="kw">tempfile</span>(<span class="dt">fileext=</span><span class="st">&quot;.gal&quot;</span>)</a>
-<a class="sourceLine" id="cb420-2" title="2"><span class="kw">write.nb.gal</span>(nb_q, tf)</a></code></pre></div>
+<div class="sourceCode" id="cb419"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb419-1" title="1">tf &lt;-<span class="st"> </span><span class="kw">tempfile</span>(<span class="dt">fileext=</span><span class="st">&quot;.gal&quot;</span>)</a>
+<a class="sourceLine" id="cb419-2" title="2"><span class="kw">write.nb.gal</span>(nb_q, tf)</a></code></pre></div>
 </div>
 <div id="graph-based-neighbours" class="section level3">
 <h3><span class="header-section-number">13.2.2</span> Graph-based neighbours</h3>
 <p>If areal units are an appropriate representation, but only points have been observed, contiguity relationships may be approximated using graph-based neighbours. In this case, the imputed boundaries tesselate the plane such that points closer to one observation than any other fall within its polygon. The simplest form is by using triangulation, here using the <code>deldir()</code> function in the <strong>deldir</strong> package. Because the function returns from and to identifiers, it is easy to construct a long representation of a <code>listw</code> object, as used in the S-Plus SpatialStats module and the <code>sn2listw()</code> function internally to construct an <code>nb</code> object (ragged wide representation). Alternatives often fail to return sufficient information to permit the neighbours to be identified.</p>
 <p>The <code>soi.graph()</code> function takes triangulated neighbours and prunes off neighbour relationships represented by unusually long edges, especially around the convex hull, but may render the output object asymmetric. Other graph-based approaches include <code>relativeneigh()</code> and <code>gabrielneigh()</code>.</p>
 <p>The output of these functions is then converted to the <code>nb</code> representation using <code>graph2nb()</code>, with the possible use of the <code>sym=</code> argument to coerce to symmetry. We take the centroids of the largest component polygon for each observation as the point representation; population-weighted centroids might have been a better choice if they were available:</p>
-<div class="sourceCode" id="cb421"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb421-1" title="1">coords &lt;-<span class="st"> </span><span class="kw">st_centroid</span>(<span class="kw">st_geometry</span>(pol_pres15), <span class="dt">of_largest_polygon=</span><span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb421-2" title="2"><span class="kw">suppressMessages</span>(nb_tri &lt;-<span class="st"> </span><span class="kw">tri2nb</span>(coords))</a>
-<a class="sourceLine" id="cb421-3" title="3">nb_tri</a></code></pre></div>
+<div class="sourceCode" id="cb420"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb420-1" title="1">coords &lt;-<span class="st"> </span><span class="kw">st_centroid</span>(<span class="kw">st_geometry</span>(pol_pres15), <span class="dt">of_largest_polygon=</span><span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb420-2" title="2"><span class="kw">suppressMessages</span>(nb_tri &lt;-<span class="st"> </span><span class="kw">tri2nb</span>(coords))</a>
+<a class="sourceLine" id="cb420-3" title="3">nb_tri</a></code></pre></div>
 <pre><code># Neighbour list object:
 # Number of regions: 2495 
 # Number of nonzero links: 14930 
 # Percentage nonzero weights: 0.24 
 # Average number of links: 5.98</code></pre>
 <p>The average number of neighbours is similar to the Queen boundary contiguity case, but if we look at the distribution of edge lengths using <code>nbdists()</code>, we can see that although the upper quartile is about 15 km, the maximum is almost 300 km, an edge along much of one side of the convex hull. The short minimum distance is also of interest, as many centroids of urban municipalities are very close to the centroids of their surrounding rural counterparts.</p>
-<div class="sourceCode" id="cb423"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb423-1" title="1"><span class="kw">summary</span>(<span class="kw">unlist</span>(<span class="kw">nbdists</span>(nb_tri, coords)))</a></code></pre></div>
+<div class="sourceCode" id="cb422"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb422-1" title="1"><span class="kw">summary</span>(<span class="kw">unlist</span>(<span class="kw">nbdists</span>(nb_tri, coords)))</a></code></pre></div>
 <pre><code>#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #     247    9847   12151   13485   14994  296974</code></pre>
 <p>Triangulated neighbours also yield a connected graph:</p>
-<div class="sourceCode" id="cb425"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb425-1" title="1"><span class="kw">n.comp.nb</span>(nb_tri)<span class="op">$</span>nc</a></code></pre></div>
+<div class="sourceCode" id="cb424"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb424-1" title="1"><span class="kw">n.comp.nb</span>(nb_tri)<span class="op">$</span>nc</a></code></pre></div>
 <pre><code># [1] 1</code></pre>
 <p>The sphere of influence graph trims a neighbour object such as <code>nb_tri</code> to remove edges that seem long in relation to typical neighbours <span class="citation">(Avis and Horton <a href="#ref-avis+horton:1985">1985</a>)</span>.</p>
-<div class="sourceCode" id="cb427"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb427-1" title="1">nb_soi &lt;-<span class="st"> </span><span class="kw">graph2nb</span>(<span class="kw">soi.graph</span>(nb_tri, coords))</a>
-<a class="sourceLine" id="cb427-2" title="2">nb_soi</a></code></pre></div>
+<div class="sourceCode" id="cb426"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb426-1" title="1">nb_soi &lt;-<span class="st"> </span><span class="kw">graph2nb</span>(<span class="kw">soi.graph</span>(nb_tri, coords))</a>
+<a class="sourceLine" id="cb426-2" title="2">nb_soi</a></code></pre></div>
 <pre><code># Neighbour list object:
 # Number of regions: 2495 
 # Number of nonzero links: 12792 
 # Percentage nonzero weights: 0.205 
 # Average number of links: 5.13</code></pre>
 <p>Unpicking the triangulated neighbours does however remove the connected character of the underlying graph:</p>
-<div class="sourceCode" id="cb429"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb429-1" title="1">n_comp &lt;-<span class="st"> </span><span class="kw">n.comp.nb</span>(nb_soi)</a>
-<a class="sourceLine" id="cb429-2" title="2">n_comp<span class="op">$</span>nc</a></code></pre></div>
+<div class="sourceCode" id="cb428"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb428-1" title="1">n_comp &lt;-<span class="st"> </span><span class="kw">n.comp.nb</span>(nb_soi)</a>
+<a class="sourceLine" id="cb428-2" title="2">n_comp<span class="op">$</span>nc</a></code></pre></div>
 <pre><code># [1] 16</code></pre>
 <p>The SoI algorithm has stripped out longer edges leading to urban and rural municipality pairs where their centroids are very close to each other because the rural ones completely surround the urban, giving 15 pairs of neighbours unconnected to the main graph:</p>
-<div class="sourceCode" id="cb431"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb431-1" title="1"><span class="kw">table</span>(n_comp<span class="op">$</span>comp.id)</a></code></pre></div>
+<div class="sourceCode" id="cb430"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb430-1" title="1"><span class="kw">table</span>(n_comp<span class="op">$</span>comp.id)</a></code></pre></div>
 <pre><code># 
 #    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16 
 # 2465    2    2    2    2    2    2    2    2    2    2    2    2    2    2    2</code></pre>
 <p>The largest length edges along the convex hull have been removed, but “holes” have appeared where the unconnected pairs of neighbours have appeared. The differences between <code>nb_tri</code> and <code>nb_soi</code> are shown in orange in Figure <a href="area.html#fig:plotnbdiff">13.2</a>.</p>
 
-<div class="sourceCode" id="cb433"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb433-1" title="1">opar &lt;-<span class="st"> </span><span class="kw">par</span>(<span class="dt">mar=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>)<span class="op">+</span><span class="fl">0.5</span>)</a>
-<a class="sourceLine" id="cb433-2" title="2"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(pol_pres15), <span class="dt">border=</span><span class="st">&quot;grey&quot;</span>, <span class="dt">lwd=</span><span class="fl">0.5</span>)</a>
-<a class="sourceLine" id="cb433-3" title="3"><span class="kw">plot</span>(nb_soi, <span class="dt">coords=</span><span class="kw">st_coordinates</span>(coords), <span class="dt">add=</span><span class="ot">TRUE</span>, <span class="dt">points=</span><span class="ot">FALSE</span>, <span class="dt">lwd=</span><span class="fl">0.5</span>)</a>
-<a class="sourceLine" id="cb433-4" title="4"><span class="kw">plot</span>(<span class="kw">diffnb</span>(nb_tri, nb_soi), <span class="dt">coords=</span><span class="kw">st_coordinates</span>(coords), <span class="dt">col=</span><span class="st">&quot;orange&quot;</span>,</a>
-<a class="sourceLine" id="cb433-5" title="5">     <span class="dt">add=</span><span class="ot">TRUE</span>, <span class="dt">points=</span><span class="ot">FALSE</span>, <span class="dt">lwd=</span><span class="fl">0.5</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb432"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb432-1" title="1">opar &lt;-<span class="st"> </span><span class="kw">par</span>(<span class="dt">mar=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>)<span class="op">+</span><span class="fl">0.5</span>)</a>
+<a class="sourceLine" id="cb432-2" title="2"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(pol_pres15), <span class="dt">border=</span><span class="st">&quot;grey&quot;</span>, <span class="dt">lwd=</span><span class="fl">0.5</span>)</a>
+<a class="sourceLine" id="cb432-3" title="3"><span class="kw">plot</span>(nb_soi, <span class="dt">coords=</span><span class="kw">st_coordinates</span>(coords), <span class="dt">add=</span><span class="ot">TRUE</span>, <span class="dt">points=</span><span class="ot">FALSE</span>, <span class="dt">lwd=</span><span class="fl">0.5</span>)</a>
+<a class="sourceLine" id="cb432-4" title="4"><span class="kw">plot</span>(<span class="kw">diffnb</span>(nb_tri, nb_soi), <span class="dt">coords=</span><span class="kw">st_coordinates</span>(coords), <span class="dt">col=</span><span class="st">&quot;orange&quot;</span>,</a>
+<a class="sourceLine" id="cb432-5" title="5">     <span class="dt">add=</span><span class="ot">TRUE</span>, <span class="dt">points=</span><span class="ot">FALSE</span>, <span class="dt">lwd=</span><span class="fl">0.5</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:plotnbdiff"></span>
 <img src="sds_files/figure-html/plotnbdiff-1.png" alt="Triangulated (orange + black) and sphere of influence neighbours (black)" width="100%" />
 <p class="caption">
 Figure 13.2: Triangulated (orange + black) and sphere of influence neighbours (black)
 </p>
 </div>
-<div class="sourceCode" id="cb434"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb434-1" title="1"><span class="kw">par</span>(opar)</a></code></pre></div>
+<div class="sourceCode" id="cb433"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb433-1" title="1"><span class="kw">par</span>(opar)</a></code></pre></div>
 </div>
 <div id="distance-based-neighbours" class="section level3">
 <h3><span class="header-section-number">13.2.3</span> Distance-based neighbours</h3>
 <p>Distance-based neighbours can be constructed using <code>dnearneigh()</code>, with a distance band with lower <code>d1=</code> and upper <code>d2=</code> bounds controlled by the <code>bounds=</code> argument. If spherical coordinates are used and either specified in the coordinates object <code>x</code> or with <code>x</code> as a two column matrix and <code>longlat=TRUE</code>, great circle distances in km will be calculated assuming the WGS84 reference ellipsoid. From <strong>spdep</strong> 1.1-7, two arguments have been added, to use functionality in the <strong>dbscan</strong> package for finding neighbours using a kd-tree in two or three dimensions by default, and not to test the symmetry of the output neighbour object.</p>
 <p>The <code>knearneigh()</code> function for <span class="math inline">\(k\)</span>-nearest neighbours returns a <code>knn</code> object, converted to an <code>nb</code> object using <code>knn2nb()</code>. It can also use great circle distances, not least because nearest neighbours may differ when uprojected coordinates are treated as planar. <code>k=</code> should be a small number. For projected coordinates, the <strong>dbscan</strong> package is used to compute nearest neighbours more efficiently. Note that <code>nb</code> objects constructed in this way are most unlikely to be symmetric, hence <code>knn2nb()</code> has a <code>sym=</code> argument to permit the imposition of symmetry, which will mean that all units have at least <code>k=</code> neighbours, not that all units will have exactly <code>k=</code> neighbours.</p>
 <p>The <code>nbdists()</code> function returns the length of neighbour relationship edges in the units of the coordinates if the coordinates are projected, in km otherwise. In order to set the upper limit for distance bands, one may first find the maximum first nearest neighbour distance, using <code>unlist()</code> to remove the list structure of the returned object.</p>
-<div class="sourceCode" id="cb435"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb435-1" title="1">k1 &lt;-<span class="st"> </span><span class="kw">knn2nb</span>(<span class="kw">knearneigh</span>(coords))</a>
-<a class="sourceLine" id="cb435-2" title="2">k1dists &lt;-<span class="st"> </span><span class="kw">unlist</span>(<span class="kw">nbdists</span>(k1, coords))</a>
-<a class="sourceLine" id="cb435-3" title="3"><span class="kw">summary</span>(k1dists)</a></code></pre></div>
+<div class="sourceCode" id="cb434"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb434-1" title="1">k1 &lt;-<span class="st"> </span><span class="kw">knn2nb</span>(<span class="kw">knearneigh</span>(coords))</a>
+<a class="sourceLine" id="cb434-2" title="2">k1dists &lt;-<span class="st"> </span><span class="kw">unlist</span>(<span class="kw">nbdists</span>(k1, coords))</a>
+<a class="sourceLine" id="cb434-3" title="3"><span class="kw">summary</span>(k1dists)</a></code></pre></div>
 <pre><code>#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #     247    6663    8538    8275   10124   17979</code></pre>
 <p>Here the largest first nearest neighbour distance is just under 18 km, so using this as the upper threshold gives certainty that all units will have at least one neighbour:</p>
-<div class="sourceCode" id="cb437"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb437-1" title="1"><span class="kw">system.time</span>(nb_d18 &lt;-<span class="st"> </span><span class="kw">dnearneigh</span>(coords, <span class="dv">0</span>, <span class="dv">18000</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb436"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb436-1" title="1"><span class="kw">system.time</span>(nb_d18 &lt;-<span class="st"> </span><span class="kw">dnearneigh</span>(coords, <span class="dv">0</span>, <span class="dv">18000</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.182   0.001   0.190</code></pre>
-<div class="sourceCode" id="cb439"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb439-1" title="1"><span class="kw">system.time</span>(nb_d18a &lt;-<span class="st"> </span><span class="kw">dnearneigh</span>(coords, <span class="dv">0</span>, <span class="dv">18000</span>, <span class="dt">use_kd_tree=</span><span class="ot">FALSE</span>))</a></code></pre></div>
+#   0.178   0.000   0.179</code></pre>
+<div class="sourceCode" id="cb438"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb438-1" title="1"><span class="kw">system.time</span>(nb_d18a &lt;-<span class="st"> </span><span class="kw">dnearneigh</span>(coords, <span class="dv">0</span>, <span class="dv">18000</span>, <span class="dt">use_kd_tree=</span><span class="ot">FALSE</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.171   0.000   0.171</code></pre>
-<div class="sourceCode" id="cb441"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb441-1" title="1"><span class="kw">all.equal</span>(nb_d18, nb_d18a, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
+#   0.152   0.000   0.152</code></pre>
+<div class="sourceCode" id="cb440"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb440-1" title="1"><span class="kw">all.equal</span>(nb_d18, nb_d18a, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
 <pre><code># [1] TRUE</code></pre>
-<div class="sourceCode" id="cb443"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb443-1" title="1">nb_d18</a></code></pre></div>
+<div class="sourceCode" id="cb442"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb442-1" title="1">nb_d18</a></code></pre></div>
 <pre><code># Neighbour list object:
 # Number of regions: 2495 
 # Number of nonzero links: 20358 
 # Percentage nonzero weights: 0.327 
 # Average number of links: 8.16</code></pre>
 <p>However, even though there are no no-neighbour observations (their presence is reported by the print method for <code>nb</code> objects), the graph is not connected, as a pair of observations are each others’ only neighbours.</p>
-<div class="sourceCode" id="cb445"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb445-1" title="1">n_comp &lt;-<span class="st"> </span><span class="kw">n.comp.nb</span>(nb_d18)</a>
-<a class="sourceLine" id="cb445-2" title="2">n_comp<span class="op">$</span>nc</a></code></pre></div>
+<div class="sourceCode" id="cb444"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb444-1" title="1">n_comp &lt;-<span class="st"> </span><span class="kw">n.comp.nb</span>(nb_d18)</a>
+<a class="sourceLine" id="cb444-2" title="2">n_comp<span class="op">$</span>nc</a></code></pre></div>
 <pre><code># [1] 2</code></pre>
-<div class="sourceCode" id="cb447"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb447-1" title="1"><span class="kw">table</span>(n_comp<span class="op">$</span>comp.id)</a></code></pre></div>
+<div class="sourceCode" id="cb446"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb446-1" title="1"><span class="kw">table</span>(n_comp<span class="op">$</span>comp.id)</a></code></pre></div>
 <pre><code># 
 #    1    2 
 # 2493    2</code></pre>
 <p>Adding 300 m to the threshold gives us a neighbour object with no no-neighbour units, and all units can be reached from all others across the graph.</p>
-<div class="sourceCode" id="cb449"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb449-1" title="1">nb_d183 &lt;-<span class="st"> </span><span class="kw">dnearneigh</span>(coords, <span class="dv">0</span>, <span class="dv">18300</span>)</a>
-<a class="sourceLine" id="cb449-2" title="2">nb_d183</a></code></pre></div>
+<div class="sourceCode" id="cb448"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb448-1" title="1">nb_d183 &lt;-<span class="st"> </span><span class="kw">dnearneigh</span>(coords, <span class="dv">0</span>, <span class="dv">18300</span>)</a>
+<a class="sourceLine" id="cb448-2" title="2">nb_d183</a></code></pre></div>
 <pre><code># Neighbour list object:
 # Number of regions: 2495 
 # Number of nonzero links: 21086 
 # Percentage nonzero weights: 0.339 
 # Average number of links: 8.45</code></pre>
-<div class="sourceCode" id="cb451"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb451-1" title="1">n_comp &lt;-<span class="st"> </span><span class="kw">n.comp.nb</span>(nb_d183)</a>
-<a class="sourceLine" id="cb451-2" title="2">n_comp<span class="op">$</span>nc</a></code></pre></div>
+<div class="sourceCode" id="cb450"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb450-1" title="1">n_comp &lt;-<span class="st"> </span><span class="kw">n.comp.nb</span>(nb_d183)</a>
+<a class="sourceLine" id="cb450-2" title="2">n_comp<span class="op">$</span>nc</a></code></pre></div>
 <pre><code># [1] 1</code></pre>
 <p>One characteristic of distance-based neighbours is that more densely settled areas, with units which are smaller in terms of area (Warsaw boroughs are much smaller on average, but have almost 30 neighbours). Having many neighbours smooths the neighbour relationship across more neighbours. For use later, we also construct a neighbour object with no-neighbour units, using a threshold of 16 km:</p>
-<div class="sourceCode" id="cb453"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb453-1" title="1">nb_d16 &lt;-<span class="st"> </span><span class="kw">dnearneigh</span>(coords, <span class="dv">0</span>, <span class="dv">16000</span>)</a>
-<a class="sourceLine" id="cb453-2" title="2">nb_d16</a></code></pre></div>
+<div class="sourceCode" id="cb452"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb452-1" title="1">nb_d16 &lt;-<span class="st"> </span><span class="kw">dnearneigh</span>(coords, <span class="dv">0</span>, <span class="dv">16000</span>)</a>
+<a class="sourceLine" id="cb452-2" title="2">nb_d16</a></code></pre></div>
 <pre><code># Neighbour list object:
 # Number of regions: 2495 
 # Number of nonzero links: 15850 
@@ -1211,58 +1215,58 @@ Figure 13.2: Triangulated (orange + black) and sphere of influence neighbours (b
 # 7 regions with no links:
 # 569 1371 1522 2374 2385 2473 2474</code></pre>
 <p>It is possible to control the numbers of neighbours directly using <span class="math inline">\(k\)</span>-nearest neighbours, either accepting asymmetric neighbours or imposing symmetry:</p>
-<div class="sourceCode" id="cb455"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb455-1" title="1">knn_k6 &lt;-<span class="st"> </span><span class="kw">knearneigh</span>(coords, <span class="dt">k=</span><span class="dv">6</span>)</a>
-<a class="sourceLine" id="cb455-2" title="2"><span class="kw">knn2nb</span>(knn_k6)</a></code></pre></div>
+<div class="sourceCode" id="cb454"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb454-1" title="1">knn_k6 &lt;-<span class="st"> </span><span class="kw">knearneigh</span>(coords, <span class="dt">k=</span><span class="dv">6</span>)</a>
+<a class="sourceLine" id="cb454-2" title="2"><span class="kw">knn2nb</span>(knn_k6)</a></code></pre></div>
 <pre><code># Neighbour list object:
 # Number of regions: 2495 
 # Number of nonzero links: 14970 
 # Percentage nonzero weights: 0.24 
 # Average number of links: 6 
 # Non-symmetric neighbours list</code></pre>
-<div class="sourceCode" id="cb457"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb457-1" title="1">nb_k6s &lt;-<span class="st"> </span><span class="kw">knn2nb</span>(knn_k6, <span class="dt">sym=</span><span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb457-2" title="2">nb_k6s</a></code></pre></div>
+<div class="sourceCode" id="cb456"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb456-1" title="1">nb_k6s &lt;-<span class="st"> </span><span class="kw">knn2nb</span>(knn_k6, <span class="dt">sym=</span><span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb456-2" title="2">nb_k6s</a></code></pre></div>
 <pre><code># Neighbour list object:
 # Number of regions: 2495 
 # Number of nonzero links: 16810 
 # Percentage nonzero weights: 0.27 
 # Average number of links: 6.74</code></pre>
 <p>Here the size of <code>k=</code> is sufficient to ensure connectedness, although the graph is not planar as edges cross at locations other than nodes, which is not the case for contiguous or graph-based neighbours.</p>
-<div class="sourceCode" id="cb459"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb459-1" title="1">n_comp &lt;-<span class="st"> </span><span class="kw">n.comp.nb</span>(nb_k6s)</a>
-<a class="sourceLine" id="cb459-2" title="2">n_comp<span class="op">$</span>nc</a></code></pre></div>
+<div class="sourceCode" id="cb458"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb458-1" title="1">n_comp &lt;-<span class="st"> </span><span class="kw">n.comp.nb</span>(nb_k6s)</a>
+<a class="sourceLine" id="cb458-2" title="2">n_comp<span class="op">$</span>nc</a></code></pre></div>
 <pre><code># [1] 1</code></pre>
 </div>
 <div id="weights-specification" class="section level3">
 <h3><span class="header-section-number">13.2.4</span> Weights specification</h3>
 <p>Once neighbour objects are available, further choices need to made in specifying the weights objects. The <code>nb2listw()</code> function is used to create a <code>listw</code> weights object with an <code>nb</code> object, a matching list of weights vectors, and a style specification. Because handling no-neighbour observations now begins to matter, the <code>zero.policy=</code> argument is introduced. By default, this is <code>FALSE</code>, indicating that no-neighbour observations will cause an error, as the spatially lagged value for an observation with no neighbours is not available. By convention, zero is substituted for the lagged value, as the cross product of a vector of zero-valued weights and a data vector, hence the name of <code>zero.policy</code>.</p>
-<div class="sourceCode" id="cb461"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb461-1" title="1"><span class="kw">args</span>(nb2listw)</a></code></pre></div>
+<div class="sourceCode" id="cb460"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb460-1" title="1"><span class="kw">args</span>(nb2listw)</a></code></pre></div>
 <pre><code># function (neighbours, glist = NULL, style = &quot;W&quot;, zero.policy = NULL) 
 # NULL</code></pre>
 <p>We will be using the helper function <code>spweights.constants()</code> below to show some consequences of varing style choices. It returns constants for a <code>listw</code> object, <span class="math inline">\(n\)</span> is the number of observations, <code>n1</code> to <code>n3</code> are <span class="math inline">\(n-1, \ldots\)</span>, <code>nn</code> is <span class="math inline">\(n^2\)</span> and <span class="math inline">\(S_0\)</span>, <span class="math inline">\(S_1\)</span> and <span class="math inline">\(S_2\)</span> are constants, <span class="math inline">\(S_0\)</span> being the sum of the weights. There is a full discussion of the constants in Bivand and Wong <span class="citation">(<a href="#ref-Bivand2018">2018</a>)</span>.</p>
-<div class="sourceCode" id="cb463"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb463-1" title="1"><span class="kw">args</span>(spweights.constants)</a></code></pre></div>
+<div class="sourceCode" id="cb462"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb462-1" title="1"><span class="kw">args</span>(spweights.constants)</a></code></pre></div>
 <pre><code># function (listw, zero.policy = NULL, adjust.n = TRUE) 
 # NULL</code></pre>
 <p>The <code>"B"</code> binary style gives a weight of unity to each neighbour relationship, and typically upweights units with no boundaries on the edge of the study area.</p>
-<div class="sourceCode" id="cb465"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb465-1" title="1">lw_q_B &lt;-<span class="st"> </span><span class="kw">nb2listw</span>(nb_q, <span class="dt">style=</span><span class="st">&quot;B&quot;</span>)</a>
-<a class="sourceLine" id="cb465-2" title="2"><span class="kw">unlist</span>(<span class="kw">spweights.constants</span>(lw_q_B))</a></code></pre></div>
+<div class="sourceCode" id="cb464"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb464-1" title="1">lw_q_B &lt;-<span class="st"> </span><span class="kw">nb2listw</span>(nb_q, <span class="dt">style=</span><span class="st">&quot;B&quot;</span>)</a>
+<a class="sourceLine" id="cb464-2" title="2"><span class="kw">unlist</span>(<span class="kw">spweights.constants</span>(lw_q_B))</a></code></pre></div>
 <pre><code>#       n      n1      n2      n3      nn      S0      S1      S2 
 #    2495    2494    2493    2492 6225025   14242   28484  357280</code></pre>
 <p>The <code>"W"</code> row-standardized style upweights units around the edge of the study area that necessarily have fewer neighbours. This style first gives a weight of unity to each neighbour relationship, then divides these weights by the per unit sums of weights. Naturally this leads to division by zero where there are no neighbours, a not-a-number result, unless the chosen policy is to permit no-neighbour observations. We can see that <span class="math inline">\(S_0\)</span> is now equal to <span class="math inline">\(n\)</span>.</p>
-<div class="sourceCode" id="cb467"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb467-1" title="1">lw_q_W &lt;-<span class="st"> </span><span class="kw">nb2listw</span>(nb_q, <span class="dt">style=</span><span class="st">&quot;W&quot;</span>)</a>
-<a class="sourceLine" id="cb467-2" title="2"><span class="kw">unlist</span>(<span class="kw">spweights.constants</span>(lw_q_W))[<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">6</span><span class="op">:</span><span class="dv">8</span>)]</a></code></pre></div>
+<div class="sourceCode" id="cb466"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb466-1" title="1">lw_q_W &lt;-<span class="st"> </span><span class="kw">nb2listw</span>(nb_q, <span class="dt">style=</span><span class="st">&quot;W&quot;</span>)</a>
+<a class="sourceLine" id="cb466-2" title="2"><span class="kw">unlist</span>(<span class="kw">spweights.constants</span>(lw_q_W))[<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">6</span><span class="op">:</span><span class="dv">8</span>)]</a></code></pre></div>
 <pre><code>#     n    S0    S1    S2 
 #  2495  2495   958 10406</code></pre>
 <p>Inverse distance weights are used in a number of scientific fields. Some use dense inverse distance matrices, but many of the inverse distances are close to zero, so have little practical contribution, especially as the spatial process matrix is itself dense. Inverse distance weights may be constructed by taking the lengths of edges, changing units to avoid most weights being too large or small (here from m to km), taking the inverse, and passing through the <code>glist=</code> argument to <code>nb2listw()</code>:</p>
-<div class="sourceCode" id="cb469"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb469-1" title="1">gwts &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="kw">nbdists</span>(nb_d183, coords), <span class="cf">function</span>(x) <span class="dv">1</span><span class="op">/</span>(x<span class="op">/</span><span class="dv">1000</span>))</a>
-<a class="sourceLine" id="cb469-2" title="2">lw_d183_idw_B &lt;-<span class="st"> </span><span class="kw">nb2listw</span>(nb_d183, <span class="dt">glist=</span>gwts, <span class="dt">style=</span><span class="st">&quot;B&quot;</span>)</a>
-<a class="sourceLine" id="cb469-3" title="3"><span class="kw">unlist</span>(<span class="kw">spweights.constants</span>(lw_d183_idw_B))[<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">6</span><span class="op">:</span><span class="dv">8</span>)]</a></code></pre></div>
+<div class="sourceCode" id="cb468"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb468-1" title="1">gwts &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="kw">nbdists</span>(nb_d183, coords), <span class="cf">function</span>(x) <span class="dv">1</span><span class="op">/</span>(x<span class="op">/</span><span class="dv">1000</span>))</a>
+<a class="sourceLine" id="cb468-2" title="2">lw_d183_idw_B &lt;-<span class="st"> </span><span class="kw">nb2listw</span>(nb_d183, <span class="dt">glist=</span>gwts, <span class="dt">style=</span><span class="st">&quot;B&quot;</span>)</a>
+<a class="sourceLine" id="cb468-3" title="3"><span class="kw">unlist</span>(<span class="kw">spweights.constants</span>(lw_d183_idw_B))[<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">6</span><span class="op">:</span><span class="dv">8</span>)]</a></code></pre></div>
 <pre><code>#    n   S0   S1   S2 
 # 2495 1841  534 7265</code></pre>
 <p>No-neighbour handling is by default to prevent the construction of a weights object, making the analyst take a position on how to proceed.</p>
-<div class="sourceCode" id="cb471"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb471-1" title="1"><span class="kw">try</span>(lw_d16_B &lt;-<span class="st"> </span><span class="kw">nb2listw</span>(nb_d16, <span class="dt">style=</span><span class="st">&quot;B&quot;</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb470"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb470-1" title="1"><span class="kw">try</span>(lw_d16_B &lt;-<span class="st"> </span><span class="kw">nb2listw</span>(nb_d16, <span class="dt">style=</span><span class="st">&quot;B&quot;</span>))</a></code></pre></div>
 <pre><code># Error in nb2listw(nb_d16, style = &quot;B&quot;) : Empty neighbour sets found</code></pre>
 <p>Use can be made of the <code>zero.policy=</code> argument to many functions used with <code>nb</code> and <code>listw</code> objects.</p>
-<div class="sourceCode" id="cb473"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb473-1" title="1">lw_d16_B &lt;-<span class="st"> </span><span class="kw">nb2listw</span>(nb_d16, <span class="dt">style=</span><span class="st">&quot;B&quot;</span>, <span class="dt">zero.policy=</span><span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb473-2" title="2"><span class="kw">unlist</span>(<span class="kw">spweights.constants</span>(lw_d16_B,  <span class="dt">zero.policy=</span><span class="ot">TRUE</span>))[<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">6</span><span class="op">:</span><span class="dv">8</span>)]</a></code></pre></div>
+<div class="sourceCode" id="cb472"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb472-1" title="1">lw_d16_B &lt;-<span class="st"> </span><span class="kw">nb2listw</span>(nb_d16, <span class="dt">style=</span><span class="st">&quot;B&quot;</span>, <span class="dt">zero.policy=</span><span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb472-2" title="2"><span class="kw">unlist</span>(<span class="kw">spweights.constants</span>(lw_d16_B,  <span class="dt">zero.policy=</span><span class="ot">TRUE</span>))[<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">6</span><span class="op">:</span><span class="dv">8</span>)]</a></code></pre></div>
 <pre><code>#      n     S0     S1     S2 
 #   2488  15850  31700 506480</code></pre>
 <p>Note that by default the <code>adjust.n=</code> argument to <code>spweights.constants()</code> is set by default to <code>TRUE</code>, subtracting the count of no-neighbour observations from the observation count, so <span class="math inline">\(n\)</span> is smaller with possible consequences for inference. The complete count can be retrieved by changing the argument.</p>
@@ -1276,29 +1280,29 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 \]</span>
 where <span class="math inline">\(x_i, i=1, \ldots, n\)</span> are <span class="math inline">\(n\)</span> observations on the numeric variable of interest, <span class="math inline">\(z_i = x_i - \bar{x}\)</span>, <span class="math inline">\(\bar{x} = \sum_{i=1}^{n} x_i / n\)</span>, <span class="math inline">\(\sum_{(2)} = \stackrel{\sum_{i=1}^{n} \sum_{j=1}^{n}}{i \neq j}\)</span>, <span class="math inline">\(w_{ij}\)</span> are the spatial weights, and <span class="math inline">\(S_0 = \sum_{(2)} w_{ij}\)</span>.
 First we test a random variable using the Moran test, here under the normality assumption (argument <code>randomisation=FALSE</code>, default <code>TRUE</code>):</p>
-<div class="sourceCode" id="cb475"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb475-1" title="1"><span class="kw">set.seed</span>(<span class="dv">1</span>)</a>
-<a class="sourceLine" id="cb475-2" title="2">x &lt;-<span class="st"> </span><span class="kw">rnorm</span>(<span class="kw">nrow</span>(pol_pres15))</a>
-<a class="sourceLine" id="cb475-3" title="3">mt &lt;-<span class="st"> </span><span class="kw">moran.test</span>(x, lw_q_B, <span class="dt">randomisation=</span><span class="ot">FALSE</span>, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb474"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb474-1" title="1"><span class="kw">set.seed</span>(<span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb474-2" title="2">x &lt;-<span class="st"> </span><span class="kw">rnorm</span>(<span class="kw">nrow</span>(pol_pres15))</a>
+<a class="sourceLine" id="cb474-3" title="3">mt &lt;-<span class="st"> </span><span class="kw">moran.test</span>(x, lw_q_B, <span class="dt">randomisation=</span><span class="ot">FALSE</span>, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>)</a></code></pre></div>
 <p>Inference is made on the statistic <span class="math inline">\(Z(I) = \frac{I - E(I)}{\sqrt{\mathrm{Var}(I)}}\)</span>, the z-value compared with the Normal distribution for <span class="math inline">\(E(I)\)</span> and <span class="math inline">\(\mathrm{Var}(I)\)</span> for the chosen assumptions; this <code>x</code> does not show spatial autocorrelation with these spatial weights:</p>
-<div class="sourceCode" id="cb476"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb476-1" title="1">glance_htest &lt;-<span class="st"> </span><span class="cf">function</span>(ht) <span class="kw">c</span>(ht<span class="op">$</span>estimate, <span class="st">&quot;Std deviate&quot;</span>=<span class="kw">unname</span>(ht<span class="op">$</span>statistic), <span class="st">&quot;p.value&quot;</span>=<span class="kw">unname</span>(ht<span class="op">$</span>p.value))</a>
-<a class="sourceLine" id="cb476-2" title="2"><span class="kw">glance_htest</span>(mt)</a></code></pre></div>
+<div class="sourceCode" id="cb475"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb475-1" title="1">glance_htest &lt;-<span class="st"> </span><span class="cf">function</span>(ht) <span class="kw">c</span>(ht<span class="op">$</span>estimate, <span class="st">&quot;Std deviate&quot;</span>=<span class="kw">unname</span>(ht<span class="op">$</span>statistic), <span class="st">&quot;p.value&quot;</span>=<span class="kw">unname</span>(ht<span class="op">$</span>p.value))</a>
+<a class="sourceLine" id="cb475-2" title="2"><span class="kw">glance_htest</span>(mt)</a></code></pre></div>
 <pre><code># Moran I statistic       Expectation          Variance       Std deviate 
 #         -0.004772         -0.000401          0.000140         -0.369320 
 #           p.value 
 #          0.711889</code></pre>
 <p>The test however fails to detect a missing trend in the data as a missing variable problem, finding spatial autocorrelation instead:</p>
-<div class="sourceCode" id="cb478"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb478-1" title="1">beta &lt;-<span class="st"> </span><span class="fl">0.15e-02</span></a>
-<a class="sourceLine" id="cb478-2" title="2">t &lt;-<span class="st"> </span><span class="kw">st_coordinates</span>(coords)[,<span class="dv">1</span>]<span class="op">/</span><span class="dv">1000</span></a>
-<a class="sourceLine" id="cb478-3" title="3">x_t &lt;-<span class="st"> </span>x <span class="op">+</span><span class="st"> </span>beta<span class="op">*</span>t</a>
-<a class="sourceLine" id="cb478-4" title="4">mt &lt;-<span class="st"> </span><span class="kw">moran.test</span>(x_t, lw_q_B, <span class="dt">randomisation=</span><span class="ot">FALSE</span>, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>)</a>
-<a class="sourceLine" id="cb478-5" title="5"><span class="kw">glance_htest</span>(mt)</a></code></pre></div>
+<div class="sourceCode" id="cb477"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb477-1" title="1">beta &lt;-<span class="st"> </span><span class="fl">0.15e-02</span></a>
+<a class="sourceLine" id="cb477-2" title="2">t &lt;-<span class="st"> </span><span class="kw">st_coordinates</span>(coords)[,<span class="dv">1</span>]<span class="op">/</span><span class="dv">1000</span></a>
+<a class="sourceLine" id="cb477-3" title="3">x_t &lt;-<span class="st"> </span>x <span class="op">+</span><span class="st"> </span>beta<span class="op">*</span>t</a>
+<a class="sourceLine" id="cb477-4" title="4">mt &lt;-<span class="st"> </span><span class="kw">moran.test</span>(x_t, lw_q_B, <span class="dt">randomisation=</span><span class="ot">FALSE</span>, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>)</a>
+<a class="sourceLine" id="cb477-5" title="5"><span class="kw">glance_htest</span>(mt)</a></code></pre></div>
 <pre><code># Moran I statistic       Expectation          Variance       Std deviate 
 #          0.043403         -0.000401          0.000140          3.701491 
 #           p.value 
 #          0.000214</code></pre>
 <p>If we test the residuals of a linear model including the trend, the apparent spatial autocorrelation disappears:</p>
-<div class="sourceCode" id="cb480"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb480-1" title="1">lmt &lt;-<span class="st"> </span><span class="kw">lm.morantest</span>(<span class="kw">lm</span>(x_t <span class="op">~</span><span class="st"> </span>t), lw_q_B, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>)</a>
-<a class="sourceLine" id="cb480-2" title="2"><span class="kw">glance_htest</span>(lmt)</a></code></pre></div>
+<div class="sourceCode" id="cb479"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb479-1" title="1">lmt &lt;-<span class="st"> </span><span class="kw">lm.morantest</span>(<span class="kw">lm</span>(x_t <span class="op">~</span><span class="st"> </span>t), lw_q_B, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>)</a>
+<a class="sourceLine" id="cb479-2" title="2"><span class="kw">glance_htest</span>(lmt)</a></code></pre></div>
 <pre><code># Observed Moran I      Expectation         Variance      Std deviate 
 #        -0.004777        -0.000789         0.000140        -0.337306 
 #          p.value 
@@ -1307,18 +1311,18 @@ First we test a random variable using the Moran test, here under the normality a
 <div id="global-measures" class="section level3">
 <h3><span class="header-section-number">13.3.1</span> Global measures</h3>
 <p>We will begin by examining join count statistics, where <code>joincount.test()</code> takes a <code>factor</code> vector of values <code>fx=</code> and a <code>listw</code> object, and returns a list of <code>htest</code> (hypothesis test) objects defined in the <strong>stats</strong> package, one <code>htest</code> object for each level of the <code>fx=</code> argument. The observed counts are of neighbours with the same factor levels, known as same-colour joins.</p>
-<div class="sourceCode" id="cb482"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb482-1" title="1"><span class="kw">args</span>(joincount.test)</a></code></pre></div>
+<div class="sourceCode" id="cb481"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb481-1" title="1"><span class="kw">args</span>(joincount.test)</a></code></pre></div>
 <pre><code># function (fx, listw, zero.policy = NULL, alternative = &quot;greater&quot;, 
 #     sampling = &quot;nonfree&quot;, spChk = NULL, adjust.n = TRUE) 
 # NULL</code></pre>
 <p>The function takes an <code>alternative=</code> argument for hypothesis testing, a <code>sampling=</code> argument showing the basis for the construction of the variance of the measure, where the default <code>"nonfree"</code> choice corresponds to analytical permutation; the <code>spChk=</code> argument is retained for backward compatibility. For reference, the counts of factor levels for the type of municipality or Warsaw borough are:</p>
-<div class="sourceCode" id="cb484"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb484-1" title="1"><span class="kw">table</span>(pol_pres15<span class="op">$</span>types)</a></code></pre></div>
+<div class="sourceCode" id="cb483"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb483-1" title="1"><span class="kw">table</span>(pol_pres15<span class="op">$</span>types)</a></code></pre></div>
 <pre><code># 
 #          Rural          Urban    Urban/rural Warsaw Borough 
 #           1563            303            611             18</code></pre>
 <p>Since there are four levels, we re-arrange the list of <code>htest</code> objects to give a matrix of estimated results. The observed same-colour join counts are tabulated with their expectations based on the counts of levels of the input factor, so that few joins would be expected between for example Warsaw boroughs, because there are very few of them. The variance calculation uses the underlying constants of the chosen <code>listw</code> object and the counts of levels of the input factor. The z-value is obtained in the usual way by dividing the difference between the observed and expected join counts by the square root of the variance.</p>
 <p>The join count test was subsequently adapted for multi-colour join counts <span class="citation">(Upton and Fingleton <a href="#ref-upton+fingleton:85">1985</a>)</span>. The implementation as <code>joincount.mult()</code> in <strong>spdep</strong> returns a table based on nonfree sampling, and does not report p-values.</p>
-<div class="sourceCode" id="cb486"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb486-1" title="1"><span class="kw">joincount.multi</span>(pol_pres15<span class="op">$</span>types, <span class="dt">listw=</span>lw_q_B)</a></code></pre></div>
+<div class="sourceCode" id="cb485"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb485-1" title="1"><span class="kw">joincount.multi</span>(pol_pres15<span class="op">$</span>types, <span class="dt">listw=</span>lw_q_B)</a></code></pre></div>
 <pre><code>#                               Joincount Expected Variance z-value
 # Rural:Rural                    3087.000 2793.920 1126.534    8.73
 # Urban:Urban                     110.000  104.719   93.299    0.55
@@ -1333,7 +1337,7 @@ First we test a random variable using the Moran test, here under the normality a
 # Jtot                           3227.000 3795.486 1496.398  -14.70</code></pre>
 <p>So far, we have used binary weights, so the sum of join counts multiplied by the weight on that join remains integer. If we change to row standardised weights, where the weights are not unity in all cases, the counts, expectations and variances change, but there are few major changes in the z-values.</p>
 <p>Using an inverse distance based <code>listw</code> object does, however, change the z-values markedly, because closer centroids are upweighted relatively strongly:</p>
-<div class="sourceCode" id="cb488"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb488-1" title="1"><span class="kw">joincount.multi</span>(pol_pres15<span class="op">$</span>types, <span class="dt">listw=</span>lw_d183_idw_B)</a></code></pre></div>
+<div class="sourceCode" id="cb487"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb487-1" title="1"><span class="kw">joincount.multi</span>(pol_pres15<span class="op">$</span>types, <span class="dt">listw=</span>lw_d183_idw_B)</a></code></pre></div>
 <pre><code>#                               Joincount Expected Variance z-value
 # Rural:Rural                    3.46e+02 3.61e+02 4.93e+01   -2.10
 # Urban:Urban                    2.90e+01 1.35e+01 2.23e+00   10.39
@@ -1347,40 +1351,40 @@ First we test a random variable using the Moran test, here under the normality a
 # Warsaw Borough:Urban/rural     3.27e+00 3.25e+00 5.52e-01    0.02
 # Jtot                           4.82e+02 4.91e+02 4.16e+01   -1.38</code></pre>
 <p>The implementation of Moran’s <span class="math inline">\(I\)</span> in <strong>spdep</strong> in the <code>moran.test()</code> function has similar arguments to those of <code>joincount.test()</code>, but <code>sampling=</code> is replaced by <code>randomisation=</code> to indicate the underlying analytical approach used for calculating the variance of the measure. It is also possible to use ranks rather than numerical values <span class="citation">(Cliff and Ord <a href="#ref-cliff+ord:81">1981</a>, 46)</span>. The <code>drop.EI2=</code> agrument may be used to reproduce results where the final component of the variance term is omitted as found in some legacy software implementations.</p>
-<div class="sourceCode" id="cb490"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb490-1" title="1"><span class="kw">args</span>(moran.test)</a></code></pre></div>
+<div class="sourceCode" id="cb489"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb489-1" title="1"><span class="kw">args</span>(moran.test)</a></code></pre></div>
 <pre><code># function (x, listw, randomisation = TRUE, zero.policy = NULL, 
 #     alternative = &quot;greater&quot;, rank = FALSE, na.action = na.fail, 
 #     spChk = NULL, adjust.n = TRUE, drop.EI2 = FALSE) 
 # NULL</code></pre>
 <p>The default for the <code>randomisation=</code> argument is <code>TRUE</code>, but here we will simply show that the test under normality is the same as a test of least squares residuals with only the intercept used in the mean model. The spelling of randomisation is that of Cliff and Ord <span class="citation">(<a href="#ref-cliff+ord:73">1973</a>)</span>.</p>
-<div class="sourceCode" id="cb492"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb492-1" title="1">mt &lt;-<span class="st"> </span><span class="kw">moran.test</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_B, <span class="dt">randomisation=</span><span class="ot">FALSE</span>)</a>
-<a class="sourceLine" id="cb492-2" title="2"><span class="kw">glance_htest</span>(mt)</a></code></pre></div>
+<div class="sourceCode" id="cb491"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb491-1" title="1">mt &lt;-<span class="st"> </span><span class="kw">moran.test</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_B, <span class="dt">randomisation=</span><span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb491-2" title="2"><span class="kw">glance_htest</span>(mt)</a></code></pre></div>
 <pre><code># Moran I statistic       Expectation          Variance       Std deviate 
 #          0.691434         -0.000401          0.000140         58.461349 
 #           p.value 
 #          0.000000</code></pre>
 <p>The <code>lm.morantest()</code> function also takes a <code>resfun=</code> argument to set the function used to extract the residuals used for testing, and clearly lets us model other salient features of the response variable <span class="citation">(Cliff and Ord <a href="#ref-cliff+ord:81">1981</a>, 203)</span>. To compare with the standard test, we are only using the intercept here, and as can be seen, the results are the same.</p>
-<div class="sourceCode" id="cb494"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb494-1" title="1">ols &lt;-<span class="st"> </span><span class="kw">lm</span>(I_turnout <span class="op">~</span><span class="st"> </span><span class="dv">1</span>, pol_pres15)</a>
-<a class="sourceLine" id="cb494-2" title="2">lmt &lt;-<span class="st"> </span><span class="kw">lm.morantest</span>(ols, <span class="dt">listw=</span>lw_q_B)</a>
-<a class="sourceLine" id="cb494-3" title="3"><span class="kw">glance_htest</span>(lmt)</a></code></pre></div>
+<div class="sourceCode" id="cb493"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb493-1" title="1">ols &lt;-<span class="st"> </span><span class="kw">lm</span>(I_turnout <span class="op">~</span><span class="st"> </span><span class="dv">1</span>, pol_pres15)</a>
+<a class="sourceLine" id="cb493-2" title="2">lmt &lt;-<span class="st"> </span><span class="kw">lm.morantest</span>(ols, <span class="dt">listw=</span>lw_q_B)</a>
+<a class="sourceLine" id="cb493-3" title="3"><span class="kw">glance_htest</span>(lmt)</a></code></pre></div>
 <pre><code># Observed Moran I      Expectation         Variance      Std deviate 
 #         0.691434        -0.000401         0.000140        58.461349 
 #          p.value 
 #         0.000000</code></pre>
 <p>The only difference between tests under normality and randomisation is that an extra term is added if the kurtosis of the variable of interest indicates a flatter or more peaked distribution, where the measure used is the classical measure of kurtosis. Under the default randomisation assumption of analytical randomisation, the results are largely unchanged.</p>
-<div class="sourceCode" id="cb496"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb496-1" title="1">mtr &lt;-<span class="st"> </span><span class="kw">moran.test</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_B)</a>
-<a class="sourceLine" id="cb496-2" title="2"><span class="kw">glance_htest</span>(mtr)</a></code></pre></div>
+<div class="sourceCode" id="cb495"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb495-1" title="1">mtr &lt;-<span class="st"> </span><span class="kw">moran.test</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_B)</a>
+<a class="sourceLine" id="cb495-2" title="2"><span class="kw">glance_htest</span>(mtr)</a></code></pre></div>
 <pre><code># Moran I statistic       Expectation          Variance       Std deviate 
 #          0.691434         -0.000401          0.000140         58.459835 
 #           p.value 
 #          0.000000</code></pre>
 <p>Of course, from the very beginning, interest was shown in Monte Carlo testing, also known as a Hope-type test and as a permutation bootstrap. By default, <code>moran.mc()</code> returns a <code>"htest"</code> object, but may simply use <code>boot::boot()</code> internally and return a <code>"boot"</code> object when <code>return_boot=TRUE</code>. In addition the number of simulations of the variable of interest by permutation, that is shuffling the values across the observations at random, needs to be given as <code>nsim=</code>.</p>
-<div class="sourceCode" id="cb498"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb498-1" title="1"><span class="kw">set.seed</span>(<span class="dv">1</span>)</a>
-<a class="sourceLine" id="cb498-2" title="2">mmc &lt;-<span class="st"> </span><span class="kw">moran.mc</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_B, <span class="dt">nsim=</span><span class="dv">999</span>, <span class="dt">return_boot =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb497"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb497-1" title="1"><span class="kw">set.seed</span>(<span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb497-2" title="2">mmc &lt;-<span class="st"> </span><span class="kw">moran.mc</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_B, <span class="dt">nsim=</span><span class="dv">999</span>, <span class="dt">return_boot =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
 <p>The bootstrap permutation retains the outcomes of each of the random permutations, reporting the observed value of the statistic, here Moran’s <span class="math inline">\(I\)</span>, the difference between this value and the mean of the simulations under randomisation (equivalent to <span class="math inline">\(E(I)\)</span>), and the standard deviation of the simulations under randomisation.</p>
 <p>If we compare the Monte Carlo and analytical variances of <span class="math inline">\(I\)</span> under randomisation, we typically see few differences, arguably rendering Monte Carlo testing unnecessary.</p>
-<div class="sourceCode" id="cb499"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb499-1" title="1"><span class="kw">c</span>(<span class="st">&quot;Permutation bootstrap&quot;</span>=<span class="kw">var</span>(mmc<span class="op">$</span>t), </a>
-<a class="sourceLine" id="cb499-2" title="2">  <span class="st">&quot;Analytical randomisation&quot;</span>=<span class="kw">unname</span>(mtr<span class="op">$</span>estimate[<span class="dv">3</span>]))</a></code></pre></div>
+<div class="sourceCode" id="cb498"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb498-1" title="1"><span class="kw">c</span>(<span class="st">&quot;Permutation bootstrap&quot;</span>=<span class="kw">var</span>(mmc<span class="op">$</span>t), </a>
+<a class="sourceLine" id="cb498-2" title="2">  <span class="st">&quot;Analytical randomisation&quot;</span>=<span class="kw">unname</span>(mtr<span class="op">$</span>estimate[<span class="dv">3</span>]))</a></code></pre></div>
 <pre><code>#    Permutation bootstrap Analytical randomisation 
 #                 0.000144                 0.000140</code></pre>
 <p>Geary’s global <span class="math inline">\(C\)</span> is implemented in <code>geary.test()</code> largely following the same argument structure as <code>moran.test()</code>. The Getis-Ord <span class="math inline">\(G\)</span> test includes extra arguments to accommodate differences between implementations, as Bivand and Wong <span class="citation">(<a href="#ref-Bivand2018">2018</a>)</span> found multiple divergences from the original definitions, often to omit no-neighbour observations generated when using distance band neighbours. It is given by <span class="citation">(Getis and Ord <a href="#ref-getis+ord:92">1992</a>, 194)</span>. For <span class="math inline">\(G_*\)</span>, the <span class="math inline">\(\sum_{(2)}\)</span> constraint is relaxed by including <span class="math inline">\(i\)</span> as a neighbour of itself (thereby also removing the no-neighbour problem, because all observations have at least one neighbour).</p>
@@ -1391,7 +1395,7 @@ First we test a random variable using the Moran test, here under the normality a
 <h3><span class="header-section-number">13.3.2</span> Local measures</h3>
 <p>Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s <span class="citation">(Anselin <a href="#ref-anselin:95">1995</a>; Getis and Ord <a href="#ref-getis+ord:92">1992</a>, <a href="#ref-getis+ord:96">1996</a>)</span>. In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable <span class="citation">(Anselin <a href="#ref-anselin:96">1996</a>)</span>. The <code>moran.plot()</code> function also returns an influence measures object used to label observations exerting more than propotional influence on the slope of the line representing global Moran’s <span class="math inline">\(I\)</span>. In Figure <a href="area.html#fig:moranplot">13.3</a>, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants.</p>
 
-<div class="sourceCode" id="cb501"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb501-1" title="1">infl_W &lt;-<span class="st"> </span><span class="kw">moran.plot</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, <span class="dt">labels=</span>pol_pres15<span class="op">$</span>TERYT, <span class="dt">cex=</span><span class="dv">1</span>, <span class="dt">pch=</span><span class="st">&quot;.&quot;</span>, <span class="dt">xlab=</span><span class="st">&quot;I round turnout&quot;</span>, <span class="dt">ylab=</span><span class="st">&quot;lagged turnout&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb500"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb500-1" title="1">infl_W &lt;-<span class="st"> </span><span class="kw">moran.plot</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, <span class="dt">labels=</span>pol_pres15<span class="op">$</span>TERYT, <span class="dt">cex=</span><span class="dv">1</span>, <span class="dt">pch=</span><span class="st">&quot;.&quot;</span>, <span class="dt">xlab=</span><span class="st">&quot;I round turnout&quot;</span>, <span class="dt">ylab=</span><span class="st">&quot;lagged turnout&quot;</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:moranplot"></span>
 <img src="sds_files/figure-html/moranplot-1.png" alt="Moran plot of I round turnout, row standardised weights" width="100%" />
 <p class="caption">
@@ -1400,8 +1404,8 @@ Figure 13.3: Moran plot of I round turnout, row standardised weights
 </div>
 <p>If we extract the hat value influence measure from the returned object, Figure <a href="area.html#fig:moranhat">13.4</a> suggests that some edge entities exert more than proportional influence (perhaps because of row standardisation), as do entities in or near larger urban areas.</p>
 
-<div class="sourceCode" id="cb502"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb502-1" title="1">pol_pres15<span class="op">$</span>hat_value &lt;-<span class="st"> </span>infl_W<span class="op">$</span>hat</a>
-<a class="sourceLine" id="cb502-2" title="2"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;hat_value&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb501"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb501-1" title="1">pol_pres15<span class="op">$</span>hat_value &lt;-<span class="st"> </span>infl_W<span class="op">$</span>hat</a>
+<a class="sourceLine" id="cb501-2" title="2"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;hat_value&quot;</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:moranhat"></span>
 <img src="sds_files/figure-html/moranhat-1.png" alt="Moran plot hat values, row standardised neighbours" width="100%" />
 <p class="caption">
@@ -1410,33 +1414,33 @@ Figure 13.4: Moran plot hat values, row standardised neighbours
 </div>
 <p>Bivand and Wong <span class="citation">(<a href="#ref-Bivand2018">2018</a>)</span> discuss issues impacting the use of local indicators, such as local Moran’s <span class="math inline">\(I\)</span> and local Getis-Ord <span class="math inline">\(G\)</span>. Some issues affect the calculation of the local indicators, others inference from their values. Because <span class="math inline">\(n\)</span> statistics may be being calculated from the same number of observations, there are multiple comparison problems that need to be addressed. Although the apparent detection of hotspots from values of local indicators has been quite widely adopted, it remains fraught with difficulty because adjustment of the inferential basis to accommodate multiple comparisons is not often chosen, and as in the global case, mis-specification also remains a source of confusion. Further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging <span class="citation">(Ord and Getis <a href="#ref-ord+getis:01">2001</a>; Tiefelsdorf <a href="#ref-tiefelsdorf:02">2002</a>; Bivand, Müller, and Reder <a href="#ref-bivandetal:09">2009</a>)</span>. The <code>mlvar=</code> and <code>adjust.x=</code> arguments to <code>localmoran()</code> are discussed in Bivand and Wong <span class="citation">(<a href="#ref-Bivand2018">2018</a>)</span>, and permit matching with other implementations. The <code>p.adjust.method=</code> argument uses an untested speculation that adjustment should only take into account the cardinality of the neighbour set of each observation when adjusting for multiple comparisons; using <code>stats::p.adjust()</code> is preferable.</p>
 <p>Taking <code>"two.sided"</code> p-values because these local indicators when summed and divided by the sum of the spatial weights, and thus positive and negative local spatial autocorrelation may be present, we obtain:</p>
-<div class="sourceCode" id="cb503"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb503-1" title="1">locm &lt;-<span class="st"> </span><span class="kw">localmoran</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>)</a></code></pre></div>
-<div class="sourceCode" id="cb504"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb504-1" title="1"><span class="kw">all.equal</span>(<span class="kw">sum</span>(locm[,<span class="dv">1</span>])<span class="op">/</span><span class="kw">Szero</span>(lw_q_W), </a>
-<a class="sourceLine" id="cb504-2" title="2">          <span class="kw">unname</span>(<span class="kw">moran.test</span>(pol_pres15<span class="op">$</span>I_turnout, lw_q_W)<span class="op">$</span>estimate[<span class="dv">1</span>]))</a></code></pre></div>
+<div class="sourceCode" id="cb502"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb502-1" title="1">locm &lt;-<span class="st"> </span><span class="kw">localmoran</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb503"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb503-1" title="1"><span class="kw">all.equal</span>(<span class="kw">sum</span>(locm[,<span class="dv">1</span>])<span class="op">/</span><span class="kw">Szero</span>(lw_q_W), </a>
+<a class="sourceLine" id="cb503-2" title="2">          <span class="kw">unname</span>(<span class="kw">moran.test</span>(pol_pres15<span class="op">$</span>I_turnout, lw_q_W)<span class="op">$</span>estimate[<span class="dv">1</span>]))</a></code></pre></div>
 <pre><code># [1] TRUE</code></pre>
 <p>Using <code>stats::p.adjust()</code> to adjust for multiple comparisons, we see that
 almost 29% of the local measures have p-values &lt; 0.05 if no adjustment is applied, but only 12% using Bonferroni adjustment, with two other choices also shown:</p>
-<div class="sourceCode" id="cb506"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb506-1" title="1">pvs &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="st">&quot;none&quot;</span>=locm[,<span class="dv">5</span>], <span class="st">&quot;bonferroni&quot;</span>=<span class="kw">p.adjust</span>(locm[,<span class="dv">5</span>], <span class="st">&quot;bonferroni&quot;</span>), </a>
-<a class="sourceLine" id="cb506-2" title="2">             <span class="st">&quot;fdr&quot;</span>=<span class="kw">p.adjust</span>(locm[,<span class="dv">5</span>],<span class="st">&quot;fdr&quot;</span>), <span class="st">&quot;BY&quot;</span>=<span class="kw">p.adjust</span>(locm[,<span class="dv">5</span>], <span class="st">&quot;BY&quot;</span>))</a>
-<a class="sourceLine" id="cb506-3" title="3"><span class="kw">apply</span>(pvs, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="kw">sum</span>(x <span class="op">&lt;</span><span class="st"> </span><span class="fl">0.05</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb505"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb505-1" title="1">pvs &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="st">&quot;none&quot;</span>=locm[,<span class="dv">5</span>], <span class="st">&quot;bonferroni&quot;</span>=<span class="kw">p.adjust</span>(locm[,<span class="dv">5</span>], <span class="st">&quot;bonferroni&quot;</span>), </a>
+<a class="sourceLine" id="cb505-2" title="2">             <span class="st">&quot;fdr&quot;</span>=<span class="kw">p.adjust</span>(locm[,<span class="dv">5</span>],<span class="st">&quot;fdr&quot;</span>), <span class="st">&quot;BY&quot;</span>=<span class="kw">p.adjust</span>(locm[,<span class="dv">5</span>], <span class="st">&quot;BY&quot;</span>))</a>
+<a class="sourceLine" id="cb505-3" title="3"><span class="kw">apply</span>(pvs, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="kw">sum</span>(x <span class="op">&lt;</span><span class="st"> </span><span class="fl">0.05</span>))</a></code></pre></div>
 <pre><code>#       none bonferroni        fdr         BY 
 #        715        297        576        424</code></pre>
 <p>In the global measure case, bootstrap permutations could be used as an alternative to analytical methods for possible inference. In the local case, conditional permutation may be used, retaining the value at observation <span class="math inline">\(i\)</span> and randomly sampling from the remaining <span class="math inline">\(n-1\)</span> values to find randomised values at neighbours, and is provided as <code>localmoran_perm()</code>, which will use multiple nodes to sample in parallel if provided, and permits the setting of a seed for the random number generator across the compute nodes:</p>
-<div class="sourceCode" id="cb508"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb508-1" title="1"><span class="kw">library</span>(parallel)</a>
-<a class="sourceLine" id="cb508-2" title="2"><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L))</a></code></pre></div>
+<div class="sourceCode" id="cb507"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb507-1" title="1"><span class="kw">library</span>(parallel)</a>
+<a class="sourceLine" id="cb507-2" title="2"><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L))</a></code></pre></div>
 <pre><code># NULL</code></pre>
-<div class="sourceCode" id="cb510"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb510-1" title="1"><span class="kw">system.time</span>(locm_p &lt;-<span class="st"> </span><span class="kw">localmoran_perm</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, <span class="dt">nsim=</span><span class="dv">499</span>, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>, <span class="dt">iseed=</span><span class="dv">1</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb509"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb509-1" title="1"><span class="kw">system.time</span>(locm_p &lt;-<span class="st"> </span><span class="kw">localmoran_perm</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, <span class="dt">nsim=</span><span class="dv">499</span>, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>, <span class="dt">iseed=</span><span class="dv">1</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.679   1.616   0.735</code></pre>
+#   0.849   1.951   0.872</code></pre>
 <p>The outcome is that almost 32% of observations have two sided p-values &lt; 0.05 without multiple comparison adjustment, and under 3% with Bonferroni adjustment.</p>
-<div class="sourceCode" id="cb512"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb512-1" title="1">pv &lt;-<span class="st"> </span>locm_p[,<span class="dv">5</span>]</a>
-<a class="sourceLine" id="cb512-2" title="2">pvsp &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="st">&quot;none&quot;</span>=pv, <span class="st">&quot;bonferroni&quot;</span>=<span class="kw">p.adjust</span>(pv, <span class="st">&quot;bonferroni&quot;</span>), <span class="st">&quot;fdr&quot;</span>=<span class="kw">p.adjust</span>(pv, <span class="st">&quot;fdr&quot;</span>), <span class="st">&quot;BY&quot;</span>=<span class="kw">p.adjust</span>(pv, <span class="st">&quot;BY&quot;</span>))</a>
-<a class="sourceLine" id="cb512-3" title="3"><span class="kw">apply</span>(pvsp, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="kw">sum</span>(x <span class="op">&lt;=</span><span class="st"> </span><span class="fl">0.05</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb511"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb511-1" title="1">pv &lt;-<span class="st"> </span>locm_p[,<span class="dv">5</span>]</a>
+<a class="sourceLine" id="cb511-2" title="2">pvsp &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="st">&quot;none&quot;</span>=pv, <span class="st">&quot;bonferroni&quot;</span>=<span class="kw">p.adjust</span>(pv, <span class="st">&quot;bonferroni&quot;</span>), <span class="st">&quot;fdr&quot;</span>=<span class="kw">p.adjust</span>(pv, <span class="st">&quot;fdr&quot;</span>), <span class="st">&quot;BY&quot;</span>=<span class="kw">p.adjust</span>(pv, <span class="st">&quot;BY&quot;</span>))</a>
+<a class="sourceLine" id="cb511-3" title="3"><span class="kw">apply</span>(pvsp, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="kw">sum</span>(x <span class="op">&lt;=</span><span class="st"> </span><span class="fl">0.05</span>))</a></code></pre></div>
 <pre><code>#       none bonferroni        fdr         BY 
 #        797         76        463        161</code></pre>
 <p>We can see what is happening by tabulating counts of the standard deviate of local Moran’s <span class="math inline">\(I\)</span>, where the two-sided <span class="math inline">\(\alpha=0.05\)</span> bounds would be <span class="math inline">\(0.025\)</span> and <span class="math inline">\(0.975\)</span>, but Bonferroni adjustment is close to <span class="math inline">\(0.00001\)</span> and <span class="math inline">\(0.99999\)</span>. Without adjustment, almost 800 observations are significant, with Bonferroni adjustment, only 68 in the conditional permutation case:</p>
-<div class="sourceCode" id="cb514"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb514-1" title="1">brks &lt;-<span class="st"> </span><span class="kw">qnorm</span>(<span class="kw">c</span>(<span class="dv">0</span>, <span class="fl">0.00001</span>, <span class="fl">0.0001</span>, <span class="fl">0.001</span>, <span class="fl">0.01</span>, <span class="fl">0.025</span>, <span class="fl">0.5</span>, <span class="fl">0.975</span>, <span class="fl">0.99</span>, <span class="fl">0.999</span>, <span class="fl">0.9999</span>, <span class="fl">0.99999</span>, <span class="dv">1</span>))</a>
-<a class="sourceLine" id="cb514-2" title="2">(tab &lt;-<span class="st"> </span><span class="kw">table</span>(<span class="kw">cut</span>(locm_p[,<span class="dv">4</span>], brks)))</a></code></pre></div>
+<div class="sourceCode" id="cb513"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb513-1" title="1">brks &lt;-<span class="st"> </span><span class="kw">qnorm</span>(<span class="kw">c</span>(<span class="dv">0</span>, <span class="fl">0.00001</span>, <span class="fl">0.0001</span>, <span class="fl">0.001</span>, <span class="fl">0.01</span>, <span class="fl">0.025</span>, <span class="fl">0.5</span>, <span class="fl">0.975</span>, <span class="fl">0.99</span>, <span class="fl">0.999</span>, <span class="fl">0.9999</span>, <span class="fl">0.99999</span>, <span class="dv">1</span>))</a>
+<a class="sourceLine" id="cb513-2" title="2">(tab &lt;-<span class="st"> </span><span class="kw">table</span>(<span class="kw">cut</span>(locm_p[,<span class="dv">4</span>], brks)))</a></code></pre></div>
 <pre><code># 
 #  (-Inf,-4.26] (-4.26,-3.72] (-3.72,-3.09] (-3.09,-2.33] (-2.33,-1.96] 
 #             0             0             1             4             5 
@@ -1444,14 +1448,14 @@ almost 29% of the local measures have p-values &lt; 0.05 if no adjustment is app
 #           459          1239           195           316           145 
 #   (3.72,4.26]   (4.26, Inf] 
 #            55            76</code></pre>
-<div class="sourceCode" id="cb516"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb516-1" title="1"><span class="kw">sum</span>(tab[<span class="kw">c</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">5</span>, <span class="dv">8</span><span class="op">:</span><span class="dv">12</span>)])</a></code></pre></div>
+<div class="sourceCode" id="cb515"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb515-1" title="1"><span class="kw">sum</span>(tab[<span class="kw">c</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">5</span>, <span class="dv">8</span><span class="op">:</span><span class="dv">12</span>)])</a></code></pre></div>
 <pre><code># [1] 797</code></pre>
-<div class="sourceCode" id="cb518"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb518-1" title="1"><span class="kw">sum</span>(tab[<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">12</span>)])</a></code></pre></div>
+<div class="sourceCode" id="cb517"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb517-1" title="1"><span class="kw">sum</span>(tab[<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">12</span>)])</a></code></pre></div>
 <pre><code># [1] 76</code></pre>
 
-<div class="sourceCode" id="cb520"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb520-1" title="1">pol_pres15<span class="op">$</span>locm_Z &lt;-<span class="st"> </span>locm[,<span class="dv">4</span>]</a>
-<a class="sourceLine" id="cb520-2" title="2">pol_pres15<span class="op">$</span>locm_p_Z &lt;-<span class="st"> </span>locm_p[,<span class="dv">4</span>]</a>
-<a class="sourceLine" id="cb520-3" title="3"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;locm_Z&quot;</span>, <span class="st">&quot;locm_p_Z&quot;</span>), <span class="dt">breaks=</span>brks, <span class="dt">midpoint=</span><span class="dv">0</span>, <span class="dt">title=</span><span class="st">&quot;Standard deviates of</span><span class="ch">\n</span><span class="st">Local Moran&#39;s I&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_facets</span>(<span class="dt">free.scales=</span><span class="ot">FALSE</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_layout</span>(<span class="dt">panel.labels=</span><span class="kw">c</span>(<span class="st">&quot;Analytical&quot;</span>, <span class="st">&quot;Conditional permutation&quot;</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb519"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb519-1" title="1">pol_pres15<span class="op">$</span>locm_Z &lt;-<span class="st"> </span>locm[,<span class="dv">4</span>]</a>
+<a class="sourceLine" id="cb519-2" title="2">pol_pres15<span class="op">$</span>locm_p_Z &lt;-<span class="st"> </span>locm_p[,<span class="dv">4</span>]</a>
+<a class="sourceLine" id="cb519-3" title="3"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;locm_Z&quot;</span>, <span class="st">&quot;locm_p_Z&quot;</span>), <span class="dt">breaks=</span>brks, <span class="dt">midpoint=</span><span class="dv">0</span>, <span class="dt">title=</span><span class="st">&quot;Standard deviates of</span><span class="ch">\n</span><span class="st">Local Moran&#39;s I&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_facets</span>(<span class="dt">free.scales=</span><span class="ot">FALSE</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_layout</span>(<span class="dt">panel.labels=</span><span class="kw">c</span>(<span class="st">&quot;Analytical&quot;</span>, <span class="st">&quot;Conditional permutation&quot;</span>))</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:localmoranZ"></span>
 <img src="sds_files/figure-html/localmoranZ-1.png" alt="Analytical and conditional permutation standard deviates of local Moran’s I for first round turnout, row-standardised neighbours" width="100%" />
 <p class="caption">
@@ -1460,15 +1464,15 @@ Figure 13.5: Analytical and conditional permutation standard deviates of local M
 </div>
 <p>Figure <a href="area.html#fig:localmoranZ">13.5</a> shows that conditional permutation scales back the proportion of standard deviate values taking extreme values, especially positive values. As we will see below, the analytical standard deviates of local Moran’s <span class="math inline">\(I\)</span> should probably not be used if alternatives are available.</p>
 <p>In presenting local Moran’s <span class="math inline">\(I\)</span>, use is often made of “hotspot” maps. Because <span class="math inline">\(I_i\)</span> takes high values both for strong positive autocorrelation of low and high values of the input variable, it is hard to show where “clusters” of similar neighbours with low or high values of the input variable occur. The quadrants of the Moran plot are used, by creating a categorical quadrant variable interacting the input variable and its spatial lag split at their means. The quadrant categories are then set to NA if, for the chosen standard deviate and adjustment, <span class="math inline">\(I_i\)</span> would be considered insignificant. Here, for the conditional permutation standard deviates, Bonferroni adjusted, 14 observations belong to “Low-Low clusters”, and 54 to “High-High clusters”:</p>
-<div class="sourceCode" id="cb521"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb521-1" title="1">quadr &lt;-<span class="st"> </span><span class="kw">interaction</span>(<span class="kw">cut</span>(infl_W<span class="op">$</span>x, <span class="kw">c</span>(<span class="op">-</span><span class="ot">Inf</span>, <span class="kw">mean</span>(infl_W<span class="op">$</span>x), <span class="ot">Inf</span>), <span class="dt">labels=</span><span class="kw">c</span>(<span class="st">&quot;Low X&quot;</span>, <span class="st">&quot;High X&quot;</span>)), <span class="kw">cut</span>(infl_W<span class="op">$</span>wx, <span class="kw">c</span>(<span class="op">-</span><span class="ot">Inf</span>, <span class="kw">mean</span>(infl_W<span class="op">$</span>wx), <span class="ot">Inf</span>), <span class="dt">labels=</span><span class="kw">c</span>(<span class="st">&quot;Low WX&quot;</span>, <span class="st">&quot;High WX&quot;</span>)), <span class="dt">sep=</span><span class="st">&quot; : &quot;</span>)</a>
-<a class="sourceLine" id="cb521-2" title="2">a &lt;-<span class="st"> </span><span class="kw">table</span>(quadr)</a>
-<a class="sourceLine" id="cb521-3" title="3">pol_pres15<span class="op">$</span>hs_an_q &lt;-<span class="st"> </span>quadr</a>
-<a class="sourceLine" id="cb521-4" title="4"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_an_q) &lt;-<span class="st"> </span><span class="op">!</span>(pol_pres15<span class="op">$</span>locm_Z <span class="op">&lt;</span><span class="st"> </span>brks[<span class="dv">6</span>] <span class="op">|</span><span class="st"> </span>pol_pres15<span class="op">$</span>locm_Z <span class="op">&gt;</span><span class="st"> </span>brks[<span class="dv">8</span>])</a>
-<a class="sourceLine" id="cb521-5" title="5">b &lt;-<span class="st"> </span><span class="kw">table</span>(pol_pres15<span class="op">$</span>hs_an_q)</a>
-<a class="sourceLine" id="cb521-6" title="6">pol_pres15<span class="op">$</span>hs_cp_q &lt;-<span class="st"> </span>quadr</a>
-<a class="sourceLine" id="cb521-7" title="7"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_cp_q) &lt;-<span class="st"> </span><span class="op">!</span>(pol_pres15<span class="op">$</span>locm_p_Z <span class="op">&lt;</span><span class="st"> </span>brks[<span class="dv">2</span>] <span class="op">|</span><span class="st"> </span>pol_pres15<span class="op">$</span>locm_p_Z <span class="op">&gt;</span><span class="st"> </span>brks[<span class="dv">12</span>])</a>
-<a class="sourceLine" id="cb521-8" title="8">c &lt;-<span class="st"> </span><span class="kw">table</span>(pol_pres15<span class="op">$</span>hs_cp_q)</a>
-<a class="sourceLine" id="cb521-9" title="9"><span class="kw">t</span>(<span class="kw">rbind</span>(<span class="st">&quot;Moran plot quadrants&quot;</span>=a, <span class="st">&quot;Unadjusted analytical&quot;</span>=b, <span class="st">&quot;Bonferroni cond. perm.&quot;</span>=c))</a></code></pre></div>
+<div class="sourceCode" id="cb520"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb520-1" title="1">quadr &lt;-<span class="st"> </span><span class="kw">interaction</span>(<span class="kw">cut</span>(infl_W<span class="op">$</span>x, <span class="kw">c</span>(<span class="op">-</span><span class="ot">Inf</span>, <span class="kw">mean</span>(infl_W<span class="op">$</span>x), <span class="ot">Inf</span>), <span class="dt">labels=</span><span class="kw">c</span>(<span class="st">&quot;Low X&quot;</span>, <span class="st">&quot;High X&quot;</span>)), <span class="kw">cut</span>(infl_W<span class="op">$</span>wx, <span class="kw">c</span>(<span class="op">-</span><span class="ot">Inf</span>, <span class="kw">mean</span>(infl_W<span class="op">$</span>wx), <span class="ot">Inf</span>), <span class="dt">labels=</span><span class="kw">c</span>(<span class="st">&quot;Low WX&quot;</span>, <span class="st">&quot;High WX&quot;</span>)), <span class="dt">sep=</span><span class="st">&quot; : &quot;</span>)</a>
+<a class="sourceLine" id="cb520-2" title="2">a &lt;-<span class="st"> </span><span class="kw">table</span>(quadr)</a>
+<a class="sourceLine" id="cb520-3" title="3">pol_pres15<span class="op">$</span>hs_an_q &lt;-<span class="st"> </span>quadr</a>
+<a class="sourceLine" id="cb520-4" title="4"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_an_q) &lt;-<span class="st"> </span><span class="op">!</span>(pol_pres15<span class="op">$</span>locm_Z <span class="op">&lt;</span><span class="st"> </span>brks[<span class="dv">6</span>] <span class="op">|</span><span class="st"> </span>pol_pres15<span class="op">$</span>locm_Z <span class="op">&gt;</span><span class="st"> </span>brks[<span class="dv">8</span>])</a>
+<a class="sourceLine" id="cb520-5" title="5">b &lt;-<span class="st"> </span><span class="kw">table</span>(pol_pres15<span class="op">$</span>hs_an_q)</a>
+<a class="sourceLine" id="cb520-6" title="6">pol_pres15<span class="op">$</span>hs_cp_q &lt;-<span class="st"> </span>quadr</a>
+<a class="sourceLine" id="cb520-7" title="7"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_cp_q) &lt;-<span class="st"> </span><span class="op">!</span>(pol_pres15<span class="op">$</span>locm_p_Z <span class="op">&lt;</span><span class="st"> </span>brks[<span class="dv">2</span>] <span class="op">|</span><span class="st"> </span>pol_pres15<span class="op">$</span>locm_p_Z <span class="op">&gt;</span><span class="st"> </span>brks[<span class="dv">12</span>])</a>
+<a class="sourceLine" id="cb520-8" title="8">c &lt;-<span class="st"> </span><span class="kw">table</span>(pol_pres15<span class="op">$</span>hs_cp_q)</a>
+<a class="sourceLine" id="cb520-9" title="9"><span class="kw">t</span>(<span class="kw">rbind</span>(<span class="st">&quot;Moran plot quadrants&quot;</span>=a, <span class="st">&quot;Unadjusted analytical&quot;</span>=b, <span class="st">&quot;Bonferroni cond. perm.&quot;</span>=c))</a></code></pre></div>
 <pre><code>#                  Moran plot quadrants Unadjusted analytical
 # Low X : Low WX                   1040                   370
 # High X : Low WX                   264                     3
@@ -1480,7 +1484,7 @@ Figure 13.5: Analytical and conditional permutation standard deviates of local M
 # Low X : High WX                       0
 # High X : High WX                     58</code></pre>
 
-<div class="sourceCode" id="cb523"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb523-1" title="1"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;hs_an_q&quot;</span>, <span class="st">&quot;hs_cp_q&quot;</span>), <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not significant&quot;</span>, <span class="dt">title=</span><span class="st">&quot;Turnout hotspot status</span><span class="ch">\n</span><span class="st">Local Moran&#39;s I&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_facets</span>(<span class="dt">free.scales=</span><span class="ot">FALSE</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_layout</span>(<span class="dt">panel.labels=</span><span class="kw">c</span>(<span class="st">&quot;Unadjusted analytical&quot;</span>, <span class="st">&quot;Cond. perm. with Bonferroni&quot;</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb522"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb522-1" title="1"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;hs_an_q&quot;</span>, <span class="st">&quot;hs_cp_q&quot;</span>), <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not significant&quot;</span>, <span class="dt">title=</span><span class="st">&quot;Turnout hotspot status</span><span class="ch">\n</span><span class="st">Local Moran&#39;s I&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_facets</span>(<span class="dt">free.scales=</span><span class="ot">FALSE</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_layout</span>(<span class="dt">panel.labels=</span><span class="kw">c</span>(<span class="st">&quot;Unadjusted analytical&quot;</span>, <span class="st">&quot;Cond. perm. with Bonferroni&quot;</span>))</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:Iihotspots"></span>
 <img src="sds_files/figure-html/Iihotspots-1.png" alt="Local Moran’s I hotspot maps \(\alpha = 0.05\): left panel: unadjusted analytical standard deviates; right panel: Bonferroni adjusted conditional permutation standard deviates, first round turnout, row-standardised neighbours" width="100%" />
 <p class="caption">
@@ -1489,26 +1493,26 @@ Figure 13.6: Local Moran’s I hotspot maps <span class="math inline">\(\alpha =
 </div>
 <p>Figure <a href="area.html#fig:Iihotspots">13.6</a> shows the impact of using analytical or conditional permutation standard deviates, and no or Bonferroni adjustment, reducing the counts of observations in “Low-Low clusters” from 370 to 14, and “High-High clusters” from 342 to 54; the “High-High clusters” are metropolitan areas.</p>
 <p>The local Getis-Ord <span class="math inline">\(G\)</span> measure is reported as a standard deviate, and may also take the <span class="math inline">\(G^*\)</span> form where self-neighbours are inserted into the neighbour object using <code>include.self()</code>. The observed and expected values of local <span class="math inline">\(G\)</span> with their analytical variances may also be returned if <code>return_internals=TRUE</code>.</p>
-<div class="sourceCode" id="cb524"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb524-1" title="1"><span class="kw">system.time</span>(locG &lt;-<span class="st"> </span><span class="kw">localG</span>(pol_pres15<span class="op">$</span>I_turnout, lw_q_W))</a></code></pre></div>
+<div class="sourceCode" id="cb523"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb523-1" title="1"><span class="kw">system.time</span>(locG &lt;-<span class="st"> </span><span class="kw">localG</span>(pol_pres15<span class="op">$</span>I_turnout, lw_q_W))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.012   0.000   0.019</code></pre>
-<div class="sourceCode" id="cb526"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb526-1" title="1"><span class="kw">system.time</span>(locG_p &lt;-<span class="st"> </span><span class="kw">localG_perm</span>(pol_pres15<span class="op">$</span>I_turnout, lw_q_W, <span class="dt">nsim=</span><span class="dv">499</span>, <span class="dt">iseed=</span><span class="dv">1</span>))</a></code></pre></div>
+#   0.015   0.000   0.015</code></pre>
+<div class="sourceCode" id="cb525"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb525-1" title="1"><span class="kw">system.time</span>(locG_p &lt;-<span class="st"> </span><span class="kw">localG_perm</span>(pol_pres15<span class="op">$</span>I_turnout, lw_q_W, <span class="dt">nsim=</span><span class="dv">499</span>, <span class="dt">iseed=</span><span class="dv">1</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.114   0.620   0.649</code></pre>
+#   0.167   0.712   0.797</code></pre>
 <p>Once again we face the problem of multiple comparisons, with the count of areal unit p-values &lt; 0.05 being reduced by an order of magnitude when employing Bonferroni correction:</p>
-<div class="sourceCode" id="cb528"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb528-1" title="1">pv &lt;-<span class="st"> </span><span class="dv">2</span> <span class="op">*</span><span class="st"> </span><span class="kw">pnorm</span>(<span class="kw">abs</span>(<span class="kw">c</span>(locG)), <span class="dt">lower.tail =</span> <span class="ot">FALSE</span>)</a>
-<a class="sourceLine" id="cb528-2" title="2">pvsp &lt;-<span class="st"> </span><span class="kw">cbind</span>(pv, <span class="kw">p.adjust</span>(pv, <span class="st">&quot;bonferroni&quot;</span>), <span class="kw">p.adjust</span>(pv, <span class="st">&quot;fdr&quot;</span>), </a>
-<a class="sourceLine" id="cb528-3" title="3">              <span class="kw">p.adjust</span>(pv, <span class="st">&quot;BY&quot;</span>))</a>
-<a class="sourceLine" id="cb528-4" title="4"><span class="kw">colnames</span>(pvsp) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;none&quot;</span>, <span class="st">&quot;bonferroni&quot;</span>, <span class="st">&quot;fdr&quot;</span>, <span class="st">&quot;BY&quot;</span>)</a>
-<a class="sourceLine" id="cb528-5" title="5"><span class="kw">apply</span>(pvsp, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="kw">sum</span>(x <span class="op">&lt;</span><span class="st"> </span><span class="fl">0.05</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb527"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb527-1" title="1">pv &lt;-<span class="st"> </span><span class="dv">2</span> <span class="op">*</span><span class="st"> </span><span class="kw">pnorm</span>(<span class="kw">abs</span>(<span class="kw">c</span>(locG)), <span class="dt">lower.tail =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb527-2" title="2">pvsp &lt;-<span class="st"> </span><span class="kw">cbind</span>(pv, <span class="kw">p.adjust</span>(pv, <span class="st">&quot;bonferroni&quot;</span>), <span class="kw">p.adjust</span>(pv, <span class="st">&quot;fdr&quot;</span>), </a>
+<a class="sourceLine" id="cb527-3" title="3">              <span class="kw">p.adjust</span>(pv, <span class="st">&quot;BY&quot;</span>))</a>
+<a class="sourceLine" id="cb527-4" title="4"><span class="kw">colnames</span>(pvsp) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;none&quot;</span>, <span class="st">&quot;bonferroni&quot;</span>, <span class="st">&quot;fdr&quot;</span>, <span class="st">&quot;BY&quot;</span>)</a>
+<a class="sourceLine" id="cb527-5" title="5"><span class="kw">apply</span>(pvsp, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="kw">sum</span>(x <span class="op">&lt;</span><span class="st"> </span><span class="fl">0.05</span>))</a></code></pre></div>
 <pre><code>#       none bonferroni        fdr         BY 
 #        789         69        468        156</code></pre>
 <p>In the <span class="math inline">\(G_i\)</span> case, however, there is no systematic differencce between the analytical and conditional permutation standard deviates.</p>
 
-<div class="sourceCode" id="cb530"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb530-1" title="1"><span class="kw">library</span>(ggplot2)</a>
-<a class="sourceLine" id="cb530-2" title="2">p1 &lt;-<span class="st"> </span><span class="kw">ggplot</span>(<span class="kw">data.frame</span>(<span class="dt">Zi=</span>locm[,<span class="dv">4</span>], <span class="dt">Zi_perm=</span>locm_p[,<span class="dv">4</span>])) <span class="op">+</span><span class="st"> </span><span class="kw">geom_point</span>(<span class="kw">aes</span>(<span class="dt">x=</span>Zi, <span class="dt">y=</span>Zi_perm), <span class="dt">alpha=</span><span class="fl">0.2</span>) <span class="op">+</span><span class="st"> </span><span class="kw">xlab</span>(<span class="st">&quot;Analytical&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">ylab</span>(<span class="st">&quot;Conditional permutation&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">coord_fixed</span>() <span class="op">+</span><span class="st"> </span><span class="kw">ggtitle</span>(<span class="st">&quot;Local Moran&#39;s I&quot;</span>)</a>
-<a class="sourceLine" id="cb530-3" title="3">p2 &lt;-<span class="st"> </span><span class="kw">ggplot</span>(<span class="kw">data.frame</span>(<span class="dt">Zi=</span><span class="kw">c</span>(locG), <span class="dt">Zi_perm=</span><span class="kw">c</span>(locG_p))) <span class="op">+</span><span class="st"> </span><span class="kw">geom_point</span>(<span class="kw">aes</span>(<span class="dt">x=</span>Zi, <span class="dt">y=</span>Zi_perm), <span class="dt">alpha=</span><span class="fl">0.2</span>) <span class="op">+</span><span class="st"> </span><span class="kw">xlab</span>(<span class="st">&quot;Analytical&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">ylab</span>(<span class="st">&quot;Conditional permutation&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">coord_fixed</span>() <span class="op">+</span><span class="st"> </span><span class="kw">ggtitle</span>(<span class="st">&quot;Local G&quot;</span>)</a>
-<a class="sourceLine" id="cb530-4" title="4">gridExtra<span class="op">::</span><span class="kw">grid.arrange</span>(p1, p2, <span class="dt">nrow=</span><span class="dv">1</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb529"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb529-1" title="1"><span class="kw">library</span>(ggplot2)</a>
+<a class="sourceLine" id="cb529-2" title="2">p1 &lt;-<span class="st"> </span><span class="kw">ggplot</span>(<span class="kw">data.frame</span>(<span class="dt">Zi=</span>locm[,<span class="dv">4</span>], <span class="dt">Zi_perm=</span>locm_p[,<span class="dv">4</span>])) <span class="op">+</span><span class="st"> </span><span class="kw">geom_point</span>(<span class="kw">aes</span>(<span class="dt">x=</span>Zi, <span class="dt">y=</span>Zi_perm), <span class="dt">alpha=</span><span class="fl">0.2</span>) <span class="op">+</span><span class="st"> </span><span class="kw">xlab</span>(<span class="st">&quot;Analytical&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">ylab</span>(<span class="st">&quot;Conditional permutation&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">coord_fixed</span>() <span class="op">+</span><span class="st"> </span><span class="kw">ggtitle</span>(<span class="st">&quot;Local Moran&#39;s I&quot;</span>)</a>
+<a class="sourceLine" id="cb529-3" title="3">p2 &lt;-<span class="st"> </span><span class="kw">ggplot</span>(<span class="kw">data.frame</span>(<span class="dt">Zi=</span><span class="kw">c</span>(locG), <span class="dt">Zi_perm=</span><span class="kw">c</span>(locG_p))) <span class="op">+</span><span class="st"> </span><span class="kw">geom_point</span>(<span class="kw">aes</span>(<span class="dt">x=</span>Zi, <span class="dt">y=</span>Zi_perm), <span class="dt">alpha=</span><span class="fl">0.2</span>) <span class="op">+</span><span class="st"> </span><span class="kw">xlab</span>(<span class="st">&quot;Analytical&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">ylab</span>(<span class="st">&quot;Conditional permutation&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">coord_fixed</span>() <span class="op">+</span><span class="st"> </span><span class="kw">ggtitle</span>(<span class="st">&quot;Local G&quot;</span>)</a>
+<a class="sourceLine" id="cb529-4" title="4">gridExtra<span class="op">::</span><span class="kw">grid.arrange</span>(p1, p2, <span class="dt">nrow=</span><span class="dv">1</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:localZvalues"></span>
 <img src="sds_files/figure-html/localZvalues-1.png" alt="Plots of analytical against conditional permutation standard deviates; left: local Moran’s I; right: local G; first round turnout, row-standardised neighbours" width="100%" />
 <p class="caption">
@@ -1516,16 +1520,16 @@ Figure 13.7: Plots of analytical against conditional permutation standard deviat
 </p>
 </div>
 <p>Figure <a href="area.html#fig:localZvalues">13.7</a> shows that, keeping fixed aspect in both panels, conditional permutation changes the range and distribution of the standard deviate values for <span class="math inline">\(I_i\)</span>, but that for <span class="math inline">\(G_i\)</span>, the two sets of standard deviates are equivalent.</p>
-<div class="sourceCode" id="cb531"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb531-1" title="1">pol_pres15<span class="op">$</span>locG_Z &lt;-<span class="st"> </span><span class="kw">c</span>(locG)</a>
-<a class="sourceLine" id="cb531-2" title="2">pol_pres15<span class="op">$</span>hs_G &lt;-<span class="st"> </span><span class="kw">cut</span>(<span class="kw">c</span>(locG), <span class="kw">c</span>(<span class="op">-</span><span class="ot">Inf</span>, brks[<span class="dv">2</span>], brks[<span class="dv">12</span>], <span class="ot">Inf</span>), <span class="dt">labels=</span><span class="kw">c</span>(<span class="st">&quot;Low&quot;</span>, <span class="st">&quot;Not significant&quot;</span>, <span class="st">&quot;High&quot;</span>))</a>
-<a class="sourceLine" id="cb531-3" title="3"><span class="kw">table</span>(pol_pres15<span class="op">$</span>hs_G)</a></code></pre></div>
+<div class="sourceCode" id="cb530"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb530-1" title="1">pol_pres15<span class="op">$</span>locG_Z &lt;-<span class="st"> </span><span class="kw">c</span>(locG)</a>
+<a class="sourceLine" id="cb530-2" title="2">pol_pres15<span class="op">$</span>hs_G &lt;-<span class="st"> </span><span class="kw">cut</span>(<span class="kw">c</span>(locG), <span class="kw">c</span>(<span class="op">-</span><span class="ot">Inf</span>, brks[<span class="dv">2</span>], brks[<span class="dv">12</span>], <span class="ot">Inf</span>), <span class="dt">labels=</span><span class="kw">c</span>(<span class="st">&quot;Low&quot;</span>, <span class="st">&quot;Not significant&quot;</span>, <span class="st">&quot;High&quot;</span>))</a>
+<a class="sourceLine" id="cb530-3" title="3"><span class="kw">table</span>(pol_pres15<span class="op">$</span>hs_G)</a></code></pre></div>
 <pre><code># 
 #             Low Not significant            High 
 #              14            2426              55</code></pre>
 
-<div class="sourceCode" id="cb533"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb533-1" title="1">m1 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;locG_Z&quot;</span>), <span class="dt">midpoint=</span><span class="dv">0</span>, <span class="dt">title=</span><span class="st">&quot;Standard</span><span class="ch">\n</span><span class="st">deviate&quot;</span>)</a>
-<a class="sourceLine" id="cb533-2" title="2">m2 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;hs_G&quot;</span>), <span class="dt">title=</span><span class="st">&quot;Bonferroni</span><span class="ch">\n</span><span class="st">hotspot status&quot;</span>)</a>
-<a class="sourceLine" id="cb533-3" title="3"><span class="kw">tmap_arrange</span>(m1, m2, <span class="dt">nrow=</span><span class="dv">1</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb532"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb532-1" title="1">m1 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;locG_Z&quot;</span>), <span class="dt">midpoint=</span><span class="dv">0</span>, <span class="dt">title=</span><span class="st">&quot;Standard</span><span class="ch">\n</span><span class="st">deviate&quot;</span>)</a>
+<a class="sourceLine" id="cb532-2" title="2">m2 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;hs_G&quot;</span>), <span class="dt">title=</span><span class="st">&quot;Bonferroni</span><span class="ch">\n</span><span class="st">hotspot status&quot;</span>)</a>
+<a class="sourceLine" id="cb532-3" title="3"><span class="kw">tmap_arrange</span>(m1, m2, <span class="dt">nrow=</span><span class="dv">1</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:localG"></span>
 <img src="sds_files/figure-html/localG-1.png" alt="Left: analytical standard deviates of local G; right: Bonferroni hotspots; first round turnout, row-standardised neighbours" width="100%" />
 <p class="caption">
@@ -1535,18 +1539,18 @@ Figure 13.8: Left: analytical standard deviates of local G; right: Bonferroni ho
 <p>As can be seen from Figure <a href="area.html#fig:localZvalues">13.7</a>, we do not need to contrast the two estimation methods, and showing the mapped standard deviate is as informative as the “hotspot” status for the chosen adjustment (Figure <a href="area.html#fig:localG">13.8</a>). In the case of <span class="math inline">\(G_i\)</span>, the values taken by the measure reflect the values of the input variable, so a “High cluster” is found for observations with high values of the input variable, here high turnout in metropolitan areas.</p>
 <p>Very recently, Geoda has been wrapped for R as <strong>rgeoda</strong> <span class="citation">(Li and Anselin <a href="#ref-rgeoda-package">2021</a>)</span>, and will provide very similar functionalities for the exploration of spatial autocorrelation in areal data as <strong>spdep</strong>. The active objects are kept as pointers to a compiled code workspace; using compiled code for all operations (as in Geoda itself) makes <strong>rgeoda</strong> perform fast, but leaves less flexible when modifications or enhancements are desired.</p>
 <p>The contiguity neighbours it constructs are the same as those found by <code>poly2nb()</code>, as almost are the <span class="math inline">\(I_i\)</span> measures. The difference is as established by <span class="citation">Bivand and Wong (<a href="#ref-Bivand2018">2018</a>)</span>, that <code>localmoran()</code> calculates the input variable variance divinding by <span class="math inline">\(n\)</span>, but Geoda uses <span class="math inline">\((n-1)\)</span>, as can be reproduced by setting <code>mlvar=FALSE</code>:</p>
-<div class="sourceCode" id="cb534"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb534-1" title="1"><span class="kw">library</span>(rgeoda)</a></code></pre></div>
+<div class="sourceCode" id="cb533"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb533-1" title="1"><span class="kw">library</span>(rgeoda)</a></code></pre></div>
 <pre><code># Loading required package: digest</code></pre>
 <pre><code># 
 # Attaching package: &#39;rgeoda&#39;</code></pre>
 <pre><code># The following object is masked from &#39;package:spdep&#39;:
 # 
 #     skater</code></pre>
-<div class="sourceCode" id="cb538"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb538-1" title="1"><span class="kw">system.time</span>(Geoda_w &lt;-<span class="st"> </span><span class="kw">queen_weights</span>(pol_pres15))</a></code></pre></div>
+<div class="sourceCode" id="cb537"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb537-1" title="1"><span class="kw">system.time</span>(Geoda_w &lt;-<span class="st"> </span><span class="kw">queen_weights</span>(pol_pres15))</a></code></pre></div>
 <pre><code># here</code></pre>
 <pre><code>#    user  system elapsed 
-#   0.118   0.000   0.127</code></pre>
-<div class="sourceCode" id="cb541"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb541-1" title="1"><span class="kw">summary</span>(Geoda_w)</a></code></pre></div>
+#   0.117   0.000   0.117</code></pre>
+<div class="sourceCode" id="cb540"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb540-1" title="1"><span class="kw">summary</span>(Geoda_w)</a></code></pre></div>
 <pre><code>#                      name               value
 # 1 number of observations:                2495
 # 2          is symmetric:                 TRUE
@@ -1556,13 +1560,13 @@ Figure 13.8: Left: analytical standard deviates of local G; right: Bonferroni ho
 # 6       # mean neighbors:    5.70821643286573
 # 7     # median neighbors:                   6
 # 8           has isolates:               FALSE</code></pre>
-<div class="sourceCode" id="cb543"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb543-1" title="1"><span class="kw">system.time</span>(lisa &lt;-<span class="st"> </span><span class="kw">local_moran</span>(Geoda_w, pol_pres15[<span class="st">&quot;I_turnout&quot;</span>], </a>
-<a class="sourceLine" id="cb543-2" title="2">    <span class="dt">cpu_threads=</span><span class="kw">ifelse</span>(parallel<span class="op">::</span><span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, parallel<span class="op">::</span><span class="kw">detectCores</span>()<span class="op">-</span>1L), <span class="dt">permutations=</span><span class="dv">499</span>, <span class="dt">seed=</span><span class="dv">1</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb542"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb542-1" title="1"><span class="kw">system.time</span>(lisa &lt;-<span class="st"> </span><span class="kw">local_moran</span>(Geoda_w, pol_pres15[<span class="st">&quot;I_turnout&quot;</span>], </a>
+<a class="sourceLine" id="cb542-2" title="2">    <span class="dt">cpu_threads=</span><span class="kw">ifelse</span>(parallel<span class="op">::</span><span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, parallel<span class="op">::</span><span class="kw">detectCores</span>()<span class="op">-</span>1L), <span class="dt">permutations=</span><span class="dv">499</span>, <span class="dt">seed=</span><span class="dv">1</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.275   0.005   0.081</code></pre>
-<div class="sourceCode" id="cb545"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb545-1" title="1"><span class="kw">all.equal</span>(<span class="kw">card</span>(nb_q), <span class="kw">lisa_num_nbrs</span>(lisa), <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
+#   0.339   0.004   0.086</code></pre>
+<div class="sourceCode" id="cb544"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb544-1" title="1"><span class="kw">all.equal</span>(<span class="kw">card</span>(nb_q), <span class="kw">lisa_num_nbrs</span>(lisa), <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
 <pre><code># [1] TRUE</code></pre>
-<div class="sourceCode" id="cb547"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb547-1" title="1"><span class="kw">all.equal</span>(<span class="kw">lisa_values</span>(lisa), <span class="kw">localmoran</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, <span class="dt">mlvar=</span><span class="ot">FALSE</span>)[,<span class="dv">1</span>], <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb546"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb546-1" title="1"><span class="kw">all.equal</span>(<span class="kw">lisa_values</span>(lisa), <span class="kw">localmoran</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, <span class="dt">mlvar=</span><span class="ot">FALSE</span>)[,<span class="dv">1</span>], <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
 <pre><code># [1] TRUE</code></pre>
 
 </div>
