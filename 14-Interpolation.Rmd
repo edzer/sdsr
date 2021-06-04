@@ -1,0 +1,362 @@
+# Spatial Interpolation {#interpolation}
+
+```{r load16, eval = Sys.getenv("USER") == "edzer", echo=FALSE}
+# try(load("data/ch16.rda"))
+```
+
+Spatial interpolation is the activity of estimating values spatially
+continuous variables for spatial locations where they have not
+been observed, based on observations.  The statistical methodology
+for spatial interpolation, called geostatistics, is concerned with
+the modelling, prediction and simulation of spatially continuous
+phenomena.  The typical problem is a missing value problem: we
+observe a property of a phenomenon $Z(s)$ at a limited number
+of sample locations $s_i, i = 1,...,n$, and are interested in
+the property value at all locations $s_0$ covering an area of
+interest, so we have to predict it for unobserved locations. This
+is also called _kriging_, or Gaussian Process prediction.
+In case $Z(s)$ contains a white noise component $\epsilon$, as in
+$Z(s)=S(s)+\epsilon(s)$ (possibly reflecting measurement error)
+an alternative but similar goal is to predict $S(s)$, which may be
+called spatial filtering or smoothing.
+
+In this chapter we will show simple approaches for handling
+geostatistical data, will demonstrate simple interpolation methods,
+explore modelling spatial correlation, spatial prediction and
+simulation. We will use package `gstat` [@R-gstat; @gstatcg],
+which offers a fairly wide palette of models and options for
+non-Bayesian geostatistical analysis.  Bayesian methods with
+R implementations are found in e.g.  [@DiggleTawnMoyeed:98;
+@Diggle:2007; @blangiardo2015spatial; @wikle2019spatio].
+
+
+```{r echo=FALSE, eval=FALSE}
+# after running the "Spatiotemporal Geostatistics" chapter, write NO2 means by
+write_csv(right_join(a2, tb), "no2.csv")
+```
+
+## A first dataset
+
+We can read NO$_2$ data, which is prepared in chapter \@ref(stgeostatistics), from
+package `gstat` using
+```{r}
+library(tidyverse)
+no2 = read_csv(system.file("external/no2.csv", package = "gstat"))
+```
+and convert it into an `sf` object using
+```{r}
+library(sf)
+crs = st_crs("EPSG:32632")
+no2.sf = st_as_sf(no2, coords = c("station_longitude_deg", "station_latitude_deg"), crs = "OGC:CRS84") %>%
+	st_transform(crs)
+```
+
+Next, we can load country boundaries and plot these data using `ggplot`:
+```{r}
+# load German boundaries
+data(air, package = "spacetime")
+de <- st_transform(st_as_sf(DE_NUTS1), crs)
+ggplot() + geom_sf(data = de) +  geom_sf(data = no2.sf, mapping = aes(col = NO2))
+```
+
+If we want to interpolate, we first need to decide where. This
+is typically done on a regular grid covering the area of
+interest. Starting with the country outline `de` we can create a
+regular grid with 10 km grid cells (pixels) by
+
+```{r buildgridgermany}
+# build a grid over Germany:
+library(stars)
+st_bbox(de) %>%
+  st_as_stars(dx = 10000) %>%
+  st_crop(de) -> grd
+grd
+```
+
+Here, we chose grid cells to be not too fine, so that we still see
+them in plots.
+
+Perhaps the simples intepolation method is inverse distance weighted
+interpolation, which is a weighted average, using weights inverse
+proportional to distances from the interpolation location:
+
+$$
+\hat{z}(s_0) = \frac{\sum_{i=1}^{n} w_i z(s_i)}{\sum_{i=1}^n w_i}
+$$
+
+with $w_i = |s_0-s_i|^p$, and the inverse distance power typically
+taken as 2, or optimized using cross validation. We can compute
+inverse distance interpolated values using `gstat::idw`, 
+```{r}
+library(gstat)
+i = idw(NO2~1, no2.sf, grd)
+```
+
+and plot them in figure \@ref(fig:idw).
+
+(ref:idw) Inverse distance weighted interpolated values for NO$_2$ over Germany
+
+```{r idw,fig.cap = '(ref:idw)'}
+ggplot() + geom_stars(data = i, aes(fill = var1.pred, x = x, y = y)) + 
+	geom_sf(data = st_cast(de, "MULTILINESTRING"), aes(col = 'grey')) + 
+	geom_sf(data = no2.sf)
+```
+
+## Sample variogram 
+
+In order to make spatial predictions using geostatistical methods, we first need to identify a model for the mean and for the spatial correlation. In the simplest model, $Z(s) = m + e(s)$, the mean is an unknown constant $m$, and in this case the spatial correlation can be modelled using the variogram, $\gamma(h) = 0.5 E (Z(s)-Z(s+h))^2$. For processes with a finite variance $C(0)$, the variogram is related to the covariogram or covariance function through $\gamma(h) = C(0)-C(h)$.
+
+The sample variogram is obtained by computing estimates of $\gamma(h)$ for distance intervals, $h_i = [h_{i,0},h_{i,1}]$:
+$$
+\hat{\gamma}(h_i) = \frac{1}{2N(h_i)}\sum_{j=1}^{N(h_i)}(z(s_i)-z(s_i+h'))^2, \ \ h_{i,0} \le h' < h_{i,1}
+$$
+
+with $N(h_i)$ the number of sample pairs available for distance interval $h_i$.
+Function `gstat::variogram` computes sample variograms.
+```{r computevariogram}
+v = variogram(NO2~1, no2.sf)
+plot(v, plot.numbers = TRUE)
+```
+This chooses default maximum distance (`cutoff`: one third of the length of the bounding box diagonal) and (constant) interval widths (`width`: cutoff divided by 15). These defaults can be changed, e.g. by
+```{r controlcutoff}
+library(gstat)
+v0 = variogram(NO2~1, no2.sf, cutoff = 100000, width = 10000)
+plot(v0, plot.numbers = TRUE)
+```
+Note that the formula `NO2~1` is used to select the variable of interest from the data file (`NO2`), and to specify the mean model: `~1` refers to an intercept-only (unknown, constant mean) model.
+
+## Fitting variogram models
+
+In order to progress toward spatial predictions, we need a variogram _model_ $\gamma(h)$ for (potentially) all distances $h$, rather than the set of estimates derived above: in case we would for instance connect these estimates with straight lines, or assume they reflect constant values over their respective distance intervals, this would lead to statisical models with non-positive covariance matrices, which is a complicated way of expressing that you are in a lot of trouble.
+
+To avoid these troubles we fit parametric models $\gamma(h)$ to the estimates $\hat{\gamma}(h_i)$, where we take $h_i$ as the mean value of all the $h'$ values involved in estimating $\hat{\gamma}(h_i)$. For this, when we fit a model like the exponential variogram,
+```{r fitvariogrammodel}
+v.m = fit.variogram(v, vgm(1, "Exp", 50000, 1))
+plot(v, v.m, plot.numbers = TRUE)
+```
+the fitting is done by minimizing $\sum_{i=1}^{n}w_i(\gamma(h_i)-\hat{\gamma}(h_i))^2$, with $w_i$ by default equal to $N(h_i)/h^2$, other fitting schemes are available through argument `fit.method`.
+
+## Kriging interpolation {#kriging}
+
+Typically, when we interpolate a variable, we do that on
+points on a regular grid covering the target area.  We first create
+a `stars` object with a raster covering the target area, and NA's
+outside it:
+
+Kriging involves the prediction of $Z(s_0)$ at arbitrary locations
+$s_0$.  We can krige NO$_2$ by using `gstat::krige`, with the model for the 
+trend, the data, the prediction grid, and the variogram model:
+```{r krigeovergermany}
+k = krige(NO2~1, no2.sf, grd, v.m)
+ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) + 
+	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
+	geom_sf(data = no2.sf)
+```
+
+## Areal means: block kriging {#blockkriging}
+
+Computing areal means can be done in several ways. The simples is to take
+the average of point samples falling inside the target polygons:
+```{r}
+a = aggregate(no2.sf["NO2"], by = de, FUN = mean)
+```
+A more complicated way is to use _block kriging_ [@jh78], which
+uses _all_ the data to estimate the mean of the variable over the
+target area. With `krige`, this can be done by giving the target
+areas (polygons) as the `newdata` argument:
+```{r krigeNO2regionmeans}
+b = krige(NO2~1, no2.sf, de, v.m)
+```
+we can now compile the two maps together in order to create a single plot:
+```{r}
+b$sample = a$NO2
+b$kriging = b$var1.pred
+b %>% select(sample, kriging) %>% gather(var, NO2, -geometry) -> b2
+ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +
+	 scale_fill_gradientn(colors = sf.colors(20))
+```
+We see that the signal is similar, but that the simple means are
+more variable than the block kriging values; this may be due to
+the smoothing effect of kriging: data points outside the target
+area are weighted, too.
+
+To compare the standard errors of means, for the sample mean we
+can get a rough guess of the standard error by $\sqrt{(\sigma^2/n)}$:
+```{r}
+SE = function(x) sqrt(var(x)/length(x))
+a = aggregate(no2.sf["NO2"], de, SE)
+```
+which would have been the actual estimate in design-based inference
+if the sample was obtained by spatially random sampling.
+The block kriging variance is the model-based estimate, and is
+a by-product of kriging. We combine and rename the two:
+```{r}
+b$sample = a$NO2
+b$kriging = sqrt(b$var1.var)
+b %>% select(sample, kriging) %>% gather(var, NO2, -geometry) -> b2
+ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +
+	 scale_fill_gradientn(colors = sf.colors(20))
+```
+where we see that the simple approach gives clearly more variability
+in prediction errors for the areal means.
+
+## Conditional simulation
+
+In case one or more conditional realisation of the field $Z(s)$
+are needed rather than their conditional mean, we can obtain this
+by _conditional simulation_. A reason for wanting this may be the
+need to estimate areal mean values of $g(Z(s))$ with $g(\cdot)$
+a non-linear function; a simple example is the areal fraction where
+$Z(s)$ exceeds a threshold.
+
+The standard approach used by `gstat` is to use the sequential
+simulation algorithm for this. This is a simple algorithm that randomly
+steps through the prediction locations and at each location
+
+* carries out a kriging prediction
+* draws a random variable from the normal distribution with mean and variance equal to the kriging variance
+* adds this value to the conditioning dataset
+* finds a new random simulation location
+
+until all locations have been visited. 
+
+This is caried out by `gstat::krige` when `nsim` is set to a positive
+value. In addition, it is good to constrain `nmax`, the (maximum)
+number of nearest neigbours to include in kriging estimation,
+because the dataset grows each step, leading otherwise quickly to
+very long computing times and large memory requirements.
+
+```{r plotkrigingvalues}
+library(viridis)
+s = krige(NO2~1, no2.sf, grd, v.m, nmax = 30, nsim = 10)
+g = ggplot() + coord_equal() +
+	scale_fill_viridis() +
+    theme_void() +
+	scale_x_discrete(expand=c(0,0)) +
+	scale_y_discrete(expand=c(0,0))
+g + geom_stars(data = s[,,,1:6]) + facet_wrap(~sample)
+```
+
+Alternative methods for conditional simulation have recently been
+added to `gstat`, and include `krigeSimCE` implementing the circular
+embedding method [@JSSv055i09], and `krigeSTSimTB` implementing
+the turning bands method [@schlather]. These are of particular
+of interest for larger datasets or conditional simulations of
+spatiotemporal data.
+
+## Trend models
+
+Kriging and conditional simulation, as used so far in this
+chapter, assume that all spatial variability is a random process,
+characterized by a spatial covariance model. In case we have other
+variables that are meaningfully correlated with the target variable,
+we can use them in a linear regression model for the trend,
+$$
+Z(s) = \sum_{j=0}^p \beta_j X_p(s) + e(s)
+$$
+with $X_0(s) = 1$ and $\beta_0$ an intercept, but with the other
+$\beta_j$ regression coefficients. This typically reduces both the
+spatial correlation in the residual $e(s)$, as well as its variance,
+and leads to more accurate predictions and more similar conditional
+simulations.
+
+### A population grid
+
+As a potential predictor for NO2 in the air, we use population
+density. NO2 is mostly caused by traffic, and traffic is stronger
+in more densely populated areas.
+Population density is obtained from the [2011 census](https://www.zensus2011.de/DE/Home/Aktuelles/DemografischeGrunddaten.html), and is downloaded as a csv file with the number of inhabitants per 100 m grid cell. We can aggregate these data to the target grid cells by summing the inhabitants:
+```{r vroom1, , eval = Sys.getenv("USER") == "edzer"}
+v = vroom::vroom("aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv")
+v %>% filter(Einwohner > 0) %>% 
+	select(-Gitter_ID_100m) %>%
+	st_as_sf(coords = c("x_mp_100m", "y_mp_100m"), crs = 3035) %>%
+	st_transform(st_crs(grd)) -> b
+a = aggregate(b, st_as_sf(grd, na.rm = FALSE), sum)
+```
+```{r vroom2, echo=FALSE, eval = Sys.getenv("USER") != "edzer"}
+v = vroom::vroom("aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv")
+v1 <- v[v$Einwohner > 0,-1]
+rm(v); gc(full=TRUE)
+v2 <- st_as_sf(v1, coords = c("x_mp_100m", "y_mp_100m"), crs = 3035)
+rm(v1); gc()
+b <- st_transform(v2, st_crs(grd))
+rm(v2); gc()
+a = aggregate(b, st_as_sf(grd, na.rm = FALSE), sum)
+gc()
+```
+
+Now we have the population counts per grid cell in `a`. To get to
+population density, we need to find the area of each cell; for cells
+crossing the country border, this will be less than 10 x 10 km:
+```{r}
+grd$ID = 1:prod(dim(grd)) # so we can find out later which grid cell we have
+ii = st_intersects(grd["ID"], st_cast(st_union(de), "MULTILINESTRING"))
+grd_sf = st_as_sf(grd["ID"], na.rm = FALSE)[lengths(ii) > 0,]
+iii = st_intersection(grd_sf, st_union(de))
+grd$area = st_area(grd)[[1]] + units::set_units(grd$values, m^2) # NA's
+grd$area[iii$ID] = st_area(iii)
+```
+Instead of doing the two-stage procedure above: first finding cells that
+have a border crossing it, then computing its area, we could also directly
+use `st_intersection` on all cells, but that takes considerably longer.
+From the counts and areas we can compute densities, and verify totals:
+```{r}
+grd$pop_dens = a$Einwohner / grd$area
+sum(grd$pop_dens * grd$area, na.rm = TRUE) # verify
+sum(b$Einwohner)
+g + geom_stars(data = grd, aes(fill = sqrt(pop_dens), x = x, y = y))
+```
+We need to divide the number of inhabitants by the number of 100
+m grid points contributing to it, in order to convert population
+counts into population density.
+
+To obtain population density values at monitoring network stations,
+we can use
+```{r}
+(a = aggregate(grd["pop_dens"], no2.sf, mean))
+no2.sf$pop_dens = st_as_sf(a)[[1]]
+summary(lm(NO2~sqrt(pop_dens), no2.sf))
+```
+and the corresponding scatterplot is shown in \@ref(fig:no2scat).
+```{r no2scat, out.width = '50%', fig.cap="Scatter plot of 2017 annual mean NO2 concentration against population density, for rural background air quality stations", eval=TRUE, fig=TRUE, echo=FALSE}
+plot(NO2~sqrt(pop_dens), no2.sf)
+abline(lm(NO2~sqrt(pop_dens), no2.sf))
+```
+
+Prediction under this new model involves first modelling a residual
+variogram, by
+```{r predictusingpopulationdensity}
+no2.sf = no2.sf[!is.na(no2.sf$pop_dens),]
+vr = variogram(NO2~sqrt(pop_dens), no2.sf)
+vr.m = fit.variogram(vr, vgm(1, "Exp", 50000, 1))
+plot(vr, vr.m, plot.numbers = TRUE)
+```
+and subsequently, kriging prediction is done by
+```{r}
+kr = krige(NO2~sqrt(pop_dens), no2.sf, grd["pop_dens"], vr.m)
+k$kr1 = k$var1.pred
+k$kr2 = kr$var1.pred
+st_redimension(k[c("kr1", "kr2")], 
+	along = list(what = c("kriging", "residual kriging"))) %>%
+	setNames("NO2") -> km
+g + geom_stars(data = km, aes(fill = NO2, x = x, y = y)) + 
+	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
+	geom_sf(data = no2.sf) + facet_wrap(~what)
+```
+where, critically, the `pop_dens` values are now available for
+prediction locations in object `grd`.  We see some clear differences:
+the map with population density in the trend follows the extremes of
+the population density rather than those of the measurement stations,
+and has a range that extends that of the former. It should be taken
+with a large grain of salt however, since the stations used were
+filtered for the category "rural background", indicating that they
+represent conditions of lower populations density. The scatter plot
+of Figure \@ref(fig:no2scat) reveals that the the population density
+at the locations of stations is much more limited than that in the
+population density map, and hence the right-hand side map is based on
+strongly extrapolating the relationship shown in \@ref(fig:no2scat).
+
+## Area-to-point kriging {#atpk}
+
+T.b.d.
