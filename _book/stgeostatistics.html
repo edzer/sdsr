@@ -4,11 +4,11 @@
 
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>Chapter 9 Plotting spatial data | Spatial Data Science</title>
+  <title>Chapter 13 Multivariate and Spatiotemporal Geostatistics | Spatial Data Science</title>
   <meta name="description" content="description_xx" />
   <meta name="generator" content="bookdown 0.22 and GitBook 2.6.7" />
 
-  <meta property="og:title" content="Chapter 9 Plotting spatial data | Spatial Data Science" />
+  <meta property="og:title" content="Chapter 13 Multivariate and Spatiotemporal Geostatistics | Spatial Data Science" />
   <meta property="og:type" content="book" />
   
   
@@ -16,7 +16,7 @@
   <meta name="github-repo" content="edzer/sdsr" />
 
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Chapter 9 Plotting spatial data | Spatial Data Science" />
+  <meta name="twitter:title" content="Chapter 13 Multivariate and Spatiotemporal Geostatistics | Spatial Data Science" />
   
   <meta name="twitter:description" content="description_xx" />
   
@@ -31,8 +31,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   
   
-<link rel="prev" href="large.html"/>
-<link rel="next" href="statistical-modelling-of-spatial-data.html"/>
+<link rel="prev" href="interpolation.html"/>
+<link rel="next" href="area.html"/>
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
@@ -1030,427 +1030,254 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
           <div class="page-inner">
 
             <section class="normal" id="section-">
-<div id="plotting" class="section level1">
-<h1><span class="header-section-number">Chapter 9</span> Plotting spatial data</h1>
-<p>Together with timelines, maps belong to the most powerful graphs,
-perhaps because we can immediately relate where we are, or have
-been, on the space of the plot. Two recent books on visualisation
-<span class="citation">(Healy <a href="#ref-Healy">2018</a>; Wilke <a href="#ref-Wilke">2019</a>)</span> contain chapters on visualising geospatial data or
-maps. Here, we will not try to preach the do’s and don’ts of maps,
-but rather point out a number of possibilities how to do things,
-point out challenges along the way and ways to mitigate them.</p>
-<div id="transform" class="section level2">
-<h2><span class="header-section-number">9.1</span> Every plot is a projection</h2>
-<p>The world is round, but plotting devices are flat. As mentioned
-in section <a href="cs.html#projections">2.2.2</a>, any time we visualise, in any
-way, the world on a flat device, we project: we convert ellipsoidal
-coordinates into Cartesian coordinates. This includes the cases
-where we think we “do nothing” (figure <a href="plotting.html#fig:world">9.1</a>, left),
-or where show the world “as it is”, e.g. as seen from space (figure
-<a href="plotting.html#fig:world">9.1</a>, right).</p>
-<div class="figure" style="text-align: center"><span id="fig:world"></span>
-<img src="sds_files/figure-html/world-1.png" alt="Earth country boundaries; left: mapping long/lat linearly to $x$ and $y$ (plate carrée); right: ``as seen from space'' (orthographic)" width="672" />
-<p class="caption">
-Figure 9.1: Earth country boundaries; left: mapping long/lat linearly to <span class="math inline">\(x\)</span> and <span class="math inline">\(y\)</span> (plate carrée); right: ``as seen from space’’ (orthographic)
-</p>
-</div>
-<p>The left plot of figure <a href="plotting.html#fig:world">9.1</a> was obtained by</p>
-<div class="sourceCode" id="cb308"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb308-1" title="1"><span class="kw">library</span>(sf)</a>
-<a class="sourceLine" id="cb308-2" title="2"><span class="kw">library</span>(rnaturalearth)</a>
-<a class="sourceLine" id="cb308-3" title="3">w &lt;-<span class="st"> </span><span class="kw">ne_countries</span>(<span class="dt">scale =</span> <span class="st">&quot;medium&quot;</span>, <span class="dt">returnclass =</span> <span class="st">&quot;sf&quot;</span>)</a>
-<a class="sourceLine" id="cb308-4" title="4"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(w))</a></code></pre></div>
-<p>and we see that this is the default projection for data with ellipsoidal coordinates, as indicated by</p>
-<div class="sourceCode" id="cb309"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb309-1" title="1"><span class="kw">st_is_longlat</span>(w)</a></code></pre></div>
+<div id="stgeostatistics" class="section level1">
+<h1><span class="header-section-number">Chapter 13</span> Multivariate and Spatiotemporal Geostatistics</h1>
+<p>Building on the simple interpolation methods presented in chapter
+<a href="interpolation.html#interpolation">12</a>, this chapter works out a case study for
+spatiotemporal interpolation, using NO<span class="math inline">\(_2\)</span> air quality data, and
+populations density as covariate.</p>
+<div id="preparing-the-air-quality-dataset" class="section level2">
+<h2><span class="header-section-number">13.1</span> Preparing the air quality dataset</h2>
+<p>The dataset we work with is an air quality dataset obtained from
+the European Environmental Agency (EEA). European member states report
+air quality measurements to this Agency. So-called <em>validated</em>
+data are quality controlled by member states, and are reported on a
+yearly basis. They form the basis for policy compliancy evaluations.</p>
+<p>The EEA’s <a href="https://www.eea.europa.eu/data-and-maps/data/aqereporting-8">air quality
+e-reporting</a>
+website gives access to the data reported by European member states.
+We decided to download hourly (time series) data, which is the data primarily measured.
+A web form helps convert simple selection criteria into an http GET request. The following URL</p>
+<pre><code>https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&amp;CityName=&amp;Pollutant=8&amp;Year_from=2017&amp;Year_to=2017&amp;Station=&amp;Samplingpoint=&amp;Source=E1a&amp;Output=TEXT&amp;UpdateDate=</code></pre>
+<p>was created to select all validated (<code>Source=E1a</code>) <span class="math inline">\(NO_2\)</span>
+(<code>Pollutant=8</code>) data for 2017 (<code>Year_from</code>, <code>Year_to</code>) from Germany
+(<code>CountryCode=DE</code>). It returns a text file with a set of URLs to CSV
+files, each containing the hourly values for the whole period for a
+single measurement station. These files were downloaded and converted
+to the right encoding using the <code>dos2unix</code> command line utility.</p>
+<p>In the following, we will read all the files into a list,</p>
+<div class="sourceCode" id="cb383"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb383-1" title="1">files =<span class="st"> </span><span class="kw">list.files</span>(<span class="st">&quot;aq&quot;</span>, <span class="dt">pattern =</span> <span class="st">&quot;*.csv&quot;</span>, <span class="dt">full.names =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb383-2" title="2">r =<span class="st"> </span><span class="kw">lapply</span>(files[<span class="op">-</span><span class="dv">1</span>], <span class="cf">function</span>(f) <span class="kw">read.csv</span>(f))</a></code></pre></div>
+<p>then convert the time variable into a <code>POSIXct</code> variable, and time order them</p>
+<div class="sourceCode" id="cb384"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb384-1" title="1"><span class="kw">Sys.setenv</span>(<span class="dt">TZ =</span> <span class="st">&quot;UTC&quot;</span>) <span class="co"># make sure times are not interpreted as DST</span></a>
+<a class="sourceLine" id="cb384-2" title="2">r =<span class="st"> </span><span class="kw">lapply</span>(r, <span class="cf">function</span>(f) {</a>
+<a class="sourceLine" id="cb384-3" title="3">        f<span class="op">$</span>t =<span class="st"> </span><span class="kw">as.POSIXct</span>(f<span class="op">$</span>DatetimeBegin) </a>
+<a class="sourceLine" id="cb384-4" title="4">        f[<span class="kw">order</span>(f<span class="op">$</span>t), ] </a>
+<a class="sourceLine" id="cb384-5" title="5">    }</a>
+<a class="sourceLine" id="cb384-6" title="6">) </a></code></pre></div>
+<p>and we deselect smaller datasets that do not contain hourly data:</p>
+<div class="sourceCode" id="cb385"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb385-1" title="1">r =<span class="st"> </span>r[<span class="kw">sapply</span>(r, nrow) <span class="op">&gt;</span><span class="st"> </span><span class="dv">1000</span>]</a>
+<a class="sourceLine" id="cb385-2" title="2"><span class="kw">names</span>(r) =<span class="st">  </span><span class="kw">sapply</span>(r, <span class="cf">function</span>(f) <span class="kw">unique</span>(f<span class="op">$</span>AirQualityStationEoICode))</a>
+<a class="sourceLine" id="cb385-3" title="3"><span class="kw">length</span>(r) <span class="op">==</span><span class="st"> </span><span class="kw">length</span>(<span class="kw">unique</span>(<span class="kw">names</span>(r)))</a></code></pre></div>
 <pre><code># [1] TRUE</code></pre>
-<p>The projection taken in figure <a href="plotting.html#fig:world">9.1</a> (left) is the
-equirectangular (or equidistant cylindrical) projection, which maps
-longitude and latitude linearly to the <span class="math inline">\(x\)</span> and <span class="math inline">\(y\)</span> axis, keeping
-an aspect ratio of 1. Were we to do this for smaller areas not on
-the equator, it makes sense to choose a plot ratio such that one
-distance unit E-W equals one distance unit N-S on the center of
-the plotted area, and this is the default behaviour of the <code>plot()</code>
-method for unprojected <code>sf</code> or <code>stars</code> datasets, as well as the
-default for <code>ggplot2::geom_sf()</code> (section @rer(geomsf)).</p>
-<p>We can also carry out this projection before plotting. Say we want to
-plot Germany, then after loading the (rough) country outline,
-we use <code>st_transform</code> to project:</p>
-<div class="sourceCode" id="cb311"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb311-1" title="1">DE =<span class="st"> </span><span class="kw">st_geometry</span>(<span class="kw">ne_countries</span>(<span class="dt">country =</span> <span class="st">&quot;germany&quot;</span>, <span class="dt">returnclass =</span> <span class="st">&quot;sf&quot;</span>))</a>
-<a class="sourceLine" id="cb311-2" title="2">DE.eqc =<span class="st"> </span><span class="kw">st_transform</span>(DE, <span class="st">&quot;+proj=eqc +lat_ts=51.14 +lon_0=90w&quot;</span>)</a></code></pre></div>
-<p>The <code>eqc</code> refers to the “equidistant cylindrical” projection of PROJ;
-the projection parameter here is <code>lat_ts</code>, the latitude of true
-scale (i.e., one length unit N-S equals one length unit E-W),
-which was here chosen as the middle of the bounding box latitudes</p>
-<div class="sourceCode" id="cb312"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb312-1" title="1"><span class="kw">print</span>(<span class="kw">mean</span>(<span class="kw">st_bbox</span>(DE)[<span class="kw">c</span>(<span class="st">&quot;ymin&quot;</span>, <span class="st">&quot;ymax&quot;</span>)]), <span class="dt">digits =</span> <span class="dv">4</span>)</a></code></pre></div>
-<pre><code># [1] 51.14</code></pre>
-<p>When we now plot both maps (figure <a href="plotting.html#fig:eqc">9.2</a>), they look
-identical up to the values along the axes: degrees for ellipsoidal
-(left), and metres for projected (Cartesian) coordinates.</p>
-<div class="sourceCode" id="cb314"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb314-1" title="1"><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</a>
-<a class="sourceLine" id="cb314-2" title="2"><span class="kw">plot</span>(DE, <span class="dt">axes =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb314-3" title="3"><span class="kw">plot</span>(DE.eqc, <span class="dt">axes =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:eqc"></span>
-<img src="sds_files/figure-html/eqc-1.png" alt="Germany in equirectangular projection: with axis units degrees (left) and metres in the equidistant cylindrical projection (right)" width="60%" />
-<p class="caption">
-Figure 9.2: Germany in equirectangular projection: with axis units degrees (left) and metres in the equidistant cylindrical projection (right)
-</p>
+<p>and then combine all files using <code>xts::cbind</code>, so that they are matched based on time:</p>
+<div class="sourceCode" id="cb387"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb387-1" title="1"><span class="kw">library</span>(xts)</a>
+<a class="sourceLine" id="cb387-2" title="2">r =<span class="st"> </span><span class="kw">lapply</span>(r, <span class="cf">function</span>(f) <span class="kw">xts</span>(f<span class="op">$</span>Concentration, f<span class="op">$</span>t))</a>
+<a class="sourceLine" id="cb387-3" title="3">aq =<span class="st"> </span><span class="kw">do.call</span>(cbind, r)</a></code></pre></div>
+<p>We can now select those stations for which we have 75% of the hourly values measured, i.e. drop those with more than 25% hourly values missing:</p>
+<div class="sourceCode" id="cb388"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb388-1" title="1"><span class="co"># remove stations with more than 75% missing values:</span></a>
+<a class="sourceLine" id="cb388-2" title="2">sel =<span class="st"> </span><span class="kw">apply</span>(aq, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="kw">sum</span>(<span class="kw">is.na</span>(x)) <span class="op">&lt;</span><span class="st"> </span><span class="fl">0.75</span> <span class="op">*</span><span class="st"> </span><span class="dv">365</span> <span class="op">*</span><span class="st"> </span><span class="dv">24</span>)</a>
+<a class="sourceLine" id="cb388-3" title="3">aqsel =<span class="st"> </span>aq[, sel] <span class="co"># stations are in columns</span></a></code></pre></div>
+<p>Next, the <a href="http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_stations.zip">station metadata</a> was read
+and filtered for rural background stations in Germany by</p>
+<div class="sourceCode" id="cb389"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb389-1" title="1"><span class="kw">library</span>(tidyverse)</a>
+<a class="sourceLine" id="cb389-2" title="2"><span class="kw">read.csv</span>(<span class="st">&quot;aq/AirBase_v8_stations.csv&quot;</span>, <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>, <span class="dt">stringsAsFactors =</span> <span class="ot">FALSE</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb389-3" title="3"><span class="st">    </span>as_tibble  <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb389-4" title="4"><span class="st">    </span><span class="kw">filter</span>(country_iso_code <span class="op">==</span><span class="st"> &quot;DE&quot;</span>, station_type_of_area <span class="op">==</span><span class="st"> &quot;rural&quot;</span>, </a>
+<a class="sourceLine" id="cb389-5" title="5">                 type_of_station <span class="op">==</span><span class="st"> &quot;Background&quot;</span>) -&gt;<span class="st"> </span>a2</a></code></pre></div>
+<p>These stations contain coordinates, and an <code>sf</code> object with (static) station metadata is created by</p>
+<div class="sourceCode" id="cb390"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb390-1" title="1"><span class="kw">library</span>(sf)</a>
+<a class="sourceLine" id="cb390-2" title="2"><span class="kw">library</span>(stars)</a>
+<a class="sourceLine" id="cb390-3" title="3">a2.sf =<span class="st"> </span><span class="kw">st_as_sf</span>(a2, <span class="dt">coords =</span> <span class="kw">c</span>(<span class="st">&quot;station_longitude_deg&quot;</span>, <span class="st">&quot;station_latitude_deg&quot;</span>), <span class="dt">crs =</span> <span class="dv">4326</span>)</a></code></pre></div>
+<p>We now subset the air quality data to stations that are of type rural background:</p>
+<div class="sourceCode" id="cb391"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb391-1" title="1">sel =<span class="st">  </span><span class="kw">colnames</span>(aqsel) <span class="op">%in%</span><span class="st"> </span>a2<span class="op">$</span>station_european_code</a>
+<a class="sourceLine" id="cb391-2" title="2">aqsel =<span class="st"> </span>aqsel[, sel]</a></code></pre></div>
+<p>We can compute station means, and join these to stations locations by</p>
+<div class="sourceCode" id="cb392"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb392-1" title="1">tb =<span class="st"> </span><span class="kw">tibble</span>(<span class="dt">NO2 =</span> <span class="kw">apply</span>(aqsel, <span class="dv">2</span>, mean, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>), <span class="dt">station_european_code =</span> <span class="kw">colnames</span>(aqsel))</a>
+<a class="sourceLine" id="cb392-2" title="2">crs =<span class="st"> </span><span class="dv">32632</span></a>
+<a class="sourceLine" id="cb392-3" title="3"><span class="kw">right_join</span>(a2.sf, tb) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">st_transform</span>(crs) -&gt;<span class="st"> </span>no2.sf </a></code></pre></div>
+<pre><code># Joining, by = &quot;station_european_code&quot;</code></pre>
+<div class="sourceCode" id="cb394"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb394-1" title="1"><span class="co"># load German boundaries</span></a>
+<a class="sourceLine" id="cb394-2" title="2"><span class="kw">data</span>(air, <span class="dt">package =</span> <span class="st">&quot;spacetime&quot;</span>)</a>
+<a class="sourceLine" id="cb394-3" title="3">de &lt;-<span class="st"> </span><span class="kw">st_transform</span>(<span class="kw">st_as_sf</span>(DE_NUTS1), crs)</a>
+<a class="sourceLine" id="cb394-4" title="4"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> de) <span class="op">+</span><span class="st">  </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">col =</span> NO2))</a></code></pre></div>
+<p><img src="sds_files/figure-html/computestationmeans-1.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
-<div id="what-is-a-good-projection-for-my-data" class="section level3">
-<h3><span class="header-section-number">9.1.1</span> What is a good projection for my data?</h3>
-<p>There is unfortunately no silver bullet here. Projections that
-maintain all distances do not exist; only globes do. The most
-used projections try to preserve</p>
-<ul>
-<li>areas (equal area),</li>
-<li>directions (conformal, e.g. Mercator),</li>
-<li>some properties of distances (e.g. equirectangular preserves distances along meridians, azimuthal equidistant preserves distances to a central point)</li>
-</ul>
-<p>or some compromise of these. Parameters of projections decide what
-is shown in the center of a map and what on the fringes, which
-areas are up and which are down, and which areas are most enlarged.
-All these choices are in the end political decisions.</p>
-<p>It is often entertaining and at times educational to play around with
-the different projections and understand their consequences. When
-the primary purpose of the map however is not to entertain or educate
-projection varieties, it may be preferrable to choose a well-known or
-less surprising projection, and move the discussion which projection
-should be preferred to a decision process on its own.</p>
+<div id="multivariable-geostatistics" class="section level2">
+<h2><span class="header-section-number">13.2</span> Multivariable geostatistics</h2>
+<p>Multivariable geostatics involves the <em>joint</em> modelling, prediction
+and simulation of multiple variables,
+<span class="math display">\[Z_1(s) = X_1 \beta_1 + e_1(s)\]</span>
+<span class="math display">\[...\]</span>
+<span class="math display">\[Z_n(s) = X_n \beta_n + e_n(s).\]</span>
+In addition to having observations, trend models, and variograms
+for each variable, the <em>cross</em> variogram for each pair of residual
+variables, describing the covariance of <span class="math inline">\(e_i(s), e_j(s+h)\)</span>,
+is required. If this cross covariance is non-zero, knowledge of
+<span class="math inline">\(e_j(s+h)\)</span> may help predict (or simulate) <span class="math inline">\(e_i(s)\)</span>. This is
+especially true if <span class="math inline">\(Z_j(s)\)</span> is more densely sample than <span class="math inline">\(Z_i(s)\)</span>.
+Prediction and simulation under this model are called cokriging
+and cosimulation. Examples using gstat are found when running the
+demo scripts</p>
+<div class="sourceCode" id="cb395"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb395-1" title="1"><span class="kw">library</span>(gstat)</a>
+<a class="sourceLine" id="cb395-2" title="2"><span class="kw">demo</span>(cokriging)</a>
+<a class="sourceLine" id="cb395-3" title="3"><span class="kw">demo</span>(cosimulation)</a></code></pre></div>
+<p>and are illustrated and discussed in <span class="citation">(Roger S. Bivand, Pebesma, and Gomez-Rubio <a href="#ref-asdar">2013</a>)</span>.</p>
+<p>In case the different variables considered are observed at
+the same set of locations, for instance different air quality
+parameters, then the statistical <em>gain</em> of using cokriging
+as opposed to direct (univariable) kriging is often modest,
+when not negligible. A gain may however be that the prediction
+is truly multivariable: in addition to the prediction vector
+<span class="math inline">\(\hat{Z(s_0)}=(\hat{Z}_1(s_0),...,\hat{Z}_n(s_0))\)</span> we get the full
+covariance matrix of the prediction error <span class="citation">(Ver Hoef and Cressie <a href="#ref-ver1993multivariable">1993</a>)</span>.
+This means for instance that if we are interested in some
+linear combination of <span class="math inline">\(\hat{Z}(s_0)\)</span>, such as <span class="math inline">\(\hat{Z}_2(s_0) - \hat{Z}_1(s_0)\)</span>, that we can get the standard error of that
+combination because we have the correlations between the prediction
+errors.</p>
+<p>Although sets of direct and cross variograms can be computed
+and fitted automatically, multivariable geostatistical modelling
+becomes quickly hard to manage when the number of variables gets
+large, because the number of direct and cross variograms required
+is <span class="math inline">\(n(n+1)/2\)</span>.</p>
+<p>In case different variables refer to the same variable take at
+different time steps, one could use a multivariable (cokriging)
+prediction approach, but this would not allow for e.g. interpolation
+between two time steps. For this, and for handling the case of
+having data observed at many time instances, one can also model
+its variation as a function of continuous space <em>and</em> time, as of
+<span class="math inline">\(Z(s,t)\)</span>, which we will do in the next section.</p>
 </div>
-</div>
-<div id="plotting-points-lines-polygons-grid-cells" class="section level2">
-<h2><span class="header-section-number">9.2</span> Plotting points, lines, polygons, grid cells</h2>
-<p>Since maps are just a special form of plots of statistical data,
-the usual rules hold. Frequently occuring challenges include:</p>
-<ul>
-<li>polygons may be very small, and vanish when plotted,</li>
-<li>depending on the data, polygons for different features may well
-overlap, and be visible only partially; using transparent fill
-colors may help indentify them</li>
-<li>when points are plotted with symbols, they may easily overlap and be hidden; density maps (chapter <a href="pointpatterns.html#pointpatterns">11</a>) may be more helpful</li>
-<li>lines may be hard to read when coloured and may overlap regardless line width</li>
-</ul>
-<div id="colors" class="section level3">
-<h3><span class="header-section-number">9.2.1</span> Colors</h3>
-<p>When plotting polygons filled with colors, one has the choice to plot
-polygon boundaries, or to suppress these. If polygon boundaries draw
-too much attention, an alternative is to colour them in a grey tone,
-or another color that doesn’t interfere with the fill colors. When
-suppressing boundaries entirely, polygons with (nearly) identical
-colors will no longer be visually distinguishable. If the property
-indicating the fill color is constant over the region, such as land
-cover type, then this is not a problem but if the property is an
-aggregation, the region over which it was aggregated gets lost,
-and by that the proper interpretation: especially for extensive
-variables, e.g. the amount of people living in a polygon, this
-strongly misleads. But even with polygon boundaries, using filled
-polygons for such variables may not be a good idea.</p>
-<p>The use of continuous color scales that have no noticable color
-breaks for continuously varying variables may look attractive,
-but is often more fancy than useful:</p>
-<ul>
-<li>it impracticle to match a color on the map with a legend value</li>
-<li>colors ramps often stretch non-linearly over the value range,
-making it hard to convey magnitude</li>
-</ul>
-<p>Only for cases where the identification of values is less
-important than the continuity of the map, such as the coloring of
-a high resolution digital terrain model, it does serve its goal.
-Good colors scales are e.g. found in packages <code>RColorBrewer</code>
-<span class="citation">(Neuwirth <a href="#ref-R-RColorBrewer">2014</a>)</span>, viridis <span class="citation">(Garnier <a href="#ref-R-viridis">2021</a>)</span> or colorspace
-<span class="citation">(Ihaka et al. <a href="#ref-R-colorspace">2021</a>; Zeileis et al. <a href="#ref-colorspace">2020</a>)</span>.</p>
-</div>
-<div id="classintervals" class="section level3">
-<h3><span class="header-section-number">9.2.2</span> Color breaks: <code>classInt</code></h3>
-<p>When plotting continuous geometry attributes using a limited set
-of colors (or symbols), classes need to be made from the data.
-R package <code>classInt</code> <span class="citation">(R. Bivand <a href="#ref-R-classInt">2020</a><a href="#ref-R-classInt">a</a>)</span> provides a number of methods to
-do so. The default method is “quantile”:</p>
-<div class="sourceCode" id="cb315"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb315-1" title="1"><span class="kw">library</span>(classInt)</a>
-<a class="sourceLine" id="cb315-2" title="2"><span class="co"># set.seed(1) needed ?</span></a>
-<a class="sourceLine" id="cb315-3" title="3">r =<span class="st"> </span><span class="kw">rnorm</span>(<span class="dv">100</span>)</a>
-<a class="sourceLine" id="cb315-4" title="4">(cI &lt;-<span class="st"> </span><span class="kw">classIntervals</span>(r))</a></code></pre></div>
-<pre><code># style: quantile
-#   one of 1.49e+10 possible partitions of this variable into 8 classes
-#   [-2.61,-1.26)  [-1.26,-0.356) [-0.356,-0.131)  [-0.131,0.091)   [0.091,0.433) 
-#              13              12              13              12              12 
-#   [0.433,0.623)    [0.623,1.11)     [1.11,2.76] 
-#              13              12              13</code></pre>
-<div class="sourceCode" id="cb317"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb317-1" title="1">cI<span class="op">$</span>brks</a></code></pre></div>
-<pre><code># [1] -2.612 -1.257 -0.356 -0.131  0.091  0.433  0.623  1.113  2.755</code></pre>
-<p>it takes argument <code>n</code> for the number of intervals, and a <code>style</code>
-that can be one of “fixed”, “sd”, “equal”, “pretty”, “quantile”,
-“kmeans”, “hclust”, “bclust”, “fisher” or “jenks”. Style “pretty”
-may not obey <code>n</code>; if <code>n</code> is missing, ‘nclass.Sturges’ is used;
-two other methods are available for choosing <code>n</code> automatically. If
-the number of observations is greater than 3000, a 10% sample is used
-to create the breaks for “fisher” and “jenks”.</p>
-</div>
-<div id="graticule" class="section level3">
-<h3><span class="header-section-number">9.2.3</span> Graticules and other navigation aids</h3>
-<p>Graticules are lines on a map that follow constant latitude or
-longitude values. On figure <a href="plotting.html#fig:world">9.1</a> left they are drawn
-in grey. Graticules are often drawn in maps to give reference where
-something is. In our first map in figure <a href="intro.html#fig:first-map">1.1</a> we can
-read that the area plotted is near 35<span class="math inline">\(^o\)</span> North and 80<span class="math inline">\(^o\)</span> West.
-Had we plotted the lines in the projected coordinate system, they
-would have been straight and their actual numbers would not have
-been very informative, apart from giving an interpretation of size
-or distances when the unit is known, and familiar to the map reader.
-Graticules, by that, also shed light on which projection
-was used: equirectangular or Mercator projections will have straight
-vertical and horizontal lines, conic projections have straight but
-diverging meridians, equal area may have curved meridians</p>
-<p>The real navigation aid on figure <a href="plotting.html#fig:world">9.1</a> and most other
-maps are geographical features like the state outline, country
-outlines, coast lines, rivers, roads, railways and so on. If these
-are added sparsely and sufficiently, a graticule can as well be
-omitted. In such cases, maps look good without axes, tics, and labels,
-leaving up a lot of plotting space to be filled with actual map data.</p>
-</div>
-</div>
-<div id="base-plot" class="section level2">
-<h2><span class="header-section-number">9.3</span> Base <code>plot</code></h2>
-<p>The <code>plot</code> method for <code>sf</code> and <code>stars</code> objects try to make quick,
-useful, exploratory plots; for production quality, alternatives
-with more control and/or better defaults are offered by packages
-<code>ggplot2</code> <span class="citation">(Wickham et al. <a href="#ref-R-ggplot2">2020</a>)</span> or <code>tmap</code> <span class="citation">(Tennekes <a href="#ref-R-tmap">2021</a>, <a href="#ref-tmap">2018</a>)</span>.</p>
-<p>By default, the plot method tries to plot “all” it is given.
-This means that</p>
-<ul>
-<li>given a geometry only (<code>sfc</code>), the geometry is plotted, without colors,</li>
-<li>given a geometry and an attribute, the geometry is colored according to
-the values of the attribute, using a qualitative color scale for <code>factor</code>
-or <code>logical</code> attributes and a continuous scale otherwise,</li>
-<li>given multiple attributes, multiple maps are plotted, each with a color
-scale but a legend is omitted by default, as color assignment is
-done on a per sub-map basis,</li>
-<li>for <code>stars</code> objects with multiple attributes, only the first
-attribute is plotted; for three-dimensional raster cubes, all
-slices over the third dimension are plotted.</li>
-</ul>
-<div id="adding-to-plots-with-legends" class="section level3">
-<h3><span class="header-section-number">9.3.1</span> Adding to plots with legends</h3>
-<p>The <code>plot</code> methods for <code>stars</code> and <code>sf</code> objects may show a color key
-on one of the sides (e.g., figure <a href="intro.html#fig:first-map">1.1</a>). To do this
-with <code>base::plot</code>, the plot region is split in two and two plots are
-created: one with the map, and one with the legend. By default, the
-<code>plot</code> function resets the graphics device (using <code>layout(matrix(1))</code>
-so that subsequent plots are not hindered by the device being split
-in two. If one wants to <em>add</em> to an existing plot having a color
-legend, this is however what is needed, and resetting the plotting
-device needs to be prevented by setting argument <code>reset = FALSE</code>,
-and use <code>add = TRUE</code> in a subsequent call to <code>plot</code>, an example
-is</p>
-<div class="sourceCode" id="cb319"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb319-1" title="1"><span class="kw">sf_use_s2</span>(<span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb319-2" title="2"><span class="kw">library</span>(sf)</a>
-<a class="sourceLine" id="cb319-3" title="3">nc =<span class="st"> </span><span class="kw">read_sf</span>(<span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>))</a>
-<a class="sourceLine" id="cb319-4" title="4"><span class="kw">plot</span>(nc[<span class="st">&quot;BIR74&quot;</span>], <span class="dt">reset =</span> <span class="ot">FALSE</span>, <span class="dt">key.pos =</span> <span class="dv">4</span>)</a>
-<a class="sourceLine" id="cb319-5" title="5"><span class="kw">plot</span>(<span class="kw">st_buffer</span>(nc[<span class="dv">1</span>,<span class="dv">1</span>], units<span class="op">::</span><span class="kw">set_units</span>(<span class="dv">10</span>, km)), <span class="dt">col =</span> <span class="st">&#39;NA&#39;</span>, </a>
-<a class="sourceLine" id="cb319-6" title="6">     <span class="dt">border =</span> <span class="st">&#39;red&#39;</span>, <span class="dt">lwd =</span> <span class="dv">2</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:figreset"></span>
-<img src="sds_files/figure-html/figreset-1.png" alt="Annotating base plots that have a legend" width="672" />
-<p class="caption">
-Figure 9.3: Annotating base plots that have a legend
-</p>
-</div>
-<p>which is shown in figure <a href="plotting.html#fig:figreset">9.3</a>. Annotating <code>stars</code>
-plots can be done in the same way when a <em>single</em> stars layer is
-shown. Annotating <code>stars</code> plots with multiple cube slices can be
-done by adding a “hook” function that will be called on every slice
-shown, as in</p>
-<div class="sourceCode" id="cb320"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb320-1" title="1"><span class="kw">library</span>(stars)</a>
-<a class="sourceLine" id="cb320-2" title="2">r =<span class="st"> </span><span class="kw">read_stars</span>(<span class="kw">system.file</span>(<span class="st">&quot;tif/L7_ETMs.tif&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;stars&quot;</span>))</a>
-<a class="sourceLine" id="cb320-3" title="3">circ =<span class="st"> </span><span class="kw">st_bbox</span>(r) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">st_as_sfc</span>() <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">st_sample</span>(<span class="dv">5</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">st_buffer</span>(<span class="dv">300</span>)</a>
-<a class="sourceLine" id="cb320-4" title="4">hook =<span class="st"> </span><span class="cf">function</span>() <span class="kw">plot</span>(circ, <span class="dt">col =</span> <span class="ot">NA</span>, <span class="dt">border =</span> <span class="st">&#39;yellow&#39;</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb320-5" title="5"><span class="kw">plot</span>(r, <span class="dt">hook =</span> hook, <span class="dt">key.pos =</span> <span class="dv">4</span>)</a></code></pre></div>
-<pre><code># downsample set to c(0,0,1)</code></pre>
-<div class="figure" style="text-align: center"><span id="fig:starshook"></span>
-<img src="sds_files/figure-html/starshook-1.png" alt="annotated multi-slice stars plot" width="672" />
-<p class="caption">
-Figure 9.4: annotated multi-slice stars plot
-</p>
-</div>
-<p>and as shown in figure <a href="plotting.html#fig:starshook">9.4</a>.</p>
-<p>Base plot methods have access to the resolution of the screen device
-and hence the base plot method for <code>stars</code> and <code>stars_proxy</code> object
-will downsample dense rasters and only plot pixels at a density
-that makes sense for the device available.</p>
-</div>
-<div id="projections-in-base-plots" class="section level3">
-<h3><span class="header-section-number">9.3.2</span> Projections in base plots</h3>
-<p>The base <code>plot</code> method plots data with ellipsoidal coordinates
-using the equirectangular projection, using a latitude parameter
-equal to the middle latitude of the data bounding box (figure
-<a href="plotting.html#fig:eqc">9.2</a>). To control this parameter, either a projection
-to another equirectangular can be applied before plotting, or the
-parameter <code>asp</code> can be set to override, e.g. <code>asp=1</code> would lead to
-plate carrée (figure <a href="plotting.html#fig:world">9.1</a> left). Subsequent plots need
-to be in the same coordinate reference system in order to make
-sense with overplotting, this is not being checked.</p>
-</div>
-<div id="colors-and-color-breaks" class="section level3">
-<h3><span class="header-section-number">9.3.3</span> Colors and color breaks</h3>
-<p>In base plots, <code>nbreaks</code> can be used to set the number of color
-breaks, and <code>breaks</code> either to the numeric vector with actual breaks,
-or to a value for the <code>style</code> argument in <code>classInt::classIntervals</code>.</p>
-</div>
-</div>
-<div id="maps-with-ggplot2" class="section level2">
-<h2><span class="header-section-number">9.4</span> Maps with <code>ggplot2</code></h2>
-<p>Package <code>ggplot2</code> <span class="citation">(Wickham et al. <a href="#ref-R-ggplot2">2020</a>; Wickham <a href="#ref-ggplot2">2016</a>)</span> can be used to create
-more complex an nicer looking graphs; it has a geometry <code>geom_sf</code>
-that was developed in conjunction with the development of <code>sf</code>, and
-helps creating beautiful maps; an introduction to this is found in
-<span class="citation">(Moreno and Basille <a href="#ref-moreno">2018</a>)</span>, a first example is shown in figure <a href="#fig:figgather"><strong>??</strong></a>.
-The code used for this plot is:</p>
-<div class="sourceCode" id="cb322"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb322-1" title="1"><span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(tidyverse))</a>
-<a class="sourceLine" id="cb322-2" title="2">nc<span class="fl">.32119</span> =<span class="st"> </span><span class="kw">st_transform</span>(nc, <span class="dv">32119</span>) </a>
-<a class="sourceLine" id="cb322-3" title="3">year_labels =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;SID74&quot;</span> =<span class="st"> &quot;1974 - 1978&quot;</span>, <span class="st">&quot;SID79&quot;</span> =<span class="st"> &quot;1979 - 1984&quot;</span>)</a>
-<a class="sourceLine" id="cb322-4" title="4">nc<span class="fl">.32119</span> <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(SID74, SID79) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">gather</span>(VAR, SID, <span class="op">-</span>geom) -&gt;<span class="st"> </span>nc2</a></code></pre></div>
-<div class="sourceCode" id="cb323"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb323-1" title="1"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> nc2, <span class="kw">aes</span>(<span class="dt">fill =</span> SID)) <span class="op">+</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb323-2" title="2"><span class="st">  </span><span class="kw">facet_wrap</span>(<span class="op">~</span>VAR, <span class="dt">ncol =</span> <span class="dv">1</span>, <span class="dt">labeller =</span> <span class="kw">labeller</span>(<span class="dt">VAR =</span> year_labels)) <span class="op">+</span></a>
-<a class="sourceLine" id="cb323-3" title="3"><span class="st">  </span><span class="kw">scale_y_continuous</span>(<span class="dt">breaks =</span> <span class="dv">34</span><span class="op">:</span><span class="dv">36</span>) <span class="op">+</span></a>
-<a class="sourceLine" id="cb323-4" title="4"><span class="st">  </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>)) <span class="op">+</span></a>
-<a class="sourceLine" id="cb323-5" title="5"><span class="st">  </span><span class="kw">theme</span>(<span class="dt">panel.grid.major =</span> <span class="kw">element_line</span>(<span class="dt">color =</span> <span class="st">&quot;white&quot;</span>))</a></code></pre></div>
-<p>where we see that two attributes had to be stacked (<code>gather</code>)
-before plotting them as facets: this is the idea of “tidy” data,
-and the <code>gather</code> method for <code>sf</code> objects automatically stacks the
-geometry column too.</p>
-<p>Because <code>ggplot2</code> creates graphics <em>objects</em> before plotting them,
-it can control the cooordinate reference system of all elements
-involved, and will transform or convert all subsequent objects to
-the coordinate reference system of the first. It will also draw a
-graticule for the (default) thin white lines on a grey background,
-and uses a datum (by default: WGS84) for this. <code>geom_sf()</code> can be
-combined with</p>
-<p>For package <code>stars</code>, a <code>geom_stars</code> has, at the moment of writing
-this, very limited scope: it wraps <code>geom_sf</code> for vector data
-cubes, and calls <code>geom_raster</code> for regular rasters and <code>geom_rect</code>
-for rectilinear rasters. It downsamples if the user specifies a
-downsampling rate, but has no access to the screen dimensions to
-automatically do this. This may be just enough, for instance figure
-<a href="plotting.html#fig:ggplotstars">9.5</a> is created by the following commands:</p>
-<div class="sourceCode" id="cb324"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb324-1" title="1"><span class="kw">library</span>(ggplot2)</a>
-<a class="sourceLine" id="cb324-2" title="2"><span class="kw">library</span>(stars)</a>
-<a class="sourceLine" id="cb324-3" title="3">r =<span class="st"> </span><span class="kw">read_stars</span>(<span class="kw">system.file</span>(<span class="st">&quot;tif/L7_ETMs.tif&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;stars&quot;</span>))</a>
-<a class="sourceLine" id="cb324-4" title="4"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> r) <span class="op">+</span></a>
-<a class="sourceLine" id="cb324-5" title="5"><span class="st">        </span><span class="kw">facet_wrap</span>(<span class="op">~</span>band) <span class="op">+</span><span class="st"> </span><span class="kw">coord_equal</span>() <span class="op">+</span></a>
-<a class="sourceLine" id="cb324-6" title="6"><span class="st">        </span><span class="kw">theme_void</span>() <span class="op">+</span></a>
-<a class="sourceLine" id="cb324-7" title="7"><span class="st">        </span><span class="kw">scale_x_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)) <span class="op">+</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb324-8" title="8"><span class="st">        </span><span class="kw">scale_y_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)) <span class="op">+</span></a>
-<a class="sourceLine" id="cb324-9" title="9"><span class="st">        </span><span class="kw">scale_fill_viridis_c</span>()</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:ggplotstars"></span>
-<img src="sds_files/figure-html/ggplotstars-1.png" alt="Simple raster plot with ggplot2" width="672" />
-<p class="caption">
-Figure 9.5: Simple raster plot with ggplot2
-</p>
-</div>
-<p>More elaborate <code>ggplot2</code>-based plots with <code>stars</code> objects may be
-obtained using package <code>ggspatial</code> <span class="citation">(Dunnington <a href="#ref-R-ggspatial">2021</a>)</span>; non-compatible
-but nevertheless <code>ggplot2</code>-style plots can be created with <code>tmap</code>.</p>
-</div>
-<div id="tmap" class="section level2">
-<h2><span class="header-section-number">9.5</span> Maps with <code>tmap</code></h2>
-<p>Package <code>tmap</code> <span class="citation">(Tennekes <a href="#ref-R-tmap">2021</a>, <a href="#ref-tmap">2018</a>)</span> takes a fresh look on plotting
-spatial data in R; it resembles <code>ggplot2</code> in the sense that it
-composes graphics objects before printing, by building on the <code>grid</code>
-package, and by concatenating map elements with a <code>+</code> between them,
-but otherwise it is entirely independent from, and incompatible
-with, <code>ggplot2</code>. It has a number of options that allow for highly
-professional looking maps, and many defaults have been carefully
-chosen. To recreate figure <a href="#fig:figgather"><strong>??</strong></a>, for instance,
-we use
-<!-- ```{r tmapnc, fig.cap = "tmap: using tm_polygons with two attributes"}
---></p>
-<div class="sourceCode" id="cb325"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb325-1" title="1"><span class="kw">library</span>(tmap)</a>
-<a class="sourceLine" id="cb325-2" title="2"><span class="kw">tm_shape</span>(nc<span class="fl">.32119</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_polygons</span>(<span class="kw">c</span>(<span class="st">&quot;SID74&quot;</span>, <span class="st">&quot;SID79&quot;</span>))</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:tmapnc"></span>
-<img src="sds_files/figure-html/tmapnc-1.png" alt="tmap: using ... with two attributes" width="672" />
-<p class="caption">
-Figure 9.6: tmap: using … with two attributes
-</p>
-</div>
-<p>to create figure <a href="plotting.html#fig:tmapnc">9.6</a> and</p>
-<div class="sourceCode" id="cb326"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb326-1" title="1"><span class="kw">tm_shape</span>(nc2) <span class="op">+</span><span class="st"> </span><span class="kw">tm_polygons</span>(<span class="st">&quot;SID&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_facets</span>(<span class="dt">by =</span> <span class="st">&quot;VAR&quot;</span>)</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:tmapnc2"></span>
-<img src="sds_files/figure-html/tmapnc2-1.png" alt="tmap: using ..." width="672" />
-<p class="caption">
-Figure 9.7: tmap: using …
-</p>
-</div>
-<p>to create figure <a href="plotting.html#fig:tmapnc2">9.7</a>.</p>
-<p>Package <code>tmap</code> also has support for <code>stars</code> objects, an example created with</p>
-<div class="sourceCode" id="cb327"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb327-1" title="1"><span class="kw">tm_shape</span>(r) <span class="op">+</span><span class="st"> </span><span class="kw">tm_raster</span>(<span class="st">&quot;L7_ETMs.tif&quot;</span>)</a></code></pre></div>
-<pre><code># Warning: col specification in tm_raster is ignored, since stars object contains
-# a 3rd dimension, where its values are used to create facets</code></pre>
-<div class="figure" style="text-align: center"><span id="fig:tmapstars"></span>
-<img src="sds_files/figure-html/tmapstars-1.png" alt="Simple raster plot with tmap" width="672" />
-<p class="caption">
-Figure 9.8: Simple raster plot with tmap
-</p>
-</div>
-<p>is shown in figure <a href="plotting.html#fig:tmapstars">9.8</a>. More examples of the use of <strong>tmap</strong> are given in sectiion <a href="area.html#area">14</a>.</p>
-</div>
-<div id="interactive-maps-leaflet-mapview-tmap" class="section level2">
-<h2><span class="header-section-number">9.6</span> Interactive maps: <code>leaflet</code>, <code>mapview</code>, <code>tmap</code></h2>
-<p>Interactive maps as shown in figure <a href="#fig:mapviewfigure"><strong>??</strong></a> can be
-created with R packages <code>leaflet</code>, <code>mapview</code> or <code>tmap</code>. <code>mapview</code>
-adds a number of capabilities to <code>leaflet</code> including a map legend,
-configurable pop-up windows when clicking features, support for
-raster data, and scalable maps with very large feature sets using
-the filegeobuf file format, as well as facet maps that react
-synchronously to zoom and pan actions. Package <code>tmap</code> has the nice
-option that after giving</p>
-<div class="sourceCode" id="cb329"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb329-1" title="1"><span class="kw">tmap_mode</span>(<span class="st">&quot;view&quot;</span>)</a></code></pre></div>
-<p>all usual <code>tmap</code> commands are applied to an interactive html/leaflet widget,
-whereas after</p>
-<div class="sourceCode" id="cb330"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb330-1" title="1"><span class="kw">tmap_mode</span>(<span class="st">&quot;plot&quot;</span>)</a></code></pre></div>
-<p>again all output is sent to R own graphics device.</p>
+<div id="spatiotemporal-geostatistics" class="section level2">
+<h2><span class="header-section-number">13.3</span> Spatiotemporal geostatistics</h2>
+<p>Spatiotemporal geostatistical processes are modelled as variables
+having a value everywhere in space and time, <span class="math inline">\(Z(s,t)\)</span>, with <span class="math inline">\(s\)</span> and
+<span class="math inline">\(t\)</span> the continuously indext space and time index. Given observations
+<span class="math inline">\(Z(s_i,t_j)\)</span> and a variogram (covariance) model <span class="math inline">\(\gamma(s,t)\)</span> we can
+predict <span class="math inline">\(Z(s_0,t_0)\)</span> at arbitrary space/time locations <span class="math inline">\((s_0,t_0)\)</span>
+using standard Gaussian process theory.</p>
+<p>Several books have been written recently about modern approaches
+to handling and modelling spatiotemporal geostatistical data,
+including <span class="citation">(Wikle, Zammit-Mangion, and Cressie <a href="#ref-wikle2019spatio">2019</a>)</span> and <span class="citation">(Blangiardo and Cameletti <a href="#ref-blangiardo2015spatial">2015</a>)</span>. Here,
+we will use <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span> and give some simple examples building
+upon the dataset used throughout this chapter.</p>
+<div id="a-spatiotemporal-variogram-model" class="section level3">
+<h3><span class="header-section-number">13.3.1</span> A spatiotemporal variogram model</h3>
+<p>Starting with the spatiotemporal matrix of NO<span class="math inline">\(_2\)</span> data in <code>aq</code>
+constructed at the beginning of this chapter, we will first select
+the rural background stations:</p>
+<div class="sourceCode" id="cb396"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb396-1" title="1">aqx =<span class="st"> </span>aq[ , <span class="kw">colnames</span>(aq) <span class="op">%in%</span><span class="st"> </span>a2<span class="op">$</span>station_european_code]</a>
+<a class="sourceLine" id="cb396-2" title="2">sfc =<span class="st"> </span><span class="kw">st_geometry</span>(a2.sf)[<span class="kw">match</span>(<span class="kw">colnames</span>(aqx), a2.sf<span class="op">$</span>station_european_code)]</a>
+<a class="sourceLine" id="cb396-3" title="3"><span class="kw">st_as_stars</span>(<span class="dt">NO2 =</span> <span class="kw">as.matrix</span>(aqx)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb396-4" title="4"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="dt">names =</span> <span class="kw">c</span>(<span class="st">&quot;time&quot;</span>, <span class="st">&quot;station&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb396-5" title="5"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, <span class="kw">index</span>(aqx)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb396-6" title="6"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;station&quot;</span>, sfc) -&gt;<span class="st"> </span>no2.st</a>
+<a class="sourceLine" id="cb396-7" title="7">v.st =<span class="st"> </span><span class="kw">variogramST</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.st[,<span class="dv">1</span><span class="op">:</span>(<span class="dv">24</span><span class="op">*</span><span class="dv">31</span>)], <span class="dt">tlags =</span> <span class="dv">0</span><span class="op">:</span><span class="dv">48</span>, </a>
+<a class="sourceLine" id="cb396-8" title="8">    <span class="dt">cores =</span> <span class="kw">getOption</span>(<span class="st">&quot;mc.cores&quot;</span>, <span class="dv">2</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb397"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb397-1" title="1">v1 =<span class="st"> </span><span class="kw">plot</span>(v.st)</a>
+<a class="sourceLine" id="cb397-2" title="2">v2 =<span class="st"> </span><span class="kw">plot</span>(v.st, <span class="dt">map =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb397-3" title="3"><span class="kw">print</span>(v1, <span class="dt">split =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">more =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb397-4" title="4"><span class="kw">print</span>(v2, <span class="dt">split =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">more =</span> <span class="ot">FALSE</span>)</a></code></pre></div>
+<p><img src="sds_files/figure-html/plotvariograms-1.png" width="672" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb398"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb398-1" title="1"><span class="co"># product-sum</span></a>
+<a class="sourceLine" id="cb398-2" title="2">prodSumModel &lt;-<span class="st"> </span><span class="kw">vgmST</span>(<span class="st">&quot;productSum&quot;</span>,</a>
+<a class="sourceLine" id="cb398-3" title="3">    <span class="dt">space=</span><span class="kw">vgm</span>(<span class="dv">150</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">200</span>, <span class="dv">0</span>),</a>
+<a class="sourceLine" id="cb398-4" title="4">    <span class="dt">time=</span> <span class="kw">vgm</span>(<span class="dv">20</span>, <span class="st">&quot;Sph&quot;</span>,   <span class="dv">40</span>, <span class="dv">0</span>),</a>
+<a class="sourceLine" id="cb398-5" title="5">    <span class="dt">k=</span><span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb398-6" title="6">StAni =<span class="st"> </span><span class="kw">estiStAni</span>(v.st, <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">200000</span>))</a>
+<a class="sourceLine" id="cb398-7" title="7">(fitProdSumModel &lt;-<span class="st"> </span><span class="kw">fit.StVariogram</span>(v.st, prodSumModel, <span class="dt">fit.method =</span> <span class="dv">7</span>,</a>
+<a class="sourceLine" id="cb398-8" title="8">    <span class="dt">stAni =</span> StAni, <span class="dt">method =</span> <span class="st">&quot;L-BFGS-B&quot;</span>,</a>
+<a class="sourceLine" id="cb398-9" title="9">    <span class="dt">control =</span> <span class="kw">list</span>(<span class="dt">parscale =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">10</span>,<span class="dv">1</span>,<span class="dv">1</span>,<span class="fl">0.1</span>,<span class="dv">1</span>,<span class="dv">10</span>)),</a>
+<a class="sourceLine" id="cb398-10" title="10">    <span class="dt">lower =</span> <span class="kw">rep</span>(<span class="fl">0.0001</span>, <span class="dv">7</span>)))</a></code></pre></div>
+<pre><code># space component: 
+#   model psill range
+# 1   Nug  26.3     0
+# 2   Exp 140.5   432
+# time component: 
+#   model psill range
+# 1   Nug  1.21   0.0
+# 2   Sph 15.99  40.1
+# k: 0.0322469094848839</code></pre>
+<div class="sourceCode" id="cb400"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb400-1" title="1"><span class="kw">plot</span>(v.st, fitProdSumModel, <span class="dt">wireframe=</span><span class="ot">FALSE</span>, <span class="dt">all=</span><span class="ot">TRUE</span>, <span class="dt">scales=</span><span class="kw">list</span>(<span class="dt">arrows=</span><span class="ot">FALSE</span>), <span class="dt">zlim=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">150</span>))</a></code></pre></div>
+<p><img src="sds_files/figure-html/fitprodsummodel-1.png" width="672" style="display: block; margin: auto;" />
+which can also be plotted as wireframes, by</p>
+<div class="sourceCode" id="cb401"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb401-1" title="1"><span class="kw">plot</span>(v.st, <span class="dt">model=</span>fitProdSumModel, <span class="dt">wireframe=</span><span class="ot">TRUE</span>, <span class="dt">all=</span><span class="ot">TRUE</span>, <span class="dt">scales=</span><span class="kw">list</span>(<span class="dt">arrows=</span><span class="ot">FALSE</span>), <span class="dt">zlim=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">185</span>))</a></code></pre></div>
+<p><img src="sds_files/figure-html/plotprodsummodel-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Hints about the fitting strategy and alternative models for
+spatiotemporal variograms are given in <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span>.</p>
+<p>With this fitted model, and given the observations, we can
+carry out kriging or simulation at arbitrary points in space and
+time. For instance, we could estimate (or simulate) values in the
+time series that are now missing: this occurs regularly, and in
+section <a href="interpolation.html#kriging">12.4</a> we used means over time series based on
+simply ignoring up to 25% of the observations: substituting these
+with estimated or simulated values based on neigbouring (in space
+and time) observations before computing yearly mean values seems
+a more reasonable approach.</p>
+<p>More in general, we can estimate at arbitrary locations and time
+points, and we will illustrate this with predicting time series at
+particular locations, and and predicting spatial slices <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span>.
+We can create
+a <code>stars</code> object to denote two points and all time instances with</p>
+<div class="sourceCode" id="cb402"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb402-1" title="1"><span class="kw">set.seed</span>(<span class="dv">123</span>)</a>
+<a class="sourceLine" id="cb402-2" title="2">pt =<span class="st"> </span><span class="kw">st_sample</span>(de, <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb402-3" title="3">t =<span class="st"> </span><span class="kw">st_get_dimension_values</span>(no2.st, <span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb402-4" title="4"><span class="kw">st_as_stars</span>(<span class="kw">list</span>(<span class="dt">pts =</span> <span class="kw">matrix</span>(<span class="dv">1</span>, <span class="kw">length</span>(t), <span class="kw">length</span>(pt)))) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb402-5" title="5"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="dt">names =</span> <span class="kw">c</span>(<span class="st">&quot;time&quot;</span>, <span class="st">&quot;station&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb402-6" title="6"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, t) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb402-7" title="7"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;station&quot;</span>, pt) -&gt;<span class="st"> </span>new_pt</a></code></pre></div>
+<p>and obtain the corresponding spatiotemporal predictions using <code>krigeST</code> with</p>
+<div class="sourceCode" id="cb403"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb403-1" title="1">no2.st &lt;-<span class="st"> </span><span class="kw">st_transform</span>(no2.st, crs)</a>
+<a class="sourceLine" id="cb403-2" title="2">new_ts &lt;-<span class="st"> </span><span class="kw">krigeST</span>(NO2<span class="op">~</span><span class="dv">1</span>, <span class="dt">data =</span> no2.st[<span class="st">&quot;NO2&quot;</span>], <span class="dt">newdata =</span> new_pt,</a>
+<a class="sourceLine" id="cb403-3" title="3">         <span class="dt">nmax =</span> <span class="dv">50</span>, <span class="dt">stAni =</span> StAni, <span class="dt">modelList =</span> fitProdSumModel,</a>
+<a class="sourceLine" id="cb403-4" title="4">         <span class="dt">progress =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb403-5" title="5"><span class="kw">plot</span>(<span class="kw">as.xts</span>(new_ts[<span class="dv">2</span>]))</a></code></pre></div>
+<p><img src="sds_files/figure-html/spacetimekriging-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Alternatively, we can create spatiotemporal predictions for a set of time-stamped
+raster maps, created by</p>
+<div class="sourceCode" id="cb404"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb404-1" title="1">t4 =<span class="st"> </span>t[(<span class="dv">1</span><span class="op">:</span><span class="dv">4</span> <span class="op">-</span><span class="st"> </span><span class="fl">0.5</span>) <span class="op">*</span><span class="st"> </span>(<span class="dv">3</span><span class="op">*</span><span class="dv">24</span><span class="op">*</span><span class="dv">30</span>)]</a>
+<a class="sourceLine" id="cb404-2" title="2"></a>
+<a class="sourceLine" id="cb404-3" title="3">d =<span class="st"> </span><span class="kw">dim</span>(grd)</a>
+<a class="sourceLine" id="cb404-4" title="4"><span class="kw">st_as_stars</span>(<span class="dt">pts =</span> <span class="kw">array</span>(<span class="dv">1</span>, <span class="kw">c</span>(d[<span class="dv">1</span>], d[<span class="dv">2</span>], <span class="dt">time=</span><span class="kw">length</span>(t4)))) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb404-5" title="5"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, t4) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb404-6" title="6"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;x&quot;</span>, <span class="kw">st_get_dimension_values</span>(grd, <span class="st">&quot;x&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb404-7" title="7"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;y&quot;</span>, <span class="kw">st_get_dimension_values</span>(grd, <span class="st">&quot;y&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb404-8" title="8"><span class="st">    </span><span class="kw">st_set_crs</span>(crs) -&gt;<span class="st"> </span>grd.st</a></code></pre></div>
+<p>and the subsequent predictions are obtained by</p>
+<div class="sourceCode" id="cb405"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb405-1" title="1">new_int &lt;-<span class="st"> </span><span class="kw">krigeST</span>(NO2<span class="op">~</span><span class="dv">1</span>, <span class="dt">data =</span> no2.st[<span class="st">&quot;NO2&quot;</span>], <span class="dt">newdata =</span> grd.st,</a>
+<a class="sourceLine" id="cb405-2" title="2">         <span class="dt">nmax =</span> <span class="dv">200</span>, <span class="dt">stAni =</span> StAni, <span class="dt">modelList =</span> fitProdSumModel,</a>
+<a class="sourceLine" id="cb405-3" title="3">         <span class="dt">progress =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb405-4" title="4"><span class="kw">names</span>(new_int)[<span class="dv">2</span>] =<span class="st"> &quot;NO2&quot;</span></a></code></pre></div>
+<div class="sourceCode" id="cb406"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb406-1" title="1">g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> new_int, <span class="kw">aes</span>(<span class="dt">fill =</span> NO2, <span class="dt">x =</span> x, <span class="dt">y =</span> y)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb406-2" title="2"><span class="st">    </span><span class="kw">facet_wrap</span>(<span class="op">~</span>time) <span class="op">+</span></a>
+<a class="sourceLine" id="cb406-3" title="3"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb406-4" title="4"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf, <span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>, <span class="dt">cex =</span> <span class="fl">.5</span>)</a></code></pre></div>
+<pre><code># Coordinate system already present. Adding new coordinate system, which will replace the existing one.</code></pre>
+<p><img src="sds_files/figure-html/plotspatiotemporalpredictions-1.png" width="672" style="display: block; margin: auto;" />
+and shown in figure <a href="#fig:plotspatiotemporalpredictions"><strong>??</strong></a>.</p>
+<p>A larger value for <code>nmax</code> was needed here to decrease the visible
+disturbance (sharp edges) caused by discrete neighbourhood
+selections, which are now done in space <em>and</em> time.</p>
 
 </div>
 </div>
-
-
-
+</div>
 <h3>References</h3>
 <div id="refs" class="references">
-<div id="ref-R-classInt">
-<p>Bivand, Roger. 2020a. <em>ClassInt: Choose Univariate Class Intervals</em>. <a href="https://CRAN.R-project.org/package=classInt">https://CRAN.R-project.org/package=classInt</a>.</p>
+<div id="ref-asdar">
+<p>Bivand, Roger S., Edzer Pebesma, and Virgilio Gomez-Rubio. 2013. <em>Applied Spatial Data Analysis with R, Second Edition</em>. Springer, NY. <a href="http://www.asdar-book.org/">http://www.asdar-book.org/</a>.</p>
 </div>
-<div id="ref-R-ggspatial">
-<p>Dunnington, Dewey. 2021. <em>Ggspatial: Spatial Data Framework for Ggplot2</em>. <a href="https://CRAN.R-project.org/package=ggspatial">https://CRAN.R-project.org/package=ggspatial</a>.</p>
+<div id="ref-blangiardo2015spatial">
+<p>Blangiardo, Marta, and Michela Cameletti. 2015. <em>Spatial and Spatio-Temporal Bayesian Models with R-Inla</em>. John Wiley &amp; Sons.</p>
 </div>
-<div id="ref-R-viridis">
-<p>Garnier, Simon. 2021. <em>Viridis: Colorblind-Friendly Color Maps for R</em>. <a href="https://CRAN.R-project.org/package=viridis">https://CRAN.R-project.org/package=viridis</a>.</p>
+<div id="ref-RJ-2016-014">
+<p>Gräler, Benedikt, Edzer Pebesma, and Gerard Heuvelink. 2016. “Spatio-Temporal Interpolation using gstat.” <em>The R Journal</em> 8 (1): 204–18. <a href="https://doi.org/10.32614/RJ-2016-014">https://doi.org/10.32614/RJ-2016-014</a>.</p>
 </div>
-<div id="ref-Healy">
-<p>Healy, Kieran. 2018. <em>Data Visualization, a Practical Introduction</em>. Princeton University Press. <a href="http://socviz.co/index.html">http://socviz.co/index.html</a>.</p>
+<div id="ref-ver1993multivariable">
+<p>Ver Hoef, Jay M, and Noel Cressie. 1993. “Multivariable Spatial Prediction.” <em>Mathematical Geology</em> 25 (2): 219–40.</p>
 </div>
-<div id="ref-R-colorspace">
-<p>Ihaka, Ross, Paul Murrell, Kurt Hornik, Jason C. Fisher, Reto Stauffer, Claus O. Wilke, Claire D. McWhite, and Achim Zeileis. 2021. <em>Colorspace: A Toolbox for Manipulating and Assessing Colors and Palettes</em>. <a href="https://CRAN.R-project.org/package=colorspace">https://CRAN.R-project.org/package=colorspace</a>.</p>
-</div>
-<div id="ref-moreno">
-<p>Moreno, Mel, and Mathieu Basille. 2018. <em>Drawing Beautiful Maps Programmatically with R, Sf and Ggplot2 — Part 1: Basics</em>. <a href="https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html">https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html</a>.</p>
-</div>
-<div id="ref-R-RColorBrewer">
-<p>Neuwirth, Erich. 2014. <em>RColorBrewer: ColorBrewer Palettes</em>. <a href="https://CRAN.R-project.org/package=RColorBrewer">https://CRAN.R-project.org/package=RColorBrewer</a>.</p>
-</div>
-<div id="ref-tmap">
-<p>Tennekes, Martijn. 2018. “tmap: Thematic Maps in R.” <em>Journal of Statistical Software</em> 84 (6): 1–39. <a href="https://doi.org/10.18637/jss.v084.i06">https://doi.org/10.18637/jss.v084.i06</a>.</p>
-</div>
-<div id="ref-R-tmap">
-<p>Tennekes, Martijn. 2021. <em>Tmap: Thematic Maps</em>. <a href="https://github.com/mtennekes/tmap">https://github.com/mtennekes/tmap</a>.</p>
-</div>
-<div id="ref-ggplot2">
-<p>Wickham, Hadley. 2016. <em>Ggplot2: Elegant Graphics for Data Analysis</em>. Springer.</p>
-</div>
-<div id="ref-R-ggplot2">
-<p>Wickham, Hadley, Winston Chang, Lionel Henry, Thomas Lin Pedersen, Kohske Takahashi, Claus Wilke, Kara Woo, Hiroaki Yutani, and Dewey Dunnington. 2020. <em>Ggplot2: Create Elegant Data Visualisations Using the Grammar of Graphics</em>. <a href="https://CRAN.R-project.org/package=ggplot2">https://CRAN.R-project.org/package=ggplot2</a>.</p>
-</div>
-<div id="ref-Wilke">
-<p>Wilke, Claus O. 2019. <em>Fundamentals of Data Visualization</em>. O’Reilly Media, Inc. <a href="https://serialmentor.com/dataviz/">https://serialmentor.com/dataviz/</a>.</p>
-</div>
-<div id="ref-colorspace">
-<p>Zeileis, Achim, Jason C. Fisher, Kurt Hornik, Ross Ihaka, Claire D. McWhite, Paul Murrell, Reto Stauffer, and Claus O. Wilke. 2020. “colorspace: A Toolbox for Manipulating and Assessing Colors and Palettes.” <em>Journal of Statistical Software</em> 96 (1): 1–49. <a href="https://doi.org/10.18637/jss.v096.i01">https://doi.org/10.18637/jss.v096.i01</a>.</p>
+<div id="ref-wikle2019spatio">
+<p>Wikle, Christopher K, Andrew Zammit-Mangion, and Noel Cressie. 2019. <em>Spatio-Temporal Statistics with R</em>. CRC Press.</p>
 </div>
 </div>
             </section>
@@ -1458,8 +1285,8 @@ whereas after</p>
           </div>
         </div>
       </div>
-<a href="large.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-<a href="statistical-modelling-of-spatial-data.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="interpolation.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="area.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
@@ -1491,7 +1318,7 @@ gitbook.start({
 "size": 2
 },
 "edit": {
-"link": "https://github.com/edzer/sdsr/edit/master/09-Plotting.Rmd",
+"link": "https://github.com/edzer/sdsr/edit/master/16-Geostatistics.Rmd",
 "text": "Edit"
 },
 "history": {
