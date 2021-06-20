@@ -93,7 +93,7 @@ working memory.
 
 ### Reading and writing
 
-Reading datasets from an exteral "data source" (file, web service,
+Reading datasets from an external "data source" (file, web service,
 or even string) is done using `st_read`:
 
 ```{r stread}
@@ -159,8 +159,8 @@ nc7 = nc[1:7, ]
 ```{r fig57, echo=FALSE, fig.cap = "First seven North Carolina counties"}
 plot(st_geometry(nc7))
 plot(st_geometry(nc5), add = TRUE, border = "brown")
-cc = st_coordinates(st_centroid(nc7))
-text(cc, labels=1:nrow(nc7), col="blue")
+cc = st_coordinates(st_centroid(st_geometry(nc7)))
+text(cc, labels = 1:nrow(nc7), col = "blue")
 ```
 Figure \@ref(fig:fig57) shows how the intersections of the first
 five with the first seven counties can be understood.
@@ -222,7 +222,6 @@ is used to evaluate distinctness of geometries.
 use it with a spatial predicate, e.g. to select all counties less
 than 50 km away from Orange county, one could use
 ```{r}
-sf_use_s2(TRUE)
 orange <- nc %>% filter(NAME == "Orange")
 wd = st_is_within_distance(nc, orange, units::set_units(50, km))
 o50 <- nc %>% filter(lengths(wd) > 0)
@@ -373,7 +372,7 @@ each dimension:
 * `x/y`: an indicator whether a dimension is associated with a spatial raster x- or y-axis
 
 For regular, rotated or sheared grids or other regularly discretized
-dimensions (e.g. time), `offset` and `delta` are not `NA` and values
+dimensions (e.g. time), `offset` and `delta` are not `NA`
 and `values` is `NULL`; for other cases, `offset` and `delta` are
 `NA` and `values` contains one of:
 
@@ -912,7 +911,6 @@ and in figure \@ref(fig:asstars).
 (ref:rasterize) rasterizing vector geometry using `st_as_stars`
 
 ```{r asstars, fig.cap = '(ref:rasterize)' }
-sf_use_s2(TRUE)
 (file = system.file("gpkg/nc.gpkg", package="sf"))
 read_sf(file) %>% 
 	st_geometry() %>%
@@ -955,15 +953,15 @@ systems can be set with an EPSG code, like `st_crs(4326)` which
 will be converted to `st_crs('EPSG:4326')`, or with a PROJ.4 string
 like `""+proj=utm +zone=25 +south"`, a name like "WGS84", or a name
 preceded by an authority like "OGC:CRS84"; alternatives include
-a coordinate reference system definition in WKT, WKT2 (section
-\@ref(wkt2)) or PROJJSON.
+a coordinate reference system definition in WKT, WKT-2 (section
+\@ref(wkt2)) or [PROJJSON](https://proj.org/specifications/projjson.html).
 
-The object returned contains two fields, `wkt` with the WKT2
+The object returned contains two fields, `wkt` with the WKT-2
 representation, and `input` with the user input, if any, or else
 a copy of the wkt field. Note that PROJ.4 strings can be used to
 _define_ some coordinate reference systems, but they cannot be used
 to _represent_ coordinate reference systems. Conversion of a
-WKT2 in a `crs` object to a proj4string using the `$proj4string`
+WKT-2 in a `crs` object to a proj4string using the `$proj4string`
 method, as in
 ```{r}
 x = st_crs("OGC:CRS84")
@@ -1133,7 +1131,19 @@ st_warp(r, grd)
 
 ## Exercises 
 
-1. NDVI, normalized differenced vegetation index, is coputed as (NIR-R)/(NIR+R), with NIR the near infrared and R the red band.  Read the `L7_ETMs.tif` file into object `x`, and distribute the band dimensions over attributes by `split(x, "band")`. Then, compute NDVI by using an expression that uses the NIR (band 4) and R (band 3) attributes directly.
-1. Compute NDVI for the S2 image, using `st_apply` and an a function `ndvi = function(x) (x[4]-x[3])/(x[4]+x[3])`. Plot the result, and write the result to a GeoTIFF. Explain the difference in runtime between plotting and writing.
-1. Use `st_transform` to transform the `stars` object read from `L7_ETMs.tif` to EPSG 4326. Print the object. Is this a regular grid? Plot the first band using arguments `axes=TRUE` and `border=NA`, and explain why this takes such a long time.
-1. Use `st_warp` to warp the `L7_ETMs.tif` object to EPSG 4326, and plot the resulting object with `axes=TRUE`. Why is the plot created much faster than after `st_transform`?
+Use R to solve the following exercises.
+
+1. Find the names of the `nc` counties that intersect `LINESTRING(-84 35,-78 35)`; use `[` for this, and as an alternative use `st_join()` for this.
+1. Repeat this after setting `sf_use_s2(FALSE)`, and _compute_ the difference (hint: use `setdiff()`), and color the counties of the difference using color '#88000088'.
+1. Plot the two different lines in a single plot; note that R will plot a straight line always straight in the projection currently used; `st_segmentize` can be used to add points on straight line, or on a great circle for ellipsoidal coordinates.
+1. NDVI, normalized differenced vegetation index, is computed as `(NIR-R)/(NIR+R)`, with NIR the near infrared and R the red band.  Read the `L7_ETMs.tif` file into object `x`, and distribute the band dimensions over attributes by `split(x, "band")`. Then, add attribute NDVI to this object by using an expression that uses the NIR (band 4) and R (band 3) attributes directly.
+1. Compute NDVI for the `L7_ETMs.tif` image by reducing the band dimension, using `st_apply` and an a function `ndvi = function(x) { (x[4]-x[3])/(x[4]+x[3]) }`. Plot the result, and write the result to a GeoTIFF. 
+1. Use `st_transform` to transform the `stars` object read from `L7_ETMs.tif` to `EPSG:4326`. Print the object. Is this a regular grid? Plot the first band using arguments `axes=TRUE` and `border=NA`, and explain why this takes such a long time.
+1. Use `st_warp` to warp the `L7_ETMs.tif` object to `EPSG:4326`, and plot the resulting object with `axes=TRUE`. Why is the plot created much faster than after `st_transform`?
+1. Using a vector representation of the raster `L7_ETMs`, plot the
+intersection with a circular area around `POINT(293716 9113692)` with
+radius 75 m,  and compute the area-weighted mean pixel values for
+this circle.  Compare the area-weighted values with those obtained
+by `aggregate` using the vector data, and by `aggregate` using
+the raster data, using `exact=FALSE` (default) and `exact=FALSE`.
+Explain the differences.

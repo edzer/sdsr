@@ -6,7 +6,8 @@ For practical use, we classify large data sets as either
 
 * too large to fit in working memory, or
 * also too large to fit on the local hard drive, or
-* also too large to download it to own compute infrastructure
+* also too large to download it to locally managed compute
+infrastructure (such as network attached storage)
 
 these three categories correspond very roughly to Gigabyte-,
 Terabyte- and Petabyte-sized data sets.
@@ -38,7 +39,7 @@ select features from a layer, and limit fields. An example is:
 q = paste("select BIR74,SID74,geom from 'nc.gpkg' where BIR74 > 1500")
 nc.2 = st_read(file, query = q)
 ```
-note that `nc.pgkg` is the _layer name_, which can be obtained from `file` using `st_layers`.
+note that `nc.gpkg` is the _layer name_, which can be obtained from `file` using `st_layers`.
 Sequences of records can be read using `LIMIT` and `OFFSET`, to read records 51-60 use
 ```{r}
 q = paste("select BIR74,SID74,geom from 'nc.gpkg' LIMIT 10 OFFSET 50")
@@ -51,7 +52,7 @@ is passed on to the database and not interpreted by GDAL; this means
 that more powerful features will be available.  Further information
 is found in the GDAL documentation under "OGR SQL dialect".
 
-Very large file files or directories that are zipped can be read
+Very large files or directories that are zipped can be read
 without the need to unzip them, using the `/vsizip` (for zip),
 `/vsigzip` (for gzip) or `/vsitar` (for tar files) prefix to files;
 this is followed by the path to the zip file, and then followed by
@@ -71,8 +72,8 @@ write_sf(nc, "PG:dbname=postgis", "nc")
 
 Although GDAL has support for several spatial databases, and as
 mentioned above it passes on SQL in the `query` argument to the
-database, it is sometimes beneficial to directly read and 
-to a spatial database using the R database drivers for this. An
+database, it is sometimes beneficial to directly read from and 
+write to a spatial database using the R database drivers for this. An
 example of this is:
 ```{r, eval=has_PG}
 pg <- DBI::dbConnect(
@@ -136,7 +137,7 @@ data create data on the fly, and give access to this through an API.
 As an example, data from [OpenStreetMap](https://openstreetmap.org/)
 can be bulk downloaded and read locally, e.g. using the GDAL vector
 driver, but more typical a user wants to obtain a small subset of
-the data or use the data for a small query. Several R pacages exist
+the data or use the data for a small query. Several R packages exist
 that query openstreetmap data: 
 
 * Package `OpenStreetMap` downloads data as raster tiles, typically
@@ -157,7 +158,7 @@ bounding box query to OpenStreetMap could look like
 
 ```{r,eval=FALSE}
 download.file(
-  "https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970"
+  "https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970",
   "data/ms.osm", method = "auto")
 ```
 and from this file we can read the layer `lines`, and plot its
@@ -363,7 +364,9 @@ to create queries, and manage the information returned.
 Processing the resulting files may involve creating a data cube at
 a lower spatial and/or temporal resolution, from images that may
 span a range of coordinate reference systems (e.g., several UTM
-zones). An R package that can do that is gdalcubes [@R-gdalcubes; @appel2019demand].
+zones). An R package that can do that is gdalcubes [@R-gdalcubes;
+@appel2019demand], which can also directly use STAC output
+[@appelblog].
 
 ### Processing data: GEE, openEO
 
@@ -395,3 +398,31 @@ or atmosphere data store, which allow processing of atmospheric
 or climate data from ECMWF, including ERA5. An R package with an
 interface to both data stores is `ecmwfr` [@R-ecmwfr].
 
+## Exercises 
+
+Use R to solve the following exercises.
+
+1. For the S2 image (above), find out in which order the bands are
+using `st_get_dimension_values()`, and try to find out (e.g. by internet
+search) which spectral bands / colors they correspond to.
+1. Compute NDVI for the S2 image, using `st_apply` and an an appropriate 
+`ndvi` function.  Plot the result to screen, and then write the
+result to a GeoTIFF. Explain the difference in runtime between
+plotting and writing.
+1. Plot an RGB composite of the S2 image, using the `rgb` argument
+to `plot()`, and then by using `st_rgb()` first.
+1. select five random points from the bounding box of `S2`, and extract
+the band values at these points; convert the object returned to an `sf`
+object.
+1.  For the 10 km radius circle around `POINT(390000  5940000)`, use
+`aggregate` to compute the mean pixel values of the S2 image
+when downsampling the images with factor 30, and on the original
+resolution. Compute the relative difference between the results.
+1. Use `hist` to compute the histogram on the downsampled S2 image.
+Also do this for each of the bands. Use `ggplot2` to compute a
+single plot with all four histograms.
+1.  Use `st_crop` to crop the S2 image to the area covered by the 10 km circle.
+Plot the results. Explore the effect of setting argument `crop = FALSE`
+1.  With the downsampled image, compute the logical layer where all four
+bands have pixel values higher than 1000. Use a raster algebra expression
+on the four bands (use `split` first), or use `st_apply` for this.

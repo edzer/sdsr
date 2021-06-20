@@ -4,11 +4,11 @@
 
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>References | Spatial Data Science</title>
+  <title>Chapter 13 Multivariate and Spatiotemporal Geostatistics | Spatial Data Science</title>
   <meta name="description" content="description_xx" />
   <meta name="generator" content="bookdown 0.22 and GitBook 2.6.7" />
 
-  <meta property="og:title" content="References | Spatial Data Science" />
+  <meta property="og:title" content="Chapter 13 Multivariate and Spatiotemporal Geostatistics | Spatial Data Science" />
   <meta property="og:type" content="book" />
   
   
@@ -16,7 +16,7 @@
   <meta name="github-repo" content="edzer/sdsr" />
 
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="References | Spatial Data Science" />
+  <meta name="twitter:title" content="Chapter 13 Multivariate and Spatiotemporal Geostatistics | Spatial Data Science" />
   
   <meta name="twitter:description" content="description_xx" />
   
@@ -31,8 +31,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   
   
-<link rel="prev" href="r-basics.html"/>
-
+<link rel="prev" href="interpolation.html"/>
+<link rel="next" href="area.html"/>
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
@@ -1027,565 +1027,254 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
           <div class="page-inner">
 
             <section class="normal" id="section-">
-<div id="references" class="section level1 unnumbered">
-<h1>References</h1>
+<div id="stgeostatistics" class="section level1">
+<h1><span class="header-section-number">Chapter 13</span> Multivariate and Spatiotemporal Geostatistics</h1>
+<p>Building on the simple interpolation methods presented in chapter
+<a href="interpolation.html#interpolation">12</a>, this chapter works out a case study for
+spatiotemporal interpolation, using NO<span class="math inline">\(_2\)</span> air quality data, and
+populations density as covariate.</p>
+<div id="preparing-the-air-quality-dataset" class="section level2">
+<h2><span class="header-section-number">13.1</span> Preparing the air quality dataset</h2>
+<p>The dataset we work with is an air quality dataset obtained from
+the European Environmental Agency (EEA). European member states report
+air quality measurements to this Agency. So-called <em>validated</em>
+data are quality controlled by member states, and are reported on a
+yearly basis. They form the basis for policy compliancy evaluations.</p>
+<p>The EEA’s <a href="https://www.eea.europa.eu/data-and-maps/data/aqereporting-8">air quality
+e-reporting</a>
+website gives access to the data reported by European member states.
+We decided to download hourly (time series) data, which is the data primarily measured.
+A web form helps convert simple selection criteria into an http GET request. The following URL</p>
+<pre><code>https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&amp;CityName=&amp;Pollutant=8&amp;Year_from=2017&amp;Year_to=2017&amp;Station=&amp;Samplingpoint=&amp;Source=E1a&amp;Output=TEXT&amp;UpdateDate=</code></pre>
+<p>was created to select all validated (<code>Source=E1a</code>) <span class="math inline">\(NO_2\)</span>
+(<code>Pollutant=8</code>) data for 2017 (<code>Year_from</code>, <code>Year_to</code>) from Germany
+(<code>CountryCode=DE</code>). It returns a text file with a set of URLs to CSV
+files, each containing the hourly values for the whole period for a
+single measurement station. These files were downloaded and converted
+to the right encoding using the <code>dos2unix</code> command line utility.</p>
+<p>In the following, we will read all the files into a list,</p>
+<div class="sourceCode" id="cb385"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb385-1" title="1">files =<span class="st"> </span><span class="kw">list.files</span>(<span class="st">&quot;aq&quot;</span>, <span class="dt">pattern =</span> <span class="st">&quot;*.csv&quot;</span>, <span class="dt">full.names =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb385-2" title="2">r =<span class="st"> </span><span class="kw">lapply</span>(files[<span class="op">-</span><span class="dv">1</span>], <span class="cf">function</span>(f) <span class="kw">read.csv</span>(f))</a></code></pre></div>
+<p>then convert the time variable into a <code>POSIXct</code> variable, and time order them</p>
+<div class="sourceCode" id="cb386"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb386-1" title="1"><span class="kw">Sys.setenv</span>(<span class="dt">TZ =</span> <span class="st">&quot;UTC&quot;</span>) <span class="co"># make sure times are not interpreted as DST</span></a>
+<a class="sourceLine" id="cb386-2" title="2">r =<span class="st"> </span><span class="kw">lapply</span>(r, <span class="cf">function</span>(f) {</a>
+<a class="sourceLine" id="cb386-3" title="3">        f<span class="op">$</span>t =<span class="st"> </span><span class="kw">as.POSIXct</span>(f<span class="op">$</span>DatetimeBegin) </a>
+<a class="sourceLine" id="cb386-4" title="4">        f[<span class="kw">order</span>(f<span class="op">$</span>t), ] </a>
+<a class="sourceLine" id="cb386-5" title="5">    }</a>
+<a class="sourceLine" id="cb386-6" title="6">) </a></code></pre></div>
+<p>and we deselect smaller datasets that do not contain hourly data:</p>
+<div class="sourceCode" id="cb387"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb387-1" title="1">r =<span class="st"> </span>r[<span class="kw">sapply</span>(r, nrow) <span class="op">&gt;</span><span class="st"> </span><span class="dv">1000</span>]</a>
+<a class="sourceLine" id="cb387-2" title="2"><span class="kw">names</span>(r) =<span class="st">  </span><span class="kw">sapply</span>(r, <span class="cf">function</span>(f) <span class="kw">unique</span>(f<span class="op">$</span>AirQualityStationEoICode))</a>
+<a class="sourceLine" id="cb387-3" title="3"><span class="kw">length</span>(r) <span class="op">==</span><span class="st"> </span><span class="kw">length</span>(<span class="kw">unique</span>(<span class="kw">names</span>(r)))</a></code></pre></div>
+<pre><code># [1] TRUE</code></pre>
+<p>and then combine all files using <code>xts::cbind</code>, so that they are matched based on time:</p>
+<div class="sourceCode" id="cb389"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb389-1" title="1"><span class="kw">library</span>(xts)</a>
+<a class="sourceLine" id="cb389-2" title="2">r =<span class="st"> </span><span class="kw">lapply</span>(r, <span class="cf">function</span>(f) <span class="kw">xts</span>(f<span class="op">$</span>Concentration, f<span class="op">$</span>t))</a>
+<a class="sourceLine" id="cb389-3" title="3">aq =<span class="st"> </span><span class="kw">do.call</span>(cbind, r)</a></code></pre></div>
+<p>We can now select those stations for which we have 75% of the hourly values measured, i.e. drop those with more than 25% hourly values missing:</p>
+<div class="sourceCode" id="cb390"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb390-1" title="1"><span class="co"># remove stations with more than 75% missing values:</span></a>
+<a class="sourceLine" id="cb390-2" title="2">sel =<span class="st"> </span><span class="kw">apply</span>(aq, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="kw">sum</span>(<span class="kw">is.na</span>(x)) <span class="op">&lt;</span><span class="st"> </span><span class="fl">0.75</span> <span class="op">*</span><span class="st"> </span><span class="dv">365</span> <span class="op">*</span><span class="st"> </span><span class="dv">24</span>)</a>
+<a class="sourceLine" id="cb390-3" title="3">aqsel =<span class="st"> </span>aq[, sel] <span class="co"># stations are in columns</span></a></code></pre></div>
+<p>Next, the <a href="http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_stations.zip">station metadata</a> was read
+and filtered for rural background stations in Germany by</p>
+<div class="sourceCode" id="cb391"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb391-1" title="1"><span class="kw">library</span>(tidyverse)</a>
+<a class="sourceLine" id="cb391-2" title="2"><span class="kw">read.csv</span>(<span class="st">&quot;aq/AirBase_v8_stations.csv&quot;</span>, <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>, <span class="dt">stringsAsFactors =</span> <span class="ot">FALSE</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb391-3" title="3"><span class="st">    </span>as_tibble  <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb391-4" title="4"><span class="st">    </span><span class="kw">filter</span>(country_iso_code <span class="op">==</span><span class="st"> &quot;DE&quot;</span>, station_type_of_area <span class="op">==</span><span class="st"> &quot;rural&quot;</span>, </a>
+<a class="sourceLine" id="cb391-5" title="5">                 type_of_station <span class="op">==</span><span class="st"> &quot;Background&quot;</span>) -&gt;<span class="st"> </span>a2</a></code></pre></div>
+<p>These stations contain coordinates, and an <code>sf</code> object with (static) station metadata is created by</p>
+<div class="sourceCode" id="cb392"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb392-1" title="1"><span class="kw">library</span>(sf)</a>
+<a class="sourceLine" id="cb392-2" title="2"><span class="kw">library</span>(stars)</a>
+<a class="sourceLine" id="cb392-3" title="3">a2.sf =<span class="st"> </span><span class="kw">st_as_sf</span>(a2, <span class="dt">coords =</span> <span class="kw">c</span>(<span class="st">&quot;station_longitude_deg&quot;</span>, <span class="st">&quot;station_latitude_deg&quot;</span>), <span class="dt">crs =</span> <span class="dv">4326</span>)</a></code></pre></div>
+<p>We now subset the air quality data to stations that are of type rural background:</p>
+<div class="sourceCode" id="cb393"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb393-1" title="1">sel =<span class="st">  </span><span class="kw">colnames</span>(aqsel) <span class="op">%in%</span><span class="st"> </span>a2<span class="op">$</span>station_european_code</a>
+<a class="sourceLine" id="cb393-2" title="2">aqsel =<span class="st"> </span>aqsel[, sel]</a></code></pre></div>
+<p>We can compute station means, and join these to stations locations by</p>
+<div class="sourceCode" id="cb394"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb394-1" title="1">tb =<span class="st"> </span><span class="kw">tibble</span>(<span class="dt">NO2 =</span> <span class="kw">apply</span>(aqsel, <span class="dv">2</span>, mean, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>), <span class="dt">station_european_code =</span> <span class="kw">colnames</span>(aqsel))</a>
+<a class="sourceLine" id="cb394-2" title="2">crs =<span class="st"> </span><span class="dv">32632</span></a>
+<a class="sourceLine" id="cb394-3" title="3"><span class="kw">right_join</span>(a2.sf, tb) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">st_transform</span>(crs) -&gt;<span class="st"> </span>no2.sf </a></code></pre></div>
+<pre><code># Joining, by = &quot;station_european_code&quot;</code></pre>
+<div class="sourceCode" id="cb396"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb396-1" title="1"><span class="co"># load German boundaries</span></a>
+<a class="sourceLine" id="cb396-2" title="2"><span class="kw">data</span>(air, <span class="dt">package =</span> <span class="st">&quot;spacetime&quot;</span>)</a>
+<a class="sourceLine" id="cb396-3" title="3">de &lt;-<span class="st"> </span><span class="kw">st_transform</span>(<span class="kw">st_as_sf</span>(DE_NUTS1), crs)</a>
+<a class="sourceLine" id="cb396-4" title="4"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> de) <span class="op">+</span><span class="st">  </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">col =</span> NO2))</a></code></pre></div>
+<p><img src="sds_files/figure-html/computestationmeans-1.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="multivariable-geostatistics" class="section level2">
+<h2><span class="header-section-number">13.2</span> Multivariable geostatistics</h2>
+<p>Multivariable geostatics involves the <em>joint</em> modelling, prediction
+and simulation of multiple variables,
+<span class="math display">\[Z_1(s) = X_1 \beta_1 + e_1(s)\]</span>
+<span class="math display">\[...\]</span>
+<span class="math display">\[Z_n(s) = X_n \beta_n + e_n(s).\]</span>
+In addition to having observations, trend models, and variograms
+for each variable, the <em>cross</em> variogram for each pair of residual
+variables, describing the covariance of <span class="math inline">\(e_i(s), e_j(s+h)\)</span>,
+is required. If this cross covariance is non-zero, knowledge of
+<span class="math inline">\(e_j(s+h)\)</span> may help predict (or simulate) <span class="math inline">\(e_i(s)\)</span>. This is
+especially true if <span class="math inline">\(Z_j(s)\)</span> is more densely sample than <span class="math inline">\(Z_i(s)\)</span>.
+Prediction and simulation under this model are called cokriging
+and cosimulation. Examples using gstat are found when running the
+demo scripts</p>
+<div class="sourceCode" id="cb397"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb397-1" title="1"><span class="kw">library</span>(gstat)</a>
+<a class="sourceLine" id="cb397-2" title="2"><span class="kw">demo</span>(cokriging)</a>
+<a class="sourceLine" id="cb397-3" title="3"><span class="kw">demo</span>(cosimulation)</a></code></pre></div>
+<p>and are illustrated and discussed in <span class="citation">(Roger S. Bivand, Pebesma, and Gomez-Rubio <a href="#ref-asdar">2013</a>)</span>.</p>
+<p>In case the different variables considered are observed at
+the same set of locations, for instance different air quality
+parameters, then the statistical <em>gain</em> of using cokriging
+as opposed to direct (univariable) kriging is often modest,
+when not negligible. A gain may however be that the prediction
+is truly multivariable: in addition to the prediction vector
+<span class="math inline">\(\hat{Z(s_0)}=(\hat{Z}_1(s_0),...,\hat{Z}_n(s_0))\)</span> we get the full
+covariance matrix of the prediction error <span class="citation">(Ver Hoef and Cressie <a href="#ref-ver1993multivariable">1993</a>)</span>.
+This means for instance that if we are interested in some
+linear combination of <span class="math inline">\(\hat{Z}(s_0)\)</span>, such as <span class="math inline">\(\hat{Z}_2(s_0) - \hat{Z}_1(s_0)\)</span>, that we can get the standard error of that
+combination because we have the correlations between the prediction
+errors.</p>
+<p>Although sets of direct and cross variograms can be computed
+and fitted automatically, multivariable geostatistical modelling
+becomes quickly hard to manage when the number of variables gets
+large, because the number of direct and cross variograms required
+is <span class="math inline">\(n(n+1)/2\)</span>.</p>
+<p>In case different variables refer to the same variable take at
+different time steps, one could use a multivariable (cokriging)
+prediction approach, but this would not allow for e.g. interpolation
+between two time steps. For this, and for handling the case of
+having data observed at many time instances, one can also model
+its variation as a function of continuous space <em>and</em> time, as of
+<span class="math inline">\(Z(s,t)\)</span>, which we will do in the next section.</p>
+</div>
+<div id="spatiotemporal-geostatistics" class="section level2">
+<h2><span class="header-section-number">13.3</span> Spatiotemporal geostatistics</h2>
+<p>Spatiotemporal geostatistical processes are modelled as variables
+having a value everywhere in space and time, <span class="math inline">\(Z(s,t)\)</span>, with <span class="math inline">\(s\)</span> and
+<span class="math inline">\(t\)</span> the continuously indext space and time index. Given observations
+<span class="math inline">\(Z(s_i,t_j)\)</span> and a variogram (covariance) model <span class="math inline">\(\gamma(s,t)\)</span> we can
+predict <span class="math inline">\(Z(s_0,t_0)\)</span> at arbitrary space/time locations <span class="math inline">\((s_0,t_0)\)</span>
+using standard Gaussian process theory.</p>
+<p>Several books have been written recently about modern approaches
+to handling and modelling spatiotemporal geostatistical data,
+including <span class="citation">(Wikle, Zammit-Mangion, and Cressie <a href="#ref-wikle2019spatio">2019</a>)</span> and <span class="citation">(Blangiardo and Cameletti <a href="#ref-blangiardo2015spatial">2015</a>)</span>. Here,
+we will use <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span> and give some simple examples building
+upon the dataset used throughout this chapter.</p>
+<div id="a-spatiotemporal-variogram-model" class="section level3">
+<h3><span class="header-section-number">13.3.1</span> A spatiotemporal variogram model</h3>
+<p>Starting with the spatiotemporal matrix of NO<span class="math inline">\(_2\)</span> data in <code>aq</code>
+constructed at the beginning of this chapter, we will first select
+the rural background stations:</p>
+<div class="sourceCode" id="cb398"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb398-1" title="1">aqx =<span class="st"> </span>aq[ , <span class="kw">colnames</span>(aq) <span class="op">%in%</span><span class="st"> </span>a2<span class="op">$</span>station_european_code]</a>
+<a class="sourceLine" id="cb398-2" title="2">sfc =<span class="st"> </span><span class="kw">st_geometry</span>(a2.sf)[<span class="kw">match</span>(<span class="kw">colnames</span>(aqx), a2.sf<span class="op">$</span>station_european_code)]</a>
+<a class="sourceLine" id="cb398-3" title="3"><span class="kw">st_as_stars</span>(<span class="dt">NO2 =</span> <span class="kw">as.matrix</span>(aqx)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb398-4" title="4"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="dt">names =</span> <span class="kw">c</span>(<span class="st">&quot;time&quot;</span>, <span class="st">&quot;station&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb398-5" title="5"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, <span class="kw">index</span>(aqx)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb398-6" title="6"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;station&quot;</span>, sfc) -&gt;<span class="st"> </span>no2.st</a>
+<a class="sourceLine" id="cb398-7" title="7">v.st =<span class="st"> </span><span class="kw">variogramST</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.st[,<span class="dv">1</span><span class="op">:</span>(<span class="dv">24</span><span class="op">*</span><span class="dv">31</span>)], <span class="dt">tlags =</span> <span class="dv">0</span><span class="op">:</span><span class="dv">48</span>, </a>
+<a class="sourceLine" id="cb398-8" title="8">    <span class="dt">cores =</span> <span class="kw">getOption</span>(<span class="st">&quot;mc.cores&quot;</span>, <span class="dv">2</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb399"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb399-1" title="1">v1 =<span class="st"> </span><span class="kw">plot</span>(v.st)</a>
+<a class="sourceLine" id="cb399-2" title="2">v2 =<span class="st"> </span><span class="kw">plot</span>(v.st, <span class="dt">map =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb399-3" title="3"><span class="kw">print</span>(v1, <span class="dt">split =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">more =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb399-4" title="4"><span class="kw">print</span>(v2, <span class="dt">split =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">more =</span> <span class="ot">FALSE</span>)</a></code></pre></div>
+<p><img src="sds_files/figure-html/plotvariograms-1.png" width="672" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb400"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb400-1" title="1"><span class="co"># product-sum</span></a>
+<a class="sourceLine" id="cb400-2" title="2">prodSumModel &lt;-<span class="st"> </span><span class="kw">vgmST</span>(<span class="st">&quot;productSum&quot;</span>,</a>
+<a class="sourceLine" id="cb400-3" title="3">    <span class="dt">space=</span><span class="kw">vgm</span>(<span class="dv">150</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">200</span>, <span class="dv">0</span>),</a>
+<a class="sourceLine" id="cb400-4" title="4">    <span class="dt">time=</span> <span class="kw">vgm</span>(<span class="dv">20</span>, <span class="st">&quot;Sph&quot;</span>,   <span class="dv">40</span>, <span class="dv">0</span>),</a>
+<a class="sourceLine" id="cb400-5" title="5">    <span class="dt">k=</span><span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb400-6" title="6">StAni =<span class="st"> </span><span class="kw">estiStAni</span>(v.st, <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">200000</span>))</a>
+<a class="sourceLine" id="cb400-7" title="7">(fitProdSumModel &lt;-<span class="st"> </span><span class="kw">fit.StVariogram</span>(v.st, prodSumModel, <span class="dt">fit.method =</span> <span class="dv">7</span>,</a>
+<a class="sourceLine" id="cb400-8" title="8">    <span class="dt">stAni =</span> StAni, <span class="dt">method =</span> <span class="st">&quot;L-BFGS-B&quot;</span>,</a>
+<a class="sourceLine" id="cb400-9" title="9">    <span class="dt">control =</span> <span class="kw">list</span>(<span class="dt">parscale =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">10</span>,<span class="dv">1</span>,<span class="dv">1</span>,<span class="fl">0.1</span>,<span class="dv">1</span>,<span class="dv">10</span>)),</a>
+<a class="sourceLine" id="cb400-10" title="10">    <span class="dt">lower =</span> <span class="kw">rep</span>(<span class="fl">0.0001</span>, <span class="dv">7</span>)))</a></code></pre></div>
+<pre><code># space component: 
+#   model psill range
+# 1   Nug  26.3     0
+# 2   Exp 140.5   432
+# time component: 
+#   model psill range
+# 1   Nug  1.21   0.0
+# 2   Sph 15.99  40.1
+# k: 0.0322469094848839</code></pre>
+<div class="sourceCode" id="cb402"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb402-1" title="1"><span class="kw">plot</span>(v.st, fitProdSumModel, <span class="dt">wireframe=</span><span class="ot">FALSE</span>, <span class="dt">all=</span><span class="ot">TRUE</span>, <span class="dt">scales=</span><span class="kw">list</span>(<span class="dt">arrows=</span><span class="ot">FALSE</span>), <span class="dt">zlim=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">150</span>))</a></code></pre></div>
+<p><img src="sds_files/figure-html/fitprodsummodel-1.png" width="672" style="display: block; margin: auto;" />
+which can also be plotted as wireframes, by</p>
+<div class="sourceCode" id="cb403"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb403-1" title="1"><span class="kw">plot</span>(v.st, <span class="dt">model=</span>fitProdSumModel, <span class="dt">wireframe=</span><span class="ot">TRUE</span>, <span class="dt">all=</span><span class="ot">TRUE</span>, <span class="dt">scales=</span><span class="kw">list</span>(<span class="dt">arrows=</span><span class="ot">FALSE</span>), <span class="dt">zlim=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">185</span>))</a></code></pre></div>
+<p><img src="sds_files/figure-html/plotprodsummodel-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Hints about the fitting strategy and alternative models for
+spatiotemporal variograms are given in <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span>.</p>
+<p>With this fitted model, and given the observations, we can
+carry out kriging or simulation at arbitrary points in space and
+time. For instance, we could estimate (or simulate) values in the
+time series that are now missing: this occurs regularly, and in
+section <a href="interpolation.html#kriging">12.4</a> we used means over time series based on
+simply ignoring up to 25% of the observations: substituting these
+with estimated or simulated values based on neigbouring (in space
+and time) observations before computing yearly mean values seems
+a more reasonable approach.</p>
+<p>More in general, we can estimate at arbitrary locations and time
+points, and we will illustrate this with predicting time series at
+particular locations, and and predicting spatial slices <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span>.
+We can create
+a <code>stars</code> object to denote two points and all time instances with</p>
+<div class="sourceCode" id="cb404"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb404-1" title="1"><span class="kw">set.seed</span>(<span class="dv">123</span>)</a>
+<a class="sourceLine" id="cb404-2" title="2">pt =<span class="st"> </span><span class="kw">st_sample</span>(de, <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb404-3" title="3">t =<span class="st"> </span><span class="kw">st_get_dimension_values</span>(no2.st, <span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb404-4" title="4"><span class="kw">st_as_stars</span>(<span class="kw">list</span>(<span class="dt">pts =</span> <span class="kw">matrix</span>(<span class="dv">1</span>, <span class="kw">length</span>(t), <span class="kw">length</span>(pt)))) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb404-5" title="5"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="dt">names =</span> <span class="kw">c</span>(<span class="st">&quot;time&quot;</span>, <span class="st">&quot;station&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb404-6" title="6"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, t) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb404-7" title="7"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;station&quot;</span>, pt) -&gt;<span class="st"> </span>new_pt</a></code></pre></div>
+<p>and obtain the corresponding spatiotemporal predictions using <code>krigeST</code> with</p>
+<div class="sourceCode" id="cb405"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb405-1" title="1">no2.st &lt;-<span class="st"> </span><span class="kw">st_transform</span>(no2.st, crs)</a>
+<a class="sourceLine" id="cb405-2" title="2">new_ts &lt;-<span class="st"> </span><span class="kw">krigeST</span>(NO2<span class="op">~</span><span class="dv">1</span>, <span class="dt">data =</span> no2.st[<span class="st">&quot;NO2&quot;</span>], <span class="dt">newdata =</span> new_pt,</a>
+<a class="sourceLine" id="cb405-3" title="3">         <span class="dt">nmax =</span> <span class="dv">50</span>, <span class="dt">stAni =</span> StAni, <span class="dt">modelList =</span> fitProdSumModel,</a>
+<a class="sourceLine" id="cb405-4" title="4">         <span class="dt">progress =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb405-5" title="5"><span class="kw">plot</span>(<span class="kw">as.xts</span>(new_ts[<span class="dv">2</span>]))</a></code></pre></div>
+<p><img src="sds_files/figure-html/spacetimekriging-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Alternatively, we can create spatiotemporal predictions for a set of time-stamped
+raster maps, created by</p>
+<div class="sourceCode" id="cb406"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb406-1" title="1">t4 =<span class="st"> </span>t[(<span class="dv">1</span><span class="op">:</span><span class="dv">4</span> <span class="op">-</span><span class="st"> </span><span class="fl">0.5</span>) <span class="op">*</span><span class="st"> </span>(<span class="dv">3</span><span class="op">*</span><span class="dv">24</span><span class="op">*</span><span class="dv">30</span>)]</a>
+<a class="sourceLine" id="cb406-2" title="2"></a>
+<a class="sourceLine" id="cb406-3" title="3">d =<span class="st"> </span><span class="kw">dim</span>(grd)</a>
+<a class="sourceLine" id="cb406-4" title="4"><span class="kw">st_as_stars</span>(<span class="dt">pts =</span> <span class="kw">array</span>(<span class="dv">1</span>, <span class="kw">c</span>(d[<span class="dv">1</span>], d[<span class="dv">2</span>], <span class="dt">time=</span><span class="kw">length</span>(t4)))) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb406-5" title="5"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, t4) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb406-6" title="6"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;x&quot;</span>, <span class="kw">st_get_dimension_values</span>(grd, <span class="st">&quot;x&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb406-7" title="7"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;y&quot;</span>, <span class="kw">st_get_dimension_values</span>(grd, <span class="st">&quot;y&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb406-8" title="8"><span class="st">    </span><span class="kw">st_set_crs</span>(crs) -&gt;<span class="st"> </span>grd.st</a></code></pre></div>
+<p>and the subsequent predictions are obtained by</p>
+<div class="sourceCode" id="cb407"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb407-1" title="1">new_int &lt;-<span class="st"> </span><span class="kw">krigeST</span>(NO2<span class="op">~</span><span class="dv">1</span>, <span class="dt">data =</span> no2.st[<span class="st">&quot;NO2&quot;</span>], <span class="dt">newdata =</span> grd.st,</a>
+<a class="sourceLine" id="cb407-2" title="2">         <span class="dt">nmax =</span> <span class="dv">200</span>, <span class="dt">stAni =</span> StAni, <span class="dt">modelList =</span> fitProdSumModel,</a>
+<a class="sourceLine" id="cb407-3" title="3">         <span class="dt">progress =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb407-4" title="4"><span class="kw">names</span>(new_int)[<span class="dv">2</span>] =<span class="st"> &quot;NO2&quot;</span></a></code></pre></div>
+<div class="sourceCode" id="cb408"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb408-1" title="1">g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> new_int, <span class="kw">aes</span>(<span class="dt">fill =</span> NO2, <span class="dt">x =</span> x, <span class="dt">y =</span> y)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb408-2" title="2"><span class="st">    </span><span class="kw">facet_wrap</span>(<span class="op">~</span>time) <span class="op">+</span></a>
+<a class="sourceLine" id="cb408-3" title="3"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb408-4" title="4"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf, <span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>, <span class="dt">cex =</span> <span class="fl">.5</span>)</a></code></pre></div>
+<pre><code># Coordinate system already present. Adding new coordinate system, which will replace the existing one.</code></pre>
+<p><img src="sds_files/figure-html/plotspatiotemporalpredictions-1.png" width="672" style="display: block; margin: auto;" />
+and shown in figure <a href="#fig:plotspatiotemporalpredictions"><strong>??</strong></a>.</p>
+<p>A larger value for <code>nmax</code> was needed here to decrease the visible
+disturbance (sharp edges) caused by discrete neighbourhood
+selections, which are now done in space <em>and</em> time.</p>
 
+</div>
+</div>
+</div>
+<h3>References</h3>
 <div id="refs" class="references">
-<div>
-<p>Alam, Moudud, Lars Rönnegård, and Xia Shen. 2015. “Fitting Conditional and Simultaneous Autoregressive Spatial Models in Hglm.” <em>The R Journal</em> 7 (2): 5–18. <a href="https://doi.org/10.32614/RJ-2015-017">https://doi.org/10.32614/RJ-2015-017</a>.</p>
-</div>
-<div>
-<p>Anselin, L. 1995. “Local indicators of spatial association - LISA.” <em>Geographical Analysis</em> 27 (2): 93–115.</p>
-</div>
-<div>
-<p>Anselin, L. 1988. <em>Spatial Econometrics: Methods and Models</em>. Kluwer Academic Publishers.</p>
-</div>
-<div>
-<p>———. 1996. “The Moran Scatterplot as an ESDA Tool to Assess Local Instability in Spatial Association.” In <em>Spatial Analytical Perspectives on GIS</em>, edited by M. M. Fischer, H. J. Scholten, and D. Unwin, 111–25. London: Taylor &amp; Francis.</p>
-</div>
-<div>
-<p>Appel, Marius. 2020. <em>Gdalcubes: Earth Observation Data Cubes from Satellite Image Collections</em>. <a href="https://github.com/appelmar/gdalcubes_R">https://github.com/appelmar/gdalcubes_R</a>.</p>
-</div>
-<div>
-<p>Appel, Marius, and Edzer Pebesma. 2019. “On-Demand Processing of Data Cubes from Satellite Image Collections with the Gdalcubes Library.” <em>Data</em> 4 (3): 92. <a href="https://www.mdpi.com/2306-5729/4/3/92">https://www.mdpi.com/2306-5729/4/3/92</a>.</p>
-</div>
-<div>
-<p>Appelhans, Tim, Florian Detsch, Christoph Reudenbach, and Stefan Woellauer. 2021. <em>Mapview: Interactive Viewing of Spatial Data in R</em>. <a href="https://github.com/r-spatial/mapview">https://github.com/r-spatial/mapview</a>.</p>
-</div>
-<div>
-<p>Assunção, R.M., and E. A. Reis. 1999. “A New Proposal to Adjust Moran’s <span class="math inline">\(I\)</span> for Population Density.” <em>Statistics in Medicine</em> 18: 2147–62.</p>
-</div>
-<div>
-<p>Avis, D., and J. Horton. 1985. “Remarks on the Sphere of Influence Graph.” In <em>Discrete Geometry and Convexity</em>, edited by J. E. Goodman, 323–27. New York: New York Academy of Sciences, New York.</p>
-</div>
-<div>
-<p>Aybar, Cesar. 2021. <em>Rgee: R Bindings for Calling the Earth Engine Api</em>. <a href="https://CRAN.R-project.org/package=rgee">https://CRAN.R-project.org/package=rgee</a>.</p>
-</div>
-<div>
-<p>Baddeley, Adrian, Ege Rubak, and Rolf Turner. 2015. <em>Spatial Point Patterns: Methodology and Applications with R</em>. Chapman; Hall/CRC.</p>
-</div>
-<div>
-<p>Baddeley, Adrian, Rolf Turner, and Ege Rubak. 2021. <em>Spatstat: Spatial Point Pattern Analysis, Model- Fitting, Simulation, Tests</em>. <a href="http://spatstat.org/">http://spatstat.org/</a>.</p>
-</div>
-<div>
-<p>Baumann, Peter, Eric Hirschorn, and Joan Masó. 2017. “OGC Coverage Implementation Schema.” <em>OGC Implementation Standard</em>. <a href="https://docs.opengeospatial.org/is/09-146r6/09-146r6.html">https://docs.opengeospatial.org/is/09-146r6/09-146r6.html</a>.</p>
-</div>
-<div>
-<p>Bavaud, F. 1998. “Models for Spatial Weights: A Systematic Look.” <em>Geographical Analysis</em> 30: 153–71. <a href="https://doi.org/10.1111/j.1538-4632.1998.tb00394.x">https://doi.org/10.1111/j.1538-4632.1998.tb00394.x</a>.</p>
-</div>
-<div>
-<p>Besag, Julian. 1974. “Spatial Interaction and the Statistical Analysis of Lattice Systems.” <em>Journal of the Royal Statistical Society. Series B (Methodological)</em> 36: pp. 192–236.</p>
-</div>
-<div>
-<p>BIPM, IEC, ILAC IFCC, IUPAP IUPAC, and OIML ISO. 2012. “The International Vocabulary of Metrology–Basic and General Concepts and Associated Terms (Vim), 3rd Edn. JCGM 200: 2012.” <em>JCGM (Joint Committee for Guides in Metrology)</em>. <a href="https://www.bipm.org/en/publications/guides/">https://www.bipm.org/en/publications/guides/</a>.</p>
-</div>
-<div>
-<p>Bivand, Roger. 2017. “Revisiting the Boston Data Set — Changing the Units of Observation Affects Estimated Willingness to Pay for Clean Air.” <em>REGION</em> 4 (1): 109–27. <a href="https://doi.org/10.18335/region.v4i1.107">https://doi.org/10.18335/region.v4i1.107</a>.</p>
-</div>
-<div>
-<p>———. 2020a. <em>ClassInt: Choose Univariate Class Intervals</em>. <a href="https://CRAN.R-project.org/package=classInt">https://CRAN.R-project.org/package=classInt</a>.</p>
-</div>
-<div>
-<p>———. 2020b. <em>Why Have Crs, Projections and Transformations Changed?</em> <a href=" https://rgdal.r-forge.r-project.org/articles/CRS_projections_transformations.html ">https://rgdal.r-forge.r-project.org/articles/CRS_projections_transformations.html</a>.</p>
-</div>
-<div>
-<p>———. 2021. <em>Spdep: Spatial Dependence: Weighting Schemes, Statistics</em>. <a href="https://github.com/r-spatial/spdep/">https://github.com/r-spatial/spdep/</a>.</p>
-</div>
-<div>
-<p>Bivand, Roger S. 2012. “After ’Raising the Bar’: Applied Maximum Likelihood Estimation of Families of Models in Spatial Econometrics.” <em>Estadística Española</em> 54: 71–88.</p>
-</div>
-<div>
-<p>Bivand, Roger S., Jan Hauke, and Tomasz Kossowski. 2013. “Computing the Jacobian in Gaussian Spatial Autoregressive Models: An Illustrated Comparison of Available Methods.” <em>Geographical Analysis</em> 45 (2): 150–79. <a href="https://doi.org/10.1111/gean.12008">https://doi.org/10.1111/gean.12008</a>.</p>
-</div>
-<div>
+<div id="ref-asdar">
 <p>Bivand, Roger S., Edzer Pebesma, and Virgilio Gomez-Rubio. 2013. <em>Applied Spatial Data Analysis with R, Second Edition</em>. Springer, NY. <a href="http://www.asdar-book.org/">http://www.asdar-book.org/</a>.</p>
 </div>
-<div>
-<p>Bivand, Roger S., and Gianfranco Piras. 2015. “Comparing Implementations of Estimation Methods for Spatial Econometrics.” <em>Journal of Statistical Software</em> 63 (1): 1–36. <a href="https://doi.org/10.18637/jss.v063.i18">https://doi.org/10.18637/jss.v063.i18</a>.</p>
-</div>
-<div>
-<p>Bivand, Roger S., Zhe Sha, Liv Osland, and Ingrid Sandvig Thorsen. 2017. “A Comparison of Estimation Methods for Multilevel Models of Spatially Structured Data.” <em>Spatial Statistics</em>. <a href="https://doi.org/10.1016/j.spasta.2017.01.002">https://doi.org/10.1016/j.spasta.2017.01.002</a>.</p>
-</div>
-<div>
-<p>Bivand, Roger S., and David W. S. Wong. 2018. “Comparing Implementations of Global and Local Indicators of Spatial Association.” <em>TEST</em> 27 (3): 716–48. <a href="https://doi.org/10.1007/s11749-018-0599-x">https://doi.org/10.1007/s11749-018-0599-x</a>.</p>
-</div>
-<div>
-<p>Bivand, R. S. 1984. “Regression Modeling with Spatial Dependence: an Application of Some Class Selection and Estimation Methods.” <em>Geographical Analysis</em> 16: 25–37.</p>
-</div>
-<div>
-<p>———. 2002. “Spatial Econometrics Functions in R: Classes and Methods.” <em>Journal of Geographical Systems</em> 4: 405–21.</p>
-</div>
-<div>
-<p>Bivand, R. S., W. Müller, and M. Reder. 2009. “Power Calculations for Global and Local Moran’s <span class="math inline">\(I\)</span>.” <em>Computational Statistics and Data Analysis</em> 53: 2859–72.</p>
-</div>
-<div>
-<p>Bivand, R. S., and B. A. Portnov. 2004. “Exploring Spatial Data Analysis Techniques Using R: The Case of Observations with No Neighbours.” In <em>Advances in Spatial Econometrics: Methodology, Tools, Applications</em>, edited by L. Anselin, R. J. G. M. Florax, and S. J. Rey, 121–42. Berlin: Springer.</p>
-</div>
-<div>
+<div id="ref-blangiardo2015spatial">
 <p>Blangiardo, Marta, and Michela Cameletti. 2015. <em>Spatial and Spatio-Temporal Bayesian Models with R-Inla</em>. John Wiley &amp; Sons.</p>
 </div>
-<div>
-<p>Blangiardo, Marta, Michela Cameletti, Gianluca Baio, and Håvard Rue. 2013. “Spatial and Spatio-Temporal Models with R-Inla.” <em>Spatial and Spatio-Temporal Epidemiology</em> 4: 33–49. <a href="https://doi.org/https://doi.org/10.1016/j.sste.2012.12.001">https://doi.org/https://doi.org/10.1016/j.sste.2012.12.001</a>.</p>
-</div>
-<div>
-<p>Boots, B., and A. Okabe. 2007. “Local Statistical Spatial Analysis: Inventory and Prospect.” <em>International Journal of Geographical Information Science</em> 21 (4): 355–75. <a href="https://doi.org/10.1080/13658810601034267">https://doi.org/10.1080/13658810601034267</a>.</p>
-</div>
-<div>
-<p>Brazil Data Cube Team. 2021. <em>Rstac: Client Library for Spatiotemporal Asset Catalog</em>. <a href="https://github.com/brazil-data-cube/rstac">https://github.com/brazil-data-cube/rstac</a>.</p>
-</div>
-<div>
-<p>Breidt, F Jay, Jean D Opsomer, and others. 2017. “Model-Assisted Survey Estimation with Modern Prediction Techniques.” <em>Statistical Science</em> 32 (2): 190–205.</p>
-</div>
-<div>
-<p>Brooks, Mollie E., Kasper Kristensen, Koen J. van Benthem, Arni Magnusson, Casper W. Berg, Anders Nielsen, Hans J. Skaug, Martin Maechler, and Benjamin M. Bolker. 2017. “glmmTMB Balances Speed and Flexibility Among Packages for Zero-Inflated Generalized Linear Mixed Modeling.” <em>The R Journal</em> 9 (2): 378–400. <a href="https://journal.r-project.org/archive/2017/RJ-2017-066/index.html">https://journal.r-project.org/archive/2017/RJ-2017-066/index.html</a>.</p>
-</div>
-<div>
-<p>Brown, Paul G. 2010. “Overview of SciDB: Large Scale Array Storage, Processing and Analysis.” In <em>Proceedings of the 2010 ACM SIGMOD International Conference on Management of Data</em>, 963–68. ACM.</p>
-</div>
-<div>
-<p>Brus, Dick J. 2021a. “Statistical Approaches for Spatial Sample Survey: Persistent Misconceptions and New Developments.” <em>European Journal of Soil Science</em> 72 (2): 686–703. <a href="https://doi.org/https://doi.org/10.1111/ejss.12988">https://doi.org/https://doi.org/10.1111/ejss.12988</a>.</p>
-</div>
-<div>
-<p>———. 2021b. “Statistical Approaches for Spatial Sample Survey: Persistent Misconceptions and New Developments.” <em>European Journal of Soil Science</em> 72 (2): 686–703. <a href="https://doi.org/https://doi.org/10.1111/ejss.12988">https://doi.org/https://doi.org/10.1111/ejss.12988</a>.</p>
-</div>
-<div>
-<p>Bureau International des Poids et Mesures. 2006. <em>The International System of Units (SI), 8th Edition</em>. Organisation Intergouvernementale de la Convention du Mètre. <a href="https://www.bipm.org/en/publications/si-brochure/download.html">https://www.bipm.org/en/publications/si-brochure/download.html</a>.</p>
-</div>
-<div>
-<p>Burridge, P. 1981. “Testing for a Common Factor in a Spatial Autoregression Model.” <em>Environment and Planning A</em> 13: 795–800.</p>
-</div>
-<div>
-<p>Chambers, John. 2016. <em>Extending R</em>. CRC Press.</p>
-</div>
-<div>
-<p>Chrisman, Nicholas. 2012. “A Deflationary Approach to Fundamental Principles in GIScience.” In <em>Francis Harvey (Ed.) Are There Fundamental Principles in Geographic Information Science?</em>, 42–64. CreateSpace, United States.</p>
-</div>
-<div>
-<p>Clementini, Eliseo, Paolino Di Felice, and Peter van Oosterom. 1993. “A Small Set of Formal Topological Relationships Suitable for End-User Interaction.” In <em>Advances in Spatial Databases</em>, edited by David Abel and Beng Chin Ooi, 277–95. Berlin, Heidelberg: Springer Berlin Heidelberg.</p>
-</div>
-<div>
-<p>Cliff, A. D., and J. K. Ord. 1973. <em>Spatial Autocorrelation</em>. London: Pion.</p>
-</div>
-<div>
-<p>———. 1981. <em>Spatial Processes</em>. London: Pion.</p>
-</div>
-<div>
-<p>Cliff, A., and J.K. Ord. 1972. “Testing for Spatial Autocorrelation Among Regression Residuals.” <em>Geographical Analysis</em> 4: 267–84.</p>
-</div>
-<div>
-<p>Cobb, George W., and David S. Moore. 1997. “Mathematics, Statistics and Teaching.” <em>The American Mathematical Monthly</em> 104 (9): 801–23. <a href=" http://www.jstor.org/stable/2975286 ">http://www.jstor.org/stable/2975286</a>.</p>
-</div>
-<div>
-<p>Cressie, N. A. C. 1993. <em>Statistics for Spatial Data</em>. New York:Wiley.</p>
-</div>
-<div>
-<p>Davies, Tilman, and David Bryant. 2013. “On Circulant Embedding for Gaussian Random Fields in R.” <em>Journal of Statistical Software, Articles</em> 55 (9): 1–21. <a href="https://doi.org/10.18637/jss.v055.i09">https://doi.org/10.18637/jss.v055.i09</a>.</p>
-</div>
-<div>
-<p>De Gruijter, Jaap, Dick J Brus, Marc FP Bierkens, and Martin Knotters. 2006. <em>Sampling for Natural Resource Monitoring</em>. Springer Science &amp; Business Media.</p>
-</div>
-<div>
-<p>De Gruijter, JJ, and CJF Ter Braak. 1990. “Model-Free Estimation from Spatial Samples: A Reappraisal of Classical Sampling Theory.” <em>Mathematical Geology</em> 22 (4): 407–15.</p>
-</div>
-<div>
-<p>Diggle, P. J., and P. J. Ribeiro Jr. 2007. <em>Model-Based Geostatistics</em>. New York: Springer.</p>
-</div>
-<div>
-<p>Diggle, P. J., J. A. Tawn, and R. A. Moyeed. 1998. “Model-Based Geostatistics.” <em>Applied Statistics</em>, no. 3: 299–350.</p>
-</div>
-<div>
-<p>Do, Van Huyen, Christine Thomas-Agnan, and Anne Vanhems. 2015a. “Accuracy of Areal Interpolation Methods for Count Data.” <em>Spatial Statistics</em> 14: 412–38. <a href="https://doi.org/10.1016/j.spasta.2015.07.005">https://doi.org/10.1016/j.spasta.2015.07.005</a>.</p>
-</div>
-<div>
-<p>———. 2015b. “Spatial Reallocation of Areal Data: A Review.” <em>Rev. Econ. Rég. Urbaine</em> 1/2: 27–58. <a href="https://www.tse-fr.eu/sites/default/files/medias/doc/wp/mad/wp_tse_397_v2.pdf">https://www.tse-fr.eu/sites/default/files/medias/doc/wp/mad/wp_tse_397_v2.pdf</a>.</p>
-</div>
-<div>
-<p>Dong, G., and R. Harris. 2015. “Spatial Autorgressive Models for Geographically Hierarchical Data Structures.” <em>Geographical Analysis</em> 47 (2): 173–91.</p>
-</div>
-<div>
-<p>Dong, G., R. Harris, K. Jones, and J. Yu. 2015. “Multilevel Modeling with Spatial Interaction Effects with Application to an Emerging Land Market in Beijing, China.” <em>PLOS One</em> 10 (6). <a href="https://doi.org/doi:10.1371/journal.pone.0130761">https://doi.org/doi:10.1371/journal.pone.0130761</a>.</p>
-</div>
-<div>
-<p>Duncan, O. D., R. P. Cuzzort, and B. Duncan. 1961. <em>Statistical Geography: Problems in Analyzing Areal Data</em>. Glencoe, IL: Free Press.</p>
-</div>
-<div>
-<p>Dunnington, Dewey. 2021. <em>Ggspatial: Spatial Data Framework for Ggplot2</em>. <a href="https://CRAN.R-project.org/package=ggspatial">https://CRAN.R-project.org/package=ggspatial</a>.</p>
-</div>
-<div>
-<p>Dunnington, Dewey, Edzer Pebesma, and Ege Rubak. 2021. <em>S2: Spherical Geometry Operators Using the S2 Geometry Library</em>. <a href="https://CRAN.R-project.org/package=s2">https://CRAN.R-project.org/package=s2</a>.</p>
-</div>
-<div>
-<p>Eddelbuettel, Dirk. 2013. <em>Seamless R and C++ Integration with Rcpp</em>. Springer.</p>
-</div>
-<div>
-<p>Egenhofer, Max J., and Robert D. Franzosa. 1991. “Point-Set Topological Spatial Relations.” <em>International Journal of Geographical Information Systems</em> 5 (2): 161–74. <a href="https://doi.org/10.1080/02693799108927841">https://doi.org/10.1080/02693799108927841</a>.</p>
-</div>
-<div>
-<p>Elhorst, J. Paul. 2010. “Applied Spatial Econometrics: Raising the Bar.” <em>Spatial Economic Analysis</em> 5: 9–28.</p>
-</div>
-<div>
-<p>Evenden, Gerald I. 1990. <em>Cartographic Projection Procedures for the UNIX Environment — a User’s Manual</em>. <a href="http://download.osgeo.org/proj/OF90-284.pdf">http://download.osgeo.org/proj/OF90-284.pdf</a>.</p>
-</div>
-<div>
-<p>Evers, Kristian, and Thomas Knudsen. 2017. <em>Transformation Pipelines for Proj.4</em>. <a href="https://www.fig.net/resources/proceedings/fig_proceedings/fig2017/papers/iss6b/ISS6B_evers_knudsen_9156.pdf">https://www.fig.net/resources/proceedings/fig_proceedings/fig2017/papers/iss6b/ISS6B_evers_knudsen_9156.pdf</a>.</p>
-</div>
-<div>
-<p>Fingleton, B. 1999. “Spurious spatial regression: Some Monte Carlo results with a spatial unit root and spatial cointegration.” <em>Journal of Regional Science</em> 9: 1–19.</p>
-</div>
-<div>
-<p>Fisher, Ronald Aylmer, and others. 1937. “The Design of Experiments.” <em>The Design of Experiments.</em>, no. 2nd Ed.</p>
-</div>
-<div>
-<p>Freni-Sterrantino, Anna, Massimo Ventrucci, and Håvard Rue. 2018. “A Note on Intrinsic Conditional Autoregressive Models for Disconnected Graphs.” <em>Spatial and Spatio-Temporal Epidemiology</em> 26: 25–34. <a href="https://doi.org/https://doi.org/10.1016/j.sste.2018.04.002">https://doi.org/https://doi.org/10.1016/j.sste.2018.04.002</a>.</p>
-</div>
-<div>
-<p>Gabriel, Edith, Barry Rowlingson, and Peter Diggle. 2013. “Stpp: An R Package for Plotting, Simulating and Analyzing Spatio-Temporal Point Patterns.” <em>Journal of Statistical Software, Articles</em> 53 (2): 1–29. <a href="https://doi.org/10.18637/jss.v053.i02">https://doi.org/10.18637/jss.v053.i02</a>.</p>
-</div>
-<div>
-<p>Gaetan, Carlo, and Xavier Guyon. 2010. <em>Spatial Statistics and Modeling</em>. New York: Springer.</p>
-</div>
-<div>
-<p>Galton, A. 2004. “Fields and Objects in Space, Time and Space-Time.” <em>Spatial Cognition and Computation</em> 4.</p>
-</div>
-<div>
-<p>Garnier, Simon. 2021. <em>Viridis: Colorblind-Friendly Color Maps for R</em>. <a href="https://CRAN.R-project.org/package=viridis">https://CRAN.R-project.org/package=viridis</a>.</p>
-</div>
-<div>
-<p>Geary, R. C. 1954. “The Contiguity Ratio and Statistical Mapping.” <em>The Incorporated Statistician</em> 5: 115–45.</p>
-</div>
-<div>
-<p>Getis, A., and J. K. Ord. 1992. “The Analysis of Spatial Association by the Use of Distance Statistics.” <em>Geographical Analysis</em> 24 (2): 189–206.</p>
-</div>
-<div>
-<p>———. 1996. “Local Spatial Statistics: An Overview.” In <em>Spatial Analysis: Modelling in a Gis Environment</em>, edited by P. Longley and M Batty, 261–77. Cambridge: GeoInformation International.</p>
-</div>
-<div>
-<p>Gómez-Rubio, Virgilio. 2020. <em>Bayesian Inference with Inla</em>. CRC Press.</p>
-</div>
-<div>
-<p>Gómez-Rubio, Virgilio, Roger Bivand, and Håvard Rue. 2015. “A New Latent Class to Fit Spatial Econometrics Models with Integrated Nested Laplace Approximations.” <em>Procedia Environmental Sciences</em> 27: 116–18. <a href="https://doi.org/https://doi.org/10.1016/j.proenv.2015.07.119">https://doi.org/https://doi.org/10.1016/j.proenv.2015.07.119</a>.</p>
-</div>
-<div>
-<p>Goodchild, Michael F, and Nina Siu Ngan Lam. 1980. <em>Areal Interpolation: A Variant of the Traditional Spatial Problem</em>. Department of Geography, University of Western Ontario London, ON, Canada.</p>
-</div>
-<div>
-<p>Gorelick, Noel, Matt Hancher, Mike Dixon, Simon Ilyushchenko, David Thau, and Rebecca Moore. 2017. “Google Earth Engine: Planetary-Scale Geospatial Analysis for Everyone.” <em>Remote Sensing of Environment</em> 202: 18–27. <a href="https://doi.org/10.1016/j.rse.2017.06.031">https://doi.org/10.1016/j.rse.2017.06.031</a>.</p>
-</div>
-<div>
-<p>Goulard, Michel, Thibault Laurent, and Christine Thomas-Agnan. 2017. “About Predictions in Spatial Autoregressive Models: Optimal and Almost Optimal Strategies.” <em>Spatial Economic Analysis</em> 12 (2-3): 304–25. <a href="https://doi.org/10.1080/17421772.2017.1300679">https://doi.org/10.1080/17421772.2017.1300679</a>.</p>
-</div>
-<div>
+<div id="ref-RJ-2016-014">
 <p>Gräler, Benedikt, Edzer Pebesma, and Gerard Heuvelink. 2016. “Spatio-Temporal Interpolation using gstat.” <em>The R Journal</em> 8 (1): 204–18. <a href="https://doi.org/10.32614/RJ-2016-014">https://doi.org/10.32614/RJ-2016-014</a>.</p>
 </div>
-<div>
-<p>Griffith, Daniel, Roger Bivand, and Yongwan Chun. 2015. “Implementing Approximations to Extreme Eigenvalues and Eigenvalues of Irregular Surface Partitionings for Use in Sar and Car Models.” <em>Procedia Environmental Sciences</em> 26: 119–22. <a href="https://doi.org/https://doi.org/10.1016/j.proenv.2015.05.013">https://doi.org/https://doi.org/10.1016/j.proenv.2015.05.013</a>.</p>
-</div>
-<div>
-<p>Halleck Vega, Solmaria, and J. Paul Elhorst. 2015. “The SLX Model.” <em>Journal of Regional Science</em> 55 (3): 339–63. <a href="https://doi.org/10.1111/jors.12188">https://doi.org/10.1111/jors.12188</a>.</p>
-</div>
-<div>
-<p>Hand, David J. 2004. <em>Measurement: Theory and Practice</em>. A Hodder Arnold Publication.</p>
-</div>
-<div>
-<p>Healy, Kieran. 2018. <em>Data Visualization, a Practical Introduction</em>. Princeton University Press. <a href="http://socviz.co/index.html">http://socviz.co/index.html</a>.</p>
-</div>
-<div>
-<p>Heaton, Matthew J., Abhirup Datta, Andrew O. Finley, Reinhard Furrer, Joseph Guinness, Rajarshi Guhaniyogi, Florian Gerber, et al. 2018. “A Case Study Competition Among Methods for Analyzing Large Spatial Data.” <em>Journal of Agricultural, Biological and Environmental Statistics</em>, December. <a href="https://doi.org/10.1007/s13253-018-00348-w">https://doi.org/10.1007/s13253-018-00348-w</a>.</p>
-</div>
-<div>
-<p>Hepple, Leslie W. 1976. “A Maximum Likelihood Model for Econometric Estimation with Spatial Series.” In <em>Theory and Practice in Regional Science</em>, edited by I. Masser, 90–104. London Papers in Regional Science. London: Pion.</p>
-</div>
-<div>
-<p>Herring, John, and others. 2011. “Opengis Implementation Standard for Geographic Information-Simple Feature Access-Part 1: Common Architecture [Corrigendum].”</p>
-</div>
-<div>
-<p>Herring, John R. 2010. “OpenGIS Implementation Standard for Geographic Information-Simple Feature Access-Part 2: SQL Option.” <em>Open Geospatial Consortium Inc</em>. <a href="http://portal.opengeospatial.org/files/?artifact_id=25354">http://portal.opengeospatial.org/files/?artifact_id=25354</a>.</p>
-</div>
-<div>
-<p>———. 2011. “OpenGIS Implementation Standard for Geographic Information-Simple Feature Access-Part 1: Common Architecture.” <em>Open Geospatial Consortium Inc</em>, 111. <a href="http://portal.opengeospatial.org/files/?artifact_id=25355">http://portal.opengeospatial.org/files/?artifact_id=25355</a>.</p>
-</div>
-<div>
-<p>Hersbach, Hans, Bill Bell, Paul Berrisford, Shoji Hirahara, András Horányi, Joaquín Muñoz-Sabater, Julien Nicolas, et al. 2020. “The Era5 Global Reanalysis.” <em>Quarterly Journal of the Royal Meteorological Society</em> 146 (730): 1999–2049. <a href="https://doi.org/https://doi.org/10.1002/qj.3803">https://doi.org/https://doi.org/10.1002/qj.3803</a>.</p>
-</div>
-<div>
-<p>Hijmans, Robert J. 2021a. <em>Raster: Geographic Data Analysis and Modeling</em>. <a href="https://rspatial.org/raster">https://rspatial.org/raster</a>.</p>
-</div>
-<div>
-<p>———. 2021b. <em>Terra: Spatial Data Analysis</em>. <a href="https://rspatial.org/terra">https://rspatial.org/terra</a>.</p>
-</div>
-<div>
-<p>Hufkens, Koen. 2020. <em>Ecmwfr: Interface to Ecmwf and Cds Data Web Services</em>. <a href="https://github.com/bluegreen-labs/ecmwfr">https://github.com/bluegreen-labs/ecmwfr</a>.</p>
-</div>
-<div>
-<p>Ihaka, Ross, Paul Murrell, Kurt Hornik, Jason C. Fisher, Reto Stauffer, Claus O. Wilke, Claire D. McWhite, and Achim Zeileis. 2021. <em>Colorspace: A Toolbox for Manipulating and Assessing Colors and Palettes</em>. <a href="https://CRAN.R-project.org/package=colorspace">https://CRAN.R-project.org/package=colorspace</a>.</p>
-</div>
-<div>
-<p>Iliffe, Jonathan, and Roger Lott. 2008. <em>Datums and Map Projections for Remote Sensing, Gis, and Surveying. Whittles Pub</em>. CRC Press, Scotland, UK.</p>
-</div>
-<div>
-<p>ISO. 2004. <em>Geographic Information – Simple Feature Access – Part 1: Common Architecture</em>. <a href=" https://www.iso.org/standard/40114.html ">https://www.iso.org/standard/40114.html</a>.</p>
-</div>
-<div>
-<p>Journel, Andre G, and Charles J Huijbregts. 1978. <em>Mining Geostatistics</em>. Academic press London.</p>
-</div>
-<div>
-<p>Kaluzny, S.P., S.C. Vega, T.P. Cardoso, and A.A. Shelly. 1998. <em>S+SpatialStats</em>. New York, NY: Springer.</p>
-</div>
-<div>
-<p>Karney, Charles FF. 2013. “Algorithms for Geodesics.” <em>Journal of Geodesy</em> 87 (1): 43–55. <a href="https://link.springer.com/content/pdf/10.1007/s00190-012-0578-z.pdf">https://link.springer.com/content/pdf/10.1007/s00190-012-0578-z.pdf</a>.</p>
-</div>
-<div>
-<p>Kelejian, Harry, and Gianfranco Piras. 2017. <em>Spatial Econometrics</em>. London: Academic Press.</p>
-</div>
-<div>
-<p>Knudsen, Thomas, and Kristian Evers. 2017. <em>Transformation Pipelines for Proj.4</em>. <a href="https://meetingorganizer.copernicus.org/EGU2017/EGU2017-8050.pdf">https://meetingorganizer.copernicus.org/EGU2017/EGU2017-8050.pdf</a>.</p>
-</div>
-<div>
-<p>Krainski, Elias T, Virgilio Gómez-Rubio, Haakon Bakka, Amanda Lenzi, Daniela Castro-Camilo, Daniel Simpson, Finn Lindgren, and Håvard Rue. 2018. <em>Advanced Spatial Modeling with Stochastic Partial Differential Equations Using R and Inla</em>. CRC Press.</p>
-</div>
-<div>
-<p>Kyriakidis, P.C. 2004. “A Geostatistical Framework for Areal-to-Point Spatial Interpolation.” <em>Geographical Analysis</em> 36 (3): 259–89.</p>
-</div>
-<div>
-<p>LeSage, James P., and Kelley R. Pace. 2009. <em>Introduction to Spatial Econometrics</em>. Boca Raton, FL: CRC Press.</p>
-</div>
-<div>
-<p>LeSage, J. P. 2014. “What Regional Scientists Need to Know About Spatial Econometrics.” <em>Review of Regional Studies</em> 44: 13–32. <a href="https://journal.srsa.org/ojs/index.php/RRS/article/view/44.1.2">https://journal.srsa.org/ojs/index.php/RRS/article/view/44.1.2</a>.</p>
-</div>
-<div>
-<p>Li, Xun, and Luc Anselin. 2021. <em>Rgeoda: R Library for Spatial Data Analysis</em>. <a href="https://CRAN.R-project.org/package=rgeoda">https://CRAN.R-project.org/package=rgeoda</a>.</p>
-</div>
-<div>
-<p>Lieshout, M. N. M. van. 2019. <em>Theory of Spatial Statistics</em>. Boca Raton, FL: Chapman; Hall/CRC.</p>
-</div>
-<div>
-<p>Lott, Roger. 2015. “Geographic Information-Well-Known Text Representation of Coordinate Reference Systems.” Open Geospatial Consortium. <a href=" http://docs.opengeospatial.org/is/12-063r5/12-063r5.html ">http://docs.opengeospatial.org/is/12-063r5/12-063r5.html</a>.</p>
-</div>
-<div>
-<p>Lovelace, Robin, Jakub Nowosad, and Jannes Muenchow. 2019. <em>Geocomputation with R</em>. Chapman; Hall/CRC. <a href=" https://geocompr.robinlovelace.net/ ">https://geocompr.robinlovelace.net/</a>.</p>
-</div>
-<div>
-<p>Lu, Meng, Marius Appel, and Edzer Pebesma. 2018. “Multidimensional Arrays for Analysing Geoscientific Data.” <em>ISPRS International Journal of Geo-Information</em> 7 (8): 313.</p>
-</div>
-<div>
-<p>Marius Appel, Matthias Mohr, Edzer Pebesma. 2021. <em>Cloud-Based Processing of Satellite Image Collections in R Using Stac, Cogs, and on-Demand Data Cubes</em>. <a href="https://r-spatial.org/r/2021/04/23/cloud-based-cubes.html">https://r-spatial.org/r/2021/04/23/cloud-based-cubes.html</a>.</p>
-</div>
-<div>
-<p>Martin, D. 1989. “Mapping Population Data from Zone Centroid Locations.” <em>Transactions of the Institute of British Geographers, New Series</em> 14 (1): 90–97.</p>
-</div>
-<div>
-<p>Martinetti, Davide, and Ghislain Geniaux. 2017. “Approximate Likelihood Estimation of Spatial Probit Models.” <em>Regional Science and Urban Economics</em> 64: 30–45. <a href="https://doi.org/https://doi.org/10.1016/j.regsciurbeco.2017.02.002">https://doi.org/https://doi.org/10.1016/j.regsciurbeco.2017.02.002</a>.</p>
-</div>
-<div>
-<p>McMillen, Daniel P. 2003. “Spatial Autocorrelation or Model Misspecification?” <em>International Regional Science Review</em> 26: 208–17.</p>
-</div>
-<div>
-<p>McMillen, D. P. 2013. <em>Quantile Regression for Spatial Data</em>. Heidelberg: Springer-Verlag.</p>
-</div>
-<div>
-<p>Mennis, Jeremy. 2003. “Generating Surface Models of Population Using Dasymetric Mapping.” <em>The Professional Geographer</em> 55 (1): 31–42.</p>
-</div>
-<div>
-<p>Meyer, Hanna, and Edzer Pebesma. 2020. “Predicting into Unknown Space? Estimating the Area of Applicability of Spatial Prediction Models.” <a href="https://arxiv.org/abs/2005.07939">https://arxiv.org/abs/2005.07939</a>.</p>
-</div>
-<div>
-<p>Millo, Giovanni, and Gianfranco Piras. 2012. “splm: Spatial Panel Data Models in R.” <em>Journal of Statistical Software</em> 47 (1): 1–38.</p>
-</div>
-<div>
-<p>Moran, P. A. P. 1948. “The Interpretation of Statistical Maps.” <em>Journal of the Royal Statistical Society, Series B (Methodological)</em> 10 (2): 243–51.</p>
-</div>
-<div>
-<p>Moreno, Mel, and Mathieu Basille. 2018. <em>Drawing Beautiful Maps Programmatically with R, Sf and Ggplot2 — Part 1: Basics</em>. <a href="https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html">https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html</a>.</p>
-</div>
-<div>
-<p>Mur, Jesús, and Ana Angulo. 2006. “The Spatial Durbin Model and the Common Factor Tests.” <em>Spatial Economic Analysis</em> 1 (2): 207–26. <a href="https://doi.org/10.1080/17421770601009841">https://doi.org/10.1080/17421770601009841</a>.</p>
-</div>
-<div>
-<p>Neuwirth, Erich. 2014. <em>RColorBrewer: ColorBrewer Palettes</em>. <a href="https://CRAN.R-project.org/package=RColorBrewer">https://CRAN.R-project.org/package=RColorBrewer</a>.</p>
-</div>
-<div>
-<p>Obe, Regina O, and Leo S Hsu. 2015. <em>PostGIS in Action</em>. Manning Publications Co.</p>
-</div>
-<div>
-<p>Okabe, A., T. Satoh, T. Furuta, A. Suzuki, and K. Okano. 2008. “Generalized Network Voronoi Diagrams: Concepts, Computational Methods, and Applications.” <em>International Journal of Geographical Information Science</em> 22 (9): 965–94. <a href="https://doi.org/10.1080/13658810701587891">https://doi.org/10.1080/13658810701587891</a>.</p>
-</div>
-<div>
-<p>Ord, J. K. 1975. “Estimation Methods for Models of Spatial Interaction.” <em>Journal of the American Statistical Association</em> 70 (349): 120–26.</p>
-</div>
-<div>
-<p>Ord, J. K., and A. Getis. 2001. “Testing for Local Spatial Autocorrelation in the Presence of Global Autocorrelation.” <em>Journal of Regional Science</em> 41 (3): 411–32.</p>
-</div>
-<div>
-<p>Pace, R. K., and R. P. Barry. 1997a. “Fast CARs.” <em>Journal of Statistical Computation and Simulation</em> 59 (2): 123–45.</p>
-</div>
-<div>
-<p>———. 1997b. “Fast spatial estimation.” <em>Applied Economics Letters</em> 4 (5): 337–41.</p>
-</div>
-<div>
-<p>———. 1997c. “Quick computation of spatial autoregressive estimators.” <em>Geographics Analysis</em> 29 (3): 232–47.</p>
-</div>
-<div>
-<p>———. 1997d. “Sparse spatial autoregressions.” <em>Statistics &amp; Probability Letters</em> 33 (3): 291–97.</p>
-</div>
-<div>
-<p>Pace, RK, and JP LeSage. 2008. “A Spatial Hausman Test.” <em>Economics Letters</em> 101: 282–84.</p>
-</div>
-<div>
-<p>Papadopoulos, Stavros, Kushal Datta, Samuel Madden, and Timothy Mattson. 2016. “The Tiledb Array Data Storage Manager.” <em>Proceedings of the VLDB Endowment</em> 10 (4): 349–60.</p>
-</div>
-<div>
-<p>Pebesma, Edzer. 2012. “spacetime: Spatio-Temporal Data in R.” <em>Journal of Statistical Software</em> 51 (7): 1–30. <a href="https://www.jstatsoft.org/v51/i07/">https://www.jstatsoft.org/v51/i07/</a>.</p>
-</div>
-<div>
-<p>———. 2018. “Simple Features for R: Standardized Support for Spatial Vector Data.” <em>The R Journal</em> 10 (1): 439–46. <a href="https://doi.org/10.32614/RJ-2018-009">https://doi.org/10.32614/RJ-2018-009</a>.</p>
-</div>
-<div>
-<p>———. 2021a. <em>Lwgeom: Bindings to Selected Liblwgeom Functions for Simple Features</em>. <a href="https://github.com/r-spatial/lwgeom/">https://github.com/r-spatial/lwgeom/</a>.</p>
-</div>
-<div>
-<p>———. 2021b. <em>Sf: Simple Features for R</em>.</p>
-</div>
-<div>
-<p>———. 2021c. <em>Stars: Spatiotemporal Arrays, Raster and Vector Data Cubes</em>.</p>
-</div>
-<div>
-<p>Pebesma, Edzer, and Benedikt Graeler. 2021. <em>Gstat: Spatial and Spatio-Temporal Geostatistical Modelling, Prediction and Simulation</em>. <a href="https://github.com/r-spatial/gstat/">https://github.com/r-spatial/gstat/</a>.</p>
-</div>
-<div>
-<p>Pebesma, Edzer J. 2004. “Multivariable Geostatistics in S: The Gstat Package.” <em>Computers &amp; Geosciences</em> 30: 683–91.</p>
-</div>
-<div>
-<p>Pebesma, Edzer, Thomas Mailund, Tomasz Kalinowski, and Iñaki Ucar. 2021. <em>Units: Measurement Units for R Vectors</em>. <a href="https://github.com/r-quantities/units/">https://github.com/r-quantities/units/</a>.</p>
-</div>
-<div>
-<p>Pinheiro, Jose C., and Douglas M. Bates. 2000. <em>Mixed-Effects Models in S and S-Plus</em>. New York: Springer.</p>
-</div>
-<div>
-<p>Piras, Gianfranco. 2010. “sphet: Spatial Models with Heteroskedastic Innovations in R.” <em>Journal of Statistical Software</em> 35 (1): 1–21.</p>
-</div>
-<div>
-<p>Plate, Tony, and Richard Heiberger. 2016. <em>Abind: Combine Multidimensional Arrays</em>. <a href="https://CRAN.R-project.org/package=abind">https://CRAN.R-project.org/package=abind</a>.</p>
-</div>
-<div>
-<p>Raim, Andrew M., Scott H. Holan, Jonathan R. Bradley, and Christopher K. Wikle. 2020. <em>Stcos: Space-Time Change of Support</em>. <a href="https://github.com/holans/ST-COS">https://github.com/holans/ST-COS</a>.</p>
-</div>
-<div>
-<p>Raoult, Baudouin, Cedric Bergeron, Angel López Alós, Jean-Noël Thépaut, and Dick Dee. 2017. “Climate Service Develops User-Friendly Data Store.” <em>ECMWF Newsletter</em> 151: 22–27.</p>
-</div>
-<div>
-<p>Ripley, B. D. 1981. <em>Spatial Statistics</em>. New York: Wiley.</p>
-</div>
-<div>
-<p>———. 1988. <em>Statistical Inference for Spatial Processes</em>. Cambridge: Cambridge University Press.</p>
-</div>
-<div>
-<p>Schabenberger, O., and C. A. Gotway. 2005. <em>Statistical Methods for Spatial Data Analysis</em>. Boca Raton/London: Chapman &amp; Hall/CRC.</p>
-</div>
-<div>
-<p>Scheider, Simon, Benedikt Gräler, Edzer Pebesma, and Christoph Stasch. 2016. “Modeling Spatiotemporal Information Generation.” <em>International Journal of Geographical Information Science</em> 30 (10): 1980–2008. <a href="https://doi.org/10.1080/13658816.2016.1151520">https://doi.org/10.1080/13658816.2016.1151520</a>.</p>
-</div>
-<div>
-<p>Schlather, Martin. 2011. “Construction of Covariance Functions and Unconditional Simulation of Random Fields.” In <em>Porcu, E., Montero, J.m. And Schlather, M., Space-Time Processes and Challenges Related to Environmental Problems</em>. New York: Springer.</p>
-</div>
-<div>
-<p>Schramm, Matthias, Edzer Pebesma, Milutin Milenković, Luca Foresta, Jeroen Dries, Alexander Jacob, Wolfgang Wagner, et al. 2021. “The openEO Api–Harmonising the Use of Earth Observation Cloud Services Using Virtual Data Cube Functionalities.” <em>Remote Sensing</em> 13 (6). <a href="https://doi.org/10.3390/rs13061125">https://doi.org/10.3390/rs13061125</a>.</p>
-</div>
-<div>
-<p>She, Bing, Xinyan Zhu, Xinyue Ye, Wei Guo, Kehua Su, and Jay Lee. 2015. “Weighted Network Voronoi Diagrams for Local Spatial Analysis.” <em>Computers, Environment and Urban Systems</em> 52: 70–80. <a href="https://doi.org/https://doi.org/10.1016/j.compenvurbsys.2015.03.005">https://doi.org/https://doi.org/10.1016/j.compenvurbsys.2015.03.005</a>.</p>
-</div>
-<div>
-<p>Smith, T. E., and K. L. Lee. 2012. “The effects of spatial autoregressive dependencies on inference in ordinary least squares: a geometric approach.” <em>Journal of Geographical Systems</em> 14 (January): 91–124. <a href="https://doi.org/10.1007/s10109-011-0152-x">https://doi.org/10.1007/s10109-011-0152-x</a>.</p>
-</div>
-<div>
-<p>Smith, Tony E. 2009. “Estimation Bias in Spatial Models with Strongly Connected Weight Matrices.” <em>Geographical Analysis</em> 41 (3): 307–32. <a href="https://doi.org/10.1111/j.1538-4632.2009.00758.x">https://doi.org/10.1111/j.1538-4632.2009.00758.x</a>.</p>
-</div>
-<div>
-<p>Stasch, Christoph, Simon Scheider, Edzer Pebesma, and Werner Kuhn. 2014. “Meaningful Spatial Prediction and Aggregation.” <em>Environmental Modelling &amp; Software</em> 51: 149–65. <a href="https://doi.org/10.1016/j.envsoft.2013.09.006">https://doi.org/10.1016/j.envsoft.2013.09.006</a>.</p>
-</div>
-<div>
-<p>Stoyan, Dietrich, Francisco J. Rodríguez-Cortés, Jorge Mateu, and Wilfried Gille. 2017. “Mark Variograms for Spatio-Temporal Point Processes.” <em>Spatial Statistics</em> 20: 125–47. <a href="https://doi.org/https://doi.org/10.1016/j.spasta.2017.02.006">https://doi.org/https://doi.org/10.1016/j.spasta.2017.02.006</a>.</p>
-</div>
-<div>
-<p>Suesse, Thomas. 2018. “Marginal Maximum Likelihood Estimation of Sar Models with Missing Data.” <em>Computational Statistics &amp; Data Analysis</em> 120: 98–110. <a href="https://doi.org/https://doi.org/10.1016/j.csda.2017.11.004">https://doi.org/https://doi.org/10.1016/j.csda.2017.11.004</a>.</p>
-</div>
-<div>
-<p>Tennekes, Martijn. 2018. “tmap: Thematic Maps in R.” <em>Journal of Statistical Software</em> 84 (6): 1–39. <a href="https://doi.org/10.18637/jss.v084.i06">https://doi.org/10.18637/jss.v084.i06</a>.</p>
-</div>
-<div>
-<p>———. 2021. <em>Tmap: Thematic Maps</em>. <a href="https://github.com/mtennekes/tmap">https://github.com/mtennekes/tmap</a>.</p>
-</div>
-<div>
-<p>Tiefelsdorf, M. 2002. “The Saddlepoint Approximation of Moran’s I and Local Moran’s <span class="math inline">\({I}_i\)</span> Reference Distributions and Their Numerical Evaluation.” <em>Geographical Analysis</em> 34: 187–206.</p>
-</div>
-<div>
-<p>Tobler, W.R. 1979. “Smooth Pycnophylactic Interpolation for Geographical Regions.” <em>Journal of the American Statistical Association</em> 74 (367): 519–30.</p>
-</div>
-<div>
-<p>UCAR. 2014. <em>UDUNITS 2.2.26 Manual</em>. <a href="https://www.unidata.ucar.edu/software/udunits/udunits-current/doc/udunits/udunits2.html">https://www.unidata.ucar.edu/software/udunits/udunits-current/doc/udunits/udunits2.html</a>.</p>
-</div>
-<div>
-<p>———. 2020. <em>The Netcdf User’s Guide</em>. <a href="https://www.unidata.ucar.edu/software/netcdf/docs/user_guide.html">https://www.unidata.ucar.edu/software/netcdf/docs/user_guide.html</a>.</p>
-</div>
-<div>
-<p>Umlauf, Nikolaus, Daniel Adler, Thomas Kneib, Stefan Lang, and Achim Zeileis. 2015. “Structured Additive Regression Models: An R Interface to BayesX.” <em>Journal of Statistical Software</em> 63 (21): 1–46. <a href="http://www.jstatsoft.org/v63/i21/">http://www.jstatsoft.org/v63/i21/</a>.</p>
-</div>
-<div>
-<p>Upton, G., and B. Fingleton. 1985. <em>Spatial Data Analysis by Example: Point Pattern and Qualitative Data</em>. New York: Wiley.</p>
-</div>
-<div>
-<p>Veach, Eric, Jesse Rosenstock, Eric Engle, Robert Snedegar, Julien Basch, and Tom Manshreck. 2020. “S2 Geometry.” <em>Website</em>. <a href="https://s2geometry.io/">https://s2geometry.io/</a>.</p>
-</div>
-<div>
+<div id="ref-ver1993multivariable">
 <p>Ver Hoef, Jay M, and Noel Cressie. 1993. “Multivariable Spatial Prediction.” <em>Mathematical Geology</em> 25 (2): 219–40.</p>
 </div>
-<div>
-<p>Wagner, Martin, and Achim Zeileis. 2019. “Heterogeneity and Spatial Dependence of Regional Growth in the EU: A Recursive Partitioning Approach.” <em>German Economic Review</em> 20 (1): 67–82. <a href="https://doi.org/10.1111/geer.12146">https://doi.org/10.1111/geer.12146</a>.</p>
-</div>
-<div>
-<p>Wall, M. M. 2004. “A Close Look at the Spatial Structure Implied by the CAR and SAR Models.” <em>Journal of Statistical Planning and Inference</em> 121: 311–24.</p>
-</div>
-<div>
-<p>Waller, Lance A., and Carol A. Gotway. 2004. <em>Applied Spatial Statistics for Public Health Data</em>. Hoboken, NJ: John Wiley &amp; Sons.</p>
-</div>
-<div>
-<p>Whittle, P. 1954. “On Stationary Processes in the Plane.” <em>Biometrika</em> 41 (3-4): 434–49. <a href="https://doi.org/10.1093/biomet/41.3-4.434">https://doi.org/10.1093/biomet/41.3-4.434</a>.</p>
-</div>
-<div>
-<p>Wickham, Hadley. 2014a. <em>Advanced R</em>. CRC Press. <a href="http://adv-r.had.co.nz/">http://adv-r.had.co.nz/</a>.</p>
-</div>
-<div>
-<p>———. 2014b. “Tidy Data.” <em>Journal of Statistical Software</em> 59 (1). <a href=" https://www.jstatsoft.org/article/view/v059i10 ">https://www.jstatsoft.org/article/view/v059i10</a>.</p>
-</div>
-<div>
-<p>———. 2016. <em>Ggplot2: Elegant Graphics for Data Analysis</em>. Springer.</p>
-</div>
-<div>
-<p>———. 2021. <em>Tidyverse: Easily Install and Load the Tidyverse</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>.</p>
-</div>
-<div>
-<p>Wickham, Hadley, Mara Averick, Jennifer Bryan, Winston Chang, Lucy D’Agostino McGowan, Romain François, Garrett Grolemund, et al. 2019. “Welcome to the Tidyverse.” <em>Journal of Open Source Software</em> 4 (43): 1686. <a href="https://joss.theoj.org/papers/10.21105/joss.01686">https://joss.theoj.org/papers/10.21105/joss.01686</a>.</p>
-</div>
-<div>
-<p>Wickham, Hadley, Winston Chang, Lionel Henry, Thomas Lin Pedersen, Kohske Takahashi, Claus Wilke, Kara Woo, Hiroaki Yutani, and Dewey Dunnington. 2020. <em>Ggplot2: Create Elegant Data Visualisations Using the Grammar of Graphics</em>. <a href="https://CRAN.R-project.org/package=ggplot2">https://CRAN.R-project.org/package=ggplot2</a>.</p>
-</div>
-<div>
-<p>Wickham, Hadley, and Garret Grolemund. 2017. <em>R for Data Science</em>. O’Reilly. <a href="http://r4ds.had.co.nz/">http://r4ds.had.co.nz/</a>.</p>
-</div>
-<div>
+<div id="ref-wikle2019spatio">
 <p>Wikle, Christopher K, Andrew Zammit-Mangion, and Noel Cressie. 2019. <em>Spatio-Temporal Statistics with R</em>. CRC Press.</p>
-</div>
-<div>
-<p>Wilhelm, Stefan, and Miguel Godinho de Matos. 2013. “Estimating Spatial Probit Models in R.” <em>The R Journal</em> 5 (1): 130–43. <a href="https://doi.org/10.32614/RJ-2013-013">https://doi.org/10.32614/RJ-2013-013</a>.</p>
-</div>
-<div>
-<p>Wilke, Claus O. 2019. <em>Fundamentals of Data Visualization</em>. O’Reilly Media, Inc. <a href="https://serialmentor.com/dataviz/">https://serialmentor.com/dataviz/</a>.</p>
-</div>
-<div>
-<p>Wood, S.N. 2017. <em>Generalized Additive Models: An Introduction with R</em>. 2nd ed. Chapman; Hall/CRC.</p>
-</div>
-<div>
-<p>Zeileis, Achim, Jason C. Fisher, Kurt Hornik, Ross Ihaka, Claire D. McWhite, Paul Murrell, Reto Stauffer, and Claus O. Wilke. 2020. “colorspace: A Toolbox for Manipulating and Assessing Colors and Palettes.” <em>Journal of Statistical Software</em> 96 (1): 1–49. <a href="https://doi.org/10.18637/jss.v096.i01">https://doi.org/10.18637/jss.v096.i01</a>.</p>
-</div>
 </div>
 </div>
             </section>
@@ -1593,8 +1282,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
           </div>
         </div>
       </div>
-<a href="r-basics.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-
+<a href="interpolation.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="area.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
@@ -1626,7 +1315,7 @@ gitbook.start({
 "size": 2
 },
 "edit": {
-"link": "https://github.com/edzer/sdsr/edit/master/99-references.Rmd",
+"link": "https://github.com/edzer/sdsr/edit/master/16-Geostatistics.Rmd",
 "text": "Edit"
 },
 "history": {
