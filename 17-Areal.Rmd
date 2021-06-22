@@ -465,6 +465,10 @@ A comparison of implementations of measures of spatial autocorrelation shows tha
 
 ## Global measures
 
+Global measures consider the average level of spatial autocorrelation across all observations; they can of course be biassed (as most spatial statistics) by edge effects where importand spatial process components fall outside the study area.
+
+### Join-count tests for categorical data
+
 We will begin by examining join count statistics, where `joincount.test()` takes a `factor` vector of values `fx=` and a `listw` object, and returns a list of `htest` (hypothesis test) objects defined in the **stats** package, one `htest` object for each level of the `fx=` argument. The observed counts are of neighbours with the same factor levels, known as same-colour joins.
 
 ```{r}
@@ -493,6 +497,8 @@ Using an inverse distance based `listw` object does, however, change the z-value
 ```{r}
 Types %>% joincount.multi(listw=lw_d183_idw_B)
 ```
+
+### Moran's $I$
 
 The implementation of Moran's $I$ in **spdep** in the `moran.test()` function has similar arguments to those of `joincount.test()`, but `sampling=` is replaced by `randomisation=` to indicate the underlying analytical approach used for calculating the variance of the measure. It is also possible to use ranks rather than numerical values [@cliff+ord:81, p. 46]. The `drop.EI2=` agrument may be used to reproduce results where the final component of the variance term is omitted as found in some legacy software implementations.
 
@@ -563,7 +569,10 @@ If we extract the hat value influence measure from the returned object, Figure \
 pol_pres15$hat_value <- infl_W$hat
 tm_shape(pol_pres15) + tm_fill("hat_value")
 ```
-Bivand and Wong [-@Bivand2018] discuss issues impacting the use of local indicators, such as local Moran's $I$ and local Getis-Ord $G$. Some issues affect the calculation of the local indicators, others inference from their values. Because $n$ statistics may be being calculated from the same number of observations, there are multiple comparison problems that need to be addressed. Although the apparent detection of hotspots from values of local indicators has been quite widely adopted, it remains fraught with difficulty because adjustment of the inferential basis to accommodate multiple comparisons is not often chosen, and as in the global case, mis-specification also remains a source of confusion. Further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging [@ord+getis:01; @tiefelsdorf:02; @bivandetal:09]. The `mlvar=` and `adjust.x=` arguments to `localmoran()` are discussed in Bivand and Wong [-@Bivand2018], and permit matching with other implementations. The `p.adjust.method=` argument uses an untested speculation that adjustment should only take into account the cardinality of the neighbour set of each observation when adjusting for multiple comparisons; using `stats::p.adjust()` is preferable.
+
+### Local Moran's $I_i$
+
+Bivand and Wong [-@Bivand2018] discuss issues impacting the use of local indicators, such as local Moran's $I_i$ and local Getis-Ord $G_i$. Some issues affect the calculation of the local indicators, others inference from their values. Because $n$ statistics may be being calculated from the same number of observations, there are multiple comparison problems that need to be addressed. Although the apparent detection of hotspots from values of local indicators has been quite widely adopted, it remains fraught with difficulty because adjustment of the inferential basis to accommodate multiple comparisons is not often chosen, and as in the global case, mis-specification also remains a source of confusion. Further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging [@ord+getis:01; @tiefelsdorf:02; @bivandetal:09]. The `mlvar=` and `adjust.x=` arguments to `localmoran()` are discussed in Bivand and Wong [-@Bivand2018], and permit matching with other implementations. The `p.adjust.method=` argument uses an untested speculation that adjustment should only take into account the cardinality of the neighbour set of each observation when adjusting for multiple comparisons; using `stats::p.adjust()` is preferable.
 
 Taking `"two.sided"` p-values because these local indicators when summed and divided by the sum of the spatial weights, and thus positive and negative local spatial autocorrelation may be present, we obtain:
 
@@ -660,6 +669,8 @@ t(rbind("Moran plot quadrants"=a, "Unadjusted analytical total"=b, "Bonferroni a
 tm_shape(pol_pres15) + tm_fill(c("hs_an_q", "hs_ac_q", "hs_cp_q"), colorNA="grey95", textNA="Not significant", title="Turnout hotspot status\nLocal Moran's I") + tm_facets(free.scales=FALSE, ncol=2) + tm_layout(panel.labels=c("Unadjusted analytical total", "Bonferroni analytical cond.", "Cond. perm. with Bonferroni"))
 ```
 Figure \@ref(fig:Iihotspots) shows the impact of using analytical or conditional permutation standard deviates, and no or Bonferroni adjustment, reducing the counts of observations in "Low-Low clusters" from 370 to 14, and "High-High clusters" from 342 to 54; the "High-High clusters" are metropolitan areas.
+
+### Local Getis-Ord $G_i$
 
 The local Getis-Ord $G$ measure is reported as a standard deviate, and may also take the $G^*$ form where self-neighbours are inserted into the neighbour object using `include.self()`. The observed and expected values of local $G$ with their analytical variances may also be returned if `return_internals=TRUE`. 
 
