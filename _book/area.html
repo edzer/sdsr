@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2021-06-17" />
+<meta name="date" content="2021-06-22" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -1084,7 +1084,7 @@ Figure 14.1: Polish municipality types 2015
 <p>Two other arguments are also worth discussing, <code>foundInBox=</code> and <code>small_n=</code>. The first, <code>foundInBox=</code>, accepted the output of the <strong>rgeos</strong> <code>gUnarySTRtreeQuery()</code> function to list candidate neighbours, that is polygons whose bounding boxes intersect the bounding boxes of other polygons. From <strong>spdep</strong> 1.1-7, the GEOS interface of the <strong>sf</strong> package is used within <code>poly2nb()</code> if <code>foundInBox=NULL</code> and the number of observations is greater than <code>small_n=</code>, to find the candidate neighbours and populate <code>foundInBox</code> internally. In this case, this use of spatial indexing (STRtree queries) in GEOS through <strong>sf</strong> is the default, as the number of observations is greater than <code>small_n</code>:</p>
 <div class="sourceCode" id="cb419"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb419-1" title="1"><span class="kw">system.time</span>(nb_q &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.882   0.000   0.890</code></pre>
+#    1.65    0.06    1.71</code></pre>
 <p>The print method shows the summary structure of the neighbour object:</p>
 <div class="sourceCode" id="cb421"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb421-1" title="1">nb_q</a></code></pre></div>
 <pre><code># Neighbour list object:
@@ -1095,7 +1095,7 @@ Figure 14.1: Polish municipality types 2015
 <p>Raising <code>small_n=</code> above the observation count, we see that the processing time is increased a little; the benefits of indexing are more apparent with larger data sets.</p>
 <div class="sourceCode" id="cb423"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb423-1" title="1"><span class="kw">system.time</span>(nb_q_legacy &lt;-<span class="st"> </span><span class="kw">poly2nb</span>(pol_pres15, <span class="dt">queen=</span><span class="ot">TRUE</span>, <span class="dt">small_n=</span><span class="dv">2500</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#    1.05    0.00    1.06</code></pre>
+#   2.446   0.004   2.459</code></pre>
 <p>The output objects are identical:</p>
 <div class="sourceCode" id="cb425"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb425-1" title="1"><span class="kw">all.equal</span>(nb_q, nb_q_legacy, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
 <pre><code># [1] TRUE</code></pre>
@@ -1173,10 +1173,10 @@ Figure 14.2: Triangulated (orange + black) and sphere of influence neighbours (b
 <p>Here the largest first nearest neighbour distance is just under 18 km, so using this as the upper threshold gives certainty that all units will have at least one neighbour:</p>
 <div class="sourceCode" id="cb446"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb446-1" title="1"><span class="kw">system.time</span>(nb_d18 &lt;-<span class="st"> </span><span class="kw">dnearneigh</span>(coords, <span class="dv">0</span>, <span class="dv">18000</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.181   0.012   0.194</code></pre>
+#   0.301   0.000   0.301</code></pre>
 <div class="sourceCode" id="cb448"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb448-1" title="1"><span class="kw">system.time</span>(nb_d18a &lt;-<span class="st"> </span><span class="kw">dnearneigh</span>(coords, <span class="dv">0</span>, <span class="dv">18000</span>, <span class="dt">use_kd_tree=</span><span class="ot">FALSE</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.178   0.000   0.178</code></pre>
+#   0.299   0.004   0.303</code></pre>
 <div class="sourceCode" id="cb450"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb450-1" title="1"><span class="kw">all.equal</span>(nb_d18, nb_d18a, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
 <pre><code># [1] TRUE</code></pre>
 <div class="sourceCode" id="cb452"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb452-1" title="1">nb_d18</a></code></pre></div>
@@ -1431,7 +1431,7 @@ almost 29% of the local measures have p-values &lt; 0.05 if no adjustment is app
 <pre><code># NULL</code></pre>
 <div class="sourceCode" id="cb519"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb519-1" title="1"><span class="kw">system.time</span>(locm_p &lt;-<span class="st"> </span><span class="kw">localmoran_perm</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, <span class="dt">nsim=</span><span class="dv">499</span>, <span class="dt">alternative=</span><span class="st">&quot;two.sided&quot;</span>, <span class="dt">iseed=</span><span class="dv">1</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.813   1.606   0.725</code></pre>
+#   1.914   0.775   0.603</code></pre>
 <p>The outcome is that almost 32% of observations have two sided p-values &lt; 0.05 without multiple comparison adjustment, and under 3% with Bonferroni adjustment.</p>
 <div class="sourceCode" id="cb521"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb521-1" title="1">pv &lt;-<span class="st"> </span>locm_p[,<span class="dv">5</span>]</a>
 <a class="sourceLine" id="cb521-2" title="2">pvsp &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="st">&quot;none&quot;</span>=pv, <span class="st">&quot;bonferroni&quot;</span>=<span class="kw">p.adjust</span>(pv, <span class="st">&quot;bonferroni&quot;</span>), <span class="st">&quot;fdr&quot;</span>=<span class="kw">p.adjust</span>(pv, <span class="st">&quot;fdr&quot;</span>), <span class="st">&quot;BY&quot;</span>=<span class="kw">p.adjust</span>(pv, <span class="st">&quot;BY&quot;</span>))</a>
@@ -1495,10 +1495,10 @@ Figure 14.6: Local Moran’s I hotspot maps <span class="math inline">\(\alpha =
 <p>The local Getis-Ord <span class="math inline">\(G\)</span> measure is reported as a standard deviate, and may also take the <span class="math inline">\(G^*\)</span> form where self-neighbours are inserted into the neighbour object using <code>include.self()</code>. The observed and expected values of local <span class="math inline">\(G\)</span> with their analytical variances may also be returned if <code>return_internals=TRUE</code>.</p>
 <div class="sourceCode" id="cb533"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb533-1" title="1"><span class="kw">system.time</span>(locG &lt;-<span class="st"> </span><span class="kw">localG</span>(pol_pres15<span class="op">$</span>I_turnout, lw_q_W))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.054   0.000   0.061</code></pre>
+#   0.009   0.000   0.009</code></pre>
 <div class="sourceCode" id="cb535"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb535-1" title="1"><span class="kw">system.time</span>(locG_p &lt;-<span class="st"> </span><span class="kw">localG_perm</span>(pol_pres15<span class="op">$</span>I_turnout, lw_q_W, <span class="dt">nsim=</span><span class="dv">499</span>, <span class="dt">iseed=</span><span class="dv">1</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.643   1.420   0.654</code></pre>
+#   1.189   0.579   0.441</code></pre>
 <p>Once again we face the problem of multiple comparisons, with the count of areal unit p-values &lt; 0.05 being reduced by an order of magnitude when employing Bonferroni correction:</p>
 <div class="sourceCode" id="cb537"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb537-1" title="1">pv &lt;-<span class="st"> </span><span class="dv">2</span> <span class="op">*</span><span class="st"> </span><span class="kw">pnorm</span>(<span class="kw">abs</span>(<span class="kw">c</span>(locG)), <span class="dt">lower.tail =</span> <span class="ot">FALSE</span>)</a>
 <a class="sourceLine" id="cb537-2" title="2">pvsp &lt;-<span class="st"> </span><span class="kw">cbind</span>(pv, <span class="kw">p.adjust</span>(pv, <span class="st">&quot;bonferroni&quot;</span>), <span class="kw">p.adjust</span>(pv, <span class="st">&quot;fdr&quot;</span>), </a>
@@ -1549,7 +1549,7 @@ Figure 14.8: Left: analytical standard deviates of local G; right: Bonferroni ho
 <div class="sourceCode" id="cb547"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb547-1" title="1"><span class="kw">system.time</span>(Geoda_w &lt;-<span class="st"> </span><span class="kw">queen_weights</span>(pol_pres15))</a></code></pre></div>
 <pre><code># here</code></pre>
 <pre><code>#    user  system elapsed 
-#   0.121   0.008   0.138</code></pre>
+#   0.159   0.000   0.167</code></pre>
 <div class="sourceCode" id="cb550"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb550-1" title="1"><span class="kw">summary</span>(Geoda_w)</a></code></pre></div>
 <pre><code>#                      name               value
 # 1 number of observations:                2495
@@ -1563,7 +1563,7 @@ Figure 14.8: Left: analytical standard deviates of local G; right: Bonferroni ho
 <div class="sourceCode" id="cb552"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb552-1" title="1"><span class="kw">system.time</span>(lisa &lt;-<span class="st"> </span><span class="kw">local_moran</span>(Geoda_w, pol_pres15[<span class="st">&quot;I_turnout&quot;</span>], </a>
 <a class="sourceLine" id="cb552-2" title="2">    <span class="dt">cpu_threads=</span><span class="kw">ifelse</span>(parallel<span class="op">::</span><span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, parallel<span class="op">::</span><span class="kw">detectCores</span>()<span class="op">-</span>1L), <span class="dt">permutations=</span><span class="dv">499</span>, <span class="dt">seed=</span><span class="dv">1</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   0.338   0.000   0.080</code></pre>
+#   0.426   0.000   0.094</code></pre>
 <div class="sourceCode" id="cb554"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb554-1" title="1"><span class="kw">all.equal</span>(<span class="kw">card</span>(nb_q), <span class="kw">lisa_num_nbrs</span>(lisa), <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
 <pre><code># [1] TRUE</code></pre>
 <div class="sourceCode" id="cb556"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb556-1" title="1"><span class="kw">all.equal</span>(<span class="kw">lisa_values</span>(lisa), <span class="kw">localmoran</span>(pol_pres15<span class="op">$</span>I_turnout, <span class="dt">listw=</span>lw_q_W, <span class="dt">mlvar=</span><span class="ot">FALSE</span>)[,<span class="dv">1</span>], <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>

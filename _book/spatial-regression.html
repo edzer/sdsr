@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2021-06-17" />
+<meta name="date" content="2021-06-22" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -1386,24 +1386,24 @@ Let us first compare the ML and GMM estimates of the SEM regression coefficients
 <p>The Spatial Econometrics Library is part of the extensive Matlab code repository at <a href="https://www.spatial-econometrics.com/" class="uri">https://www.spatial-econometrics.com/</a> and documented in LeSage and Pace <span class="citation">(<a href="#ref-lesage+pace:09">2009</a>)</span>. The Google Summer of Coding project in 2011 by Abhirup Mallik mentored by Virgilio Gómez-Rubio yielded translations of some of the model fitting functions for SEM, SDEM, SLM, SDM, SAC and GNM from the Matlab code. These have now been added to <strong>spatialreg</strong> as <code>spBreg_err()</code>, <code>spBreg_lag()</code> and <code>spBreg_sac()</code> with <code>Durbin=</code> arguments to handle the inclusion of spatially lagged covariates. As yet, heteroskedastic disturbances are not accommodated. The functions return <code>"mcmc"</code> objects as specified in the <strong>coda</strong> package, permitting the use of tools from <strong>coda</strong> for handling model output. The default burnin is 500 draws, followed by default 2000 draws returned, but these values and many others may be set through the <code>control=</code> list argument. Fitting the SDEM model for the output zones takes about an order of magnitude longer than using ML, but there is more work to do subsequently, and this difference scales more in the number of samples than covariates or observations.</p>
 <div class="sourceCode" id="cb619"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb619-1" title="1"><span class="kw">system.time</span>(SDEM_94B &lt;-<span class="st"> </span><span class="kw">spBreg_err</span>(form, <span class="dt">data=</span>boston_<span class="dv">94</span>, <span class="dt">listw=</span>lw_q_<span class="dv">94</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   1.515   0.079   1.612</code></pre>
+#    3.02    0.00    3.04</code></pre>
 <div class="sourceCode" id="cb621"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb621-1" title="1"><span class="kw">system.time</span>(SDEM_489B &lt;-<span class="st"> </span><span class="kw">spBreg_err</span>(form, <span class="dt">data=</span>boston_<span class="dv">489</span>, <span class="dt">listw=</span>lw_q_<span class="dv">489</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>, <span class="dt">zero.policy=</span><span class="ot">TRUE</span>))</a></code></pre></div>
 <pre><code>#    user  system elapsed 
-#   2.525   0.044   2.570</code></pre>
+#    5.36    0.00    5.36</code></pre>
 <p>Most time in the ML case using eigenvalues is taken by log determinant setup and optimization, and by dense matrix asymptotic standard errors if chosen (always chosen with default <code>"eigen"</code> log determinant method):</p>
 <div class="sourceCode" id="cb623"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb623-1" title="1"><span class="kw">t</span>(<span class="kw">errorsarlm</span>(form, <span class="dt">data=</span>boston_<span class="dv">94</span>, <span class="dt">listw=</span>lw_q_<span class="dv">94</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>)<span class="op">$</span>timings[,<span class="dv">2</span>])</a></code></pre></div>
 <pre><code>#      set_up eigen_set_up eigen_opt coefs eigen_hcov eigen_se
-# [1,]  0.005        0.006     0.008 0.004      0.002    0.002</code></pre>
+# [1,]  0.008        0.009     0.012 0.006      0.003    0.002</code></pre>
 <div class="sourceCode" id="cb625"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb625-1" title="1"><span class="kw">t</span>(<span class="kw">errorsarlm</span>(form, <span class="dt">data=</span>boston_<span class="dv">489</span>, <span class="dt">listw=</span>lw_q_<span class="dv">489</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>, <span class="dt">zero.policy=</span><span class="ot">TRUE</span>)<span class="op">$</span>timings[,<span class="dv">2</span>])</a></code></pre></div>
 <pre><code>#      set_up eigen_set_up eigen_opt coefs eigen_hcov eigen_se
-# [1,]  0.009        0.054     0.022 0.004      0.093    0.187</code></pre>
+# [1,]  0.013        0.091     0.039 0.008      0.162    0.346</code></pre>
 <p>while in the MCMC case, the default use of Spatial Econometric Toolbox gridded log determinants and obviously sampling takes most time:</p>
 <div class="sourceCode" id="cb627"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb627-1" title="1"><span class="kw">t</span>(<span class="kw">attr</span>(SDEM_94B, <span class="st">&quot;timings&quot;</span>)[ , <span class="dv">3</span>])</a></code></pre></div>
 <pre><code>#      set_up SE_classic_set_up complete_setup sampling finalise
-# [1,]  0.007             0.249          0.027     1.26     0.07</code></pre>
+# [1,]  0.006             0.461          0.051     2.41    0.105</code></pre>
 <div class="sourceCode" id="cb629"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb629-1" title="1"><span class="kw">t</span>(<span class="kw">attr</span>(SDEM_489B, <span class="st">&quot;timings&quot;</span>)[ , <span class="dv">3</span>])</a></code></pre></div>
 <pre><code>#      set_up SE_classic_set_up complete_setup sampling finalise
-# [1,]  0.022             0.425          0.065        2    0.062</code></pre>
+# [1,]  0.009             0.745          0.466     4.04    0.098</code></pre>
 <p>However, as we will see shortly, inference from model impacts may need sampling (where the spatially lagged response is included in the model), and in the case of MCMC models, the samples have already been drawn.</p>
 </div>
 </div>
@@ -1498,7 +1498,7 @@ Let us first compare the ML and GMM estimates of the SEM regression coefficients
 <a class="sourceLine" id="cb662-2" title="2">tr_<span class="dv">489</span> &lt;-<span class="st"> </span><span class="kw">trW</span>(W)</a>
 <a class="sourceLine" id="cb662-3" title="3"><span class="kw">str</span>(tr_<span class="dv">489</span>)</a></code></pre></div>
 <pre><code>#  num [1:30] 0 90.8 29.4 42.1 26.5 ...
-#  - attr(*, &quot;timings&quot;)= Named num [1:2] 0.167 0.179
+#  - attr(*, &quot;timings&quot;)= Named num [1:2] 0.29 0.291
 #   ..- attr(*, &quot;names&quot;)= chr [1:2] &quot;user.self&quot; &quot;elapsed&quot;
 #  - attr(*, &quot;type&quot;)= chr &quot;mult&quot;
 #  - attr(*, &quot;n&quot;)= int 489</code></pre>
