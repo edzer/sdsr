@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Chapter 13 Multivariate and Spatiotemporal Geostatistics | Spatial Data Science</title>
+  <meta name="description" content="description_xx" />
+  <meta name="generator" content="bookdown 0.22 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="Chapter 13 Multivariate and Spatiotemporal Geostatistics | Spatial Data Science" />
+  <meta property="og:type" content="book" />
+  
+  
+  <meta property="og:description" content="description_xx" />
+  <meta name="github-repo" content="edzer/sdsr" />
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Chapter 13 Multivariate and Spatiotemporal Geostatistics | Spatial Data Science" />
+  
+  <meta name="twitter:description" content="description_xx" />
+  
+
+<meta name="author" content="Edzer Pebesma, Roger Bivand" />
+
+
+<meta name="date" content="2021-06-22" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="interpolation.html"/>
+<link rel="next" href="area.html"/>
+<script src="libs/jquery-2.2.3/jquery.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+
+<link href="libs/anchor-sections-1.0.1/anchor-sections.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.0.1/anchor-sections.js"></script>
+<script src="libs/htmlwidgets-1.5.3/htmlwidgets.js"></script>
+<link href="libs/leaflet-1.3.1/leaflet.css" rel="stylesheet" />
+<script src="libs/leaflet-1.3.1/leaflet.js"></script>
+<link href="libs/leafletfix-1.0.0/leafletfix.css" rel="stylesheet" />
+<script src="libs/proj4-2.6.2/proj4.min.js"></script>
+<script src="libs/Proj4Leaflet-1.0.1/proj4leaflet.js"></script>
+<link href="libs/rstudio_leaflet-1.3.1/rstudio_leaflet.css" rel="stylesheet" />
+<script src="libs/leaflet-binding-2.0.4.1/leaflet.js"></script>
+<script src="libs/leaflet-providers-1.9.0/leaflet-providers_1.9.0.js"></script>
+<script src="libs/leaflet-providers-plugin-2.0.4.1/leaflet-providers-plugin.js"></script>
+<link href="libs/HomeButton-0.0.1/home-button.css" rel="stylesheet" />
+<script src="libs/HomeButton-0.0.1/home-button.js"></script>
+<script src="libs/HomeButton-0.0.1/easy-button-src.min.js"></script>
+<script src="libs/clipboard-0.0.1/setClipboardText.js"></script>
+<link href="libs/mapviewCSS-0.0.1/mapview-popup.css" rel="stylesheet" />
+<link href="libs/mapviewCSS-0.0.1/mapview.css" rel="stylesheet" />
+
+<script>
+/* ========================================================================
+ * Bootstrap: transition.js v3.3.7
+ * http://getbootstrap.com/javascript/#transitions
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // CSS TRANSITION SUPPORT (Shoutout: http://www.modernizr.com/)
+  // ============================================================
+
+  function transitionEnd() {
+    var el = document.createElement('bootstrap')
+
+    var transEndEventNames = {
+      WebkitTransition : 'webkitTransitionEnd',
+      MozTransition    : 'transitionend',
+      OTransition      : 'oTransitionEnd otransitionend',
+      transition       : 'transitionend'
+    }
+
+    for (var name in transEndEventNames) {
+      if (el.style[name] !== undefined) {
+        return { end: transEndEventNames[name] }
+      }
+    }
+
+    return false // explicit for ie8 (  ._.)
+  }
+
+  // http://blog.alexmaccaw.com/css-transitions
+  $.fn.emulateTransitionEnd = function (duration) {
+    var called = false
+    var $el = this
+    $(this).one('bsTransitionEnd', function () { called = true })
+    var callback = function () { if (!called) $($el).trigger($.support.transition.end) }
+    setTimeout(callback, duration)
+    return this
+  }
+
+  $(function () {
+    $.support.transition = transitionEnd()
+
+    if (!$.support.transition) return
+
+    $.event.special.bsTransitionEnd = {
+      bindType: $.support.transition.end,
+      delegateType: $.support.transition.end,
+      handle: function (e) {
+        if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
+      }
+    }
+  })
+
+}(jQuery);
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: collapse.js v3.3.7
+ * http://getbootstrap.com/javascript/#collapse
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+/* jshint latedef: false */
+
++function ($) {
+  'use strict';
+
+  // COLLAPSE PUBLIC CLASS DEFINITION
+  // ================================
+
+  var Collapse = function (element, options) {
+    this.$element      = $(element)
+    this.options       = $.extend({}, Collapse.DEFAULTS, options)
+    this.$trigger      = $('[data-toggle="collapse"][href="#' + element.id + '"],' +
+                           '[data-toggle="collapse"][data-target="#' + element.id + '"]')
+    this.transitioning = null
+
+    if (this.options.parent) {
+      this.$parent = this.getParent()
+    } else {
+      this.addAriaAndCollapsedClass(this.$element, this.$trigger)
+    }
+
+    if (this.options.toggle) this.toggle()
+  }
+
+  Collapse.VERSION  = '3.3.7'
+
+  Collapse.TRANSITION_DURATION = 350
+
+  Collapse.DEFAULTS = {
+    toggle: true
+  }
+
+  Collapse.prototype.dimension = function () {
+    var hasWidth = this.$element.hasClass('width')
+    return hasWidth ? 'width' : 'height'
+  }
+
+  Collapse.prototype.show = function () {
+    if (this.transitioning || this.$element.hasClass('in')) return
+
+    var activesData
+    var actives = this.$parent && this.$parent.children('.panel').children('.in, .collapsing')
+
+    if (actives && actives.length) {
+      activesData = actives.data('bs.collapse')
+      if (activesData && activesData.transitioning) return
+    }
+
+    var startEvent = $.Event('show.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    if (actives && actives.length) {
+      Plugin.call(actives, 'hide')
+      activesData || actives.data('bs.collapse', null)
+    }
+
+    var dimension = this.dimension()
+
+    this.$element
+      .removeClass('collapse')
+      .addClass('collapsing')[dimension](0)
+      .attr('aria-expanded', true)
+
+    this.$trigger
+      .removeClass('collapsed')
+      .attr('aria-expanded', true)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse in')[dimension]('')
+      this.transitioning = 0
+      this.$element
+        .trigger('shown.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    var scrollSize = $.camelCase(['scroll', dimension].join('-'))
+
+    this.$element
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)[dimension](this.$element[0][scrollSize])
+  }
+
+  Collapse.prototype.hide = function () {
+    if (this.transitioning || !this.$element.hasClass('in')) return
+
+    var startEvent = $.Event('hide.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    var dimension = this.dimension()
+
+    this.$element[dimension](this.$element[dimension]())[0].offsetHeight
+
+    this.$element
+      .addClass('collapsing')
+      .removeClass('collapse in')
+      .attr('aria-expanded', false)
+
+    this.$trigger
+      .addClass('collapsed')
+      .attr('aria-expanded', false)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.transitioning = 0
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse')
+        .trigger('hidden.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    this.$element
+      [dimension](0)
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)
+  }
+
+  Collapse.prototype.toggle = function () {
+    this[this.$element.hasClass('in') ? 'hide' : 'show']()
+  }
+
+  Collapse.prototype.getParent = function () {
+    return $(this.options.parent)
+      .find('[data-toggle="collapse"][data-parent="' + this.options.parent + '"]')
+      .each($.proxy(function (i, element) {
+        var $element = $(element)
+        this.addAriaAndCollapsedClass(getTargetFromTrigger($element), $element)
+      }, this))
+      .end()
+  }
+
+  Collapse.prototype.addAriaAndCollapsedClass = function ($element, $trigger) {
+    var isOpen = $element.hasClass('in')
+
+    $element.attr('aria-expanded', isOpen)
+    $trigger
+      .toggleClass('collapsed', !isOpen)
+      .attr('aria-expanded', isOpen)
+  }
+
+  function getTargetFromTrigger($trigger) {
+    var href
+    var target = $trigger.attr('data-target')
+      || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
+
+    return $(target)
+  }
+
+
+  // COLLAPSE PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.collapse')
+      var options = $.extend({}, Collapse.DEFAULTS, $this.data(), typeof option == 'object' && option)
+
+      if (!data && options.toggle && /show|hide/.test(option)) options.toggle = false
+      if (!data) $this.data('bs.collapse', (data = new Collapse(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  var old = $.fn.collapse
+
+  $.fn.collapse             = Plugin
+  $.fn.collapse.Constructor = Collapse
+
+
+  // COLLAPSE NO CONFLICT
+  // ====================
+
+  $.fn.collapse.noConflict = function () {
+    $.fn.collapse = old
+    return this
+  }
+
+
+  // COLLAPSE DATA-API
+  // =================
+
+  $(document).on('click.bs.collapse.data-api', '[data-toggle="collapse"]', function (e) {
+    var $this   = $(this)
+
+    if (!$this.attr('data-target')) e.preventDefault()
+
+    var $target = getTargetFromTrigger($this)
+    var data    = $target.data('bs.collapse')
+    var option  = data ? 'toggle' : $this.data()
+
+    Plugin.call($target, option)
+  })
+
+}(jQuery);
+</script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.sourceCode, pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan');
+  rCodeBlocks.each(function() {
+
+    // if code block has been labeled with class `fold-show`, show the code on init!
+    var classList = $(this).attr('class').split(/\s+/);
+    for (var i = 0; i < classList.length; i++) {
+    if (classList[i] === 'fold-show') {
+        show = true;
+      }
+    }
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    if (show)
+      div.addClass('in');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (show ? 'Hide' : 'Code') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs code-folding-btn pull-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-target', '#' + id)
+        .attr('aria-expanded', show)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // hack: return show to false, otherwise all next codeBlocks will be shown!
+    show = false;
+
+    // update state of button on show/hide
+    div.on('hidden.bs.collapse', function () {
+      showCodeText.text('Code');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+    });
+  });
+
+}
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: dropdown.js v3.3.7
+ * http://getbootstrap.com/javascript/#dropdowns
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // DROPDOWN CLASS DEFINITION
+  // =========================
+
+  var backdrop = '.dropdown-backdrop'
+  var toggle   = '[data-toggle="dropdown"]'
+  var Dropdown = function (element) {
+    $(element).on('click.bs.dropdown', this.toggle)
+  }
+
+  Dropdown.VERSION = '3.3.7'
+
+  function getParent($this) {
+    var selector = $this.attr('data-target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+    }
+
+    var $parent = selector && $(selector)
+
+    return $parent && $parent.length ? $parent : $this.parent()
+  }
+
+  function clearMenus(e) {
+    if (e && e.which === 3) return
+    $(backdrop).remove()
+    $(toggle).each(function () {
+      var $this         = $(this)
+      var $parent       = getParent($this)
+      var relatedTarget = { relatedTarget: this }
+
+      if (!$parent.hasClass('open')) return
+
+      if (e && e.type == 'click' && /input|textarea/i.test(e.target.tagName) && $.contains($parent[0], e.target)) return
+
+      $parent.trigger(e = $.Event('hide.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this.attr('aria-expanded', 'false')
+      $parent.removeClass('open').trigger($.Event('hidden.bs.dropdown', relatedTarget))
+    })
+  }
+
+  Dropdown.prototype.toggle = function (e) {
+    var $this = $(this)
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    clearMenus()
+
+    if (!isActive) {
+      if ('ontouchstart' in document.documentElement && !$parent.closest('.navbar-nav').length) {
+        // if mobile we use a backdrop because click events don't delegate
+        $(document.createElement('div'))
+          .addClass('dropdown-backdrop')
+          .insertAfter($(this))
+          .on('click', clearMenus)
+      }
+
+      var relatedTarget = { relatedTarget: this }
+      $parent.trigger(e = $.Event('show.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this
+        .trigger('focus')
+        .attr('aria-expanded', 'true')
+
+      $parent
+        .toggleClass('open')
+        .trigger($.Event('shown.bs.dropdown', relatedTarget))
+    }
+
+    return false
+  }
+
+  Dropdown.prototype.keydown = function (e) {
+    if (!/(38|40|27|32)/.test(e.which) || /input|textarea/i.test(e.target.tagName)) return
+
+    var $this = $(this)
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    if (!isActive && e.which != 27 || isActive && e.which == 27) {
+      if (e.which == 27) $parent.find(toggle).trigger('focus')
+      return $this.trigger('click')
+    }
+
+    var desc = ' li:not(.disabled):visible a'
+    var $items = $parent.find('.dropdown-menu' + desc)
+
+    if (!$items.length) return
+
+    var index = $items.index(e.target)
+
+    if (e.which == 38 && index > 0)                 index--         // up
+    if (e.which == 40 && index < $items.length - 1) index++         // down
+    if (!~index)                                    index = 0
+
+    $items.eq(index).trigger('focus')
+  }
+
+
+  // DROPDOWN PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this = $(this)
+      var data  = $this.data('bs.dropdown')
+
+      if (!data) $this.data('bs.dropdown', (data = new Dropdown(this)))
+      if (typeof option == 'string') data[option].call($this)
+    })
+  }
+
+  var old = $.fn.dropdown
+
+  $.fn.dropdown             = Plugin
+  $.fn.dropdown.Constructor = Dropdown
+
+
+  // DROPDOWN NO CONFLICT
+  // ====================
+
+  $.fn.dropdown.noConflict = function () {
+    $.fn.dropdown = old
+    return this
+  }
+
+
+  // APPLY TO STANDARD DROPDOWN ELEMENTS
+  // ===================================
+
+  $(document)
+    .on('click.bs.dropdown.data-api', clearMenus)
+    .on('click.bs.dropdown.data-api', '.dropdown form', function (e) { e.stopPropagation() })
+    .on('click.bs.dropdown.data-api', toggle, Dropdown.prototype.toggle)
+    .on('keydown.bs.dropdown.data-api', toggle, Dropdown.prototype.keydown)
+    .on('keydown.bs.dropdown.data-api', '.dropdown-menu', Dropdown.prototype.keydown)
+
+}(jQuery);
+</script>
+<style type="text/css">
+.code-folding-btn {
+  margin-bottom: 4px;
+}
+
+.row { display: flex; }
+.collapse { display: none; }
+.in { display:block }
+.pull-right > .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    float: left;
+    min-width: 160px;
+    padding: 5px 0;
+    margin: 2px 0 0;
+    font-size: 14px;
+    text-align: left;
+    list-style: none;
+    background-color: #fff;
+    -webkit-background-clip: padding-box;
+    background-clip: padding-box;
+    border: 1px solid #ccc;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: 4px;
+    -webkit-box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    box-shadow: 0 6px 12px rgba(0,0,0,.175);
+}
+
+.open > .dropdown-menu {
+    display: block;
+    color: #ffffff;
+    background-color: #ffffff;
+    background-image: none;
+    border-color: #92897e;
+}
+
+.dropdown-menu > li > a {
+  display: block;
+  padding: 3px 20px;
+  clear: both;
+  font-weight: 400;
+  line-height: 1.42857143;
+  color: #000000;
+  white-space: nowrap;
+}
+
+.dropdown-menu > li > a:hover,
+.dropdown-menu > li > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+}
+
+.dropdown-menu > .active > a,
+.dropdown-menu > .active > a:hover,
+.dropdown-menu > .active > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+  outline: 0;
+}
+.dropdown-menu > .disabled > a,
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  color: #aea79f;
+}
+
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  text-decoration: none;
+  cursor: not-allowed;
+  background-color: transparent;
+  background-image: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(enabled = false);
+}
+
+.btn {
+  display: inline-block;
+  margin-bottom: 1;
+  font-weight: normal;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  -ms-touch-action: manipulation;
+      touch-action: manipulation;
+  cursor: pointer;
+  background-image: none;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.42857143;
+  border-radius: 4px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn.active:focus,
+.btn.focus,
+.btn:active.focus,
+.btn.active.focus {
+  outline: 5px auto -webkit-focus-ring-color;
+  outline-offset: -2px;
+}
+.btn:hover,
+.btn:focus,
+.btn.focus {
+  color: #ffffff;
+  text-decoration: none;
+}
+.btn:active,
+.btn.active {
+  background-image: none;
+  outline: 0;
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn.disabled,
+.btn[disabled],
+fieldset[disabled] .btn {
+  cursor: not-allowed;
+  filter: alpha(opacity=65);
+  opacity: 0.65;
+  box-shadow: none;
+}
+a.btn.disabled,
+fieldset[disabled] a.btn {
+  pointer-events: none;
+}
+.btn-default {
+  color: #ffffff;
+  background-color: #aea79f; #important
+  border-color: #aea79f;
+}
+
+.btn-default:focus,
+.btn-default.focus {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #6f675e;
+}
+
+.btn-default:hover {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #92897e;
+}
+.btn-default:active,
+.btn-default.active,
+.btn-group > .btn:not(:first-child):not(:last-child):not(.dropdown-toggle) {
+  border-radius: 0;
+}
+.btn-group > .btn:first-child {
+  margin-left: 0;
+}
+.btn-group > .btn:first-child:not(:last-child):not(.dropdown-toggle) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn:last-child:not(:first-child),
+.btn-group > .dropdown-toggle:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group > .btn-group {
+  float: left;
+}
+.btn-group > .btn-group:not(:first-child):not(:last-child) > .btn {
+  border-radius: 0;
+}
+.btn-group > .btn-group:first-child:not(:last-child) > .btn:last-child,
+.btn-group > .btn-group:first-child:not(:last-child) > .dropdown-toggle {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn-group:last-child:not(:first-child) > .btn:first-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group .dropdown-toggle:active,
+.btn-group.open .dropdown-toggle {
+  outline: 0;
+}
+.btn-group > .btn + .dropdown-toggle {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+.btn-group > .btn-lg + .dropdown-toggle {
+  padding-right: 12px;
+  padding-left: 12px;
+}
+.btn-group.open .dropdown-toggle {
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn-group.open .dropdown-toggle.btn-link {
+  box-shadow: none;
+}
+
+</style>
+<script>
+var str = '<div class="btn-group pull-right" style="position: fixed; right: 50px; top: 10px; z-index: 200"><button type="button" class="btn btn-default btn-xs dropdown-toggle" id="allCodeButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" data-_extension-text-contrast=""><span>Code</span> <span class="caret"></span></button><ul class="dropdown-menu" style="min-width: 50px;"><li><a id="rmd-show-all-code" href="#">Show All Code</a></li><li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li></ul></div>';
+document.write(str);
+</script>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "hide");
+});
+</script>
+
+
+<style type="text/css">
+a.sourceLine { display: inline-block; line-height: 1.25; }
+a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
+a.sourceLine:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+a.sourceLine { text-indent: -1em; padding-left: 1em; }
+}
+pre.numberSource a.sourceLine
+  { position: relative; left: -4em; }
+pre.numberSource a.sourceLine::before
+  { content: attr(title);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  }
+@media screen {
+a.sourceLine::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li><a href="./">Spatial Data Science</a></li>
+
+<li class="divider"></li>
+<li class="chapter" data-level="" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i>Preface</a></li>
+<li class="part"><span><b>I Spatial Data</b></span></li>
+<li class="chapter" data-level="1" data-path="intro.html"><a href="intro.html"><i class="fa fa-check"></i><b>1</b> Getting Started</a><ul>
+<li class="chapter" data-level="1.1" data-path="intro.html"><a href="intro.html#a-first-map"><i class="fa fa-check"></i><b>1.1</b> A first map</a></li>
+<li class="chapter" data-level="1.2" data-path="intro.html"><a href="intro.html#coordinate-reference-systems"><i class="fa fa-check"></i><b>1.2</b> Coordinate reference systems</a></li>
+<li class="chapter" data-level="1.3" data-path="intro.html"><a href="intro.html#rasterize"><i class="fa fa-check"></i><b>1.3</b> Raster and vector data</a></li>
+<li class="chapter" data-level="1.4" data-path="intro.html"><a href="intro.html#raster-types"><i class="fa fa-check"></i><b>1.4</b> Raster types</a></li>
+<li class="chapter" data-level="1.5" data-path="intro.html"><a href="intro.html#time-series-arrays-data-cubes"><i class="fa fa-check"></i><b>1.5</b> Time series, arrays, data cubes</a></li>
+<li class="chapter" data-level="1.6" data-path="intro.html"><a href="intro.html#support"><i class="fa fa-check"></i><b>1.6</b> Support</a></li>
+<li class="chapter" data-level="1.7" data-path="intro.html"><a href="intro.html#spatial-data-science-software"><i class="fa fa-check"></i><b>1.7</b> Spatial data science software</a></li>
+<li class="chapter" data-level="1.8" data-path="intro.html"><a href="intro.html#exercises"><i class="fa fa-check"></i><b>1.8</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="cs.html"><a href="cs.html"><i class="fa fa-check"></i><b>2</b> Coordinates</a><ul>
+<li class="chapter" data-level="2.1" data-path="cs.html"><a href="cs.html#units"><i class="fa fa-check"></i><b>2.1</b> Quantities, units, datum</a></li>
+<li class="chapter" data-level="2.2" data-path="cs.html"><a href="cs.html#ellipsoidal-coordinates"><i class="fa fa-check"></i><b>2.2</b> Ellipsoidal coordinates</a></li>
+<li class="chapter" data-level="2.3" data-path="cs.html"><a href="cs.html#crs"><i class="fa fa-check"></i><b>2.3</b> Coordinate Reference Systems</a></li>
+<li class="chapter" data-level="2.4" data-path="intro.html"><a href="intro.html#proj"><i class="fa fa-check"></i><b>2.4</b> PROJ and mapping accuracy</a></li>
+<li class="chapter" data-level="2.5" data-path="cs.html"><a href="cs.html#wkt2"><i class="fa fa-check"></i><b>2.5</b> WKT-2</a></li>
+<li class="chapter" data-level="2.6" data-path="cs.html"><a href="cs.html#exercises-1"><i class="fa fa-check"></i><b>2.6</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="geometries.html"><a href="geometries.html"><i class="fa fa-check"></i><b>3</b> Geometries</a><ul>
+<li class="chapter" data-level="3.1" data-path="geometries.html"><a href="geometries.html#simplefeatures"><i class="fa fa-check"></i><b>3.1</b> Simple feature geometries</a></li>
+<li class="chapter" data-level="3.2" data-path="geometries.html"><a href="geometries.html#opgeom"><i class="fa fa-check"></i><b>3.2</b> Operations on geometries</a></li>
+<li class="chapter" data-level="3.3" data-path="geometries.html"><a href="geometries.html#precision"><i class="fa fa-check"></i><b>3.3</b> Precision</a></li>
+<li class="chapter" data-level="3.4" data-path="geometries.html"><a href="geometries.html#coverages"><i class="fa fa-check"></i><b>3.4</b> Coverages: tessellations and rasters</a></li>
+<li class="chapter" data-level="3.5" data-path="geometries.html"><a href="geometries.html#networks"><i class="fa fa-check"></i><b>3.5</b> Networks</a></li>
+<li class="chapter" data-level="3.6" data-path="geometries.html"><a href="geometries.html#exercises-2"><i class="fa fa-check"></i><b>3.6</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="4" data-path="spherical.html"><a href="spherical.html"><i class="fa fa-check"></i><b>4</b> Spherical Geometries</a><ul>
+<li class="chapter" data-level="4.1" data-path="spherical.html"><a href="spherical.html#straight-lines"><i class="fa fa-check"></i><b>4.1</b> Straight lines</a></li>
+<li class="chapter" data-level="4.2" data-path="spherical.html"><a href="spherical.html#ring-direction"><i class="fa fa-check"></i><b>4.2</b> Ring direction</a></li>
+<li class="chapter" data-level="4.3" data-path="spherical.html"><a href="spherical.html#full-polygon"><i class="fa fa-check"></i><b>4.3</b> Full polygon</a></li>
+<li class="chapter" data-level="4.4" data-path="spherical.html"><a href="spherical.html#bounding-box-rectangle-and-cap"><i class="fa fa-check"></i><b>4.4</b> Bounding box, rectangle, and cap</a></li>
+<li class="chapter" data-level="4.5" data-path="spherical.html"><a href="spherical.html#validity-on-the-sphere"><i class="fa fa-check"></i><b>4.5</b> Validity on the sphere</a></li>
+<li class="chapter" data-level="4.6" data-path="spherical.html"><a href="spherical.html#exercises-3"><i class="fa fa-check"></i><b>4.6</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="5" data-path="featureattributes.html"><a href="featureattributes.html"><i class="fa fa-check"></i><b>5</b> Attributes and Support</a><ul>
+<li class="chapter" data-level="5.1" data-path="featureattributes.html"><a href="featureattributes.html#agr"><i class="fa fa-check"></i><b>5.1</b> Attribute-geometry relationships and support</a></li>
+<li class="chapter" data-level="5.2" data-path="featureattributes.html"><a href="featureattributes.html#aggregating-and-summarising"><i class="fa fa-check"></i><b>5.2</b> Aggregating and Summarising</a></li>
+<li class="chapter" data-level="5.3" data-path="featureattributes.html"><a href="featureattributes.html#area-weighted"><i class="fa fa-check"></i><b>5.3</b> Area-weighted interpolation</a></li>
+<li class="chapter" data-level="5.4" data-path="featureattributes.html"><a href="featureattributes.html#updownscaling"><i class="fa fa-check"></i><b>5.4</b> Up- and Downscaling</a></li>
+<li class="chapter" data-level="5.5" data-path="featureattributes.html"><a href="featureattributes.html#exercises-4"><i class="fa fa-check"></i><b>5.5</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="6" data-path="datacube.html"><a href="datacube.html"><i class="fa fa-check"></i><b>6</b> Data Cubes</a><ul>
+<li class="chapter" data-level="6.1" data-path="datacube.html"><a href="datacube.html#a-four-dimensional-data-cube"><i class="fa fa-check"></i><b>6.1</b> A four-dimensional data cube</a></li>
+<li class="chapter" data-level="6.2" data-path="datacube.html"><a href="datacube.html#dimensions-attributes-and-support"><i class="fa fa-check"></i><b>6.2</b> Dimensions, attributes, and support</a></li>
+<li class="chapter" data-level="6.3" data-path="datacube.html"><a href="datacube.html#dcoperations"><i class="fa fa-check"></i><b>6.3</b> Operations on data cubes</a></li>
+<li class="chapter" data-level="6.4" data-path="datacube.html"><a href="datacube.html#vectordatacubes"><i class="fa fa-check"></i><b>6.4</b> Aggregating raster to vector cubes</a></li>
+<li class="chapter" data-level="6.5" data-path="datacube.html"><a href="datacube.html#switching"><i class="fa fa-check"></i><b>6.5</b> Switching dimension with attributes</a></li>
+<li class="chapter" data-level="6.6" data-path="datacube.html"><a href="datacube.html#otherdynamic"><i class="fa fa-check"></i><b>6.6</b> Other dynamic spatial data</a></li>
+<li class="chapter" data-level="6.7" data-path="datacube.html"><a href="datacube.html#exercises-5"><i class="fa fa-check"></i><b>6.7</b> Exercises</a></li>
+</ul></li>
+<li class="part"><span><b>II R for Spatial Data Science</b></span></li>
+<li class="chapter" data-level="7" data-path="sf.html"><a href="sf.html"><i class="fa fa-check"></i><b>7</b> Introduction to sf and stars</a><ul>
+<li class="chapter" data-level="7.1" data-path="sf.html"><a href="sf.html#sfintro"><i class="fa fa-check"></i><b>7.1</b> Package <code>sf</code></a></li>
+<li class="chapter" data-level="7.2" data-path="sf.html"><a href="sf.html#spatial-joins"><i class="fa fa-check"></i><b>7.2</b> Spatial joins</a></li>
+<li class="chapter" data-level="7.3" data-path="sf.html"><a href="sf.html#package-stars"><i class="fa fa-check"></i><b>7.3</b> Package <code>stars</code></a></li>
+<li class="chapter" data-level="7.4" data-path="sf.html"><a href="sf.html#vector-data-cube-examples"><i class="fa fa-check"></i><b>7.4</b> Vector data cube examples</a></li>
+<li class="chapter" data-level="7.5" data-path="sf.html"><a href="sf.html#raster-to-vector"><i class="fa fa-check"></i><b>7.5</b> raster-to-vector, vector-to-raster</a></li>
+<li class="chapter" data-level="7.6" data-path="sf.html"><a href="sf.html#projsf"><i class="fa fa-check"></i><b>7.6</b> Coordinate transformations and conversions</a></li>
+<li class="chapter" data-level="7.7" data-path="sf.html"><a href="sf.html#warp"><i class="fa fa-check"></i><b>7.7</b> transforming and warping rasters</a></li>
+<li class="chapter" data-level="7.8" data-path="sf.html"><a href="sf.html#exercises-6"><i class="fa fa-check"></i><b>7.8</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="8" data-path="large.html"><a href="large.html"><i class="fa fa-check"></i><b>8</b> Large data sets</a><ul>
+<li class="chapter" data-level="8.1" data-path="large.html"><a href="large.html#largesf"><i class="fa fa-check"></i><b>8.1</b> Vector data: <code>sf</code></a></li>
+<li class="chapter" data-level="8.2" data-path="large.html"><a href="large.html#raster-data-stars"><i class="fa fa-check"></i><b>8.2</b> Raster data: <code>stars</code></a></li>
+<li class="chapter" data-level="8.3" data-path="large.html"><a href="large.html#very-large-data-cubes"><i class="fa fa-check"></i><b>8.3</b> Very large data cubes</a></li>
+<li class="chapter" data-level="8.4" data-path="large.html"><a href="large.html#exercises-7"><i class="fa fa-check"></i><b>8.4</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="9" data-path="plotting.html"><a href="plotting.html"><i class="fa fa-check"></i><b>9</b> Plotting spatial data</a><ul>
+<li class="chapter" data-level="9.1" data-path="plotting.html"><a href="plotting.html#transform"><i class="fa fa-check"></i><b>9.1</b> Every plot is a projection</a></li>
+<li class="chapter" data-level="9.2" data-path="plotting.html"><a href="plotting.html#plotting-points-lines-polygons-grid-cells"><i class="fa fa-check"></i><b>9.2</b> Plotting points, lines, polygons, grid cells</a></li>
+<li class="chapter" data-level="9.3" data-path="plotting.html"><a href="plotting.html#base-plot"><i class="fa fa-check"></i><b>9.3</b> Base <code>plot</code></a></li>
+<li class="chapter" data-level="9.4" data-path="plotting.html"><a href="plotting.html#maps-with-ggplot2"><i class="fa fa-check"></i><b>9.4</b> Maps with <code>ggplot2</code></a></li>
+<li class="chapter" data-level="9.5" data-path="plotting.html"><a href="plotting.html#tmap"><i class="fa fa-check"></i><b>9.5</b> Maps with <code>tmap</code></a></li>
+<li class="chapter" data-level="9.6" data-path="plotting.html"><a href="plotting.html#interactive-maps-leaflet-mapview-tmap"><i class="fa fa-check"></i><b>9.6</b> Interactive maps: <code>leaflet</code>, <code>mapview</code>, <code>tmap</code></a></li>
+</ul></li>
+<li class="part"><span><b>III Models for Spatial Data</b></span></li>
+<li class="chapter" data-level="10" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html"><i class="fa fa-check"></i><b>10</b> Statistical modelling of spatial data</a><ul>
+<li class="chapter" data-level="10.1" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html#design"><i class="fa fa-check"></i><b>10.1</b> Design-based and model-based inference</a></li>
+<li class="chapter" data-level="10.2" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html#predictive-models-with-coordinates"><i class="fa fa-check"></i><b>10.2</b> Predictive models with coordinates</a></li>
+<li class="chapter" data-level="10.3" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html#model-based-inference"><i class="fa fa-check"></i><b>10.3</b> Model-based inference</a></li>
+</ul></li>
+<li class="chapter" data-level="11" data-path="pointpatterns.html"><a href="pointpatterns.html"><i class="fa fa-check"></i><b>11</b> Point Pattern Analysis</a></li>
+<li class="chapter" data-level="12" data-path="interpolation.html"><a href="interpolation.html"><i class="fa fa-check"></i><b>12</b> Spatial Interpolation</a><ul>
+<li class="chapter" data-level="12.1" data-path="interpolation.html"><a href="interpolation.html#a-first-dataset"><i class="fa fa-check"></i><b>12.1</b> A first dataset</a></li>
+<li class="chapter" data-level="12.2" data-path="interpolation.html"><a href="interpolation.html#sample-variogram"><i class="fa fa-check"></i><b>12.2</b> Sample variogram</a></li>
+<li class="chapter" data-level="12.3" data-path="interpolation.html"><a href="interpolation.html#fitting-variogram-models"><i class="fa fa-check"></i><b>12.3</b> Fitting variogram models</a></li>
+<li class="chapter" data-level="12.4" data-path="interpolation.html"><a href="interpolation.html#kriging"><i class="fa fa-check"></i><b>12.4</b> Kriging interpolation</a></li>
+<li class="chapter" data-level="12.5" data-path="interpolation.html"><a href="interpolation.html#blockkriging"><i class="fa fa-check"></i><b>12.5</b> Areal means: block kriging</a></li>
+<li class="chapter" data-level="12.6" data-path="interpolation.html"><a href="interpolation.html#conditional-simulation"><i class="fa fa-check"></i><b>12.6</b> Conditional simulation</a></li>
+<li class="chapter" data-level="12.7" data-path="interpolation.html"><a href="interpolation.html#trend-models"><i class="fa fa-check"></i><b>12.7</b> Trend models</a></li>
+<li class="chapter" data-level="12.8" data-path="interpolation.html"><a href="interpolation.html#atpk"><i class="fa fa-check"></i><b>12.8</b> Area-to-point kriging</a></li>
+</ul></li>
+<li class="chapter" data-level="13" data-path="stgeostatistics.html"><a href="stgeostatistics.html"><i class="fa fa-check"></i><b>13</b> Multivariate and Spatiotemporal Geostatistics</a><ul>
+<li class="chapter" data-level="13.1" data-path="stgeostatistics.html"><a href="stgeostatistics.html#preparing-the-air-quality-dataset"><i class="fa fa-check"></i><b>13.1</b> Preparing the air quality dataset</a></li>
+<li class="chapter" data-level="13.2" data-path="stgeostatistics.html"><a href="stgeostatistics.html#multivariable-geostatistics"><i class="fa fa-check"></i><b>13.2</b> Multivariable geostatistics</a></li>
+<li class="chapter" data-level="13.3" data-path="stgeostatistics.html"><a href="stgeostatistics.html#spatiotemporal-geostatistics"><i class="fa fa-check"></i><b>13.3</b> Spatiotemporal geostatistics</a></li>
+</ul></li>
+<li class="chapter" data-level="14" data-path="area.html"><a href="area.html"><i class="fa fa-check"></i><b>14</b> Area Data and Spatial Autocorrelation</a><ul>
+<li class="chapter" data-level="14.1" data-path="area.html"><a href="area.html#spatial-autocorrelation"><i class="fa fa-check"></i><b>14.1</b> Spatial autocorrelation</a></li>
+<li class="chapter" data-level="14.2" data-path="area.html"><a href="area.html#spatial-weight-matrices"><i class="fa fa-check"></i><b>14.2</b> Spatial weight matrices</a></li>
+<li class="chapter" data-level="14.3" data-path="area.html"><a href="area.html#measures-of-spatial-autocorrelation"><i class="fa fa-check"></i><b>14.3</b> Measures of spatial autocorrelation</a></li>
+</ul></li>
+<li class="chapter" data-level="15" data-path="spatial-regression.html"><a href="spatial-regression.html"><i class="fa fa-check"></i><b>15</b> Spatial Regression</a><ul>
+<li class="chapter" data-level="15.1" data-path="spatial-regression.html"><a href="spatial-regression.html#spatial-regression-with-spatial-weights"><i class="fa fa-check"></i><b>15.1</b> Spatial regression with spatial weights</a></li>
+<li class="chapter" data-level="15.2" data-path="spatial-regression.html"><a href="spatial-regression.html#estimators"><i class="fa fa-check"></i><b>15.2</b> Estimators</a></li>
+<li class="chapter" data-level="15.3" data-path="spatial-regression.html"><a href="spatial-regression.html#implementation-details"><i class="fa fa-check"></i><b>15.3</b> Implementation details</a></li>
+<li class="chapter" data-level="15.4" data-path="spatial-regression.html"><a href="spatial-regression.html#markov-random-field-and-multilevel-models-with-spatial-weights"><i class="fa fa-check"></i><b>15.4</b> Markov random field and multilevel models with spatial weights</a></li>
+</ul></li>
+<li class="chapter" data-level="16" data-path="sp-and-raster.html"><a href="sp-and-raster.html"><i class="fa fa-check"></i><b>16</b> sp and raster</a><ul>
+<li class="chapter" data-level="16.1" data-path="sp-and-raster.html"><a href="sp-and-raster.html#links-and-differences-between-sf-and-sp"><i class="fa fa-check"></i><b>16.1</b> links and differences between sf and sp</a></li>
+<li class="chapter" data-level="16.2" data-path="sp-and-raster.html"><a href="sp-and-raster.html#migration-packages"><i class="fa fa-check"></i><b>16.2</b> migration packages</a></li>
+<li class="chapter" data-level="16.3" data-path="sp-and-raster.html"><a href="sp-and-raster.html#raster-stars-and-sf"><i class="fa fa-check"></i><b>16.3</b> raster, stars and sf</a></li>
+</ul></li>
+<li class="chapter" data-level="" data-path="all-r-code-in-this-book.html"><a href="all-r-code-in-this-book.html"><i class="fa fa-check"></i>All R code in this book</a></li>
+<li class="chapter" data-level="" data-path="r-basics.html"><a href="r-basics.html"><i class="fa fa-check"></i>R basics</a><ul>
+<li class="chapter" data-level="" data-path="r-basics.html"><a href="r-basics.html#pipes"><i class="fa fa-check"></i>Pipes</a></li>
+<li class="chapter" data-level="16.4" data-path="r-basics.html"><a href="r-basics.html#data-structures"><i class="fa fa-check"></i><b>16.4</b> Data structures</a></li>
+</ul></li>
+<li class="chapter" data-level="" data-path="references.html"><a href="references.html"><i class="fa fa-check"></i>References</a></li>
+<li class="divider"></li>
+<li><a href="https://github.com/rstudio/bookdown" target="blank">Published with bookdown</a></li>
+
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Spatial Data Science</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="stgeostatistics" class="section level1">
+<h1><span class="header-section-number">Chapter 13</span> Multivariate and Spatiotemporal Geostatistics</h1>
+<p>Building on the simple interpolation methods presented in chapter
+<a href="interpolation.html#interpolation">12</a>, this chapter works out a case study for
+spatiotemporal interpolation, using NO<span class="math inline">\(_2\)</span> air quality data, and
+populations density as covariate.</p>
+<div id="preparing-the-air-quality-dataset" class="section level2">
+<h2><span class="header-section-number">13.1</span> Preparing the air quality dataset</h2>
+<p>The dataset we work with is an air quality dataset obtained from
+the European Environmental Agency (EEA). European member states report
+air quality measurements to this Agency. So-called <em>validated</em>
+data are quality controlled by member states, and are reported on a
+yearly basis. They form the basis for policy compliancy evaluations.</p>
+<p>The EEA’s <a href="https://www.eea.europa.eu/data-and-maps/data/aqereporting-8">air quality
+e-reporting</a>
+website gives access to the data reported by European member states.
+We decided to download hourly (time series) data, which is the data primarily measured.
+A web form helps convert simple selection criteria into an http GET request. The following URL</p>
+<pre><code>https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&amp;CityName=&amp;Pollutant=8&amp;Year_from=2017&amp;Year_to=2017&amp;Station=&amp;Samplingpoint=&amp;Source=E1a&amp;Output=TEXT&amp;UpdateDate=</code></pre>
+<p>was created to select all validated (<code>Source=E1a</code>) <span class="math inline">\(NO_2\)</span>
+(<code>Pollutant=8</code>) data for 2017 (<code>Year_from</code>, <code>Year_to</code>) from Germany
+(<code>CountryCode=DE</code>). It returns a text file with a set of URLs to CSV
+files, each containing the hourly values for the whole period for a
+single measurement station. These files were downloaded and converted
+to the right encoding using the <code>dos2unix</code> command line utility.</p>
+<p>In the following, we will read all the files into a list,</p>
+<div class="sourceCode" id="cb385"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb385-1" title="1">files =<span class="st"> </span><span class="kw">list.files</span>(<span class="st">&quot;aq&quot;</span>, <span class="dt">pattern =</span> <span class="st">&quot;*.csv&quot;</span>, <span class="dt">full.names =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb385-2" title="2">r =<span class="st"> </span><span class="kw">lapply</span>(files[<span class="op">-</span><span class="dv">1</span>], <span class="cf">function</span>(f) <span class="kw">read.csv</span>(f))</a></code></pre></div>
+<p>then convert the time variable into a <code>POSIXct</code> variable, and time order them</p>
+<div class="sourceCode" id="cb386"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb386-1" title="1"><span class="kw">Sys.setenv</span>(<span class="dt">TZ =</span> <span class="st">&quot;UTC&quot;</span>) <span class="co"># make sure times are not interpreted as DST</span></a>
+<a class="sourceLine" id="cb386-2" title="2">r =<span class="st"> </span><span class="kw">lapply</span>(r, <span class="cf">function</span>(f) {</a>
+<a class="sourceLine" id="cb386-3" title="3">        f<span class="op">$</span>t =<span class="st"> </span><span class="kw">as.POSIXct</span>(f<span class="op">$</span>DatetimeBegin) </a>
+<a class="sourceLine" id="cb386-4" title="4">        f[<span class="kw">order</span>(f<span class="op">$</span>t), ] </a>
+<a class="sourceLine" id="cb386-5" title="5">    }</a>
+<a class="sourceLine" id="cb386-6" title="6">) </a></code></pre></div>
+<p>and we deselect smaller datasets that do not contain hourly data:</p>
+<div class="sourceCode" id="cb387"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb387-1" title="1">r =<span class="st"> </span>r[<span class="kw">sapply</span>(r, nrow) <span class="op">&gt;</span><span class="st"> </span><span class="dv">1000</span>]</a>
+<a class="sourceLine" id="cb387-2" title="2"><span class="kw">names</span>(r) =<span class="st">  </span><span class="kw">sapply</span>(r, <span class="cf">function</span>(f) <span class="kw">unique</span>(f<span class="op">$</span>AirQualityStationEoICode))</a>
+<a class="sourceLine" id="cb387-3" title="3"><span class="kw">length</span>(r) <span class="op">==</span><span class="st"> </span><span class="kw">length</span>(<span class="kw">unique</span>(<span class="kw">names</span>(r)))</a></code></pre></div>
+<pre><code># [1] TRUE</code></pre>
+<p>and then combine all files using <code>xts::cbind</code>, so that they are matched based on time:</p>
+<div class="sourceCode" id="cb389"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb389-1" title="1"><span class="kw">library</span>(xts)</a>
+<a class="sourceLine" id="cb389-2" title="2">r =<span class="st"> </span><span class="kw">lapply</span>(r, <span class="cf">function</span>(f) <span class="kw">xts</span>(f<span class="op">$</span>Concentration, f<span class="op">$</span>t))</a>
+<a class="sourceLine" id="cb389-3" title="3">aq =<span class="st"> </span><span class="kw">do.call</span>(cbind, r)</a></code></pre></div>
+<p>We can now select those stations for which we have 75% of the hourly values measured, i.e. drop those with more than 25% hourly values missing:</p>
+<div class="sourceCode" id="cb390"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb390-1" title="1"><span class="co"># remove stations with more than 75% missing values:</span></a>
+<a class="sourceLine" id="cb390-2" title="2">sel =<span class="st"> </span><span class="kw">apply</span>(aq, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="kw">sum</span>(<span class="kw">is.na</span>(x)) <span class="op">&lt;</span><span class="st"> </span><span class="fl">0.75</span> <span class="op">*</span><span class="st"> </span><span class="dv">365</span> <span class="op">*</span><span class="st"> </span><span class="dv">24</span>)</a>
+<a class="sourceLine" id="cb390-3" title="3">aqsel =<span class="st"> </span>aq[, sel] <span class="co"># stations are in columns</span></a></code></pre></div>
+<p>Next, the <a href="http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_stations.zip">station metadata</a> was read
+and filtered for rural background stations in Germany by</p>
+<div class="sourceCode" id="cb391"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb391-1" title="1"><span class="kw">library</span>(tidyverse)</a>
+<a class="sourceLine" id="cb391-2" title="2"><span class="kw">read.csv</span>(<span class="st">&quot;aq/AirBase_v8_stations.csv&quot;</span>, <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>, <span class="dt">stringsAsFactors =</span> <span class="ot">FALSE</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb391-3" title="3"><span class="st">    </span>as_tibble  <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb391-4" title="4"><span class="st">    </span><span class="kw">filter</span>(country_iso_code <span class="op">==</span><span class="st"> &quot;DE&quot;</span>, station_type_of_area <span class="op">==</span><span class="st"> &quot;rural&quot;</span>, </a>
+<a class="sourceLine" id="cb391-5" title="5">                 type_of_station <span class="op">==</span><span class="st"> &quot;Background&quot;</span>) -&gt;<span class="st"> </span>a2</a></code></pre></div>
+<p>These stations contain coordinates, and an <code>sf</code> object with (static) station metadata is created by</p>
+<div class="sourceCode" id="cb392"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb392-1" title="1"><span class="kw">library</span>(sf)</a>
+<a class="sourceLine" id="cb392-2" title="2"><span class="kw">library</span>(stars)</a>
+<a class="sourceLine" id="cb392-3" title="3">a2.sf =<span class="st"> </span><span class="kw">st_as_sf</span>(a2, <span class="dt">coords =</span> <span class="kw">c</span>(<span class="st">&quot;station_longitude_deg&quot;</span>, <span class="st">&quot;station_latitude_deg&quot;</span>), <span class="dt">crs =</span> <span class="dv">4326</span>)</a></code></pre></div>
+<p>We now subset the air quality data to stations that are of type rural background:</p>
+<div class="sourceCode" id="cb393"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb393-1" title="1">sel =<span class="st">  </span><span class="kw">colnames</span>(aqsel) <span class="op">%in%</span><span class="st"> </span>a2<span class="op">$</span>station_european_code</a>
+<a class="sourceLine" id="cb393-2" title="2">aqsel =<span class="st"> </span>aqsel[, sel]</a></code></pre></div>
+<p>We can compute station means, and join these to stations locations by</p>
+<div class="sourceCode" id="cb394"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb394-1" title="1">tb =<span class="st"> </span><span class="kw">tibble</span>(<span class="dt">NO2 =</span> <span class="kw">apply</span>(aqsel, <span class="dv">2</span>, mean, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>), <span class="dt">station_european_code =</span> <span class="kw">colnames</span>(aqsel))</a>
+<a class="sourceLine" id="cb394-2" title="2">crs =<span class="st"> </span><span class="dv">32632</span></a>
+<a class="sourceLine" id="cb394-3" title="3"><span class="kw">right_join</span>(a2.sf, tb) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">st_transform</span>(crs) -&gt;<span class="st"> </span>no2.sf </a></code></pre></div>
+<pre><code># Joining, by = &quot;station_european_code&quot;</code></pre>
+<div class="sourceCode" id="cb396"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb396-1" title="1"><span class="co"># load German boundaries</span></a>
+<a class="sourceLine" id="cb396-2" title="2"><span class="kw">data</span>(air, <span class="dt">package =</span> <span class="st">&quot;spacetime&quot;</span>)</a>
+<a class="sourceLine" id="cb396-3" title="3">de &lt;-<span class="st"> </span><span class="kw">st_transform</span>(<span class="kw">st_as_sf</span>(DE_NUTS1), crs)</a>
+<a class="sourceLine" id="cb396-4" title="4"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> de) <span class="op">+</span><span class="st">  </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">col =</span> NO2))</a></code></pre></div>
+<p><img src="sds_files/figure-html/computestationmeans-1.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="multivariable-geostatistics" class="section level2">
+<h2><span class="header-section-number">13.2</span> Multivariable geostatistics</h2>
+<p>Multivariable geostatics involves the <em>joint</em> modelling, prediction
+and simulation of multiple variables,
+<span class="math display">\[Z_1(s) = X_1 \beta_1 + e_1(s)\]</span>
+<span class="math display">\[...\]</span>
+<span class="math display">\[Z_n(s) = X_n \beta_n + e_n(s).\]</span>
+In addition to having observations, trend models, and variograms
+for each variable, the <em>cross</em> variogram for each pair of residual
+variables, describing the covariance of <span class="math inline">\(e_i(s), e_j(s+h)\)</span>,
+is required. If this cross covariance is non-zero, knowledge of
+<span class="math inline">\(e_j(s+h)\)</span> may help predict (or simulate) <span class="math inline">\(e_i(s)\)</span>. This is
+especially true if <span class="math inline">\(Z_j(s)\)</span> is more densely sample than <span class="math inline">\(Z_i(s)\)</span>.
+Prediction and simulation under this model are called cokriging
+and cosimulation. Examples using gstat are found when running the
+demo scripts</p>
+<div class="sourceCode" id="cb397"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb397-1" title="1"><span class="kw">library</span>(gstat)</a>
+<a class="sourceLine" id="cb397-2" title="2"><span class="kw">demo</span>(cokriging)</a>
+<a class="sourceLine" id="cb397-3" title="3"><span class="kw">demo</span>(cosimulation)</a></code></pre></div>
+<p>and are illustrated and discussed in <span class="citation">(Roger S. Bivand, Pebesma, and Gomez-Rubio <a href="#ref-asdar">2013</a>)</span>.</p>
+<p>In case the different variables considered are observed at
+the same set of locations, for instance different air quality
+parameters, then the statistical <em>gain</em> of using cokriging
+as opposed to direct (univariable) kriging is often modest,
+when not negligible. A gain may however be that the prediction
+is truly multivariable: in addition to the prediction vector
+<span class="math inline">\(\hat{Z(s_0)}=(\hat{Z}_1(s_0),...,\hat{Z}_n(s_0))\)</span> we get the full
+covariance matrix of the prediction error <span class="citation">(Ver Hoef and Cressie <a href="#ref-ver1993multivariable">1993</a>)</span>.
+This means for instance that if we are interested in some
+linear combination of <span class="math inline">\(\hat{Z}(s_0)\)</span>, such as <span class="math inline">\(\hat{Z}_2(s_0) - \hat{Z}_1(s_0)\)</span>, that we can get the standard error of that
+combination because we have the correlations between the prediction
+errors.</p>
+<p>Although sets of direct and cross variograms can be computed
+and fitted automatically, multivariable geostatistical modelling
+becomes quickly hard to manage when the number of variables gets
+large, because the number of direct and cross variograms required
+is <span class="math inline">\(n(n+1)/2\)</span>.</p>
+<p>In case different variables refer to the same variable take at
+different time steps, one could use a multivariable (cokriging)
+prediction approach, but this would not allow for e.g. interpolation
+between two time steps. For this, and for handling the case of
+having data observed at many time instances, one can also model
+its variation as a function of continuous space <em>and</em> time, as of
+<span class="math inline">\(Z(s,t)\)</span>, which we will do in the next section.</p>
+</div>
+<div id="spatiotemporal-geostatistics" class="section level2">
+<h2><span class="header-section-number">13.3</span> Spatiotemporal geostatistics</h2>
+<p>Spatiotemporal geostatistical processes are modelled as variables
+having a value everywhere in space and time, <span class="math inline">\(Z(s,t)\)</span>, with <span class="math inline">\(s\)</span> and
+<span class="math inline">\(t\)</span> the continuously indext space and time index. Given observations
+<span class="math inline">\(Z(s_i,t_j)\)</span> and a variogram (covariance) model <span class="math inline">\(\gamma(s,t)\)</span> we can
+predict <span class="math inline">\(Z(s_0,t_0)\)</span> at arbitrary space/time locations <span class="math inline">\((s_0,t_0)\)</span>
+using standard Gaussian process theory.</p>
+<p>Several books have been written recently about modern approaches
+to handling and modelling spatiotemporal geostatistical data,
+including <span class="citation">(Wikle, Zammit-Mangion, and Cressie <a href="#ref-wikle2019spatio">2019</a>)</span> and <span class="citation">(Blangiardo and Cameletti <a href="#ref-blangiardo2015spatial">2015</a>)</span>. Here,
+we will use <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span> and give some simple examples building
+upon the dataset used throughout this chapter.</p>
+<div id="a-spatiotemporal-variogram-model" class="section level3">
+<h3><span class="header-section-number">13.3.1</span> A spatiotemporal variogram model</h3>
+<p>Starting with the spatiotemporal matrix of NO<span class="math inline">\(_2\)</span> data in <code>aq</code>
+constructed at the beginning of this chapter, we will first select
+the rural background stations:</p>
+<div class="sourceCode" id="cb398"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb398-1" title="1">aqx =<span class="st"> </span>aq[ , <span class="kw">colnames</span>(aq) <span class="op">%in%</span><span class="st"> </span>a2<span class="op">$</span>station_european_code]</a>
+<a class="sourceLine" id="cb398-2" title="2">sfc =<span class="st"> </span><span class="kw">st_geometry</span>(a2.sf)[<span class="kw">match</span>(<span class="kw">colnames</span>(aqx), a2.sf<span class="op">$</span>station_european_code)]</a>
+<a class="sourceLine" id="cb398-3" title="3"><span class="kw">st_as_stars</span>(<span class="dt">NO2 =</span> <span class="kw">as.matrix</span>(aqx)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb398-4" title="4"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="dt">names =</span> <span class="kw">c</span>(<span class="st">&quot;time&quot;</span>, <span class="st">&quot;station&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb398-5" title="5"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, <span class="kw">index</span>(aqx)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb398-6" title="6"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;station&quot;</span>, sfc) -&gt;<span class="st"> </span>no2.st</a>
+<a class="sourceLine" id="cb398-7" title="7">v.st =<span class="st"> </span><span class="kw">variogramST</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.st[,<span class="dv">1</span><span class="op">:</span>(<span class="dv">24</span><span class="op">*</span><span class="dv">31</span>)], <span class="dt">tlags =</span> <span class="dv">0</span><span class="op">:</span><span class="dv">48</span>, </a>
+<a class="sourceLine" id="cb398-8" title="8">    <span class="dt">cores =</span> <span class="kw">getOption</span>(<span class="st">&quot;mc.cores&quot;</span>, <span class="dv">2</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb399"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb399-1" title="1">v1 =<span class="st"> </span><span class="kw">plot</span>(v.st)</a>
+<a class="sourceLine" id="cb399-2" title="2">v2 =<span class="st"> </span><span class="kw">plot</span>(v.st, <span class="dt">map =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb399-3" title="3"><span class="kw">print</span>(v1, <span class="dt">split =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">more =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb399-4" title="4"><span class="kw">print</span>(v2, <span class="dt">split =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">more =</span> <span class="ot">FALSE</span>)</a></code></pre></div>
+<p><img src="sds_files/figure-html/plotvariograms-1.png" width="672" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb400"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb400-1" title="1"><span class="co"># product-sum</span></a>
+<a class="sourceLine" id="cb400-2" title="2">prodSumModel &lt;-<span class="st"> </span><span class="kw">vgmST</span>(<span class="st">&quot;productSum&quot;</span>,</a>
+<a class="sourceLine" id="cb400-3" title="3">    <span class="dt">space=</span><span class="kw">vgm</span>(<span class="dv">150</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">200</span>, <span class="dv">0</span>),</a>
+<a class="sourceLine" id="cb400-4" title="4">    <span class="dt">time=</span> <span class="kw">vgm</span>(<span class="dv">20</span>, <span class="st">&quot;Sph&quot;</span>,   <span class="dv">40</span>, <span class="dv">0</span>),</a>
+<a class="sourceLine" id="cb400-5" title="5">    <span class="dt">k=</span><span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb400-6" title="6">StAni =<span class="st"> </span><span class="kw">estiStAni</span>(v.st, <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">200000</span>))</a>
+<a class="sourceLine" id="cb400-7" title="7">(fitProdSumModel &lt;-<span class="st"> </span><span class="kw">fit.StVariogram</span>(v.st, prodSumModel, <span class="dt">fit.method =</span> <span class="dv">7</span>,</a>
+<a class="sourceLine" id="cb400-8" title="8">    <span class="dt">stAni =</span> StAni, <span class="dt">method =</span> <span class="st">&quot;L-BFGS-B&quot;</span>,</a>
+<a class="sourceLine" id="cb400-9" title="9">    <span class="dt">control =</span> <span class="kw">list</span>(<span class="dt">parscale =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">10</span>,<span class="dv">1</span>,<span class="dv">1</span>,<span class="fl">0.1</span>,<span class="dv">1</span>,<span class="dv">10</span>)),</a>
+<a class="sourceLine" id="cb400-10" title="10">    <span class="dt">lower =</span> <span class="kw">rep</span>(<span class="fl">0.0001</span>, <span class="dv">7</span>)))</a></code></pre></div>
+<pre><code># space component: 
+#   model psill range
+# 1   Nug  26.3     0
+# 2   Exp 140.5   432
+# time component: 
+#   model psill range
+# 1   Nug  1.21   0.0
+# 2   Sph 15.99  40.1
+# k: 0.0322469094848839</code></pre>
+<div class="sourceCode" id="cb402"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb402-1" title="1"><span class="kw">plot</span>(v.st, fitProdSumModel, <span class="dt">wireframe=</span><span class="ot">FALSE</span>, <span class="dt">all=</span><span class="ot">TRUE</span>, <span class="dt">scales=</span><span class="kw">list</span>(<span class="dt">arrows=</span><span class="ot">FALSE</span>), <span class="dt">zlim=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">150</span>))</a></code></pre></div>
+<p><img src="sds_files/figure-html/fitprodsummodel-1.png" width="672" style="display: block; margin: auto;" />
+which can also be plotted as wireframes, by</p>
+<div class="sourceCode" id="cb403"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb403-1" title="1"><span class="kw">plot</span>(v.st, <span class="dt">model=</span>fitProdSumModel, <span class="dt">wireframe=</span><span class="ot">TRUE</span>, <span class="dt">all=</span><span class="ot">TRUE</span>, <span class="dt">scales=</span><span class="kw">list</span>(<span class="dt">arrows=</span><span class="ot">FALSE</span>), <span class="dt">zlim=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">185</span>))</a></code></pre></div>
+<p><img src="sds_files/figure-html/plotprodsummodel-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Hints about the fitting strategy and alternative models for
+spatiotemporal variograms are given in <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span>.</p>
+<p>With this fitted model, and given the observations, we can
+carry out kriging or simulation at arbitrary points in space and
+time. For instance, we could estimate (or simulate) values in the
+time series that are now missing: this occurs regularly, and in
+section <a href="interpolation.html#kriging">12.4</a> we used means over time series based on
+simply ignoring up to 25% of the observations: substituting these
+with estimated or simulated values based on neigbouring (in space
+and time) observations before computing yearly mean values seems
+a more reasonable approach.</p>
+<p>More in general, we can estimate at arbitrary locations and time
+points, and we will illustrate this with predicting time series at
+particular locations, and and predicting spatial slices <span class="citation">(Gräler, Pebesma, and Heuvelink <a href="#ref-RJ-2016-014">2016</a>)</span>.
+We can create
+a <code>stars</code> object to denote two points and all time instances with</p>
+<div class="sourceCode" id="cb404"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb404-1" title="1"><span class="kw">set.seed</span>(<span class="dv">123</span>)</a>
+<a class="sourceLine" id="cb404-2" title="2">pt =<span class="st"> </span><span class="kw">st_sample</span>(de, <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb404-3" title="3">t =<span class="st"> </span><span class="kw">st_get_dimension_values</span>(no2.st, <span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb404-4" title="4"><span class="kw">st_as_stars</span>(<span class="kw">list</span>(<span class="dt">pts =</span> <span class="kw">matrix</span>(<span class="dv">1</span>, <span class="kw">length</span>(t), <span class="kw">length</span>(pt)))) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb404-5" title="5"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="dt">names =</span> <span class="kw">c</span>(<span class="st">&quot;time&quot;</span>, <span class="st">&quot;station&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb404-6" title="6"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, t) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb404-7" title="7"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;station&quot;</span>, pt) -&gt;<span class="st"> </span>new_pt</a></code></pre></div>
+<p>and obtain the corresponding spatiotemporal predictions using <code>krigeST</code> with</p>
+<div class="sourceCode" id="cb405"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb405-1" title="1">no2.st &lt;-<span class="st"> </span><span class="kw">st_transform</span>(no2.st, crs)</a>
+<a class="sourceLine" id="cb405-2" title="2">new_ts &lt;-<span class="st"> </span><span class="kw">krigeST</span>(NO2<span class="op">~</span><span class="dv">1</span>, <span class="dt">data =</span> no2.st[<span class="st">&quot;NO2&quot;</span>], <span class="dt">newdata =</span> new_pt,</a>
+<a class="sourceLine" id="cb405-3" title="3">         <span class="dt">nmax =</span> <span class="dv">50</span>, <span class="dt">stAni =</span> StAni, <span class="dt">modelList =</span> fitProdSumModel,</a>
+<a class="sourceLine" id="cb405-4" title="4">         <span class="dt">progress =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb405-5" title="5"><span class="kw">plot</span>(<span class="kw">as.xts</span>(new_ts[<span class="dv">2</span>]))</a></code></pre></div>
+<p><img src="sds_files/figure-html/spacetimekriging-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Alternatively, we can create spatiotemporal predictions for a set of time-stamped
+raster maps, created by</p>
+<div class="sourceCode" id="cb406"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb406-1" title="1">t4 =<span class="st"> </span>t[(<span class="dv">1</span><span class="op">:</span><span class="dv">4</span> <span class="op">-</span><span class="st"> </span><span class="fl">0.5</span>) <span class="op">*</span><span class="st"> </span>(<span class="dv">3</span><span class="op">*</span><span class="dv">24</span><span class="op">*</span><span class="dv">30</span>)]</a>
+<a class="sourceLine" id="cb406-2" title="2"></a>
+<a class="sourceLine" id="cb406-3" title="3">d =<span class="st"> </span><span class="kw">dim</span>(grd)</a>
+<a class="sourceLine" id="cb406-4" title="4"><span class="kw">st_as_stars</span>(<span class="dt">pts =</span> <span class="kw">array</span>(<span class="dv">1</span>, <span class="kw">c</span>(d[<span class="dv">1</span>], d[<span class="dv">2</span>], <span class="dt">time=</span><span class="kw">length</span>(t4)))) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb406-5" title="5"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;time&quot;</span>, t4) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb406-6" title="6"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;x&quot;</span>, <span class="kw">st_get_dimension_values</span>(grd, <span class="st">&quot;x&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb406-7" title="7"><span class="st">    </span><span class="kw">st_set_dimensions</span>(<span class="st">&quot;y&quot;</span>, <span class="kw">st_get_dimension_values</span>(grd, <span class="st">&quot;y&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb406-8" title="8"><span class="st">    </span><span class="kw">st_set_crs</span>(crs) -&gt;<span class="st"> </span>grd.st</a></code></pre></div>
+<p>and the subsequent predictions are obtained by</p>
+<div class="sourceCode" id="cb407"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb407-1" title="1">new_int &lt;-<span class="st"> </span><span class="kw">krigeST</span>(NO2<span class="op">~</span><span class="dv">1</span>, <span class="dt">data =</span> no2.st[<span class="st">&quot;NO2&quot;</span>], <span class="dt">newdata =</span> grd.st,</a>
+<a class="sourceLine" id="cb407-2" title="2">         <span class="dt">nmax =</span> <span class="dv">200</span>, <span class="dt">stAni =</span> StAni, <span class="dt">modelList =</span> fitProdSumModel,</a>
+<a class="sourceLine" id="cb407-3" title="3">         <span class="dt">progress =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb407-4" title="4"><span class="kw">names</span>(new_int)[<span class="dv">2</span>] =<span class="st"> &quot;NO2&quot;</span></a></code></pre></div>
+<div class="sourceCode" id="cb408"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb408-1" title="1">g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> new_int, <span class="kw">aes</span>(<span class="dt">fill =</span> NO2, <span class="dt">x =</span> x, <span class="dt">y =</span> y)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb408-2" title="2"><span class="st">    </span><span class="kw">facet_wrap</span>(<span class="op">~</span><span class="kw">as.Date</span>(time)) <span class="op">+</span></a>
+<a class="sourceLine" id="cb408-3" title="3"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb408-4" title="4"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf, <span class="dt">col =</span> <span class="st">&#39;grey&#39;</span>, <span class="dt">cex =</span> <span class="fl">.5</span>) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb408-5" title="5"><span class="st">    </span><span class="kw">coord_sf</span>(<span class="dt">lims_method =</span> <span class="st">&quot;geometry_bbox&quot;</span>)</a></code></pre></div>
+<pre><code># Coordinate system already present. Adding new coordinate system, which will replace the existing one.</code></pre>
+<p><img src="sds_files/figure-html/plotspatiotemporalpredictions-1.png" width="672" style="display: block; margin: auto;" />
+and shown in figure <a href="#fig:plotspatiotemporalpredictions"><strong>??</strong></a>.</p>
+<p>A larger value for <code>nmax</code> was needed here to decrease the visible
+disturbance (sharp edges) caused by discrete neighbourhood
+selections, which are now done in space <em>and</em> time.</p>
+
+</div>
+</div>
+</div>
+<h3>References</h3>
+<div id="refs" class="references">
+<div id="ref-asdar">
+<p>Bivand, Roger S., Edzer Pebesma, and Virgilio Gomez-Rubio. 2013. <em>Applied Spatial Data Analysis with R, Second Edition</em>. Springer, NY. <a href="http://www.asdar-book.org/">http://www.asdar-book.org/</a>.</p>
+</div>
+<div id="ref-blangiardo2015spatial">
+<p>Blangiardo, Marta, and Michela Cameletti. 2015. <em>Spatial and Spatio-Temporal Bayesian Models with R-Inla</em>. John Wiley &amp; Sons.</p>
+</div>
+<div id="ref-RJ-2016-014">
+<p>Gräler, Benedikt, Edzer Pebesma, and Gerard Heuvelink. 2016. “Spatio-Temporal Interpolation using gstat.” <em>The R Journal</em> 8 (1): 204–18. <a href="https://doi.org/10.32614/RJ-2016-014">https://doi.org/10.32614/RJ-2016-014</a>.</p>
+</div>
+<div id="ref-ver1993multivariable">
+<p>Ver Hoef, Jay M, and Noel Cressie. 1993. “Multivariable Spatial Prediction.” <em>Mathematical Geology</em> 25 (2): 219–40.</p>
+</div>
+<div id="ref-wikle2019spatio">
+<p>Wikle, Christopher K, Andrew Zammit-Mangion, and Noel Cressie. 2019. <em>Spatio-Temporal Statistics with R</em>. CRC Press.</p>
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="interpolation.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="area.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": true,
+"facebook": false,
+"twitter": true,
+"linkedin": false,
+"weibo": false,
+"instapaper": false,
+"vk": false,
+"whatsapp": false,
+"all": false
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": "https://github.com/edzer/sdsr/edit/master/16-Geostatistics.Rmd",
+"text": "Edit"
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": null,
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "true";
+    if (src === "" || src === "true") src = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:")
+      if (/^https?:/.test(src))
+        src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+</body>
+
+</html>
