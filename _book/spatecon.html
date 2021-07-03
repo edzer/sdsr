@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Chapter 17 Spatial econometrics models | Spatial Data Science</title>
+  <meta name="description" content="description_xx" />
+  <meta name="generator" content="bookdown 0.22 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="Chapter 17 Spatial econometrics models | Spatial Data Science" />
+  <meta property="og:type" content="book" />
+  
+  
+  <meta property="og:description" content="description_xx" />
+  <meta name="github-repo" content="edzer/sdsr" />
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Chapter 17 Spatial econometrics models | Spatial Data Science" />
+  
+  <meta name="twitter:description" content="description_xx" />
+  
+
+<meta name="author" content="Edzer Pebesma, Roger Bivand" />
+
+
+<meta name="date" content="2021-07-03" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="spatglmm.html"/>
+<link rel="next" href="sp-and-raster.html"/>
+<script src="libs/header-attrs-2.9/header-attrs.js"></script>
+<script src="libs/jquery-2.2.3/jquery.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+
+<script src="libs/accessible-code-block-0.0.1/empty-anchor.js"></script>
+<link href="libs/anchor-sections-1.0.1/anchor-sections.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.0.1/anchor-sections.js"></script>
+<script src="libs/htmlwidgets-1.5.3/htmlwidgets.js"></script>
+<link href="libs/leaflet-1.3.1/leaflet.css" rel="stylesheet" />
+<script src="libs/leaflet-1.3.1/leaflet.js"></script>
+<link href="libs/leafletfix-1.0.0/leafletfix.css" rel="stylesheet" />
+<script src="libs/proj4-2.6.2/proj4.min.js"></script>
+<script src="libs/Proj4Leaflet-1.0.1/proj4leaflet.js"></script>
+<link href="libs/rstudio_leaflet-1.3.1/rstudio_leaflet.css" rel="stylesheet" />
+<script src="libs/leaflet-binding-2.0.4.1/leaflet.js"></script>
+<script src="libs/leaflet-providers-1.9.0/leaflet-providers_1.9.0.js"></script>
+<script src="libs/leaflet-providers-plugin-2.0.4.1/leaflet-providers-plugin.js"></script>
+<link href="libs/HomeButton-0.0.1/home-button.css" rel="stylesheet" />
+<script src="libs/HomeButton-0.0.1/home-button.js"></script>
+<script src="libs/HomeButton-0.0.1/easy-button-src.min.js"></script>
+<script src="libs/clipboard-0.0.1/setClipboardText.js"></script>
+<link href="libs/mapviewCSS-0.0.1/mapview-popup.css" rel="stylesheet" />
+<link href="libs/mapviewCSS-0.0.1/mapview.css" rel="stylesheet" />
+
+<script>
+/* ========================================================================
+ * Bootstrap: transition.js v3.3.7
+ * http://getbootstrap.com/javascript/#transitions
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // CSS TRANSITION SUPPORT (Shoutout: http://www.modernizr.com/)
+  // ============================================================
+
+  function transitionEnd() {
+    var el = document.createElement('bootstrap')
+
+    var transEndEventNames = {
+      WebkitTransition : 'webkitTransitionEnd',
+      MozTransition    : 'transitionend',
+      OTransition      : 'oTransitionEnd otransitionend',
+      transition       : 'transitionend'
+    }
+
+    for (var name in transEndEventNames) {
+      if (el.style[name] !== undefined) {
+        return { end: transEndEventNames[name] }
+      }
+    }
+
+    return false // explicit for ie8 (  ._.)
+  }
+
+  // http://blog.alexmaccaw.com/css-transitions
+  $.fn.emulateTransitionEnd = function (duration) {
+    var called = false
+    var $el = this
+    $(this).one('bsTransitionEnd', function () { called = true })
+    var callback = function () { if (!called) $($el).trigger($.support.transition.end) }
+    setTimeout(callback, duration)
+    return this
+  }
+
+  $(function () {
+    $.support.transition = transitionEnd()
+
+    if (!$.support.transition) return
+
+    $.event.special.bsTransitionEnd = {
+      bindType: $.support.transition.end,
+      delegateType: $.support.transition.end,
+      handle: function (e) {
+        if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
+      }
+    }
+  })
+
+}(jQuery);
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: collapse.js v3.3.7
+ * http://getbootstrap.com/javascript/#collapse
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+/* jshint latedef: false */
+
++function ($) {
+  'use strict';
+
+  // COLLAPSE PUBLIC CLASS DEFINITION
+  // ================================
+
+  var Collapse = function (element, options) {
+    this.$element      = $(element)
+    this.options       = $.extend({}, Collapse.DEFAULTS, options)
+    this.$trigger      = $('[data-toggle="collapse"][href="#' + element.id + '"],' +
+                           '[data-toggle="collapse"][data-target="#' + element.id + '"]')
+    this.transitioning = null
+
+    if (this.options.parent) {
+      this.$parent = this.getParent()
+    } else {
+      this.addAriaAndCollapsedClass(this.$element, this.$trigger)
+    }
+
+    if (this.options.toggle) this.toggle()
+  }
+
+  Collapse.VERSION  = '3.3.7'
+
+  Collapse.TRANSITION_DURATION = 350
+
+  Collapse.DEFAULTS = {
+    toggle: true
+  }
+
+  Collapse.prototype.dimension = function () {
+    var hasWidth = this.$element.hasClass('width')
+    return hasWidth ? 'width' : 'height'
+  }
+
+  Collapse.prototype.show = function () {
+    if (this.transitioning || this.$element.hasClass('in')) return
+
+    var activesData
+    var actives = this.$parent && this.$parent.children('.panel').children('.in, .collapsing')
+
+    if (actives && actives.length) {
+      activesData = actives.data('bs.collapse')
+      if (activesData && activesData.transitioning) return
+    }
+
+    var startEvent = $.Event('show.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    if (actives && actives.length) {
+      Plugin.call(actives, 'hide')
+      activesData || actives.data('bs.collapse', null)
+    }
+
+    var dimension = this.dimension()
+
+    this.$element
+      .removeClass('collapse')
+      .addClass('collapsing')[dimension](0)
+      .attr('aria-expanded', true)
+
+    this.$trigger
+      .removeClass('collapsed')
+      .attr('aria-expanded', true)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse in')[dimension]('')
+      this.transitioning = 0
+      this.$element
+        .trigger('shown.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    var scrollSize = $.camelCase(['scroll', dimension].join('-'))
+
+    this.$element
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)[dimension](this.$element[0][scrollSize])
+  }
+
+  Collapse.prototype.hide = function () {
+    if (this.transitioning || !this.$element.hasClass('in')) return
+
+    var startEvent = $.Event('hide.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    var dimension = this.dimension()
+
+    this.$element[dimension](this.$element[dimension]())[0].offsetHeight
+
+    this.$element
+      .addClass('collapsing')
+      .removeClass('collapse in')
+      .attr('aria-expanded', false)
+
+    this.$trigger
+      .addClass('collapsed')
+      .attr('aria-expanded', false)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.transitioning = 0
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse')
+        .trigger('hidden.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    this.$element
+      [dimension](0)
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)
+  }
+
+  Collapse.prototype.toggle = function () {
+    this[this.$element.hasClass('in') ? 'hide' : 'show']()
+  }
+
+  Collapse.prototype.getParent = function () {
+    return $(this.options.parent)
+      .find('[data-toggle="collapse"][data-parent="' + this.options.parent + '"]')
+      .each($.proxy(function (i, element) {
+        var $element = $(element)
+        this.addAriaAndCollapsedClass(getTargetFromTrigger($element), $element)
+      }, this))
+      .end()
+  }
+
+  Collapse.prototype.addAriaAndCollapsedClass = function ($element, $trigger) {
+    var isOpen = $element.hasClass('in')
+
+    $element.attr('aria-expanded', isOpen)
+    $trigger
+      .toggleClass('collapsed', !isOpen)
+      .attr('aria-expanded', isOpen)
+  }
+
+  function getTargetFromTrigger($trigger) {
+    var href
+    var target = $trigger.attr('data-target')
+      || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
+
+    return $(target)
+  }
+
+
+  // COLLAPSE PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.collapse')
+      var options = $.extend({}, Collapse.DEFAULTS, $this.data(), typeof option == 'object' && option)
+
+      if (!data && options.toggle && /show|hide/.test(option)) options.toggle = false
+      if (!data) $this.data('bs.collapse', (data = new Collapse(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  var old = $.fn.collapse
+
+  $.fn.collapse             = Plugin
+  $.fn.collapse.Constructor = Collapse
+
+
+  // COLLAPSE NO CONFLICT
+  // ====================
+
+  $.fn.collapse.noConflict = function () {
+    $.fn.collapse = old
+    return this
+  }
+
+
+  // COLLAPSE DATA-API
+  // =================
+
+  $(document).on('click.bs.collapse.data-api', '[data-toggle="collapse"]', function (e) {
+    var $this   = $(this)
+
+    if (!$this.attr('data-target')) e.preventDefault()
+
+    var $target = getTargetFromTrigger($this)
+    var data    = $target.data('bs.collapse')
+    var option  = data ? 'toggle' : $this.data()
+
+    Plugin.call($target, option)
+  })
+
+}(jQuery);
+</script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.sourceCode, pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan');
+  rCodeBlocks.each(function() {
+
+    // if code block has been labeled with class `fold-show`, show the code on init!
+    var classList = $(this).attr('class').split(/\s+/);
+    for (var i = 0; i < classList.length; i++) {
+    if (classList[i] === 'fold-show') {
+        show = true;
+      }
+    }
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    if (show)
+      div.addClass('in');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (show ? 'Hide' : 'Code') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs code-folding-btn pull-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-target', '#' + id)
+        .attr('aria-expanded', show)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // hack: return show to false, otherwise all next codeBlocks will be shown!
+    show = false;
+
+    // update state of button on show/hide
+    div.on('hidden.bs.collapse', function () {
+      showCodeText.text('Code');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+    });
+  });
+
+}
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: dropdown.js v3.3.7
+ * http://getbootstrap.com/javascript/#dropdowns
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // DROPDOWN CLASS DEFINITION
+  // =========================
+
+  var backdrop = '.dropdown-backdrop'
+  var toggle   = '[data-toggle="dropdown"]'
+  var Dropdown = function (element) {
+    $(element).on('click.bs.dropdown', this.toggle)
+  }
+
+  Dropdown.VERSION = '3.3.7'
+
+  function getParent($this) {
+    var selector = $this.attr('data-target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+    }
+
+    var $parent = selector && $(selector)
+
+    return $parent && $parent.length ? $parent : $this.parent()
+  }
+
+  function clearMenus(e) {
+    if (e && e.which === 3) return
+    $(backdrop).remove()
+    $(toggle).each(function () {
+      var $this         = $(this)
+      var $parent       = getParent($this)
+      var relatedTarget = { relatedTarget: this }
+
+      if (!$parent.hasClass('open')) return
+
+      if (e && e.type == 'click' && /input|textarea/i.test(e.target.tagName) && $.contains($parent[0], e.target)) return
+
+      $parent.trigger(e = $.Event('hide.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this.attr('aria-expanded', 'false')
+      $parent.removeClass('open').trigger($.Event('hidden.bs.dropdown', relatedTarget))
+    })
+  }
+
+  Dropdown.prototype.toggle = function (e) {
+    var $this = $(this)
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    clearMenus()
+
+    if (!isActive) {
+      if ('ontouchstart' in document.documentElement && !$parent.closest('.navbar-nav').length) {
+        // if mobile we use a backdrop because click events don't delegate
+        $(document.createElement('div'))
+          .addClass('dropdown-backdrop')
+          .insertAfter($(this))
+          .on('click', clearMenus)
+      }
+
+      var relatedTarget = { relatedTarget: this }
+      $parent.trigger(e = $.Event('show.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this
+        .trigger('focus')
+        .attr('aria-expanded', 'true')
+
+      $parent
+        .toggleClass('open')
+        .trigger($.Event('shown.bs.dropdown', relatedTarget))
+    }
+
+    return false
+  }
+
+  Dropdown.prototype.keydown = function (e) {
+    if (!/(38|40|27|32)/.test(e.which) || /input|textarea/i.test(e.target.tagName)) return
+
+    var $this = $(this)
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    if (!isActive && e.which != 27 || isActive && e.which == 27) {
+      if (e.which == 27) $parent.find(toggle).trigger('focus')
+      return $this.trigger('click')
+    }
+
+    var desc = ' li:not(.disabled):visible a'
+    var $items = $parent.find('.dropdown-menu' + desc)
+
+    if (!$items.length) return
+
+    var index = $items.index(e.target)
+
+    if (e.which == 38 && index > 0)                 index--         // up
+    if (e.which == 40 && index < $items.length - 1) index++         // down
+    if (!~index)                                    index = 0
+
+    $items.eq(index).trigger('focus')
+  }
+
+
+  // DROPDOWN PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this = $(this)
+      var data  = $this.data('bs.dropdown')
+
+      if (!data) $this.data('bs.dropdown', (data = new Dropdown(this)))
+      if (typeof option == 'string') data[option].call($this)
+    })
+  }
+
+  var old = $.fn.dropdown
+
+  $.fn.dropdown             = Plugin
+  $.fn.dropdown.Constructor = Dropdown
+
+
+  // DROPDOWN NO CONFLICT
+  // ====================
+
+  $.fn.dropdown.noConflict = function () {
+    $.fn.dropdown = old
+    return this
+  }
+
+
+  // APPLY TO STANDARD DROPDOWN ELEMENTS
+  // ===================================
+
+  $(document)
+    .on('click.bs.dropdown.data-api', clearMenus)
+    .on('click.bs.dropdown.data-api', '.dropdown form', function (e) { e.stopPropagation() })
+    .on('click.bs.dropdown.data-api', toggle, Dropdown.prototype.toggle)
+    .on('keydown.bs.dropdown.data-api', toggle, Dropdown.prototype.keydown)
+    .on('keydown.bs.dropdown.data-api', '.dropdown-menu', Dropdown.prototype.keydown)
+
+}(jQuery);
+</script>
+<style type="text/css">
+.code-folding-btn {
+  margin-bottom: 4px;
+}
+
+.row { display: flex; }
+.collapse { display: none; }
+.in { display:block }
+.pull-right > .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    float: left;
+    min-width: 160px;
+    padding: 5px 0;
+    margin: 2px 0 0;
+    font-size: 14px;
+    text-align: left;
+    list-style: none;
+    background-color: #fff;
+    -webkit-background-clip: padding-box;
+    background-clip: padding-box;
+    border: 1px solid #ccc;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: 4px;
+    -webkit-box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    box-shadow: 0 6px 12px rgba(0,0,0,.175);
+}
+
+.open > .dropdown-menu {
+    display: block;
+    color: #ffffff;
+    background-color: #ffffff;
+    background-image: none;
+    border-color: #92897e;
+}
+
+.dropdown-menu > li > a {
+  display: block;
+  padding: 3px 20px;
+  clear: both;
+  font-weight: 400;
+  line-height: 1.42857143;
+  color: #000000;
+  white-space: nowrap;
+}
+
+.dropdown-menu > li > a:hover,
+.dropdown-menu > li > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+}
+
+.dropdown-menu > .active > a,
+.dropdown-menu > .active > a:hover,
+.dropdown-menu > .active > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+  outline: 0;
+}
+.dropdown-menu > .disabled > a,
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  color: #aea79f;
+}
+
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  text-decoration: none;
+  cursor: not-allowed;
+  background-color: transparent;
+  background-image: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(enabled = false);
+}
+
+.btn {
+  display: inline-block;
+  margin-bottom: 1;
+  font-weight: normal;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  -ms-touch-action: manipulation;
+      touch-action: manipulation;
+  cursor: pointer;
+  background-image: none;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.42857143;
+  border-radius: 4px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn.active:focus,
+.btn.focus,
+.btn:active.focus,
+.btn.active.focus {
+  outline: 5px auto -webkit-focus-ring-color;
+  outline-offset: -2px;
+}
+.btn:hover,
+.btn:focus,
+.btn.focus {
+  color: #ffffff;
+  text-decoration: none;
+}
+.btn:active,
+.btn.active {
+  background-image: none;
+  outline: 0;
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn.disabled,
+.btn[disabled],
+fieldset[disabled] .btn {
+  cursor: not-allowed;
+  filter: alpha(opacity=65);
+  opacity: 0.65;
+  box-shadow: none;
+}
+a.btn.disabled,
+fieldset[disabled] a.btn {
+  pointer-events: none;
+}
+.btn-default {
+  color: #ffffff;
+  background-color: #aea79f; #important
+  border-color: #aea79f;
+}
+
+.btn-default:focus,
+.btn-default.focus {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #6f675e;
+}
+
+.btn-default:hover {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #92897e;
+}
+.btn-default:active,
+.btn-default.active,
+.btn-group > .btn:not(:first-child):not(:last-child):not(.dropdown-toggle) {
+  border-radius: 0;
+}
+.btn-group > .btn:first-child {
+  margin-left: 0;
+}
+.btn-group > .btn:first-child:not(:last-child):not(.dropdown-toggle) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn:last-child:not(:first-child),
+.btn-group > .dropdown-toggle:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group > .btn-group {
+  float: left;
+}
+.btn-group > .btn-group:not(:first-child):not(:last-child) > .btn {
+  border-radius: 0;
+}
+.btn-group > .btn-group:first-child:not(:last-child) > .btn:last-child,
+.btn-group > .btn-group:first-child:not(:last-child) > .dropdown-toggle {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn-group:last-child:not(:first-child) > .btn:first-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group .dropdown-toggle:active,
+.btn-group.open .dropdown-toggle {
+  outline: 0;
+}
+.btn-group > .btn + .dropdown-toggle {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+.btn-group > .btn-lg + .dropdown-toggle {
+  padding-right: 12px;
+  padding-left: 12px;
+}
+.btn-group.open .dropdown-toggle {
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn-group.open .dropdown-toggle.btn-link {
+  box-shadow: none;
+}
+
+</style>
+<script>
+var str = '<div class="btn-group pull-right" style="position: fixed; right: 50px; top: 10px; z-index: 200"><button type="button" class="btn btn-default btn-xs dropdown-toggle" id="allCodeButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" data-_extension-text-contrast=""><span>Code</span> <span class="caret"></span></button><ul class="dropdown-menu" style="min-width: 50px;"><li><a id="rmd-show-all-code" href="#">Show All Code</a></li><li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li></ul></div>';
+document.write(str);
+</script>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "hide");
+});
+</script>
+
+
+<style type="text/css">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li><a href="./">Spatial Data Science</a></li>
+
+<li class="divider"></li>
+<li class="chapter" data-level="" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i>Preface</a></li>
+<li class="part"><span><b>I Spatial Data</b></span></li>
+<li class="chapter" data-level="1" data-path="intro.html"><a href="intro.html"><i class="fa fa-check"></i><b>1</b> Getting Started</a>
+<ul>
+<li class="chapter" data-level="1.1" data-path="intro.html"><a href="intro.html#a-first-map"><i class="fa fa-check"></i><b>1.1</b> A first map</a></li>
+<li class="chapter" data-level="1.2" data-path="intro.html"><a href="intro.html#coordinate-reference-systems"><i class="fa fa-check"></i><b>1.2</b> Coordinate reference systems</a></li>
+<li class="chapter" data-level="1.3" data-path="intro.html"><a href="intro.html#rasterize"><i class="fa fa-check"></i><b>1.3</b> Raster and vector data</a></li>
+<li class="chapter" data-level="1.4" data-path="intro.html"><a href="intro.html#raster-types"><i class="fa fa-check"></i><b>1.4</b> Raster types</a></li>
+<li class="chapter" data-level="1.5" data-path="intro.html"><a href="intro.html#time-series-arrays-data-cubes"><i class="fa fa-check"></i><b>1.5</b> Time series, arrays, data cubes</a></li>
+<li class="chapter" data-level="1.6" data-path="intro.html"><a href="intro.html#support"><i class="fa fa-check"></i><b>1.6</b> Support</a></li>
+<li class="chapter" data-level="1.7" data-path="intro.html"><a href="intro.html#spatial-data-science-software"><i class="fa fa-check"></i><b>1.7</b> Spatial data science software</a></li>
+<li class="chapter" data-level="1.8" data-path="intro.html"><a href="intro.html#exercises"><i class="fa fa-check"></i><b>1.8</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="cs.html"><a href="cs.html"><i class="fa fa-check"></i><b>2</b> Coordinates</a>
+<ul>
+<li class="chapter" data-level="2.1" data-path="cs.html"><a href="cs.html#units"><i class="fa fa-check"></i><b>2.1</b> Quantities, units, datum</a></li>
+<li class="chapter" data-level="2.2" data-path="cs.html"><a href="cs.html#ellipsoidal-coordinates"><i class="fa fa-check"></i><b>2.2</b> Ellipsoidal coordinates</a></li>
+<li class="chapter" data-level="2.3" data-path="cs.html"><a href="cs.html#crs"><i class="fa fa-check"></i><b>2.3</b> Coordinate Reference Systems</a></li>
+<li class="chapter" data-level="2.4" data-path="intro.html"><a href="intro.html#proj"><i class="fa fa-check"></i><b>2.4</b> PROJ and mapping accuracy</a></li>
+<li class="chapter" data-level="2.5" data-path="cs.html"><a href="cs.html#wkt2"><i class="fa fa-check"></i><b>2.5</b> WKT-2</a></li>
+<li class="chapter" data-level="2.6" data-path="cs.html"><a href="cs.html#exercises-1"><i class="fa fa-check"></i><b>2.6</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="geometries.html"><a href="geometries.html"><i class="fa fa-check"></i><b>3</b> Geometries</a>
+<ul>
+<li class="chapter" data-level="3.1" data-path="geometries.html"><a href="geometries.html#simplefeatures"><i class="fa fa-check"></i><b>3.1</b> Simple feature geometries</a></li>
+<li class="chapter" data-level="3.2" data-path="geometries.html"><a href="geometries.html#opgeom"><i class="fa fa-check"></i><b>3.2</b> Operations on geometries</a></li>
+<li class="chapter" data-level="3.3" data-path="geometries.html"><a href="geometries.html#precision"><i class="fa fa-check"></i><b>3.3</b> Precision</a></li>
+<li class="chapter" data-level="3.4" data-path="geometries.html"><a href="geometries.html#coverages"><i class="fa fa-check"></i><b>3.4</b> Coverages: tessellations and rasters</a></li>
+<li class="chapter" data-level="3.5" data-path="geometries.html"><a href="geometries.html#networks"><i class="fa fa-check"></i><b>3.5</b> Networks</a></li>
+<li class="chapter" data-level="3.6" data-path="geometries.html"><a href="geometries.html#exercises-2"><i class="fa fa-check"></i><b>3.6</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="4" data-path="spherical.html"><a href="spherical.html"><i class="fa fa-check"></i><b>4</b> Spherical Geometries</a>
+<ul>
+<li class="chapter" data-level="4.1" data-path="spherical.html"><a href="spherical.html#straight-lines"><i class="fa fa-check"></i><b>4.1</b> Straight lines</a></li>
+<li class="chapter" data-level="4.2" data-path="spherical.html"><a href="spherical.html#ring-direction"><i class="fa fa-check"></i><b>4.2</b> Ring direction</a></li>
+<li class="chapter" data-level="4.3" data-path="spherical.html"><a href="spherical.html#full-polygon"><i class="fa fa-check"></i><b>4.3</b> Full polygon</a></li>
+<li class="chapter" data-level="4.4" data-path="spherical.html"><a href="spherical.html#bounding-box-rectangle-and-cap"><i class="fa fa-check"></i><b>4.4</b> Bounding box, rectangle, and cap</a></li>
+<li class="chapter" data-level="4.5" data-path="spherical.html"><a href="spherical.html#validity-on-the-sphere"><i class="fa fa-check"></i><b>4.5</b> Validity on the sphere</a></li>
+<li class="chapter" data-level="4.6" data-path="spherical.html"><a href="spherical.html#exercises-3"><i class="fa fa-check"></i><b>4.6</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="5" data-path="featureattributes.html"><a href="featureattributes.html"><i class="fa fa-check"></i><b>5</b> Attributes and Support</a>
+<ul>
+<li class="chapter" data-level="5.1" data-path="featureattributes.html"><a href="featureattributes.html#agr"><i class="fa fa-check"></i><b>5.1</b> Attribute-geometry relationships and support</a></li>
+<li class="chapter" data-level="5.2" data-path="featureattributes.html"><a href="featureattributes.html#aggregating-and-summarising"><i class="fa fa-check"></i><b>5.2</b> Aggregating and Summarising</a></li>
+<li class="chapter" data-level="5.3" data-path="featureattributes.html"><a href="featureattributes.html#area-weighted"><i class="fa fa-check"></i><b>5.3</b> Area-weighted interpolation</a></li>
+<li class="chapter" data-level="5.4" data-path="featureattributes.html"><a href="featureattributes.html#updownscaling"><i class="fa fa-check"></i><b>5.4</b> Up- and Downscaling</a></li>
+<li class="chapter" data-level="5.5" data-path="featureattributes.html"><a href="featureattributes.html#exercises-4"><i class="fa fa-check"></i><b>5.5</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="6" data-path="datacube.html"><a href="datacube.html"><i class="fa fa-check"></i><b>6</b> Data Cubes</a>
+<ul>
+<li class="chapter" data-level="6.1" data-path="datacube.html"><a href="datacube.html#a-four-dimensional-data-cube"><i class="fa fa-check"></i><b>6.1</b> A four-dimensional data cube</a></li>
+<li class="chapter" data-level="6.2" data-path="datacube.html"><a href="datacube.html#dimensions-attributes-and-support"><i class="fa fa-check"></i><b>6.2</b> Dimensions, attributes, and support</a></li>
+<li class="chapter" data-level="6.3" data-path="datacube.html"><a href="datacube.html#dcoperations"><i class="fa fa-check"></i><b>6.3</b> Operations on data cubes</a></li>
+<li class="chapter" data-level="6.4" data-path="datacube.html"><a href="datacube.html#vectordatacubes"><i class="fa fa-check"></i><b>6.4</b> Aggregating raster to vector cubes</a></li>
+<li class="chapter" data-level="6.5" data-path="datacube.html"><a href="datacube.html#switching"><i class="fa fa-check"></i><b>6.5</b> Switching dimension with attributes</a></li>
+<li class="chapter" data-level="6.6" data-path="datacube.html"><a href="datacube.html#otherdynamic"><i class="fa fa-check"></i><b>6.6</b> Other dynamic spatial data</a></li>
+<li class="chapter" data-level="6.7" data-path="datacube.html"><a href="datacube.html#exercises-5"><i class="fa fa-check"></i><b>6.7</b> Exercises</a></li>
+</ul></li>
+<li class="part"><span><b>II R for Spatial Data Science</b></span></li>
+<li class="chapter" data-level="7" data-path="sf.html"><a href="sf.html"><i class="fa fa-check"></i><b>7</b> Introduction to sf and stars</a>
+<ul>
+<li class="chapter" data-level="7.1" data-path="sf.html"><a href="sf.html#sfintro"><i class="fa fa-check"></i><b>7.1</b> Package <code>sf</code></a></li>
+<li class="chapter" data-level="7.2" data-path="sf.html"><a href="sf.html#spatial-joins"><i class="fa fa-check"></i><b>7.2</b> Spatial joins</a></li>
+<li class="chapter" data-level="7.3" data-path="sf.html"><a href="sf.html#package-stars"><i class="fa fa-check"></i><b>7.3</b> Package <code>stars</code></a></li>
+<li class="chapter" data-level="7.4" data-path="sf.html"><a href="sf.html#vector-data-cube-examples"><i class="fa fa-check"></i><b>7.4</b> Vector data cube examples</a></li>
+<li class="chapter" data-level="7.5" data-path="sf.html"><a href="sf.html#raster-to-vector"><i class="fa fa-check"></i><b>7.5</b> raster-to-vector, vector-to-raster</a></li>
+<li class="chapter" data-level="7.6" data-path="sf.html"><a href="sf.html#projsf"><i class="fa fa-check"></i><b>7.6</b> Coordinate transformations and conversions</a></li>
+<li class="chapter" data-level="7.7" data-path="sf.html"><a href="sf.html#warp"><i class="fa fa-check"></i><b>7.7</b> transforming and warping rasters</a></li>
+<li class="chapter" data-level="7.8" data-path="sf.html"><a href="sf.html#exercises-6"><i class="fa fa-check"></i><b>7.8</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="8" data-path="large.html"><a href="large.html"><i class="fa fa-check"></i><b>8</b> Large data sets</a>
+<ul>
+<li class="chapter" data-level="8.1" data-path="large.html"><a href="large.html#largesf"><i class="fa fa-check"></i><b>8.1</b> Vector data: <code>sf</code></a></li>
+<li class="chapter" data-level="8.2" data-path="large.html"><a href="large.html#raster-data-stars"><i class="fa fa-check"></i><b>8.2</b> Raster data: <code>stars</code></a></li>
+<li class="chapter" data-level="8.3" data-path="large.html"><a href="large.html#very-large-data-cubes"><i class="fa fa-check"></i><b>8.3</b> Very large data cubes</a></li>
+<li class="chapter" data-level="8.4" data-path="large.html"><a href="large.html#exercises-7"><i class="fa fa-check"></i><b>8.4</b> Exercises</a></li>
+</ul></li>
+<li class="chapter" data-level="9" data-path="plotting.html"><a href="plotting.html"><i class="fa fa-check"></i><b>9</b> Plotting spatial data</a>
+<ul>
+<li class="chapter" data-level="9.1" data-path="plotting.html"><a href="plotting.html#transform"><i class="fa fa-check"></i><b>9.1</b> Every plot is a projection</a></li>
+<li class="chapter" data-level="9.2" data-path="plotting.html"><a href="plotting.html#plotting-points-lines-polygons-grid-cells"><i class="fa fa-check"></i><b>9.2</b> Plotting points, lines, polygons, grid cells</a></li>
+<li class="chapter" data-level="9.3" data-path="plotting.html"><a href="plotting.html#base-plot"><i class="fa fa-check"></i><b>9.3</b> Base <code>plot</code></a></li>
+<li class="chapter" data-level="9.4" data-path="plotting.html"><a href="plotting.html#maps-with-ggplot2"><i class="fa fa-check"></i><b>9.4</b> Maps with <code>ggplot2</code></a></li>
+<li class="chapter" data-level="9.5" data-path="plotting.html"><a href="plotting.html#tmap"><i class="fa fa-check"></i><b>9.5</b> Maps with <code>tmap</code></a></li>
+<li class="chapter" data-level="9.6" data-path="plotting.html"><a href="plotting.html#interactive-maps-leaflet-mapview-tmap"><i class="fa fa-check"></i><b>9.6</b> Interactive maps: <code>leaflet</code>, <code>mapview</code>, <code>tmap</code></a></li>
+</ul></li>
+<li class="part"><span><b>III Models for Spatial Data</b></span></li>
+<li class="chapter" data-level="10" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html"><i class="fa fa-check"></i><b>10</b> Statistical modelling of spatial data</a>
+<ul>
+<li class="chapter" data-level="10.1" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html#design"><i class="fa fa-check"></i><b>10.1</b> Design-based and model-based inference</a></li>
+<li class="chapter" data-level="10.2" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html#predictive-models-with-coordinates"><i class="fa fa-check"></i><b>10.2</b> Predictive models with coordinates</a></li>
+<li class="chapter" data-level="10.3" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html#model-based-inference"><i class="fa fa-check"></i><b>10.3</b> Model-based inference</a></li>
+</ul></li>
+<li class="chapter" data-level="11" data-path="pointpatterns.html"><a href="pointpatterns.html"><i class="fa fa-check"></i><b>11</b> Point Pattern Analysis</a></li>
+<li class="chapter" data-level="12" data-path="interpolation.html"><a href="interpolation.html"><i class="fa fa-check"></i><b>12</b> Spatial Interpolation</a>
+<ul>
+<li class="chapter" data-level="12.1" data-path="interpolation.html"><a href="interpolation.html#a-first-dataset"><i class="fa fa-check"></i><b>12.1</b> A first dataset</a></li>
+<li class="chapter" data-level="12.2" data-path="interpolation.html"><a href="interpolation.html#sample-variogram"><i class="fa fa-check"></i><b>12.2</b> Sample variogram</a></li>
+<li class="chapter" data-level="12.3" data-path="interpolation.html"><a href="interpolation.html#fitting-variogram-models"><i class="fa fa-check"></i><b>12.3</b> Fitting variogram models</a></li>
+<li class="chapter" data-level="12.4" data-path="interpolation.html"><a href="interpolation.html#kriging"><i class="fa fa-check"></i><b>12.4</b> Kriging interpolation</a></li>
+<li class="chapter" data-level="12.5" data-path="interpolation.html"><a href="interpolation.html#blockkriging"><i class="fa fa-check"></i><b>12.5</b> Areal means: block kriging</a></li>
+<li class="chapter" data-level="12.6" data-path="interpolation.html"><a href="interpolation.html#conditional-simulation"><i class="fa fa-check"></i><b>12.6</b> Conditional simulation</a></li>
+<li class="chapter" data-level="12.7" data-path="interpolation.html"><a href="interpolation.html#trend-models"><i class="fa fa-check"></i><b>12.7</b> Trend models</a></li>
+<li class="chapter" data-level="12.8" data-path="interpolation.html"><a href="interpolation.html#atpk"><i class="fa fa-check"></i><b>12.8</b> Area-to-point kriging</a></li>
+</ul></li>
+<li class="chapter" data-level="13" data-path="stgeostatistics.html"><a href="stgeostatistics.html"><i class="fa fa-check"></i><b>13</b> Multivariate and Spatiotemporal Geostatistics</a>
+<ul>
+<li class="chapter" data-level="13.1" data-path="stgeostatistics.html"><a href="stgeostatistics.html#preparing-the-air-quality-dataset"><i class="fa fa-check"></i><b>13.1</b> Preparing the air quality dataset</a></li>
+<li class="chapter" data-level="13.2" data-path="stgeostatistics.html"><a href="stgeostatistics.html#multivariable-geostatistics"><i class="fa fa-check"></i><b>13.2</b> Multivariable geostatistics</a></li>
+<li class="chapter" data-level="13.3" data-path="stgeostatistics.html"><a href="stgeostatistics.html#spatiotemporal-geostatistics"><i class="fa fa-check"></i><b>13.3</b> Spatiotemporal geostatistics</a></li>
+</ul></li>
+<li class="chapter" data-level="14" data-path="area.html"><a href="area.html"><i class="fa fa-check"></i><b>14</b> Proximity and Areal Data</a>
+<ul>
+<li class="chapter" data-level="14.1" data-path="area.html"><a href="area.html#representing-proximity-in-spdep"><i class="fa fa-check"></i><b>14.1</b> Representing proximity in <strong>spdep</strong></a></li>
+<li class="chapter" data-level="14.2" data-path="area.html"><a href="area.html#contiguous-neighbours"><i class="fa fa-check"></i><b>14.2</b> Contiguous neighbours</a></li>
+<li class="chapter" data-level="14.3" data-path="area.html"><a href="area.html#graph-based-neighbours"><i class="fa fa-check"></i><b>14.3</b> Graph-based neighbours</a></li>
+<li class="chapter" data-level="14.4" data-path="area.html"><a href="area.html#distance-based-neighbours"><i class="fa fa-check"></i><b>14.4</b> Distance-based neighbours</a></li>
+<li class="chapter" data-level="14.5" data-path="area.html"><a href="area.html#weights-specification"><i class="fa fa-check"></i><b>14.5</b> Weights specification</a></li>
+<li class="chapter" data-level="14.6" data-path="area.html"><a href="area.html#higher-order-neighbours"><i class="fa fa-check"></i><b>14.6</b> Higher order neighbours</a></li>
+</ul></li>
+<li class="chapter" data-level="15" data-path="spatautocorr.html"><a href="spatautocorr.html"><i class="fa fa-check"></i><b>15</b> Measures of spatial autocorrelation</a>
+<ul>
+<li class="chapter" data-level="15.1" data-path="spatautocorr.html"><a href="spatautocorr.html#measures-and-process-mis-specification"><i class="fa fa-check"></i><b>15.1</b> Measures and process mis-specification</a></li>
+<li class="chapter" data-level="15.2" data-path="spatautocorr.html"><a href="spatautocorr.html#global-measures"><i class="fa fa-check"></i><b>15.2</b> Global measures</a></li>
+<li class="chapter" data-level="15.3" data-path="spatautocorr.html"><a href="spatautocorr.html#local-measures"><i class="fa fa-check"></i><b>15.3</b> Local measures</a></li>
+</ul></li>
+<li class="chapter" data-level="16" data-path="spatglmm.html"><a href="spatglmm.html"><i class="fa fa-check"></i><b>16</b> Spatial Regression</a>
+<ul>
+<li class="chapter" data-level="16.1" data-path="spatglmm.html"><a href="spatglmm.html#markov-random-field-and-multilevel-models-with-spatial-weights"><i class="fa fa-check"></i><b>16.1</b> Markov random field and multilevel models with spatial weights</a></li>
+<li class="chapter" data-level="16.2" data-path="spatglmm.html"><a href="spatglmm.html#multilevel-models-of-the-boston-data-set"><i class="fa fa-check"></i><b>16.2</b> Multilevel models of the Boston data set</a></li>
+</ul></li>
+<li class="chapter" data-level="17" data-path="spatecon.html"><a href="spatecon.html"><i class="fa fa-check"></i><b>17</b> Spatial econometrics models</a>
+<ul>
+<li class="chapter" data-level="17.1" data-path="spatecon.html"><a href="spatecon.html#spatial-econometric-models-definitions"><i class="fa fa-check"></i><b>17.1</b> Spatial econometric models: definitions</a></li>
+<li class="chapter" data-level="17.2" data-path="spatecon.html"><a href="spatecon.html#maximum-likelihood-estimation-in-spatialreg"><i class="fa fa-check"></i><b>17.2</b> Maximum likelihood estimation in <strong>spatialreg</strong></a></li>
+<li class="chapter" data-level="17.3" data-path="spatecon.html"><a href="spatecon.html#impacts"><i class="fa fa-check"></i><b>17.3</b> Impacts</a></li>
+<li class="chapter" data-level="17.4" data-path="spatecon.html"><a href="spatecon.html#spatecon_pred"><i class="fa fa-check"></i><b>17.4</b> Predictions</a></li>
+</ul></li>
+<li class="chapter" data-level="18" data-path="sp-and-raster.html"><a href="sp-and-raster.html"><i class="fa fa-check"></i><b>18</b> sp and raster</a>
+<ul>
+<li class="chapter" data-level="18.1" data-path="sp-and-raster.html"><a href="sp-and-raster.html#links-and-differences-between-sf-and-sp"><i class="fa fa-check"></i><b>18.1</b> links and differences between sf and sp</a></li>
+<li class="chapter" data-level="18.2" data-path="sp-and-raster.html"><a href="sp-and-raster.html#migration-packages"><i class="fa fa-check"></i><b>18.2</b> migration packages</a></li>
+<li class="chapter" data-level="18.3" data-path="sp-and-raster.html"><a href="sp-and-raster.html#raster-stars-and-sf"><i class="fa fa-check"></i><b>18.3</b> raster, stars and sf</a></li>
+</ul></li>
+<li class="chapter" data-level="" data-path="all-r-code-in-this-book.html"><a href="all-r-code-in-this-book.html"><i class="fa fa-check"></i>All R code in this book</a></li>
+<li class="chapter" data-level="" data-path="r-basics.html"><a href="r-basics.html"><i class="fa fa-check"></i>R basics</a>
+<ul>
+<li class="chapter" data-level="" data-path="r-basics.html"><a href="r-basics.html#pipes"><i class="fa fa-check"></i>Pipes</a></li>
+<li class="chapter" data-level="18.4" data-path="r-basics.html"><a href="r-basics.html#data-structures"><i class="fa fa-check"></i><b>18.4</b> Data structures</a></li>
+</ul></li>
+<li class="chapter" data-level="" data-path="references.html"><a href="references.html"><i class="fa fa-check"></i>References</a></li>
+<li class="divider"></li>
+<li><a href="https://github.com/rstudio/bookdown" target="blank">Published with bookdown</a></li>
+
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Spatial Data Science</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="spatecon" class="section level1" number="17">
+<h1><span class="header-section-number">Chapter 17</span> Spatial econometrics models</h1>
+<p>Spatial autoregression models using spatial weights matrices were described in some detail using maximum likelihood estimation some time ago <span class="citation">(Cliff and Ord <a href="#ref-cliff+ord:73" role="doc-biblioref">1973</a>, <a href="#ref-cliff+ord:81" role="doc-biblioref">1981</a>)</span>. A family of models was elaborated in spatial econometric terms extending earlier work, and in many cases using the simultaneous autoregressive framework and row standardization of spatial weights <span class="citation">(Anselin <a href="#ref-a88" role="doc-biblioref">1988</a>)</span>. The simultaneous and conditional autoregressive frameworks can be compared, and both can be supplemented using case weights to reflect the relative importance of different observations <span class="citation">(Waller and Gotway <a href="#ref-WallerGotway:2004" role="doc-biblioref">2004</a>)</span>.</p>
+<p>Before moving to presentations of issues raised in fitting spatial regression models, it is worth making a few further points. A recent review of spatial regression in a spatial econometrics setting is given by Kelejian and Piras <span class="citation">(<a href="#ref-kelejian+piras:17" role="doc-biblioref">2017</a>)</span>; note that their usage is to call the spatial coefficient of the lagged response <span class="math inline">\(\lambda\)</span> and that of the lagged residuals <span class="math inline">\(\rho\)</span>, the reverse of other usage <span class="citation">(Anselin <a href="#ref-a88" role="doc-biblioref">1988</a>; LeSage and Pace <a href="#ref-lesage+pace:09" role="doc-biblioref">2009</a>)</span>; here we use <span class="math inline">\(\rho_{\mathrm{Lag}}\)</span> for the spatial coefficient in the spatial lag model, and <span class="math inline">\(\rho_{\mathrm{Err}}\)</span> for the spatial error model. One interesting finding is that relatively dense spatial weights matrices may downweight model estimates, suggesting that sparser weights are preferable <span class="citation">(Smith <a href="#ref-smith:09" role="doc-biblioref">2009</a>)</span>. Another useful finding is that the presence of residual spatial autocorrelation need not bias the estimates of variance of regression coefficients, provided that the covariates themselves do not exhibit spatial autocorrelation <span class="citation">(Smith and Lee <a href="#ref-smith+lee12" role="doc-biblioref">2012</a>)</span>. In general, however, the footprints of the spatial processes of the response and covariates may not be aligned, and if covariates and the residual are autocorrelated, it is likely that the estimates of variance of regression coefficients will be biassed downwards if attempts are not made to model the spatial processes.</p>
+<div id="spatial-econometric-models-definitions" class="section level2" number="17.1">
+<h2><span class="header-section-number">17.1</span> Spatial econometric models: definitions</h2>
+<p>In trying to model spatial processes, one of the earliiest spatial econometric representations is to model the spatial autocorrelation in the residual (spatial error model, SEM):</p>
+<p><span class="math display">\[
+{\mathbf y} = {\mathbf X}{\mathbf \beta} + {\mathbf u},
+\qquad {\mathbf u} = \rho_{\mathrm{Err}} {\mathbf W} {\mathbf u} + {\mathbf \varepsilon},
+\]</span>
+where <span class="math inline">\({\mathbf y}\)</span> is an <span class="math inline">\((N \times 1)\)</span> vector of observations on a response variable taken at each of <span class="math inline">\(N\)</span> locations, <span class="math inline">\({\mathbf X}\)</span> is an <span class="math inline">\((N \times k)\)</span> matrix of covariates, <span class="math inline">\({\mathbf \beta}\)</span> is a <span class="math inline">\((k \times 1)\)</span> vector of parameters, <span class="math inline">\({\mathbf u}\)</span> is an <span class="math inline">\((N \times 1)\)</span> spatially autocorrelated disturbance vector, <span class="math inline">\({\mathbf \varepsilon}\)</span> is an <span class="math inline">\((N \times 1)\)</span> vector of independent and identically distributed disturbances and <span class="math inline">\(\rho_{\mathrm{Err}}\)</span> is a scalar spatial parameter.</p>
+<p>This model, and other spatial econometric models, do not fit into the mixed models framework. Here the modelled spatial process interacts directly with the response, covariates, and their coefficients. This modelling framework appears to draw on an older tradition extending time series to two dimensions:</p>
+<p><span class="math display">\[
+{\mathbf u} = ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})^{-1} {\mathbf \varepsilon},
+\qquad {\mathbf y} = {\mathbf X}{\mathbf \beta} + ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})^{-1} {\mathbf \varepsilon},
+\qquad ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W}) {\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W}) {\mathbf X}{\mathbf \beta} + {\mathbf \varepsilon}.
+\]</span></p>
+<p>If the processes in the covariates and the response match, we should find little difference between the coefficients of a least squares and a SEM, but very often they diverge, suggesting that a Hausman test for this condition should be employed <span class="citation">(Pace and LeSage <a href="#ref-pace+lesage:08" role="doc-biblioref">2008</a>)</span>. This may be related to earlier discussions of a spatial equivalent to the unit root and cointegration where spatial processes match <span class="citation">(Fingleton <a href="#ref-fingleton:99" role="doc-biblioref">1999</a>)</span>.</p>
+<p>A model with a spatial process in the response only is termed a spatial lag model (SLM, often SAR - spatial autoregressive) <span class="citation">(LeSage and Pace <a href="#ref-lesage+pace:09" role="doc-biblioref">2009</a>)</span>. Durbin models add the spatially lagged covariates to the covariates included in the spatial model; spatial Durbin models are reviewed by Mur and Angulo <span class="citation">(<a href="#ref-mur+angulo:06" role="doc-biblioref">2006</a>)</span>. If it is chosen to admit a spatial process in the residuals in addition to a spatial process in the response, again two models are formed, a general nested model (GNM) nesting all the others, and a model without spatially lagged covariates (SAC, also known as SARAR - Spatial AutoRegressive-AutoRegressive model). If neither the residuals nor the response are modelled with spatial processes, spatially lagged covariates may be added to a linear model, as a spatially lagged X model (SLX) <span class="citation">(Elhorst <a href="#ref-elhorst:10" role="doc-biblioref">2010</a>; Bivand <a href="#ref-bivand:12" role="doc-biblioref">2012</a>; LeSage <a href="#ref-lesage:14" role="doc-biblioref">2014</a>; Halleck Vega and Elhorst <a href="#ref-halleck-vega+elhorst:15" role="doc-biblioref">2015</a>)</span>. We can write the general nested model (GNM) as:</p>
+<p><span class="math display">\[
+{\mathbf y} = \rho_{\mathrm{Lag}} {\mathbf W}{\mathbf y} + {\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma} + {\mathbf u},
+\qquad {\mathbf u} = \rho_{\mathrm{Err}} {\mathbf W} {\mathbf u} + {\mathbf \varepsilon},
+\]</span>
+where <span class="math inline">\({\mathbf \gamma}\)</span> is a <span class="math inline">\((k&#39; \times 1)\)</span> vector of parameters. <span class="math inline">\(k&#39;\)</span> defines the subset of the intercept and covariates, often <span class="math inline">\(k&#39; = k-1\)</span> when using row standardised spatial weights and omitting the spatially lagged intercept.</p>
+<p>This may be constrained to the double spatial coefficient model SAC/SARAR by setting <span class="math inline">\({\mathbf \gamma} = 0\)</span>, to the spatial Durbin (SDM) by setting <span class="math inline">\(\rho_{\mathrm{Err}} = 0\)</span>, and to the error Durbin model (SDEM) by setting <span class="math inline">\(\rho_{\mathrm{Lag}} = 0\)</span>. Imposing more conditions gives the spatial lag model (SLM) with <span class="math inline">\({\mathbf \gamma} = 0\)</span> and <span class="math inline">\(\rho_{\mathrm{Err}} = 0\)</span>, the spatial error model (SEM) with <span class="math inline">\({\mathbf \gamma} = 0\)</span> and <span class="math inline">\(\rho_{\mathrm{Lag}} = 0\)</span>, and the spatially lagged X model (SLX) with <span class="math inline">\(\rho_{\mathrm{Lag}} = 0\)</span> and <span class="math inline">\(\rho_{\mathrm{Err}} = 0\)</span>.</p>
+<p>Although making predictions for new locations for which covariates are observed was raised as an issue some time ago, it has many years to make progress in reviewing the possibilities <span class="citation">(Bivand <a href="#ref-bivand:02" role="doc-biblioref">2002</a>; Goulard, Laurent, and Thomas-Agnan <a href="#ref-goulardetal:17" role="doc-biblioref">2017</a>)</span>. The prediction methods for SLM, SDM, SEM, SDEM, SAC and GNM models fitted with maximum likelihood were contributed as a Google Summer of Coding project by Martin Gubri. This work, and work on similar models with missing data <span class="citation">(Suesse <a href="#ref-suesse:18" role="doc-biblioref">2018</a>)</span> is also relevant for exploring censored median house values in the Boston data set. Work on prediction also exposed the importance of the reduced form of these models, in which the spatial process in the response interacts with the regression coefficients in the SLM, SDM, SAC and GNM models.</p>
+<p>The consequence of these interactions is that a unit change in a covariate will only impact the response as the value of the regression coefficient if the spatial coefficient of the lagged response is zero. Where it is non-zero, global spillovers, impacts, come into play, and these impacts should be reported rather than the regression coefficients <span class="citation">(LeSage and Pace <a href="#ref-lesage+pace:09" role="doc-biblioref">2009</a>; Elhorst <a href="#ref-elhorst:10" role="doc-biblioref">2010</a>; Bivand <a href="#ref-bivand:12" role="doc-biblioref">2012</a>; LeSage <a href="#ref-lesage:14" role="doc-biblioref">2014</a>; Halleck Vega and Elhorst <a href="#ref-halleck-vega+elhorst:15" role="doc-biblioref">2015</a>)</span>. Local impacts may be reported for SDEM and SLX models, using linear combination to calculate standard errors for the total impacts of each covariate (sums of coefficients on the covariates and their spatial lags).</p>
+<p>This can be seen from the GNM data generation process:</p>
+<p><span class="math display">\[
+({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W}){\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})({\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma}) + {\mathbf \varepsilon},
+\]</span>
+re-writing:</p>
+<p><span class="math display">\[
+{\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1}({\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma}) + ({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1}({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})^{-1}{\mathbf \varepsilon}.
+\]</span>
+There is interaction between the <span class="math inline">\(\rho_{\mathrm{Lag}}\)</span> and <span class="math inline">\({\mathbf \beta}\)</span> (and <span class="math inline">\({\mathbf \gamma}\)</span> if present) coefficients. This can be seen from the partial derivatives: <span class="math inline">\(\partial y_i / \partial x_{jr} = (({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1} ({\mathbf I} \beta_r + {\mathbf W} \gamma_r))_{ij}\)</span>. This dense matrix <span class="math inline">\(S_r({\mathbf W}) = (({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1} ({\mathbf I} \beta_r + {\mathbf W} \gamma_r))\)</span> expresses the direct impacts (effects) on its principal diagonal, and indirect impacts in off-diagonal elements.</p>
+<p><span class="citation">Piras and Prucha (<a href="#ref-PIRAS2014103" role="doc-biblioref">2014</a>)</span> revisit and correct <span class="citation">Florax, Folmer, and Rey (<a href="#ref-FLORAX2003557" role="doc-biblioref">2003</a>)</span> (see also comments by <span class="citation">Hendry (<a href="#ref-HENDRY2006309" role="doc-biblioref">2006</a>)</span> and <span class="citation">Florax, Folmer, and Rey (<a href="#ref-FLORAX2006300" role="doc-biblioref">2006</a>)</span>), finding that the common use of pre-test strategies for model selection probably ought to be replaced by the estimation of the most general model appropriate for the relationships being modelled. In the light of this finding, pre-test model selection will not be used here.</p>
+<p>Current work in the <strong>spatialreg</strong> package is focused on refining the handling of spatially lagged covariates using a consistent <code>Durbin=</code> argument taking either a logical value or a formula giving the subset of covariates to add in spatially lagged form. There is a speculation that some covariates, for example some dummy variables, should not be added in spatially lagged form. This then extends to handling these included spatially lagged covariates appropriately in calculating impacts. This work applies to cross-sectional models fitted using MCMC or maximum likelihood, and will offer facilities to spatial panel models.</p>
+<p>It is worth mentioning the almost unexplored issues of functional form assumptions, for which flexible structures are useful, including spatial quantile regression presented in the <strong>McSpatial</strong> package <span class="citation">(McMillen <a href="#ref-mcmillen:13" role="doc-biblioref">2013</a>)</span>. There are further issues with discrete response variables, covered by some functions in <strong>McSpatial</strong>, and in the <strong>spatialprobit</strong> and <strong>ProbitSpatial</strong> packages <span class="citation">(Wilhelm and Matos <a href="#ref-RJ-2013-013" role="doc-biblioref">2013</a>; Martinetti and Geniaux <a href="#ref-MARTINETTI201730" role="doc-biblioref">2017</a>)</span>; the MCMC implementations of the former are based on LeSage and Pace <span class="citation">(<a href="#ref-lesage+pace:09" role="doc-biblioref">2009</a>)</span>. Finally, Wagner and Zeileis <span class="citation">(<a href="#ref-wagner+zeileis:19" role="doc-biblioref">2019</a>)</span> show how an SLM model may be used in the setting of recursive partitioning, with an implementation using <code>spatialreg::lagsarlm()</code> in the <strong>lagsarlmtree</strong> package.</p>
+<p>The review of cross-sectional maximum likelihood and generalized method of moments (GMM) estimators in <strong>spatialreg</strong> and <strong>sphet</strong> for spatial econometrics style spatial regression models by Bivand and Piras <span class="citation">(<a href="#ref-bivand+piras:15" role="doc-biblioref">2015</a>)</span> is still largely valid. In the review, estimators in these R packages were compared with alternative implementations available in other programming languages elsewhere. The review did not cover Bayesian spatial econometrics style spatial regression. More has changed with respect to spatial panel estimators described in Millo and Piras <span class="citation">(<a href="#ref-millo+piras:12" role="doc-biblioref">2012</a>)</span>, but will not be covered here.</p>
+<p>Because <span class="citation">R. Bivand, Millo, and Piras (<a href="#ref-math9111276" role="doc-biblioref">2021</a>)</span> covers many of the features of R packages for spatial econometrics, updating <span class="citation">Roger S. Bivand and Piras (<a href="#ref-bivand+piras:15" role="doc-biblioref">2015</a>)</span>, including recent advances in General Method of Moments and spatial panel modelling, this chapter will be restricted to a small number of examples drawing on <span class="citation">R. Bivand (<a href="#ref-bivand17" role="doc-biblioref">2017</a>)</span> using the Boston house value data set.</p>
+</div>
+<div id="maximum-likelihood-estimation-in-spatialreg" class="section level2" number="17.2">
+<h2><span class="header-section-number">17.2</span> Maximum likelihood estimation in <strong>spatialreg</strong></h2>
+<p>For models with single spatial coefficients (SEM and SDEM using <code>errorsarlm()</code>, SLM and SDM using <code>lagsarlm()</code>), the methods initially described by Ord <span class="citation">(<a href="#ref-ord:75" role="doc-biblioref">1975</a>)</span> are used. The following table shows the functions that can be used to estimate the models described above using maximum likelihood.</p>
+<table>
+<thead>
+<tr class="header">
+<th>model</th>
+<th>model name</th>
+<th>maximum likelihood estimation function</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>SEM</td>
+<td>spatial error</td>
+<td><code>errorsarlm(..., Durbin=FALSE, ...)</code></td>
+</tr>
+<tr class="even">
+<td>SEM</td>
+<td>spatial error</td>
+<td><code>spautolm(..., family="SAR", ...)</code></td>
+</tr>
+<tr class="odd">
+<td>SDEM</td>
+<td>spatial Durbin error</td>
+<td><code>errorsarlm(..., Durbin=TRUE, ...)</code></td>
+</tr>
+<tr class="even">
+<td>SLM</td>
+<td>spatial lag</td>
+<td><code>lagsarlm(..., Durbin=FALSE, ...)</code></td>
+</tr>
+<tr class="odd">
+<td>SDM</td>
+<td>spatial Durbin</td>
+<td><code>lagsarlm(..., Durbin=TRUE, ...)</code></td>
+</tr>
+<tr class="even">
+<td>SAC</td>
+<td>spatial autoregressive combined</td>
+<td><code>sacsarlm(..., Durbin=FALSE, ...)</code></td>
+</tr>
+<tr class="odd">
+<td>GNM</td>
+<td>general nested</td>
+<td><code>sacsarlm(..., Durbin=TRUE, ...)</code></td>
+</tr>
+</tbody>
+</table>
+<p>The estimating functions <code>errorsarlm()</code> and <code>lagsarlm()</code> take similar arguments, where the first two, <code>formula=</code> and <code>data=</code> are shared by most model estimating functions. The third argument is a <code>listw</code> spatial weights object, while <code>na.action=</code> behaves as in other model estimating functions if the spatial weights can reasonably be subsetted to avoid observations with missing values. The <code>weights=</code> argument may be used to provide weights indicating the known degree of per-observation variability in the variance term - this is not available for <code>lagsarlm()</code>.</p>
+<p>The <code>Durbin=</code> argument replaces the earlier <code>type=</code> and <code>etype=</code> arguments, and if not given is taken as <code>FALSE</code>. If given, it may be <code>FALSE</code>, <code>TRUE</code> in which case all spatially lagged covariates are included, or a one-sided formula specifying which spatially lagged covariates should be included. The <code>method=</code> argument gives the method for calculating the log determinant term in the log likelihood function, and defaults to <code>"eigen"</code>, suitable for moderately sized data sets. The <code>interval=</code> argument gives the bounds of the domain for the line search using <code>stats::optimize()</code> used for finding the spatial coefficient. The <code>tol.solve()</code> argument, passed through to <code>base::solve()</code>, was needed to handle data sets with differing numerical scales among the coefficients which hindered inversion of the variance-covariance matrix; the default value in <code>base::solve()</code> used to be much larger. The <code>control=</code> argument takes a list of control values to permit more careful adjustment of the running of the estimation function.</p>
+<p>The <code>sacsarlm()</code> function may take second spatial weights and interval arguments if the spatial weights used to model the two spatial processes in the SAC and GNM specifications differ. By default, the same spatial weights are used. By default, <code>stats::nlminb()</code> is used for numerical optimization, using a heuristic to choose starting values. Like <code>lagsarlm()</code>, this function does not take a <code>weights=</code> argument.</p>
+<p>Where larger data sets are used, a numerical Hessian approach is used to calculate the variance-covariance matrix of coefficients, rather than an analytical asymptotic approach.</p>
+<div id="boston-house-value-data-set-examples" class="section level3" number="17.2.1">
+<h3><span class="header-section-number">17.2.1</span> Boston house value data set examples</h3>
+<p>The examples use the objects read and created in chapter <a href="spatglmm.html#spatglmm">16</a>, based on <span class="citation">R. Bivand (<a href="#ref-bivand17" role="doc-biblioref">2017</a>)</span>.</p>
+<div class="sourceCode" id="cb635"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb635-1"><a href="spatecon.html#cb635-1" aria-hidden="true"></a><span class="kw">library</span>(spatialreg)</span>
+<span id="cb635-2"><a href="spatecon.html#cb635-2" aria-hidden="true"></a>eigs_<span class="dv">489</span> &lt;-<span class="st"> </span><span class="kw">eigenw</span>(lw_q_<span class="dv">489</span>)</span>
+<span id="cb635-3"><a href="spatecon.html#cb635-3" aria-hidden="true"></a>SDEM_<span class="dv">489</span> &lt;-<span class="st"> </span><span class="kw">errorsarlm</span>(form, <span class="dt">data=</span>boston_<span class="dv">489</span>, <span class="dt">listw=</span>lw_q_<span class="dv">489</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>, </span>
+<span id="cb635-4"><a href="spatecon.html#cb635-4" aria-hidden="true"></a>                       <span class="dt">zero.policy=</span><span class="ot">TRUE</span>, <span class="dt">control=</span><span class="kw">list</span>(<span class="dt">pre_eig=</span>eigs_<span class="dv">489</span>))</span>
+<span id="cb635-5"><a href="spatecon.html#cb635-5" aria-hidden="true"></a>SEM_<span class="dv">489</span> &lt;-<span class="st"> </span><span class="kw">errorsarlm</span>(form, <span class="dt">data=</span>boston_<span class="dv">489</span>, <span class="dt">listw=</span>lw_q_<span class="dv">489</span>, </span>
+<span id="cb635-6"><a href="spatecon.html#cb635-6" aria-hidden="true"></a>                      <span class="dt">zero.policy=</span><span class="ot">TRUE</span>, <span class="dt">control=</span><span class="kw">list</span>(<span class="dt">pre_eig=</span>eigs_<span class="dv">489</span>))</span></code></pre></div>
+<p>Here we are using the <code>control=</code> list argument to pass through pre-computed eigenvalues for the default <code>"eigen"</code> method.</p>
+<div class="sourceCode" id="cb636"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb636-1"><a href="spatecon.html#cb636-1" aria-hidden="true"></a><span class="kw">cbind</span>(<span class="kw">data.frame</span>(<span class="dt">model=</span><span class="kw">c</span>(<span class="st">&quot;SEM&quot;</span>, <span class="st">&quot;SDEM&quot;</span>)), </span>
+<span id="cb636-2"><a href="spatecon.html#cb636-2" aria-hidden="true"></a>      <span class="kw">rbind</span>(broom<span class="op">::</span><span class="kw">tidy</span>(<span class="kw">Hausman.test</span>(SEM_<span class="dv">489</span>)), </span>
+<span id="cb636-3"><a href="spatecon.html#cb636-3" aria-hidden="true"></a>            broom<span class="op">::</span><span class="kw">tidy</span>(<span class="kw">Hausman.test</span>(SDEM_<span class="dv">489</span>))))[,<span class="dv">1</span><span class="op">:</span><span class="dv">4</span>]</span></code></pre></div>
+<pre><code>#   model statistic  p.value parameter
+# 1   SEM      52.0 2.83e-06        14
+# 2  SDEM      48.7 6.48e-03        27</code></pre>
+<p>Both Hausman test results for the 489 tract data set suggest that the regression coefficients do differ from their non-spatial counterparts, perhaps indicating that the footprints of the spatial processes do not match.</p>
+<div class="sourceCode" id="cb638"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb638-1"><a href="spatecon.html#cb638-1" aria-hidden="true"></a>eigs_<span class="dv">94</span> &lt;-<span class="st"> </span><span class="kw">eigenw</span>(lw_q_<span class="dv">94</span>)</span>
+<span id="cb638-2"><a href="spatecon.html#cb638-2" aria-hidden="true"></a>SDEM_<span class="dv">94</span> &lt;-<span class="st"> </span><span class="kw">errorsarlm</span>(form, <span class="dt">data=</span>boston_<span class="dv">94</span>, <span class="dt">listw=</span>lw_q_<span class="dv">94</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>,</span>
+<span id="cb638-3"><a href="spatecon.html#cb638-3" aria-hidden="true"></a>                      <span class="dt">control=</span><span class="kw">list</span>(<span class="dt">pre_eig=</span>eigs_<span class="dv">94</span>))</span>
+<span id="cb638-4"><a href="spatecon.html#cb638-4" aria-hidden="true"></a>SEM_<span class="dv">94</span> &lt;-<span class="st"> </span><span class="kw">errorsarlm</span>(form, <span class="dt">data=</span>boston_<span class="dv">94</span>, <span class="dt">listw=</span>lw_q_<span class="dv">94</span>, <span class="dt">control=</span><span class="kw">list</span>(<span class="dt">pre_eig=</span>eigs_<span class="dv">94</span>))</span></code></pre></div>
+<p>For the 94 air pollution model output zones, the Hausman tests find little difference between coefficients:</p>
+<div class="sourceCode" id="cb639"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb639-1"><a href="spatecon.html#cb639-1" aria-hidden="true"></a><span class="kw">cbind</span>(<span class="kw">data.frame</span>(<span class="dt">model=</span><span class="kw">c</span>(<span class="st">&quot;SEM&quot;</span>, <span class="st">&quot;SDEM&quot;</span>)), </span>
+<span id="cb639-2"><a href="spatecon.html#cb639-2" aria-hidden="true"></a>      <span class="kw">rbind</span>(broom<span class="op">::</span><span class="kw">tidy</span>(<span class="kw">Hausman.test</span>(SEM_<span class="dv">94</span>)), </span>
+<span id="cb639-3"><a href="spatecon.html#cb639-3" aria-hidden="true"></a>            broom<span class="op">::</span><span class="kw">tidy</span>(<span class="kw">Hausman.test</span>(SDEM_<span class="dv">94</span>))))[, <span class="dv">1</span><span class="op">:</span><span class="dv">4</span>]</span></code></pre></div>
+<pre><code>#   model statistic p.value parameter
+# 1   SEM     15.66   0.335        14
+# 2  SDEM      9.21   0.999        27</code></pre>
+<p>This is related to the fact that the SEM and SDEM models add little to least squares or SLX at the air pollution model output zone level, using likelihood ratio tests:</p>
+<div class="sourceCode" id="cb641"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb641-1"><a href="spatecon.html#cb641-1" aria-hidden="true"></a><span class="kw">cbind</span>(<span class="kw">data.frame</span>(<span class="dt">model=</span><span class="kw">c</span>(<span class="st">&quot;SEM&quot;</span>, <span class="st">&quot;SDEM&quot;</span>)), <span class="kw">rbind</span>(broom<span class="op">::</span><span class="kw">tidy</span>(<span class="kw">LR1.Sarlm</span>(SEM_<span class="dv">94</span>)),</span>
+<span id="cb641-2"><a href="spatecon.html#cb641-2" aria-hidden="true"></a>    broom<span class="op">::</span><span class="kw">tidy</span>(<span class="kw">LR1.Sarlm</span>(SDEM_<span class="dv">94</span>))))[,<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">4</span><span class="op">:</span><span class="dv">6</span>)]</span></code></pre></div>
+<pre><code>#   model statistic p.value parameter
+# 1   SEM     2.593   0.107         1
+# 2  SDEM     0.216   0.642         1</code></pre>
+<p>We can use <code>spatialreg::LR.Sarlm()</code> to apply a likelihood ratio test between nested models, but here choose <code>lmtest::lrtest()</code>, which gives the same results, preferring models including spatially lagged covariates both for tracts and model output zones:</p>
+<div class="sourceCode" id="cb643"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb643-1"><a href="spatecon.html#cb643-1" aria-hidden="true"></a>broom<span class="op">::</span><span class="kw">tidy</span>(lmtest<span class="op">::</span><span class="kw">lrtest</span>(SEM_<span class="dv">489</span>, SDEM_<span class="dv">489</span>))</span></code></pre></div>
+<pre><code># # A tibble: 2 x 5
+#    X.Df LogLik    df statistic   p.value
+#   &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+# 1    16   273.    NA      NA   NA       
+# 2    29   311.    13      74.4  1.23e-10</code></pre>
+<div class="sourceCode" id="cb645"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb645-1"><a href="spatecon.html#cb645-1" aria-hidden="true"></a>broom<span class="op">::</span><span class="kw">tidy</span>(lmtest<span class="op">::</span><span class="kw">lrtest</span>(SEM_<span class="dv">94</span>, SDEM_<span class="dv">94</span>))</span></code></pre></div>
+<pre><code># # A tibble: 2 x 5
+#    X.Df LogLik    df statistic    p.value
+#   &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;      &lt;dbl&gt;
+# 1    16   59.7    NA      NA   NA        
+# 2    29   81.3    13      43.2  0.0000421</code></pre>
+<p>The SLX model is fitted using least squares, and also returns a log likelihood value, letting us test whether we need a spatial process in the residuals. In the tract data set we obviously do:</p>
+<div class="sourceCode" id="cb647"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb647-1"><a href="spatecon.html#cb647-1" aria-hidden="true"></a>SLX_<span class="dv">489</span> &lt;-<span class="st"> </span><span class="kw">lmSLX</span>(form, <span class="dt">data=</span>boston_<span class="dv">489</span>, <span class="dt">listw=</span>lw_q_<span class="dv">489</span>, <span class="dt">zero.policy=</span><span class="ot">TRUE</span>)</span>
+<span id="cb647-2"><a href="spatecon.html#cb647-2" aria-hidden="true"></a>broom<span class="op">::</span><span class="kw">tidy</span>(lmtest<span class="op">::</span><span class="kw">lrtest</span>(SLX_<span class="dv">489</span>, SDEM_<span class="dv">489</span>))</span></code></pre></div>
+<pre><code># # A tibble: 2 x 5
+#    X.Df LogLik    df statistic   p.value
+#   &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+# 1    28   231.    NA       NA  NA       
+# 2    29   311.     1      159.  1.55e-36</code></pre>
+<p>but in the output zone case we do not.</p>
+<div class="sourceCode" id="cb649"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb649-1"><a href="spatecon.html#cb649-1" aria-hidden="true"></a>SLX_<span class="dv">94</span> &lt;-<span class="st"> </span><span class="kw">lmSLX</span>(form, <span class="dt">data=</span>boston_<span class="dv">94</span>, <span class="dt">listw=</span>lw_q_<span class="dv">94</span>)</span>
+<span id="cb649-2"><a href="spatecon.html#cb649-2" aria-hidden="true"></a>broom<span class="op">::</span><span class="kw">tidy</span>(lmtest<span class="op">::</span><span class="kw">lrtest</span>(SLX_<span class="dv">94</span>, SDEM_<span class="dv">94</span>))</span></code></pre></div>
+<pre><code># # A tibble: 2 x 5
+#    X.Df LogLik    df statistic p.value
+#   &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;
+# 1    28   81.2    NA    NA      NA    
+# 2    29   81.3     1     0.216   0.642</code></pre>
+<p>These outcomes are sustained also when we use the counts of house units by tract and output zones as case weights:</p>
+<div class="sourceCode" id="cb651"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb651-1"><a href="spatecon.html#cb651-1" aria-hidden="true"></a>SLX_489w &lt;-<span class="st"> </span><span class="kw">lmSLX</span>(form, <span class="dt">data=</span>boston_<span class="dv">489</span>, <span class="dt">listw=</span>lw_q_<span class="dv">489</span>, <span class="dt">weights=</span>units, <span class="dt">zero.policy=</span><span class="ot">TRUE</span>)</span>
+<span id="cb651-2"><a href="spatecon.html#cb651-2" aria-hidden="true"></a>SDEM_489w &lt;-<span class="st"> </span><span class="kw">errorsarlm</span>(form, <span class="dt">data=</span>boston_<span class="dv">489</span>, <span class="dt">listw=</span>lw_q_<span class="dv">489</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>,</span>
+<span id="cb651-3"><a href="spatecon.html#cb651-3" aria-hidden="true"></a>    <span class="dt">weights=</span>units, <span class="dt">zero.policy=</span><span class="ot">TRUE</span>, <span class="dt">control=</span><span class="kw">list</span>(<span class="dt">pre_eig=</span>eigs_<span class="dv">489</span>))</span>
+<span id="cb651-4"><a href="spatecon.html#cb651-4" aria-hidden="true"></a>broom<span class="op">::</span><span class="kw">tidy</span>(lmtest<span class="op">::</span><span class="kw">lrtest</span>(SLX_489w, SDEM_489w))</span></code></pre></div>
+<pre><code># # A tibble: 2 x 5
+#    X.Df LogLik    df statistic   p.value
+#   &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+# 1    28   311.    NA       NA  NA       
+# 2    29   379.     1      136.  1.70e-31</code></pre>
+<div class="sourceCode" id="cb653"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb653-1"><a href="spatecon.html#cb653-1" aria-hidden="true"></a>SLX_94w &lt;-<span class="st"> </span><span class="kw">lmSLX</span>(form, <span class="dt">data=</span>boston_<span class="dv">94</span>, <span class="dt">listw=</span>lw_q_<span class="dv">94</span>, <span class="dt">weights=</span>units)</span>
+<span id="cb653-2"><a href="spatecon.html#cb653-2" aria-hidden="true"></a>SDEM_94w &lt;-<span class="st"> </span><span class="kw">errorsarlm</span>(form, <span class="dt">data=</span>boston_<span class="dv">94</span>, <span class="dt">listw=</span>lw_q_<span class="dv">94</span>, <span class="dt">Durbin=</span><span class="ot">TRUE</span>, <span class="dt">weights=</span>units,</span>
+<span id="cb653-3"><a href="spatecon.html#cb653-3" aria-hidden="true"></a>                       <span class="dt">control=</span><span class="kw">list</span>(<span class="dt">pre_eig=</span>eigs_<span class="dv">94</span>))</span>
+<span id="cb653-4"><a href="spatecon.html#cb653-4" aria-hidden="true"></a>broom<span class="op">::</span><span class="kw">tidy</span>(lmtest<span class="op">::</span><span class="kw">lrtest</span>(SLX_94w, SDEM_94w))</span></code></pre></div>
+<pre><code># # A tibble: 2 x 5
+#    X.Df LogLik    df statistic p.value
+#   &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;
+# 1    28   97.5    NA    NA      NA    
+# 2    29   98.0     1     0.917   0.338</code></pre>
+<p>In this case and based on arguments advanced in <span class="citation">R. Bivand (<a href="#ref-bivand17" role="doc-biblioref">2017</a>)</span>, the use of weights is justified because tract counts of reported housing units underlyinng the weighted median values vary from 5 to 3,031, and air pollution model output zone counts vary from 25 to 12,411. Because of this, and because a weighted general nested model has not been developed, we cannot take the GNM as the starting point for general-to-simpler testing, but start rather from the SDEM model, and use the Hausman test to guide the choice of units of observation.</p>
+</div>
+</div>
+<div id="impacts" class="section level2" number="17.3">
+<h2><span class="header-section-number">17.3</span> Impacts</h2>
+<p>Global impacts have been seen as crucial for reporting results from fitting models including the spatially lagged response (SLM, SDM, SAC. GNM) for over ten years <span class="citation">(LeSage and Pace <a href="#ref-lesage+pace:09" role="doc-biblioref">2009</a>)</span>. Extension to other models including spatially lagged covariates (SLX, SDEM) has followed <span class="citation">(Elhorst <a href="#ref-elhorst:10" role="doc-biblioref">2010</a>; Bivand <a href="#ref-bivand:12" role="doc-biblioref">2012</a>; Halleck Vega and Elhorst <a href="#ref-halleck-vega+elhorst:15" role="doc-biblioref">2015</a>)</span>. For SLM, SDM, SAC and GNM models fitted with maximum likelihood or GMM, the variance-covariance matrix of the coefficients is available, and can be used to make random draws from a multivariate Normal distribution with mean set to coefficient values and variance to the estimated variance-covariance matrix. For these models fitted using Bayesian methods, draws are already available. In the SDEM case, the draws on the regression coefficients of the unlagged covariates represent direct impacts, and draws on the coefficients of the spatially lagged covariates represent indirect impacts, and their by-draw sums the total impacts.</p>
+<p>Since sampling is not required for inference for SLX and SDEM models, linear combination is used for models fitted using maximum likelihood; results are shown here for the air pollution variable only. The literature has not yet resolved the question of how to report model output, as each covariate is now represented by three impacts. Where spatially lagged covariates are included, two coefficients are replaced by three impacts, here for the air pollution variable of interest.</p>
+<div class="sourceCode" id="cb655"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb655-1"><a href="spatecon.html#cb655-1" aria-hidden="true"></a>sum_imp_<span class="dv">94</span>_SDEM &lt;-<span class="st"> </span><span class="kw">summary</span>(<span class="kw">impacts</span>(SDEM_<span class="dv">94</span>))</span>
+<span id="cb655-2"><a href="spatecon.html#cb655-2" aria-hidden="true"></a><span class="kw">rbind</span>(<span class="dt">Impacts=</span>sum_imp_<span class="dv">94</span>_SDEM<span class="op">$</span>mat[<span class="dv">5</span>,], <span class="dt">SE=</span>sum_imp_<span class="dv">94</span>_SDEM<span class="op">$</span>semat[<span class="dv">5</span>,])</span></code></pre></div>
+<pre><code>#           Direct Indirect   Total
+# Impacts -0.01276 -0.01845 -0.0312
+# SE       0.00235  0.00472  0.0053</code></pre>
+<p>In the SLX and SDEM models, the direct impacts are the consequences for the response of changes in air pollution in the same observational entity, and the indirect (local) impacts are the consequences for the response of changes in air pollution in neighbouring observational entities.</p>
+<div class="sourceCode" id="cb657"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb657-1"><a href="spatecon.html#cb657-1" aria-hidden="true"></a>sum_imp_<span class="dv">94</span>_SLX &lt;-<span class="st"> </span><span class="kw">summary</span>(<span class="kw">impacts</span>(SLX_<span class="dv">94</span>))</span>
+<span id="cb657-2"><a href="spatecon.html#cb657-2" aria-hidden="true"></a><span class="kw">rbind</span>(<span class="dt">Impacts=</span>sum_imp_<span class="dv">94</span>_SLX<span class="op">$</span>mat[<span class="dv">5</span>,], <span class="dt">SE=</span>sum_imp_<span class="dv">94</span>_SLX<span class="op">$</span>semat[<span class="dv">5</span>,])</span></code></pre></div>
+<pre><code>#          Direct Indirect    Total
+# Impacts -0.0128 -0.01874 -0.03151
+# SE       0.0028  0.00556  0.00611</code></pre>
+<p>Applying the same approaches to the weighted spatial regressions, the total impacts of air pollution on house values are reduced, but remain significant:</p>
+<div class="sourceCode" id="cb659"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb659-1"><a href="spatecon.html#cb659-1" aria-hidden="true"></a>sum_imp_<span class="dv">94</span>_SDEMw &lt;-<span class="st"> </span><span class="kw">summary</span>(<span class="kw">impacts</span>(SDEM_94w))</span>
+<span id="cb659-2"><a href="spatecon.html#cb659-2" aria-hidden="true"></a><span class="kw">rbind</span>(<span class="dt">Impacts=</span>sum_imp_<span class="dv">94</span>_SDEMw<span class="op">$</span>mat[<span class="dv">5</span>,], <span class="dt">SE=</span>sum_imp_<span class="dv">94</span>_SDEMw<span class="op">$</span>semat[<span class="dv">5</span>,])</span></code></pre></div>
+<pre><code>#           Direct Indirect    Total
+# Impacts -0.00592 -0.01076 -0.01668
+# SE       0.00269  0.00531  0.00559</code></pre>
+<p>On balance, using a weighted spatial regression representation including only the spatially lagged covariates aggregated to the air pollution model output zone level seems to clear most of the mis-specification issues, and as <span class="citation">R. Bivand (<a href="#ref-bivand17" role="doc-biblioref">2017</a>)</span> discusses in more detail, gives a willingness to pay for pollution abatement that is much larger than mis-specified alternative models:</p>
+<div class="sourceCode" id="cb661"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb661-1"><a href="spatecon.html#cb661-1" aria-hidden="true"></a>sum_imp_<span class="dv">94</span>_SLXw &lt;-<span class="st"> </span><span class="kw">summary</span>(<span class="kw">impacts</span>(SLX_94w))</span>
+<span id="cb661-2"><a href="spatecon.html#cb661-2" aria-hidden="true"></a><span class="kw">rbind</span>(<span class="dt">Impacts=</span>sum_imp_<span class="dv">94</span>_SLXw<span class="op">$</span>mat[<span class="dv">5</span>,], <span class="dt">SE=</span>sum_imp_<span class="dv">94</span>_SLXw<span class="op">$</span>semat[<span class="dv">5</span>,])</span></code></pre></div>
+<pre><code>#           Direct Indirect    Total
+# Impacts -0.00620 -0.01221 -0.01842
+# SE       0.00326  0.00628  0.00629</code></pre>
+</div>
+<div id="spatecon_pred" class="section level2" number="17.4">
+<h2><span class="header-section-number">17.4</span> Predictions</h2>
+<p>In the Boston tracts data set, 17 observations of median house values, the response, are censored. We will use the <code>predict()</code> method for <code>"Sarlm"</code> objects to fill in these values; the method was re-written by Martin Gubri based on Goulard, Laurent and Thomas-Agnan <span class="citation">(<a href="#ref-goulardetal:17" role="doc-biblioref">2017</a>)</span>. The <code>pred.type=</code> argument specifies the prediction strategy among those presented in the article.</p>
+<p>Using these as an example and comparing some <code>pred.type=</code> variants for the SDEM model and predicting out-of-sample, we can see that there are differences, suggesting that this is a fruitful area for study. There have been a number of alternative proposals for handling missing variables <span class="citation">(Gómez-Rubio, Bivand, and Rue <a href="#ref-GOMEZRUBIO2015116" role="doc-biblioref">2015</a>; Suesse <a href="#ref-suesse:18" role="doc-biblioref">2018</a>)</span>. Another reason for increasing attention on prediction is that it is fundamental for machine learning approaches, in which prediction for validation and test data sets drives model specification choice. The choice of training and other data sets with dependent spatial data remains an open question, and is certainly not as simple as with independent data.</p>
+<p>Here, we’ll list the predictions for the censored tract observations using three different prediction types, taking the exponent to get back to the USD median house values. Note that the <code>row.names()</code> of the <code>newdata=</code> object are matched with the whole-data spatial weights matrix <code>"region.id"</code> attribute to make out-of-sample prediction possible:</p>
+<div class="sourceCode" id="cb663"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb663-1"><a href="spatecon.html#cb663-1" aria-hidden="true"></a>nd &lt;-<span class="st"> </span>boston_<span class="dv">506</span>[<span class="kw">is.na</span>(boston_<span class="dv">506</span><span class="op">$</span>median),]</span>
+<span id="cb663-2"><a href="spatecon.html#cb663-2" aria-hidden="true"></a>t0 &lt;-<span class="st"> </span><span class="kw">exp</span>(<span class="kw">predict</span>(SDEM_<span class="dv">489</span>, <span class="dt">newdata=</span>nd, <span class="dt">listw=</span>lw_q, <span class="dt">pred.type=</span><span class="st">&quot;TS&quot;</span>, <span class="dt">zero.policy=</span><span class="ot">TRUE</span>))</span>
+<span id="cb663-3"><a href="spatecon.html#cb663-3" aria-hidden="true"></a><span class="kw">suppressWarnings</span>(t1  &lt;-<span class="st"> </span><span class="kw">exp</span>(<span class="kw">predict</span>(SDEM_<span class="dv">489</span>, <span class="dt">newdata=</span>nd, <span class="dt">listw=</span>lw_q, <span class="dt">pred.type=</span><span class="st">&quot;KP2&quot;</span>,</span>
+<span id="cb663-4"><a href="spatecon.html#cb663-4" aria-hidden="true"></a>                                    <span class="dt">zero.policy=</span><span class="ot">TRUE</span>)))</span>
+<span id="cb663-5"><a href="spatecon.html#cb663-5" aria-hidden="true"></a><span class="kw">suppressWarnings</span>(t2  &lt;-<span class="st"> </span><span class="kw">exp</span>(<span class="kw">predict</span>(SDEM_<span class="dv">489</span>, <span class="dt">newdata=</span>nd, <span class="dt">listw=</span>lw_q, <span class="dt">pred.type=</span><span class="st">&quot;KP5&quot;</span>,</span>
+<span id="cb663-6"><a href="spatecon.html#cb663-6" aria-hidden="true"></a>                                    <span class="dt">zero.policy=</span><span class="ot">TRUE</span>)))</span></code></pre></div>
+<p>We can also use the <code>"slm"</code> model in INLA to predict missing response values as part of the model fitting function call. A certain amount of set-up code is required as the <code>"slm"</code> model is still experimental:</p>
+<div class="sourceCode" id="cb664"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb664-1"><a href="spatecon.html#cb664-1" aria-hidden="true"></a><span class="kw">library</span>(INLA)</span>
+<span id="cb664-2"><a href="spatecon.html#cb664-2" aria-hidden="true"></a>W &lt;-<span class="st"> </span><span class="kw">as</span>(lw_q, <span class="st">&quot;CsparseMatrix&quot;</span>)</span>
+<span id="cb664-3"><a href="spatecon.html#cb664-3" aria-hidden="true"></a>n &lt;-<span class="st"> </span><span class="kw">nrow</span>(W)</span>
+<span id="cb664-4"><a href="spatecon.html#cb664-4" aria-hidden="true"></a>e &lt;-<span class="st"> </span><span class="kw">eigenw</span>(lw_q)</span>
+<span id="cb664-5"><a href="spatecon.html#cb664-5" aria-hidden="true"></a>re.idx &lt;-<span class="st"> </span><span class="kw">which</span>(<span class="kw">abs</span>(<span class="kw">Im</span>(e)) <span class="op">&lt;</span><span class="st"> </span><span class="fl">1e-6</span>)</span>
+<span id="cb664-6"><a href="spatecon.html#cb664-6" aria-hidden="true"></a>rho.max &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">/</span><span class="kw">max</span>(<span class="kw">Re</span>(e[re.idx]))</span>
+<span id="cb664-7"><a href="spatecon.html#cb664-7" aria-hidden="true"></a>rho.min &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">/</span><span class="kw">min</span>(<span class="kw">Re</span>(e[re.idx]))</span>
+<span id="cb664-8"><a href="spatecon.html#cb664-8" aria-hidden="true"></a>rho &lt;-<span class="st"> </span><span class="kw">mean</span>(<span class="kw">c</span>(rho.min, rho.max))</span>
+<span id="cb664-9"><a href="spatecon.html#cb664-9" aria-hidden="true"></a>boston_<span class="dv">506</span><span class="op">$</span>idx &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">:</span>n</span>
+<span id="cb664-10"><a href="spatecon.html#cb664-10" aria-hidden="true"></a>zero.variance =<span class="st"> </span><span class="kw">list</span>(<span class="dt">prec=</span><span class="kw">list</span>(<span class="dt">initial =</span> <span class="dv">25</span>, <span class="dt">fixed=</span><span class="ot">TRUE</span>))</span>
+<span id="cb664-11"><a href="spatecon.html#cb664-11" aria-hidden="true"></a>args.slm &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="dt">rho.min =</span> rho.min, <span class="dt">rho.max =</span> rho.max, <span class="dt">W =</span> W, <span class="dt">X =</span> <span class="kw">matrix</span>(<span class="dv">0</span>, n, <span class="dv">0</span>),</span>
+<span id="cb664-12"><a href="spatecon.html#cb664-12" aria-hidden="true"></a>    <span class="dt">Q.beta =</span> <span class="kw">matrix</span>(<span class="dv">1</span>,<span class="dv">0</span>,<span class="dv">0</span>))</span>
+<span id="cb664-13"><a href="spatecon.html#cb664-13" aria-hidden="true"></a>hyper.slm &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="dt">prec =</span> <span class="kw">list</span>(<span class="dt">prior =</span> <span class="st">&quot;loggamma&quot;</span>, <span class="dt">param =</span> <span class="kw">c</span>(<span class="fl">0.01</span>, <span class="fl">0.01</span>)),</span>
+<span id="cb664-14"><a href="spatecon.html#cb664-14" aria-hidden="true"></a>    <span class="dt">rho =</span> <span class="kw">list</span>(<span class="dt">initial=</span><span class="dv">0</span>, <span class="dt">prior =</span> <span class="st">&quot;logitbeta&quot;</span>, <span class="dt">param =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)))</span>
+<span id="cb664-15"><a href="spatecon.html#cb664-15" aria-hidden="true"></a>WX &lt;-<span class="st"> </span><span class="kw">create_WX</span>(<span class="kw">model.matrix</span>(<span class="kw">update</span>(form, CMEDV <span class="op">~</span><span class="st"> </span>.), <span class="dt">data=</span>boston_<span class="dv">506</span>), lw_q)</span>
+<span id="cb664-16"><a href="spatecon.html#cb664-16" aria-hidden="true"></a>SDEM_<span class="dv">506</span>_slm &lt;-<span class="st"> </span><span class="kw">inla</span>(<span class="kw">update</span>(form, . <span class="op">~</span><span class="st"> </span>. <span class="op">+</span><span class="st"> </span>WX <span class="op">+</span><span class="st"> </span><span class="kw">f</span>(idx, <span class="dt">model=</span><span class="st">&quot;slm&quot;</span>, <span class="dt">args.slm=</span>args.slm,</span>
+<span id="cb664-17"><a href="spatecon.html#cb664-17" aria-hidden="true"></a>    <span class="dt">hyper=</span>hyper.slm)), <span class="dt">data=</span>boston_<span class="dv">506</span>, <span class="dt">family=</span><span class="st">&quot;gaussian&quot;</span>, <span class="dt">control.family=</span></span>
+<span id="cb664-18"><a href="spatecon.html#cb664-18" aria-hidden="true"></a>        <span class="kw">list</span>(<span class="dt">hyper=</span>zero.variance), <span class="dt">control.compute=</span><span class="kw">list</span>(<span class="dt">dic=</span><span class="ot">TRUE</span>, <span class="dt">cpo=</span><span class="ot">TRUE</span>))</span>
+<span id="cb664-19"><a href="spatecon.html#cb664-19" aria-hidden="true"></a>mvs &lt;-<span class="st"> </span>SDEM_<span class="dv">506</span>_slm<span class="op">$</span>marginals.fitted.values[<span class="kw">which</span>(<span class="kw">is.na</span>(boston_<span class="dv">506</span><span class="op">$</span>median))]</span>
+<span id="cb664-20"><a href="spatecon.html#cb664-20" aria-hidden="true"></a>mv_mean &lt;-<span class="st"> </span><span class="kw">sapply</span>(mvs, <span class="cf">function</span>(x) <span class="kw">mean</span>(<span class="kw">exp</span>(x[, <span class="dv">1</span>]), ))</span>
+<span id="cb664-21"><a href="spatecon.html#cb664-21" aria-hidden="true"></a>mv_sd &lt;-<span class="st"> </span><span class="kw">sapply</span>(mvs, <span class="cf">function</span>(x) <span class="kw">sd</span>(<span class="kw">exp</span>(x[, <span class="dv">1</span>])))</span></code></pre></div>
+<p>INLA also provide gridded estimates of the marginal distributions of the predictions, offering a way to assess the uncertainty associated with the predicted values:</p>
+<div class="sourceCode" id="cb665"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb665-1"><a href="spatecon.html#cb665-1" aria-hidden="true"></a><span class="kw">data.frame</span>(<span class="dt">fit_TS=</span>t0[,<span class="dv">1</span>], <span class="dt">fit_KP2=</span><span class="kw">c</span>(t1), <span class="dt">fit_KP5=</span><span class="kw">c</span>(t2), <span class="dt">INLA_slm=</span>mv_mean,</span>
+<span id="cb665-2"><a href="spatecon.html#cb665-2" aria-hidden="true"></a>    <span class="dt">INLA_slm_sd=</span>mv_sd, <span class="dt">censored=</span>boston_<span class="dv">506</span><span class="op">$</span>censored[<span class="kw">as.integer</span>(<span class="kw">attr</span>(t0, <span class="st">&quot;region.id&quot;</span>))])</span></code></pre></div>
+<pre><code>#     fit_TS fit_KP2 fit_KP5 INLA_slm INLA_slm_sd censored
+# 13   23912   29477   28147    33981       15994    right
+# 14   28126   27001   28516    34542       17262    right
+# 15   30553   36184   32476    45171       21721    right
+# 17   18518   19621   18878    22878       10095    right
+# 43    9564    6817    7561     7410        3343     left
+# 50    8371    7196    7383     7510        3534     left
+# 312  51477   53301   54173    62152       31691    right
+# 313  45921   45823   47095    51156       25495    right
+# 314  44196   44586   45361    46807       22288    right
+# 317  43427   45707   45442    52313       24287    right
+# 337  39879   42072   41127    44798       19666    right
+# 346  44708   46694   46108    49190       20335    right
+# 355  48188   49068   48911    53214       23715    right
+# 376  42881   45883   44966    51749       23168    right
+# 408  44294   44615   45670    50533       24084    right
+# 418  38211   43375   41914    47685       21619    right
+# 434  41647   41690   42398    45083       20338    right</code></pre>
+<p>The spatial regression toolbox remains incomplete, and it will take time to fill in blanks. It remains unfortunate that the several traditions in spatial regression seldom seem to draw on each others’ understandings and advances.</p>
+
+</div>
+</div>
+<h3>References</h3>
+<div id="refs" class="references hanging-indent">
+<div id="ref-a88">
+<p>Anselin, L. 1988. <em>Spatial Econometrics: Methods and Models</em>. Kluwer Academic Publishers.</p>
+</div>
+<div id="ref-bivand17">
+<p>Bivand, Roger. 2017. “Revisiting the Boston Data Set — Changing the Units of Observation Affects Estimated Willingness to Pay for Clean Air.” <em>REGION</em> 4 (1): 109–27. <a href="https://doi.org/10.18335/region.v4i1.107">https://doi.org/10.18335/region.v4i1.107</a>.</p>
+</div>
+<div id="ref-math9111276">
+<p>Bivand, Roger, Giovanni Millo, and Gianfranco Piras. 2021. “A Review of Software for Spatial Econometrics in R.” <em>Mathematics</em> 9 (11). <a href="https://doi.org/10.3390/math9111276">https://doi.org/10.3390/math9111276</a>.</p>
+</div>
+<div id="ref-bivand:12">
+<p>Bivand, Roger S. 2012. “After ’Raising the Bar’: Applied Maximum Likelihood Estimation of Families of Models in Spatial Econometrics.” <em>Estadística Española</em> 54: 71–88.</p>
+</div>
+<div id="ref-bivand+piras:15">
+<p>Bivand, Roger S., and Gianfranco Piras. 2015. “Comparing Implementations of Estimation Methods for Spatial Econometrics.” <em>Journal of Statistical Software</em> 63 (1): 1–36. <a href="https://doi.org/10.18637/jss.v063.i18">https://doi.org/10.18637/jss.v063.i18</a>.</p>
+</div>
+<div id="ref-bivand:02">
+<p>Bivand, R. S. 2002. “Spatial Econometrics Functions in R: Classes and Methods.” <em>Journal of Geographical Systems</em> 4: 405–21.</p>
+</div>
+<div id="ref-cliff+ord:73">
+<p>Cliff, A. D., and J. K. Ord. 1973. <em>Spatial Autocorrelation</em>. London: Pion.</p>
+</div>
+<div id="ref-cliff+ord:81">
+<p>Cliff, A. 1981. <em>Spatial Processes</em>. London: Pion.</p>
+</div>
+<div id="ref-elhorst:10">
+<p>Elhorst, J. Paul. 2010. “Applied Spatial Econometrics: Raising the Bar.” <em>Spatial Economic Analysis</em> 5: 9–28.</p>
+</div>
+<div id="ref-fingleton:99">
+<p>Fingleton, B. 1999. “Spurious spatial regression: Some Monte Carlo results with a spatial unit root and spatial cointegration.” <em>Journal of Regional Science</em> 9: 1–19.</p>
+</div>
+<div id="ref-FLORAX2003557">
+<p>Florax, Raymond J. G. M, Hendrik Folmer, and Sergio J Rey. 2003. “Specification Searches in Spatial Econometrics: The Relevance of Hendry’s Methodology.” <em>Regional Science and Urban Economics</em> 33 (5): 557–79. <a href="https://doi.org/10.1016/S0166-0462(03)00002-4">https://doi.org/10.1016/S0166-0462(03)00002-4</a>.</p>
+</div>
+<div id="ref-FLORAX2006300">
+<p>Florax, Raymond J. G. M., Hendrik Folmer, and Sergio J. Rey. 2006. “A Comment on Specification Searches in Spatial Econometrics: The Relevance of Hendry’s Methodology: A Reply.” <em>Regional Science and Urban Economics</em> 36 (2): 300–308. <a href="https://doi.org/10.1016/j.regsciurbeco.2005.10.002">https://doi.org/10.1016/j.regsciurbeco.2005.10.002</a>.</p>
+</div>
+<div id="ref-goulardetal:17">
+<p>Goulard, Michel, Thibault Laurent, and Christine Thomas-Agnan. 2017. “About Predictions in Spatial Autoregressive Models: Optimal and Almost Optimal Strategies.” <em>Spatial Economic Analysis</em> 12 (2-3): 304–25. <a href="https://doi.org/10.1080/17421772.2017.1300679">https://doi.org/10.1080/17421772.2017.1300679</a>.</p>
+</div>
+<div id="ref-GOMEZRUBIO2015116">
+<p>Gómez-Rubio, Virgilio, Roger Bivand, and Håvard Rue. 2015. “A New Latent Class to Fit Spatial Econometrics Models with Integrated Nested Laplace Approximations.” <em>Procedia Environmental Sciences</em> 27: 116–18. <a href="https://doi.org/https://doi.org/10.1016/j.proenv.2015.07.119">https://doi.org/https://doi.org/10.1016/j.proenv.2015.07.119</a>.</p>
+</div>
+<div id="ref-halleck-vega+elhorst:15">
+<p>Halleck Vega, Solmaria, and J. Paul Elhorst. 2015. “The SLX Model.” <em>Journal of Regional Science</em> 55 (3): 339–63. <a href="https://doi.org/10.1111/jors.12188">https://doi.org/10.1111/jors.12188</a>.</p>
+</div>
+<div id="ref-HENDRY2006309">
+<p>Hendry, David F. 2006. “A Comment on ‘Specification Searches in Spatial Econometrics: The Relevance of Hendry’s Methodology’.” <em>Regional Science and Urban Economics</em> 36 (2): 309–12. <a href="https://doi.org/10.1016/j.regsciurbeco.2005.10.001">https://doi.org/10.1016/j.regsciurbeco.2005.10.001</a>.</p>
+</div>
+<div id="ref-kelejian+piras:17">
+<p>Kelejian, Harry, and Gianfranco Piras. 2017. <em>Spatial Econometrics</em>. London: Academic Press.</p>
+</div>
+<div id="ref-lesage+pace:09">
+<p>LeSage, James P., and Kelley R. Pace. 2009. <em>Introduction to Spatial Econometrics</em>. Boca Raton, FL: CRC Press.</p>
+</div>
+<div id="ref-lesage:14">
+<p>LeSage, J. P. 2014. “What Regional Scientists Need to Know About Spatial Econometrics.” <em>Review of Regional Studies</em> 44: 13–32. <a href="https://journal.srsa.org/ojs/index.php/RRS/article/view/44.1.2">https://journal.srsa.org/ojs/index.php/RRS/article/view/44.1.2</a>.</p>
+</div>
+<div id="ref-MARTINETTI201730">
+<p>Martinetti, Davide, and Ghislain Geniaux. 2017. “Approximate Likelihood Estimation of Spatial Probit Models.” <em>Regional Science and Urban Economics</em> 64: 30–45. <a href="https://doi.org/https://doi.org/10.1016/j.regsciurbeco.2017.02.002">https://doi.org/https://doi.org/10.1016/j.regsciurbeco.2017.02.002</a>.</p>
+</div>
+<div id="ref-mcmillen:13">
+<p>McMillen, D. P. 2013. <em>Quantile Regression for Spatial Data</em>. Heidelberg: Springer-Verlag.</p>
+</div>
+<div id="ref-millo+piras:12">
+<p>Millo, Giovanni, and Gianfranco Piras. 2012. “splm: Spatial Panel Data Models in R.” <em>Journal of Statistical Software</em> 47 (1): 1–38.</p>
+</div>
+<div id="ref-mur+angulo:06">
+<p>Mur, Jesús, and Ana Angulo. 2006. “The Spatial Durbin Model and the Common Factor Tests.” <em>Spatial Economic Analysis</em> 1 (2): 207–26. <a href="https://doi.org/10.1080/17421770601009841">https://doi.org/10.1080/17421770601009841</a>.</p>
+</div>
+<div id="ref-ord:75">
+<p>Ord, J. K. 1975. “Estimation Methods for Models of Spatial Interaction.” <em>Journal of the American Statistical Association</em> 70 (349): 120–26.</p>
+</div>
+<div id="ref-pace+lesage:08">
+<p>Pace, RK, and JP LeSage. 2008. “A Spatial Hausman Test.” <em>Economics Letters</em> 101: 282–84.</p>
+</div>
+<div id="ref-PIRAS2014103">
+<p>Piras, Gianfranco, and Ingmar R. Prucha. 2014. “On the Finite Sample Properties of Pre-Test Estimators of Spatial Models.” <em>Regional Science and Urban Economics</em> 46: 103–15. <a href="https://doi.org/10.1016/j.regsciurbeco.2014.03.002">https://doi.org/10.1016/j.regsciurbeco.2014.03.002</a>.</p>
+</div>
+<div id="ref-smith+lee12">
+<p>Smith, T. E., and K. L. Lee. 2012. “The effects of spatial autoregressive dependencies on inference in ordinary least squares: a geometric approach.” <em>Journal of Geographical Systems</em> 14 (January): 91–124. <a href="https://doi.org/10.1007/s10109-011-0152-x">https://doi.org/10.1007/s10109-011-0152-x</a>.</p>
+</div>
+<div id="ref-smith:09">
+<p>Smith, Tony E. 2009. “Estimation Bias in Spatial Models with Strongly Connected Weight Matrices.” <em>Geographical Analysis</em> 41 (3): 307–32. <a href="https://doi.org/10.1111/j.1538-4632.2009.00758.x">https://doi.org/10.1111/j.1538-4632.2009.00758.x</a>.</p>
+</div>
+<div id="ref-suesse:18">
+<p>Suesse, Thomas. 2018. “Marginal Maximum Likelihood Estimation of Sar Models with Missing Data.” <em>Computational Statistics &amp; Data Analysis</em> 120: 98–110. <a href="https://doi.org/https://doi.org/10.1016/j.csda.2017.11.004">https://doi.org/https://doi.org/10.1016/j.csda.2017.11.004</a>.</p>
+</div>
+<div id="ref-wagner+zeileis:19">
+<p>Wagner, Martin, and Achim Zeileis. 2019. “Heterogeneity and Spatial Dependence of Regional Growth in the EU: A Recursive Partitioning Approach.” <em>German Economic Review</em> 20 (1): 67–82. <a href="https://doi.org/10.1111/geer.12146">https://doi.org/10.1111/geer.12146</a>.</p>
+</div>
+<div id="ref-WallerGotway:2004">
+<p>Waller, Lance A., and Carol A. Gotway. 2004. <em>Applied Spatial Statistics for Public Health Data</em>. Hoboken, NJ: John Wiley &amp; Sons.</p>
+</div>
+<div id="ref-RJ-2013-013">
+<p>Wilhelm, Stefan, and Miguel Godinho de Matos. 2013. “Estimating Spatial Probit Models in R.” <em>The R Journal</em> 5 (1): 130–43. <a href="https://doi.org/10.32614/RJ-2013-013">https://doi.org/10.32614/RJ-2013-013</a>.</p>
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="spatglmm.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="sp-and-raster.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": true,
+"facebook": false,
+"twitter": true,
+"linkedin": false,
+"weibo": false,
+"instapaper": false,
+"vk": false,
+"whatsapp": false,
+"all": false
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": "https://github.com/edzer/sdsr/edit/master/18-SpatialRegression.Rmd",
+"text": "Edit"
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": null,
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "true";
+    if (src === "" || src === "true") src = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:")
+      if (/^https?:/.test(src))
+        src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+</body>
+
+</html>
