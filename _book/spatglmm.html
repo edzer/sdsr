@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2021-07-03" />
+<meta name="date" content="2021-07-04" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -1093,7 +1093,7 @@ References to the definitions of these models may be found in <span class="citat
 <div id="boston-house-value-data-set" class="section level3" number="16.1.1">
 <h3><span class="header-section-number">16.1.1</span> Boston house value data set</h3>
 <p>Here we shall use the Boston housing data set, which has been restructured and furnished with census tract boundaries <span class="citation">(R. Bivand <a href="#ref-bivand17" role="doc-biblioref">2017</a>)</span>. The original data set used 506 census tracts and a hedonic model to try to estimate willingness to pay for clean air. The response was constructed from counts of ordinal answers to a 1970 census question about house value. The response is left and right censored in the census source and has been treated as Gaussian. The key covariate was created from a calibrated meteorological model showing the annual nitrogen oxides (NOX) level for a smaller number of model output zones. The numbers of houses responding also varies by tract and model output zone. There are several other covariates, some measured at the tract level, some by town only, where towns broadly correspond to the air pollution model output zones.</p>
-<p>We can start by reading in the 506 tract data set from <strong>spData</strong>, and creating a contiguity neighbour object and from that again a row standardized spatial weights object.</p>
+<p>We can start by reading in the 506 tract data set from <strong>spData</strong> <span class="citation">(R. Bivand, Nowosad, and Lovelace <a href="#ref-R-spData" role="doc-biblioref">2021</a>)</span>, and creating a contiguity neighbour object and from that again a row standardized spatial weights object.</p>
 <div class="sourceCode" id="cb588"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb588-1"><a href="spatglmm.html#cb588-1" aria-hidden="true"></a><span class="kw">library</span>(sf)</span>
 <span id="cb588-2"><a href="spatglmm.html#cb588-2" aria-hidden="true"></a><span class="kw">library</span>(spData)</span>
 <span id="cb588-3"><a href="spatglmm.html#cb588-3" aria-hidden="true"></a>boston_<span class="dv">506</span> &lt;-<span class="st"> </span><span class="kw">st_read</span>(<span class="kw">system.file</span>(<span class="st">&quot;shapes/boston_tracts.shp&quot;</span>, <span class="dt">package=</span><span class="st">&quot;spData&quot;</span>)[<span class="dv">1</span>])</span></code></pre></div>
@@ -1163,7 +1163,7 @@ References to the definitions of these models may be found in <span class="citat
 <span id="cb601-3"><a href="spatglmm.html#cb601-3" aria-hidden="true"></a><span class="st">                  </span><span class="kw">log</span>(<span class="kw">I</span>(LSTAT<span class="op">/</span><span class="dv">100</span>)))</span></code></pre></div>
 <div id="iid-random-effects-with-lme4" class="section level3" number="16.2.1">
 <h3><span class="header-section-number">16.2.1</span> IID random effects with lme4</h3>
-<p>The <strong>lme4</strong> package lets us add an independent and identically distributed (IID) unstructured random effect at the model output zone level by updating the model formula with a random effects term:</p>
+<p>The <strong>lme4</strong> package <span class="citation">(D. Bates et al. <a href="#ref-R-lme4" role="doc-biblioref">2021</a>)</span> lets us add an independent and identically distributed (IID) unstructured random effect at the model output zone level by updating the model formula with a random effects term:</p>
 <div class="sourceCode" id="cb602"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb602-1"><a href="spatglmm.html#cb602-1" aria-hidden="true"></a><span class="kw">library</span>(Matrix)</span>
 <span id="cb602-2"><a href="spatglmm.html#cb602-2" aria-hidden="true"></a><span class="kw">library</span>(lme4)</span>
 <span id="cb602-3"><a href="spatglmm.html#cb602-3" aria-hidden="true"></a>MLM &lt;-<span class="st"> </span><span class="kw">lmer</span>(<span class="kw">update</span>(form, . <span class="op">~</span><span class="st"> </span>. <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span> <span class="op">|</span><span class="st"> </span>NOX_ID)), <span class="dt">data=</span>boston_<span class="dv">487</span>, <span class="dt">REML=</span><span class="ot">FALSE</span>)</span></code></pre></div>
@@ -1172,7 +1172,7 @@ References to the definitions of these models may be found in <span class="citat
 </div>
 <div id="iid-and-car-random-effects-with-hglm" class="section level3" number="16.2.2">
 <h3><span class="header-section-number">16.2.2</span> IID and CAR random effects with hglm</h3>
-<p>The same model may be estimated using the <strong>hglm</strong> package, which also permits the modelling of discrete responses, this time using an extra one-sided formula to express the random effects term:</p>
+<p>The same model may be estimated using the <strong>hglm</strong> package <span class="citation">(Alam, Ronnegard, and Shen <a href="#ref-R-hglm" role="doc-biblioref">2019</a>)</span>, which also permits the modelling of discrete responses, this time using an extra one-sided formula to express the random effects term:</p>
 <div class="sourceCode" id="cb604"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb604-1"><a href="spatglmm.html#cb604-1" aria-hidden="true"></a><span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(hglm))</span>
 <span id="cb604-2"><a href="spatglmm.html#cb604-2" aria-hidden="true"></a><span class="kw">suppressWarnings</span>(HGLM_iid &lt;-<span class="st"> </span><span class="kw">hglm</span>(<span class="dt">fixed=</span>form, <span class="dt">random=</span> <span class="op">~</span><span class="dv">1</span> <span class="op">|</span><span class="st"> </span>NOX_ID, <span class="dt">data=</span>boston_<span class="dv">487</span>,</span>
 <span id="cb604-3"><a href="spatglmm.html#cb604-3" aria-hidden="true"></a>    <span class="dt">family=</span><span class="kw">gaussian</span>()))</span>
@@ -1186,7 +1186,7 @@ References to the definitions of these models may be found in <span class="citat
 </div>
 <div id="sar-random-effects-with-hsar" class="section level3" number="16.2.3">
 <h3><span class="header-section-number">16.2.3</span> SAR random effects with HSAR</h3>
-<p>The <strong>HSAR</strong> package is restricted to the Gaussian response case <span class="citation">(Dong and Harris <a href="#ref-dong15" role="doc-biblioref">2015</a>; Dong et al. <a href="#ref-dongetal15" role="doc-biblioref">2015</a>)</span>, and requires the specification of a sparse design matrix mapping the upper level entities onto lower level entities:</p>
+<p>The <strong>HSAR</strong> package <span class="citation">(Dong, Harris, and Mimis <a href="#ref-R-HSAR" role="doc-biblioref">2020</a>)</span> is restricted to the Gaussian response case <span class="citation">(G. Dong and Harris <a href="#ref-dong15" role="doc-biblioref">2015</a>; G. Dong et al. <a href="#ref-dongetal15" role="doc-biblioref">2015</a>)</span>, and requires the specification of a sparse design matrix mapping the upper level entities onto lower level entities:</p>
 <div class="sourceCode" id="cb607"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb607-1"><a href="spatglmm.html#cb607-1" aria-hidden="true"></a><span class="kw">library</span>(HSAR)</span>
 <span id="cb607-2"><a href="spatglmm.html#cb607-2" aria-hidden="true"></a><span class="kw">library</span>(MatrixModels, <span class="dt">warn.conflicts=</span><span class="ot">FALSE</span>)</span>
 <span id="cb607-3"><a href="spatglmm.html#cb607-3" aria-hidden="true"></a>Z &lt;-<span class="st"> </span><span class="kw">as</span>(<span class="kw">model.Matrix</span>(<span class="op">~</span><span class="st"> </span><span class="dv">-1</span> <span class="op">+</span><span class="st"> </span><span class="kw">as.factor</span>(NOX_ID), <span class="dt">data=</span>boston_<span class="dv">487</span>, <span class="dt">sparse=</span><span class="ot">TRUE</span>),</span>
@@ -1199,7 +1199,7 @@ References to the definitions of these models may be found in <span class="citat
 </div>
 <div id="iid-and-icar-random-effects-with-r2bayesx" class="section level3" number="16.2.4">
 <h3><span class="header-section-number">16.2.4</span> IID and ICAR random effects with R2BayesX</h3>
-<p>The <strong>R2BayesX</strong> package provides flexible support for structured additive regression models, including spatial multilevel models. The models include an IID unstructured random effect at the upper level using the <code>"re"</code> specification in the <code>sx()</code> model term <span class="citation">(Umlauf et al. <a href="#ref-umlaufetal:15" role="doc-biblioref">2015</a>)</span>; we choose the <code>"MCMC"</code> method:</p>
+<p>The <strong>R2BayesX</strong> package <span class="citation">(Umlauf et al. <a href="#ref-R-R2BayesX" role="doc-biblioref">2017</a>)</span> provides flexible support for structured additive regression models, including spatial multilevel models. The models include an IID unstructured random effect at the upper level using the <code>"re"</code> specification in the <code>sx()</code> model term <span class="citation">(Umlauf et al. <a href="#ref-umlaufetal:15" role="doc-biblioref">2015</a>)</span>; we choose the <code>"MCMC"</code> method:</p>
 <div class="sourceCode" id="cb610"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb610-1"><a href="spatglmm.html#cb610-1" aria-hidden="true"></a><span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(R2BayesX))</span></code></pre></div>
 <div class="sourceCode" id="cb611"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb611-1"><a href="spatglmm.html#cb611-1" aria-hidden="true"></a>BX_iid &lt;-<span class="st"> </span><span class="kw">bayesx</span>(<span class="kw">update</span>(form, . <span class="op">~</span><span class="st"> </span>. <span class="op">+</span><span class="st"> </span><span class="kw">sx</span>(NOX_ID, <span class="dt">bs=</span><span class="st">&quot;re&quot;</span>)), <span class="dt">family=</span><span class="st">&quot;gaussian&quot;</span>,</span>
 <span id="cb611-2"><a href="spatglmm.html#cb611-2" aria-hidden="true"></a>    <span class="dt">data=</span>boston_<span class="dv">487</span>, <span class="dt">method=</span><span class="st">&quot;MCMC&quot;</span>, <span class="dt">iterations=</span><span class="dv">12000</span>, <span class="dt">burnin=</span><span class="dv">2000</span>, <span class="dt">step=</span><span class="dv">2</span>, <span class="dt">seed=</span><span class="dv">123</span>)</span></code></pre></div>
@@ -1219,7 +1219,7 @@ References to the definitions of these models may be found in <span class="citat
 </div>
 <div id="iid-icar-and-leroux-random-effects-with-inla" class="section level3" number="16.2.5">
 <h3><span class="header-section-number">16.2.5</span> IID, ICAR and Leroux random effects with INLA</h3>
-<p><span class="citation">R. Bivand, Gómez-Rubio, and Rue (<a href="#ref-JSSv063i20" role="doc-biblioref">2015</a>)</span> and <span class="citation">V. Gómez-Rubio (<a href="#ref-gómez2020bayesian" role="doc-biblioref">2020</a>)</span> present the use of the <strong>INLA</strong> package and the <code>inla()</code> model fitting function with spatial regression models:</p>
+<p><span class="citation">R. Bivand, Gómez-Rubio, and Rue (<a href="#ref-JSSv063i20" role="doc-biblioref">2015</a>)</span> and <span class="citation">V. Gómez-Rubio (<a href="#ref-gómez2020bayesian" role="doc-biblioref">2020</a>)</span> present the use of the <strong>INLA</strong> package <span class="citation">(Rue et al. <a href="#ref-R-INLA" role="doc-biblioref">2021</a>)</span> and the <code>inla()</code> model fitting function with spatial regression models:</p>
 <div class="sourceCode" id="cb619"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb619-1"><a href="spatglmm.html#cb619-1" aria-hidden="true"></a><span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(INLA))</span></code></pre></div>
 <p>Although differing in details, the approach by updating the fixed model formula with an unstructured random effects term is very similar to that seen above:</p>
 <div class="sourceCode" id="cb620"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb620-1"><a href="spatglmm.html#cb620-1" aria-hidden="true"></a>INLA_iid &lt;-<span class="st"> </span><span class="kw">inla</span>(<span class="kw">update</span>(form, . <span class="op">~</span><span class="st"> </span>. <span class="op">+</span><span class="st"> </span><span class="kw">f</span>(NOX_ID, <span class="dt">model=</span><span class="st">&quot;iid&quot;</span>)), <span class="dt">family=</span><span class="st">&quot;gaussian&quot;</span>, </span>
@@ -1241,7 +1241,7 @@ References to the definitions of these models may be found in <span class="citat
 </div>
 <div id="icar-random-effects-with-mgcvgam" class="section level3" number="16.2.6">
 <h3><span class="header-section-number">16.2.6</span> ICAR random effects with mgcv::gam()</h3>
-<p>In a very similar way, the <code>gam()</code> function in the <strong>mgcv</strong> package can take an <code>"mrf"</code> term using a suitable <code>"nb"</code> object for the upper level. In this case the <code>"nb"</code> object needs to have the contents of the <code>"region.id"</code> attribute copied as the names of the neighbour list components, and the indexing variable needs to be a factor <span class="citation">(Wood <a href="#ref-wood:17" role="doc-biblioref">2017</a>)</span>:</p>
+<p>In a very similar way, the <code>gam()</code> function in the <strong>mgcv</strong> package <span class="citation">(Wood <a href="#ref-R-mgcv" role="doc-biblioref">2021</a>)</span> can take an <code>"mrf"</code> term using a suitable <code>"nb"</code> object for the upper level. In this case the <code>"nb"</code> object needs to have the contents of the <code>"region.id"</code> attribute copied as the names of the neighbour list components, and the indexing variable needs to be a factor <span class="citation">(Wood <a href="#ref-wood:17" role="doc-biblioref">2017</a>)</span>:</p>
 <div class="sourceCode" id="cb628"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb628-1"><a href="spatglmm.html#cb628-1" aria-hidden="true"></a><span class="kw">library</span>(mgcv)</span>
 <span id="cb628-2"><a href="spatglmm.html#cb628-2" aria-hidden="true"></a><span class="kw">names</span>(nb_q_<span class="dv">93</span>) &lt;-<span class="st"> </span><span class="kw">attr</span>(nb_q_<span class="dv">93</span>, <span class="st">&quot;region.id&quot;</span>)</span>
 <span id="cb628-3"><a href="spatglmm.html#cb628-3" aria-hidden="true"></a>boston_<span class="dv">487</span><span class="op">$</span>NOX_ID &lt;-<span class="st"> </span><span class="kw">as.factor</span>(boston_<span class="dv">487</span><span class="op">$</span>NOX_ID)</span></code></pre></div>
@@ -1289,8 +1289,14 @@ Figure 16.2: Air pollution model output zone level spatially structured random e
 </div>
 <h3>References</h3>
 <div id="refs" class="references hanging-indent">
+<div id="ref-R-hglm">
+<p>Alam, Moudud, Lars Ronnegard, and Xia Shen. 2019. <em>Hglm: Hierarchical Generalized Linear Models</em>. <a href="https://CRAN.R-project.org/package=hglm">https://CRAN.R-project.org/package=hglm</a>.</p>
+</div>
 <div id="ref-alam-ronnegard-shen:2015">
 <p>Alam, Moudud, Lars Rönnegård, and Xia Shen. 2015. “Fitting Conditional and Simultaneous Autoregressive Spatial Models in Hglm.” <em>The R Journal</em> 7 (2): 5–18. <a href="https://doi.org/10.32614/RJ-2015-017">https://doi.org/10.32614/RJ-2015-017</a>.</p>
+</div>
+<div id="ref-R-lme4">
+<p>Bates, Douglas, Martin Maechler, Ben Bolker, and Steven Walker. 2021. <em>Lme4: Linear Mixed-Effects Models Using ’Eigen’ and S4</em>. <a href="https://CRAN.R-project.org/package=lme4">https://CRAN.R-project.org/package=lme4</a>.</p>
 </div>
 <div id="ref-besag:74">
 <p>Besag, Julian. 1974. “Spatial Interaction and the Statistical Analysis of Lattice Systems.” <em>Journal of the Royal Statistical Society. Series B (Methodological)</em> 36: pp. 192–236.</p>
@@ -1300,6 +1306,9 @@ Figure 16.2: Air pollution model output zone level spatially structured random e
 </div>
 <div id="ref-JSSv063i20">
 <p>Bivand, Roger, Virgilio Gómez-Rubio, and Håvard Rue. 2015. “Spatial Data Analysis with R-Inla with Some Extensions.” <em>Journal of Statistical Software, Articles</em> 63 (20): 1–31. <a href="https://doi.org/10.18637/jss.v063.i20">https://doi.org/10.18637/jss.v063.i20</a>.</p>
+</div>
+<div id="ref-R-spData">
+<p>Bivand, Roger, Jakub Nowosad, and Robin Lovelace. 2021. <em>SpData: Datasets for Spatial Analysis</em>. <a href="https://CRAN.R-project.org/package=spData">https://CRAN.R-project.org/package=spData</a>.</p>
 </div>
 <div id="ref-doi:10.1177/1471082X20967158">
 <p>Bivand, Roger S, and Virgilio Gómez-Rubio. 2021. “Spatial Survival Modelling of Business Re-Opening After Katrina: Survival Modelling Compared to Spatial Probit Modelling of Re-Opening Within 3, 6 or 12 Months.” <em>Statistical Modelling</em> 21 (1-2): 137–60. <a href="https://doi.org/10.1177/1471082X20967158">https://doi.org/10.1177/1471082X20967158</a>.</p>
@@ -1324,6 +1333,9 @@ Figure 16.2: Air pollution model output zone level spatially structured random e
 </div>
 <div id="ref-dongetal15">
 <p>Dong, G., R. Harris, K. Jones, and J. Yu. 2015. “Multilevel Modeling with Spatial Interaction Effects with Application to an Emerging Land Market in Beijing, China.” <em>PLOS One</em> 10 (6). <a href="https://doi.org/doi:10.1371/journal.pone.0130761">https://doi.org/doi:10.1371/journal.pone.0130761</a>.</p>
+</div>
+<div id="ref-R-HSAR">
+<p>Dong, Guanpeng, Richard Harris, and Angelos Mimis. 2020. <em>HSAR: Hierarchical Spatial Autoregressive Model</em>. <a href="https://CRAN.R-project.org/package=HSAR">https://CRAN.R-project.org/package=HSAR</a>.</p>
 </div>
 <div id="ref-gaetan+guyon:10">
 <p>Gaetan, Carlo, and Xavier Guyon. 2010. <em>Spatial Statistics and Modeling</em>. New York: Springer.</p>
@@ -1358,8 +1370,14 @@ Figure 16.2: Air pollution model output zone level spatially structured random e
 <div id="ref-ripley:88">
 <p>Ripley, B. 1988. <em>Statistical Inference for Spatial Processes</em>. Cambridge: Cambridge University Press.</p>
 </div>
+<div id="ref-R-INLA">
+<p>Rue, Havard, Finn Lindgren, Daniel Simpson, Sara Martino, Elias Teixeira Krainski, Haakon Bakka, Andrea Riebler, and Geir-Arne Fuglstad. 2021. <em>INLA: Full Bayesian Analysis of Latent Gaussian Models Using Integrated Nested Laplace Approximations</em>.</p>
+</div>
 <div id="ref-umlaufetal:15">
 <p>Umlauf, Nikolaus, Daniel Adler, Thomas Kneib, Stefan Lang, and Achim Zeileis. 2015. “Structured Additive Regression Models: An R Interface to BayesX.” <em>Journal of Statistical Software</em> 63 (21): 1–46. <a href="http://www.jstatsoft.org/v63/i21/">http://www.jstatsoft.org/v63/i21/</a>.</p>
+</div>
+<div id="ref-R-R2BayesX">
+<p>Umlauf, Nikolaus, Thomas Kneib, Stefan Lang, and Achim Zeileis. 2017. <em>R2BayesX: Estimate Structured Additive Regression Models with ’Bayesx’</em>. <a href="https://CRAN.R-project.org/package=R2BayesX">https://CRAN.R-project.org/package=R2BayesX</a>.</p>
 </div>
 <div id="ref-VRANCKX2019100302">
 <p>Vranckx, M., T. Neyens, and C. Faes. 2019. “Comparison of Different Software Implementations for Spatial Disease Mapping.” <em>Spatial and Spatio-Temporal Epidemiology</em> 31: 100302. <a href="https://doi.org/10.1016/j.sste.2019.100302">https://doi.org/10.1016/j.sste.2019.100302</a>.</p>
@@ -1369,6 +1387,9 @@ Figure 16.2: Air pollution model output zone level spatially structured random e
 </div>
 <div id="ref-whittle:54">
 <p>Whittle, P. 1954. “On Stationary Processes in the Plane.” <em>Biometrika</em> 41 (3-4): 434–49. <a href="https://doi.org/10.1093/biomet/41.3-4.434">https://doi.org/10.1093/biomet/41.3-4.434</a>.</p>
+</div>
+<div id="ref-R-mgcv">
+<p>Wood, Simon. 2021. <em>Mgcv: Mixed Gam Computation Vehicle with Automatic Smoothness Estimation</em>. <a href="https://CRAN.R-project.org/package=mgcv">https://CRAN.R-project.org/package=mgcv</a>.</p>
 </div>
 <div id="ref-wood:17">
 <p>Wood, S. N. 2017. <em>Generalized Additive Models: An Introduction with R</em>. 2nd ed. Chapman; Hall/CRC.</p>
