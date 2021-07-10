@@ -1164,10 +1164,10 @@ set can be queried by</p>
 # 1    nc.gpkg Multi Polygon      100     14</code></pre>
 <p>Simple feature objects can be written with <code>st_write</code>, as in</p>
 <div class="sourceCode" id="cb102"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb102-1" title="1">(<span class="dt">file =</span> <span class="kw">tempfile</span>(<span class="dt">fileext =</span> <span class="st">&quot;.gpkg&quot;</span>))</a></code></pre></div>
-<pre><code># [1] &quot;/tmp/RtmpnZRB2Z/fileb0f8d1daec186.gpkg&quot;</code></pre>
+<pre><code># [1] &quot;/tmp/RtmpoG1ob4/fileb31712398e609.gpkg&quot;</code></pre>
 <div class="sourceCode" id="cb104"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb104-1" title="1"><span class="kw">st_write</span>(nc, file, <span class="dt">layer =</span> <span class="st">&quot;layer_nc&quot;</span>)</a></code></pre></div>
 <pre><code># Writing layer `layer_nc&#39; to data source 
-#   `/tmp/RtmpnZRB2Z/fileb0f8d1daec186.gpkg&#39; using driver `GPKG&#39;
+#   `/tmp/RtmpoG1ob4/fileb31712398e609.gpkg&#39; using driver `GPKG&#39;
 # Writing 100 features with 14 fields and geometry type Multi Polygon.</code></pre>
 <p>where the file format (GPKG) is derived from the file name extension.</p>
 </div>
@@ -1252,13 +1252,13 @@ which return a tibble rather than a <code>data.frame</code>, do not print any
 output, and overwrite existing data by default.</p>
 <p>Further <code>tidyverse</code> generics with methods for <code>sf</code> objects include
 <code>filter</code>, <code>select</code>, <code>group_by</code>, <code>ungroup</code>, <code>mutate</code>, <code>transmute</code>,
-<code>rowwise</code>, <code>rename</code>, <code>slice</code> and <code>summarise</code>, <code>distinct</code>, <code>gather</code>,
+<code>rowwise</code>, <code>rename</code>, <code>slice</code>, <code>summarise</code>, <code>distinct</code>, <code>gather</code>, <code>pivot_longer</code>,
 <code>spread</code>, <code>nest</code>, <code>unnest</code>, <code>unite</code>, <code>separate</code>, <code>separate_rows</code>,
 <code>sample_n</code>, and <code>sample_frac</code>. Most of these methods simply manage
 the metadata of <code>sf</code> objects, and make sure the geometry remains
 present. In case a user wants the geometry to be removed, one can
-use <code>st_set_geometry(nc, NULL)</code> or simply coerce to a tibble before
-selecting:</p>
+use <code>st_set_geometry(nc, NULL)</code> or simply coerce to a <code>tibble</code> or
+<code>data.frame</code> before selecting:</p>
 <div class="sourceCode" id="cb117"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb117-1" title="1"><span class="kw">library</span>(tidyverse)</a>
 <a class="sourceLine" id="cb117-2" title="2">nc <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(BIR74) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">head</span>(<span class="dv">3</span>)</a></code></pre></div>
 <pre><code># # A tibble: 3 x 1
@@ -1977,21 +1977,22 @@ zeroes, otherwise these two numbers would have been similar:</p>
 <p>We will form a three-dimensional vector datacube with origin,
 destination and transportation mode as dimensions. For this, we
 first “tidy” the <code>bristol_od</code> table to have origin (o), destination (d),
-transportation mode (mode), and count (n) as variables, using <code>gather</code>:</p>
+transportation mode (mode), and count (n) as variables, using
+<code>pivot_longer</code>:</p>
 <div class="sourceCode" id="cb211"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb211-1" title="1"><span class="co"># create O-D-mode array:</span></a>
 <a class="sourceLine" id="cb211-2" title="2">bristol_tidy &lt;-<span class="st"> </span>bristol_od <span class="op">%&gt;%</span><span class="st"> </span></a>
 <a class="sourceLine" id="cb211-3" title="3"><span class="st">    </span><span class="kw">select</span>(<span class="op">-</span>all) <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb211-4" title="4"><span class="st">    </span><span class="kw">gather</span>(<span class="st">&quot;mode&quot;</span>, <span class="st">&quot;n&quot;</span>, <span class="op">-</span>o, <span class="op">-</span>d)</a>
+<a class="sourceLine" id="cb211-4" title="4"><span class="st">    </span><span class="kw">pivot_longer</span>(<span class="dv">3</span><span class="op">:</span><span class="dv">6</span>, <span class="dt">names_to =</span> <span class="st">&quot;mode&quot;</span>, <span class="dt">values_to =</span> <span class="st">&quot;n&quot;</span>)</a>
 <a class="sourceLine" id="cb211-5" title="5"><span class="kw">head</span>(bristol_tidy)</a></code></pre></div>
 <pre><code># # A tibble: 6 x 4
-#   o         d         mode        n
-#   &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;   &lt;dbl&gt;
-# 1 E02002985 E02002985 bicycle     5
-# 2 E02002985 E02002987 bicycle     7
-# 3 E02002985 E02003036 bicycle     2
-# 4 E02002985 E02003043 bicycle     1
-# 5 E02002985 E02003049 bicycle     2
-# 6 E02002985 E02003054 bicycle     4</code></pre>
+#   o         d         mode           n
+#   &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;dbl&gt;
+# 1 E02002985 E02002985 bicycle        5
+# 2 E02002985 E02002985 foot         127
+# 3 E02002985 E02002985 car_driver    59
+# 4 E02002985 E02002985 train          0
+# 5 E02002985 E02002987 bicycle        7
+# 6 E02002985 E02002987 foot          35</code></pre>
 <p>Next, we form the three-dimensional array <code>a</code>, filled with zeroes:</p>
 <div class="sourceCode" id="cb213"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb213-1" title="1">od =<span class="st"> </span>bristol_tidy <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">pull</span>(<span class="st">&quot;o&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">unique</span>()</a>
 <a class="sourceLine" id="cb213-2" title="2">nod =<span class="st"> </span><span class="kw">length</span>(od)</a>

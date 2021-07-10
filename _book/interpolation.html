@@ -1180,10 +1180,15 @@ Figure 12.4: Sample variogram plot with adjusted cutoff and lag width
 <p>In order to progress toward spatial predictions, we need a variogram <em>model</em> <span class="math inline">\(\gamma(h)\)</span> for (potentially) all distances <span class="math inline">\(h\)</span>, rather than the set of estimates derived above: in case we would for instance connect these estimates with straight lines, or assume they reflect constant values over their respective distance intervals, this would lead to statisical models with non-positive covariance matrices, which is a complicated way of expressing that you are in a lot of trouble.</p>
 <p>To avoid these troubles we fit parametric models <span class="math inline">\(\gamma(h)\)</span> to the estimates <span class="math inline">\(\hat{\gamma}(h_i)\)</span>, where we take <span class="math inline">\(h_i\)</span> as the mean value of all the <span class="math inline">\(h&#39;\)</span> values involved in estimating <span class="math inline">\(\hat{\gamma}(h_i)\)</span>. For this, when we fit a model like the exponential variogram, fitted by</p>
 <div class="sourceCode" id="cb349"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb349-1" title="1">v.m =<span class="st"> </span><span class="kw">fit.variogram</span>(v, <span class="kw">vgm</span>(<span class="dv">1</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">50000</span>, <span class="dv">1</span>))</a></code></pre></div>
-<p>and shown in figure <a href="#fig:fitvariogrammodel"><strong>??</strong></a>.</p>
+<p>and shown in figure <a href="interpolation.html#fig:fitvariogrammodel">12.5</a>.</p>
 <div class="sourceCode" id="cb350"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb350-1" title="1"><span class="kw">plot</span>(v, v.m, <span class="dt">plot.numbers =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-<p><img src="sds_files/figure-html/fitvariogrammodel-1.png" width="672" style="display: block; margin: auto;" />
-The fitting is done by weighted least squares, minimizing
+<div class="figure" style="text-align: center"><span id="fig:fitvariogrammodel"></span>
+<img src="sds_files/figure-html/fitvariogrammodel-1.png" alt="Sample variogram with fitted model" width="672" />
+<p class="caption">
+Figure 12.5: Sample variogram with fitted model
+</p>
+</div>
+<p>The fitting is done by weighted least squares, minimizing
 <span class="math inline">\(\sum_{i=1}^{n}w_i(\gamma(h_i)-\hat{\gamma}(h_i))^2\)</span>, with <span class="math inline">\(w_i\)</span> by
 default equal to <span class="math inline">\(N(h_i)/h^2\)</span>, other fitting schemes are available
 through argument <code>fit.method</code>.</p>
@@ -1196,7 +1201,7 @@ a <code>stars</code> object with a raster covering the target area, and NA’s
 outside it:</p>
 <p>Kriging involves the prediction of <span class="math inline">\(Z(s_0)\)</span> at arbitrary locations
 <span class="math inline">\(s_0\)</span>. We can krige NO<span class="math inline">\(_2\)</span> by using <code>gstat::krige</code>, with the model for the
-trend, the data, the prediction grid, and the variogram model (figure <a href="interpolation.html#fig:krigeovergermany">12.5</a>):</p>
+trend, the data, the prediction grid, and the variogram model (figure <a href="interpolation.html#fig:krigeovergermany">12.6</a>):</p>
 <div class="sourceCode" id="cb351"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb351-1" title="1">k =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, grd, v.m)</a></code></pre></div>
 <pre><code># [using ordinary kriging]</code></pre>
 
@@ -1207,7 +1212,7 @@ trend, the data, the prediction grid, and the variogram model (figure <a href="i
 <div class="figure" style="text-align: center"><span id="fig:krigeovergermany"></span>
 <img src="sds_files/figure-html/krigeovergermany-1.png" alt="Kriged NO\(_2\) concentrations over Germany" width="672" />
 <p class="caption">
-Figure 12.5: Kriged NO<span class="math inline">\(_2\)</span> concentrations over Germany
+Figure 12.6: Kriged NO<span class="math inline">\(_2\)</span> concentrations over Germany
 </p>
 </div>
 </div>
@@ -1222,17 +1227,18 @@ target area. With <code>krige</code>, this can be done by giving the target
 areas (polygons) as the <code>newdata</code> argument:</p>
 <div class="sourceCode" id="cb355"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb355-1" title="1">b =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, de, v.m)</a></code></pre></div>
 <pre><code># [using ordinary kriging]</code></pre>
-<p>we can now merge the two maps into a single object to create a single plot (figure <a href="interpolation.html#fig:aggregations">12.6</a>):</p>
+<p>we can now merge the two maps into a single object to create a single plot (figure <a href="interpolation.html#fig:aggregations">12.7</a>):</p>
 <div class="sourceCode" id="cb357"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb357-1" title="1">b<span class="op">$</span>sample =<span class="st"> </span>a<span class="op">$</span>NO2</a>
 <a class="sourceLine" id="cb357-2" title="2">b<span class="op">$</span>kriging =<span class="st"> </span>b<span class="op">$</span>var1.pred</a></code></pre></div>
 
-<div class="sourceCode" id="cb358"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb358-1" title="1">b <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(sample, kriging) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">gather</span>(var, NO2, <span class="op">-</span>geometry) -&gt;<span class="st"> </span>b2</a>
-<a class="sourceLine" id="cb358-2" title="2"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> b2, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">fill =</span> NO2)) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>var) <span class="op">+</span></a>
-<a class="sourceLine" id="cb358-3" title="3"><span class="st">     </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb358"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb358-1" title="1">b <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(sample, kriging) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb358-2" title="2"><span class="st">        </span><span class="kw">pivot_longer</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">2</span>, <span class="dt">names_to =</span> <span class="st">&quot;var&quot;</span>, <span class="dt">values_to =</span> <span class="st">&quot;NO2&quot;</span>) -&gt;<span class="st"> </span>b2</a>
+<a class="sourceLine" id="cb358-3" title="3"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> b2, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">fill =</span> NO2)) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>var) <span class="op">+</span></a>
+<a class="sourceLine" id="cb358-4" title="4"><span class="st">     </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>))</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:aggregations"></span>
 <img src="sds_files/figure-html/aggregations-1.png" alt="Aggregated NO\(_2\) values from simple averaging (left) and block kriging (right)" width="672" />
 <p class="caption">
-Figure 12.6: Aggregated NO<span class="math inline">\(_2\)</span> values from simple averaging (left) and block kriging (right)
+Figure 12.7: Aggregated NO<span class="math inline">\(_2\)</span> values from simple averaging (left) and block kriging (right)
 </p>
 </div>
 <p>We see that the signal is similar, but that the simple means are
@@ -1250,7 +1256,7 @@ a by-product of kriging. We combine and rename the two:</p>
 <div class="sourceCode" id="cb360"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb360-1" title="1">b<span class="op">$</span>sample =<span class="st"> </span>a<span class="op">$</span>NO2</a>
 <a class="sourceLine" id="cb360-2" title="2">b<span class="op">$</span>kriging =<span class="st"> </span><span class="kw">sqrt</span>(b<span class="op">$</span>var1.var)</a></code></pre></div>
 
-<p><code>{r aggrSE,fig.cap = 'Standard errors for mean NO<span class="math inline">\(_2\)</span> values obtained by simple averaging (left) and block kriging (right)', b %&gt;% select(sample, kriging) %&gt;% gather(var, NO2, -geometry) -&gt; b2 ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +      scale_fill_gradientn(colors = sf.colors(20))</code>
+<p><code>{r aggrSE,fig.cap = 'Standard errors for mean NO<span class="math inline">\(_2\)</span> values obtained by simple averaging (left) and block kriging (right)', b %&gt;% select(sample, kriging) %&gt;%          pivot_longer(1:2, names_to = "var", values_to = "NO2") -&gt; b2 ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +      scale_fill_gradientn(colors = sf.colors(20))</code>
 where we see that the simple approach gives clearly more variability
 and mostly larger values for prediction errors of areal means,
 compared to block kriging.</p>
@@ -1278,7 +1284,7 @@ value. In addition, it is good to constrain <code>nmax</code>, the (maximum)
 number of nearest neigbours to include in kriging estimation,
 because the dataset grows each step, leading otherwise quickly to
 very long computing times and large memory requirements (figure
-<a href="interpolation.html#fig:plotkrigingvalues">12.7</a>):</p>
+<a href="interpolation.html#fig:plotkrigingvalues">12.8</a>):</p>
 <div class="sourceCode" id="cb361"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb361-1" title="1">s =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, grd, v.m, <span class="dt">nmax =</span> <span class="dv">30</span>, <span class="dt">nsim =</span> <span class="dv">10</span>)</a></code></pre></div>
 <pre><code># drawing 10 GLS realisations of beta...
 # [using conditional Gaussian simulation]</code></pre>
@@ -1302,7 +1308,7 @@ very long computing times and large memory requirements (figure
 <div class="figure" style="text-align: center"><span id="fig:plotkrigingvalues"></span>
 <img src="sds_files/figure-html/plotkrigingvalues-1.png" alt="Ten conditional simulations for NO\(_2\) values" width="672" />
 <p class="caption">
-Figure 12.7: Ten conditional simulations for NO<span class="math inline">\(_2\)</span> values
+Figure 12.8: Ten conditional simulations for NO<span class="math inline">\(_2\)</span> values
 </p>
 </div>
 <p>Alternative methods for conditional simulation have recently been
@@ -1364,7 +1370,7 @@ crossing the country border, this will be less than 10 x 10 km:</p>
 <p>Instead of doing the two-stage procedure above: first finding cells that
 have a border crossing it, then computing its area, we could also directly
 use <code>st_intersection</code> on all cells, but that takes considerably longer.
-From the counts and areas we can compute densities, and verify totals (figure <a href="interpolation.html#fig:popdens">12.8</a>):</p>
+From the counts and areas we can compute densities, and verify totals (figure <a href="interpolation.html#fig:popdens">12.9</a>):</p>
 <div class="sourceCode" id="cb379"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb379-1" title="1">grd<span class="op">$</span>pop_dens =<span class="st"> </span>a<span class="op">$</span>Einwohner <span class="op">/</span><span class="st"> </span>grd<span class="op">$</span>area</a>
 <a class="sourceLine" id="cb379-2" title="2"><span class="kw">sum</span>(grd<span class="op">$</span>pop_dens <span class="op">*</span><span class="st"> </span>grd<span class="op">$</span>area, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>) <span class="co"># verify</span></a></code></pre></div>
 <pre><code># 80323301 [1]</code></pre>
@@ -1374,7 +1380,7 @@ From the counts and areas we can compute densities, and verify totals (figure <a
 <div class="figure" style="text-align: center"><span id="fig:popdens"></span>
 <img src="sds_files/figure-html/popdens-1.png" alt="Population density for 100 m x 100 m grid cells" width="672" />
 <p class="caption">
-Figure 12.8: Population density for 100 m x 100 m grid cells
+Figure 12.9: Population density for 100 m x 100 m grid cells
 </p>
 </div>
 <p>We need to divide the number of inhabitants by the number of 100
@@ -1413,17 +1419,17 @@ we can use</p>
 #   (1 observation deleted due to missingness)
 # Multiple R-squared:  0.374,   Adjusted R-squared:  0.365 
 # F-statistic: 42.4 on 1 and 71 DF,  p-value: 9.19e-09</code></pre>
-<p>and the corresponding scatterplot is shown in <a href="interpolation.html#fig:no2scat">12.9</a>.</p>
+<p>and the corresponding scatterplot is shown in <a href="interpolation.html#fig:no2scat">12.10</a>.</p>
 <div class="sourceCode" id="cb388"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb388-1" title="1"><span class="kw">plot</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf)</a>
 <a class="sourceLine" id="cb388-2" title="2"><span class="kw">abline</span>(<span class="kw">lm</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf))</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:no2scat"></span>
 <img src="sds_files/figure-html/no2scat-1.png" alt="Scatter plot of 2017 annual mean NO2 concentration against population density, for rural background air quality stations" width="50%" />
 <p class="caption">
-Figure 12.9: Scatter plot of 2017 annual mean NO2 concentration against population density, for rural background air quality stations
+Figure 12.10: Scatter plot of 2017 annual mean NO2 concentration against population density, for rural background air quality stations
 </p>
 </div>
 <p>Prediction under this new model involves first modelling a residual
-variogram (figure <a href="interpolation.html#fig:predictusingpopulationdensity">12.10</a>):</p>
+variogram (figure <a href="interpolation.html#fig:predictusingpopulationdensity">12.11</a>):</p>
 <div class="sourceCode" id="cb389"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb389-1" title="1">no2.sf =<span class="st"> </span>no2.sf[<span class="op">!</span><span class="kw">is.na</span>(no2.sf<span class="op">$</span>pop_dens),]</a>
 <a class="sourceLine" id="cb389-2" title="2">vr =<span class="st"> </span><span class="kw">variogram</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf)</a>
 <a class="sourceLine" id="cb389-3" title="3">vr.m =<span class="st"> </span><span class="kw">fit.variogram</span>(vr, <span class="kw">vgm</span>(<span class="dv">1</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">50000</span>, <span class="dv">1</span>))</a></code></pre></div>
@@ -1431,10 +1437,10 @@ variogram (figure <a href="interpolation.html#fig:predictusingpopulationdensity"
 <div class="figure" style="text-align: center"><span id="fig:predictusingpopulationdensity"></span>
 <img src="sds_files/figure-html/predictusingpopulationdensity-1.png" alt="Residual variogram after subtracting population density trend" width="672" />
 <p class="caption">
-Figure 12.10: Residual variogram after subtracting population density trend
+Figure 12.11: Residual variogram after subtracting population density trend
 </p>
 </div>
-<p>and subsequently, kriging prediction is done by (figure <a href="interpolation.html#fig:residualkriging">12.11</a>)</p>
+<p>and subsequently, kriging prediction is done by (figure <a href="interpolation.html#fig:residualkriging">12.12</a>)</p>
 <div class="sourceCode" id="cb391"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb391-1" title="1">kr =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf, grd[<span class="st">&quot;pop_dens&quot;</span>], vr.m)</a></code></pre></div>
 <pre><code># [using universal kriging]</code></pre>
 <div class="sourceCode" id="cb393"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb393-1" title="1">k<span class="op">$</span>kr1 =<span class="st"> </span>k<span class="op">$</span>var1.pred</a>
@@ -1451,7 +1457,7 @@ Figure 12.10: Residual variogram after subtracting population density trend
 <div class="figure" style="text-align: center"><span id="fig:residualkriging"></span>
 <img src="sds_files/figure-html/residualkriging-1.png" alt="Kriging NO\(_2\) values using population density as a trend variable" width="672" />
 <p class="caption">
-Figure 12.11: Kriging NO<span class="math inline">\(_2\)</span> values using population density as a trend variable
+Figure 12.12: Kriging NO<span class="math inline">\(_2\)</span> values using population density as a trend variable
 </p>
 </div>
 <p>where, critically, the <code>pop_dens</code> values are now available for
@@ -1462,10 +1468,10 @@ and has a range that extends that of the former. It should be taken
 with a large grain of salt however, since the stations used were
 filtered for the category “rural background”, indicating that they
 represent conditions of lower populations density. The scatter plot
-of Figure <a href="interpolation.html#fig:no2scat">12.9</a> reveals that the the population density
+of Figure <a href="interpolation.html#fig:no2scat">12.10</a> reveals that the the population density
 at the locations of stations is much more limited than that in the
 population density map, and hence the right-hand side map is based on
-strongly extrapolating the relationship shown in <a href="interpolation.html#fig:no2scat">12.9</a>.</p>
+strongly extrapolating the relationship shown in <a href="interpolation.html#fig:no2scat">12.10</a>.</p>
 </div>
 </div>
 <div id="atpk" class="section level2">
