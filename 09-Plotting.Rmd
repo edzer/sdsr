@@ -18,7 +18,7 @@ where we think we "do nothing" (figure \@ref(fig:world), left),
 or where show the world "as it is", e.g. as seen from space (figure
 \@ref(fig:world), right).
 
-```{r world,fig.cap="Earth country boundaries; left: mapping long/lat linearly to $x$ and $y$ (plate carrée); right: ``as seen from space'' (orthographic)", fig=TRUE, echo=knitr::is_latex_output(), message=FALSE}
+```{r world,fig.cap="Earth country boundaries; left: mapping long/lat linearly to $x$ and $y$ (plate carrée); right: "as seen from space'' (orthographic)", fig=TRUE, echo=knitr::is_latex_output(), message=FALSE}
 library(sf)
 library(rnaturalearth)
 w <- ne_countries(scale = "medium", returnclass = "sf")
@@ -171,11 +171,13 @@ two other methods are available for choosing `n` automatically. If
 the number of observations is greater than 3000, a 10\% sample is used
 to create the breaks for "fisher" and "jenks".
 
-### Graticules and other navigation aids {#graticule}
+### Graticule and other navigation aids {#graticule}
 
-Graticules are lines on a map that follow constant latitude or
-longitude values. On figure \@ref(fig:world) left they are drawn
-in grey. Graticules are often drawn in maps to give reference where
+
+A graticules is a network of lines on a map that follow constant latitude or
+longitude. On figure \@ref(fig:first-map) a graticule is drawn
+in grey, on figure \@ref(fig:firstgather) in white. 
+Graticules are often drawn in maps to give reference where
 something is. In our first map in figure \@ref(fig:first-map) we can
 read that the area plotted is near 35$^o$ North and 80$^o$ West.
 Had we plotted the lines in the projected coordinate system, they
@@ -183,9 +185,9 @@ would have been straight and their actual numbers would not have
 been very informative, apart from giving an interpretation of size
 or distances when the unit is known, and familiar to the map reader.
 Graticules, by that, also shed light on which projection
-was used: equirectangular or Mercator projections will have straight
+was used: equirectangular or Mercator projections have straight
 vertical and horizontal lines, conic projections have straight but
-diverging meridians, equal area may have curved meridians
+diverging meridians, equal area may have curved meridians.
 
 The real navigation aid on figure \@ref(fig:world) and most other
 maps are geographical features like the state outline, country
@@ -202,7 +204,7 @@ with more control and/or better defaults are offered by packages
 `ggplot2` [@R-ggplot2] or `tmap` [@R-tmap; @tmap].
 
 By default, the plot method tries to plot "all" it is given.
-This means that
+This means that:
 
 * given a geometry only (`sfc`), the geometry is plotted, without colors,
 * given a geometry and an attribute, the geometry is colored according to
@@ -275,29 +277,30 @@ or to a value for the `style` argument in `classInt::classIntervals`.
 
 ## Maps with `ggplot2`
 
-Package `ggplot2` [@R-ggplot2; @ggplot2] can be used to create
+Package `ggplot2` [@R-ggplot2; @ggplot2] can create
 more complex an nicer looking graphs; it has a geometry `geom_sf`
 that was developed in conjunction with the development of `sf`, and
 helps creating beautiful maps; an introduction to this is found in
-[@moreno], a first example is shown in figure \@ref(fig:figgather).
+[@moreno], a first example is shown in figure \@ref(fig:firstgather).
 The code used for this plot is:
 ```{r}
 suppressPackageStartupMessages(library(tidyverse))
 nc.32119 = st_transform(nc, 32119) 
 year_labels = c("SID74" = "1974 - 1978", "SID79" = "1979 - 1984")
-nc.32119 %>% select(SID74, SID79) %>% gather(VAR, SID, -geom) -> nc2
+nc.32119 %>% select(SID74, SID79) %>% 
+	pivot_longer(starts_with("SID")) -> nc_longer
 ```
 ```{r eval=FALSE}
-ggplot() + geom_sf(data = nc2, aes(fill = SID)) + 
-  facet_wrap(~VAR, ncol = 1, labeller = labeller(VAR = year_labels)) +
+ggplot() + geom_sf(data = nc_longer, aes(fill = value)) + 
+  facet_wrap(~ name, ncol = 1, labeller = labeller(name = year_labels)) +
   scale_y_continuous(breaks = 34:36) +
   scale_fill_gradientn(colors = sf.colors(20)) +
   theme(panel.grid.major = element_line(color = "white"))
 ```
-where we see that two attributes had to be stacked (`gather`)
+where we see that two attributes had to be stacked (`pivot_longer`)
 before plotting them as facets: this is the idea of "tidy" data,
-and the `gather` method for `sf` objects automatically stacks the
-geometry column too.
+and the `pivot_longer` method for `sf` objects automatically stacks
+the geometry column too.
 
 Because `ggplot2` creates graphics _objects_ before plotting them,
 it can control the cooordinate reference system of all elements
@@ -305,14 +308,16 @@ involved, and will transform or convert all subsequent objects to
 the coordinate reference system of the first. It will also draw a
 graticule for the (default) thin white lines on a grey background,
 and uses a datum (by default: WGS84) for this. `geom_sf()` can be
-combined with
+combined with other geoms, for instance to allow for annotating
+plots.
 
 For package `stars`, a `geom_stars` has, at the moment of writing
-this, very limited scope: it wraps `geom_sf` for vector data
-cubes, and calls `geom_raster` for regular rasters and `geom_rect`
+this, rather limited scope: it uses `geom_sf` for map layout and vector data
+cubes, and adds `geom_raster` for regular rasters and `geom_rect`
 for rectilinear rasters. It downsamples if the user specifies a
 downsampling rate, but has no access to the screen dimensions to
-automatically do this. This may be just enough, for instance figure
+automatically choose a downsampling rate. This may be just enough, 
+for instance figure
 \@ref(fig:ggplotstars) is created by the following commands:
 ```{r ggplotstars,fig.cap="Simple raster plot with ggplot2"}
 library(ggplot2)
@@ -326,8 +331,9 @@ ggplot() + geom_stars(data = r) +
 		scale_fill_viridis_c()
 ```
 More elaborate `ggplot2`-based plots with `stars` objects may be
-obtained using package `ggspatial` [@R-ggspatial]; non-compatible
-but nevertheless `ggplot2`-style plots can be created with `tmap`.
+obtained using package `ggspatial` [@R-ggspatial]. Non-compatible
+but nevertheless `ggplot2`-style plots can be created with `tmap`,
+a package dedicated to creating high quality maps
 
 ## Maps with `tmap` {#tmap}
 
@@ -338,7 +344,7 @@ package, and by concatenating map elements with a `+` between them,
 but otherwise it is entirely independent from, and incompatible
 with, `ggplot2`. It has a number of options that allow for highly
 professional looking maps, and many defaults have been carefully
-chosen. To recreate figure \@ref(fig:figgather), for instance,
+chosen. To recreate figure \@ref(fig:firstgather), for instance,
 we use
 <!-- ```{r tmapnc, fig.cap = "tmap: using tm_polygons with two attributes"}
 -->

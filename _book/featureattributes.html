@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2021-07-09" />
+<meta name="date" content="2021-07-10" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -946,7 +946,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li class="chapter" data-level="7.4" data-path="sf.html"><a href="sf.html#vector-data-cube-examples"><i class="fa fa-check"></i><b>7.4</b> Vector data cube examples</a></li>
 <li class="chapter" data-level="7.5" data-path="sf.html"><a href="sf.html#raster-to-vector"><i class="fa fa-check"></i><b>7.5</b> raster-to-vector, vector-to-raster</a></li>
 <li class="chapter" data-level="7.6" data-path="sf.html"><a href="sf.html#projsf"><i class="fa fa-check"></i><b>7.6</b> Coordinate transformations and conversions</a></li>
-<li class="chapter" data-level="7.7" data-path="sf.html"><a href="sf.html#warp"><i class="fa fa-check"></i><b>7.7</b> transforming and warping rasters</a></li>
+<li class="chapter" data-level="7.7" data-path="sf.html"><a href="sf.html#warp"><i class="fa fa-check"></i><b>7.7</b> Transforming and warping rasters</a></li>
 <li class="chapter" data-level="7.8" data-path="sf.html"><a href="sf.html#exercises-6"><i class="fa fa-check"></i><b>7.8</b> Exercises</a></li>
 </ul></li>
 <li class="chapter" data-level="8" data-path="large.html"><a href="large.html"><i class="fa fa-check"></i><b>8</b> Large data sets</a><ul>
@@ -1074,13 +1074,13 @@ unmodified, support problems may arise.
 If we look into a simple case of replacing a county polygon with
 the centroid of that polygon on a dataset that has attributes,
 we see that R package <code>sf</code> issues a warning:</p>
-<div class="sourceCode" id="cb73"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb73-1" title="1"><span class="kw">library</span>(sf)</a>
-<a class="sourceLine" id="cb73-2" title="2"><span class="kw">library</span>(dplyr)</a>
-<a class="sourceLine" id="cb73-3" title="3"><span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb73-4" title="4"><span class="st">    </span><span class="kw">read_sf</span>() <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb73-5" title="5"><span class="st">    </span><span class="kw">st_transform</span>(<span class="dv">32119</span>) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb73-6" title="6"><span class="st">    </span><span class="kw">select</span>(BIR74, SID74, NAME) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb73-7" title="7"><span class="st">    </span><span class="kw">st_centroid</span>() -&gt;<span class="st"> </span>x</a></code></pre></div>
+<div class="sourceCode" id="cb76"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb76-1" title="1"><span class="kw">library</span>(sf)</a>
+<a class="sourceLine" id="cb76-2" title="2"><span class="kw">library</span>(dplyr)</a>
+<a class="sourceLine" id="cb76-3" title="3"><span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb76-4" title="4"><span class="st">    </span><span class="kw">read_sf</span>() <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb76-5" title="5"><span class="st">    </span><span class="kw">st_transform</span>(<span class="dv">32119</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb76-6" title="6"><span class="st">    </span><span class="kw">select</span>(BIR74, SID74, NAME) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb76-7" title="7"><span class="st">    </span><span class="kw">st_centroid</span>() -&gt;<span class="st"> </span>x</a></code></pre></div>
 <pre><code># Warning in st_centroid.sf(.): st_centroid assumes attributes are constant over
 # geometries of x</code></pre>
 <p>The reason for this is that the dataset contains variables with
@@ -1215,12 +1215,12 @@ the geometries of the resulting groups have been unioned (section
 formed by just putting all the county geometries together would
 have many duplicate boundaries, and hence not be <em>valid</em> (section
 <a href="geometries.html#valid">3.1.2</a>).</p>
-<div class="sourceCode" id="cb76"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb76-1" title="1">nc &lt;-<span class="st"> </span><span class="kw">read_sf</span>(<span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>))</a>
-<a class="sourceLine" id="cb76-2" title="2"><span class="co"># encode quadrant by two logicals:</span></a>
-<a class="sourceLine" id="cb76-3" title="3">nc<span class="op">$</span>lng =<span class="st"> </span><span class="kw">st_coordinates</span>(<span class="kw">st_centroid</span>(<span class="kw">st_geometry</span>(nc)))[,<span class="dv">1</span>] <span class="op">&gt;</span><span class="st"> </span><span class="dv">-79</span></a>
-<a class="sourceLine" id="cb76-4" title="4">nc<span class="op">$</span>lat =<span class="st"> </span><span class="kw">st_coordinates</span>(<span class="kw">st_centroid</span>(<span class="kw">st_geometry</span>(nc)))[,<span class="dv">2</span>] <span class="op">&gt;</span><span class="st"> </span><span class="fl">35.5</span></a>
-<a class="sourceLine" id="cb76-5" title="5">nc.grp =<span class="st"> </span><span class="kw">aggregate</span>(nc[<span class="st">&quot;SID74&quot;</span>], <span class="kw">list</span>(nc<span class="op">$</span>lng, nc<span class="op">$</span>lat), sum)</a>
-<a class="sourceLine" id="cb76-6" title="6"><span class="kw">plot</span>(nc.grp[<span class="st">&quot;SID74&quot;</span>], <span class="dt">axes =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb79"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb79-1" title="1">nc &lt;-<span class="st"> </span><span class="kw">read_sf</span>(<span class="kw">system.file</span>(<span class="st">&quot;gpkg/nc.gpkg&quot;</span>, <span class="dt">package=</span><span class="st">&quot;sf&quot;</span>))</a>
+<a class="sourceLine" id="cb79-2" title="2"><span class="co"># encode quadrant by two logicals:</span></a>
+<a class="sourceLine" id="cb79-3" title="3">nc<span class="op">$</span>lng =<span class="st"> </span><span class="kw">st_coordinates</span>(<span class="kw">st_centroid</span>(<span class="kw">st_geometry</span>(nc)))[,<span class="dv">1</span>] <span class="op">&gt;</span><span class="st"> </span><span class="dv">-79</span></a>
+<a class="sourceLine" id="cb79-4" title="4">nc<span class="op">$</span>lat =<span class="st"> </span><span class="kw">st_coordinates</span>(<span class="kw">st_centroid</span>(<span class="kw">st_geometry</span>(nc)))[,<span class="dv">2</span>] <span class="op">&gt;</span><span class="st"> </span><span class="fl">35.5</span></a>
+<a class="sourceLine" id="cb79-5" title="5">nc.grp =<span class="st"> </span><span class="kw">aggregate</span>(nc[<span class="st">&quot;SID74&quot;</span>], <span class="kw">list</span>(nc<span class="op">$</span>lng, nc<span class="op">$</span>lat), sum)</a>
+<a class="sourceLine" id="cb79-6" title="6"><span class="kw">plot</span>(nc.grp[<span class="st">&quot;SID74&quot;</span>], <span class="dt">axes =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:ncaggregation"></span>
 <img src="sds_files/figure-html/ncaggregation-1.png" alt="top: SID74 counts by county quadrant, with county polygons unioned by county quadrant" width="672" />
 <p class="caption">
@@ -1236,12 +1236,12 @@ the sum of the group-wise sums equals the sum of the ungrouped data:
 for variables that reflect <em>amount</em>, nothing gets lost and nothing
 is added. The newly formed geometry is the result of unioning the
 geometries of the records.</p>
-<div class="sourceCode" id="cb77"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb77-1" title="1">nc &lt;-<span class="st"> </span><span class="kw">st_transform</span>(nc, <span class="dv">2264</span>)</a>
-<a class="sourceLine" id="cb77-2" title="2">gr =<span class="st"> </span><span class="kw">st_sf</span>(</a>
-<a class="sourceLine" id="cb77-3" title="3">   <span class="dt">label =</span> <span class="kw">apply</span>(<span class="kw">expand.grid</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>, LETTERS[<span class="dv">10</span><span class="op">:</span><span class="dv">1</span>])[,<span class="dv">2</span><span class="op">:</span><span class="dv">1</span>], <span class="dv">1</span>, paste0, <span class="dt">collapse =</span> <span class="st">&quot; &quot;</span>),</a>
-<a class="sourceLine" id="cb77-4" title="4">   <span class="dt">geom =</span> <span class="kw">st_make_grid</span>(nc))</a>
-<a class="sourceLine" id="cb77-5" title="5"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(nc), <span class="dt">reset =</span> <span class="ot">FALSE</span>, <span class="dt">border =</span> <span class="st">&#39;grey&#39;</span>)</a>
-<a class="sourceLine" id="cb77-6" title="6"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(gr), <span class="dt">add =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb80"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb80-1" title="1">nc &lt;-<span class="st"> </span><span class="kw">st_transform</span>(nc, <span class="dv">2264</span>)</a>
+<a class="sourceLine" id="cb80-2" title="2">gr =<span class="st"> </span><span class="kw">st_sf</span>(</a>
+<a class="sourceLine" id="cb80-3" title="3">   <span class="dt">label =</span> <span class="kw">apply</span>(<span class="kw">expand.grid</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>, LETTERS[<span class="dv">10</span><span class="op">:</span><span class="dv">1</span>])[,<span class="dv">2</span><span class="op">:</span><span class="dv">1</span>], <span class="dv">1</span>, paste0, <span class="dt">collapse =</span> <span class="st">&quot; &quot;</span>),</a>
+<a class="sourceLine" id="cb80-4" title="4">   <span class="dt">geom =</span> <span class="kw">st_make_grid</span>(nc))</a>
+<a class="sourceLine" id="cb80-5" title="5"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(nc), <span class="dt">reset =</span> <span class="ot">FALSE</span>, <span class="dt">border =</span> <span class="st">&#39;grey&#39;</span>)</a>
+<a class="sourceLine" id="cb80-6" title="6"><span class="kw">plot</span>(<span class="kw">st_geometry</span>(gr), <span class="dt">add =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:ncblocks"></span>
 <img src="sds_files/figure-html/ncblocks-1.png" alt="Example target blocks layed out over North Carolina counties" width="672" />
 <p class="caption">
@@ -1255,8 +1255,8 @@ the rectangles of figure <a href="featureattributes.html#fig:ncblocks">5.2</a> a
 and summing for each rectangle the disease cases of the counties
 that <em>intersect</em> with the rectangles of figure <a href="featureattributes.html#fig:ncblocks">5.2</a>,
 the sum of these will be much larger:</p>
-<div class="sourceCode" id="cb78"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb78-1" title="1">a =<span class="st"> </span><span class="kw">aggregate</span>(nc[<span class="st">&quot;SID74&quot;</span>], gr, sum)</a>
-<a class="sourceLine" id="cb78-2" title="2"><span class="kw">c</span>(<span class="dt">sid74_sum_counties =</span> <span class="kw">sum</span>(nc<span class="op">$</span>SID74), <span class="dt">sid74_sum_rectangles =</span> <span class="kw">sum</span>(a<span class="op">$</span>SID74, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb81"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb81-1" title="1">a =<span class="st"> </span><span class="kw">aggregate</span>(nc[<span class="st">&quot;SID74&quot;</span>], gr, sum)</a>
+<a class="sourceLine" id="cb81-2" title="2"><span class="kw">c</span>(<span class="dt">sid74_sum_counties =</span> <span class="kw">sum</span>(nc<span class="op">$</span>SID74), <span class="dt">sid74_sum_rectangles =</span> <span class="kw">sum</span>(a<span class="op">$</span>SID74, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>))</a></code></pre></div>
 <pre><code>#   sid74_sum_counties sid74_sum_rectangles 
 #                  667                 2621</code></pre>
 <p>Choosing another predicate, e.g. <em>contains</em> or <em>covers</em> would on
@@ -1467,11 +1467,11 @@ cells, first for the case where the four cells represent (i) an extensive
 variable, and (ii) an intensive variable. The red numbers are the
 data values of the source areas.</li>
 </ol>
-<div class="sourceCode" id="cb80"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb80-1" title="1">g =<span class="st"> </span><span class="kw">st_make_grid</span>(<span class="kw">st_bbox</span>(<span class="kw">st_as_sfc</span>(<span class="st">&quot;LINESTRING(0 0,1 1)&quot;</span>)), <span class="dt">n =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>))</a>
-<a class="sourceLine" id="cb80-2" title="2"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">rep</span>(<span class="dv">0</span>,<span class="dv">4</span>))</a>
-<a class="sourceLine" id="cb80-3" title="3"><span class="kw">plot</span>(g)</a>
-<a class="sourceLine" id="cb80-4" title="4"><span class="kw">plot</span>(g[<span class="dv">1</span>] <span class="op">*</span><span class="st"> </span><span class="kw">diag</span>(<span class="kw">c</span>(<span class="dv">3</span><span class="op">/</span><span class="dv">4</span>, <span class="dv">1</span>)) <span class="op">+</span><span class="st"> </span><span class="kw">c</span>(<span class="fl">0.25</span>, <span class="fl">0.125</span>), <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">lty =</span> <span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb80-5" title="5"><span class="kw">text</span>(<span class="kw">c</span>(.<span class="dv">2</span>, <span class="fl">.8</span>, <span class="fl">.2</span>, <span class="fl">.8</span>), <span class="kw">c</span>(.<span class="dv">2</span>, <span class="fl">.2</span>, <span class="fl">.8</span>, <span class="fl">.8</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">4</span>,<span class="dv">8</span>), <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb83"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb83-1" title="1">g =<span class="st"> </span><span class="kw">st_make_grid</span>(<span class="kw">st_bbox</span>(<span class="kw">st_as_sfc</span>(<span class="st">&quot;LINESTRING(0 0,1 1)&quot;</span>)), <span class="dt">n =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>))</a>
+<a class="sourceLine" id="cb83-2" title="2"><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">rep</span>(<span class="dv">0</span>,<span class="dv">4</span>))</a>
+<a class="sourceLine" id="cb83-3" title="3"><span class="kw">plot</span>(g)</a>
+<a class="sourceLine" id="cb83-4" title="4"><span class="kw">plot</span>(g[<span class="dv">1</span>] <span class="op">*</span><span class="st"> </span><span class="kw">diag</span>(<span class="kw">c</span>(<span class="dv">3</span><span class="op">/</span><span class="dv">4</span>, <span class="dv">1</span>)) <span class="op">+</span><span class="st"> </span><span class="kw">c</span>(<span class="fl">0.25</span>, <span class="fl">0.125</span>), <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">lty =</span> <span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb83-5" title="5"><span class="kw">text</span>(<span class="kw">c</span>(.<span class="dv">2</span>, <span class="fl">.8</span>, <span class="fl">.2</span>, <span class="fl">.8</span>), <span class="kw">c</span>(.<span class="dv">2</span>, <span class="fl">.2</span>, <span class="fl">.8</span>, <span class="fl">.8</span>), <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">4</span>,<span class="dv">8</span>), <span class="dt">col =</span> <span class="st">&#39;red&#39;</span>)</a></code></pre></div>
 <div class="figure" style="text-align: center"><span id="fig:awiex"></span>
 <img src="sds_files/figure-html/awiex-1.png" alt="example data for area-weighted interpolation" width="672" />
 <p class="caption">
