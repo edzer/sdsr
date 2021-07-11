@@ -198,13 +198,13 @@ output, and overwrite existing data by default.
 
 Further `tidyverse` generics with methods for `sf` objects include
 `filter`, `select`, `group_by`, `ungroup`, `mutate`, `transmute`,
-`rowwise`, `rename`, `slice` and `summarise`, `distinct`, `gather`,
+`rowwise`, `rename`, `slice`, `summarise`, `distinct`, `gather`, `pivot_longer`,
 `spread`, `nest`, `unnest`, `unite`, `separate`, `separate_rows`,
 `sample_n`, and `sample_frac`. Most of these methods simply manage
 the metadata of `sf` objects, and make sure the geometry remains
 present. In case a user wants the geometry to be removed, one can
-use `st_set_geometry(nc, NULL)` or simply coerce to a tibble before
-selecting:
+use `st_set_geometry(nc, NULL)` or simply coerce to a `tibble` or 
+`data.frame` before selecting:
 ```{r}
 library(tidyverse)
 nc %>% as_tibble() %>% select(BIR74) %>% head(3)
@@ -750,12 +750,13 @@ nrow(bristol_od) # non-zero combinations
 We will form a three-dimensional vector datacube with origin,
 destination and transportation mode as dimensions. For this, we
 first "tidy" the `bristol_od` table to have origin (o), destination (d),
-transportation mode (mode), and count (n) as variables, using `gather`:
+transportation mode (mode), and count (n) as variables, using 
+`pivot_longer`:
 ```{r bristol_tidy}
 # create O-D-mode array:
 bristol_tidy <- bristol_od %>% 
 	select(-all) %>% 
-	gather("mode", "n", -o, -d)
+	pivot_longer(3:6, names_to = "mode", values_to = "n")
 head(bristol_tidy)
 ```
 Next, we form the three-dimensional array `a`, filled with zeroes:
@@ -956,9 +957,13 @@ preceded by an authority like "OGC:CRS84"; alternatives include
 a coordinate reference system definition in WKT, WKT-2 (section
 \@ref(wkt2)) or [PROJJSON](https://proj.org/specifications/projjson.html).
 
-The object returned contains two fields, `wkt` with the WKT-2
-representation, and `input` with the user input, if any, or else
-a copy of the wkt field. Note that PROJ.4 strings can be used to
+The object returned contains two fields: 
+
+* `wkt` with the WKT-2 representation 
+* `input` with the user input, if any, or a human readable
+description of the coordinate reference system, if available
+
+Note that PROJ.4 strings can be used to
 _define_ some coordinate reference systems, but they cannot be used
 to _represent_ coordinate reference systems. Conversion of a
 WKT-2 in a `crs` object to a proj4string using the `$proj4string`
@@ -967,11 +972,14 @@ method, as in
 x = st_crs("OGC:CRS84")
 x$proj4string
 ```
-may succeed but is not in general lossless or invertible.
+may succeed but is not in general lossless or invertible. Using
+PROJ.4 strings, for instance to _define_ a parameterized, projected
+coordinate reference system is fine as long as it is associated
+with the WGS84 datum.
 
 ### `st_transform`, `sf_project`
 
-Coordinate transformations or conversions (section \@ref(proj))
+Coordinate transformations or conversions (section \@ref(projlib))
 for `sf` or `stars` objects are carried out with `st_transform`,
 which takes as its first argument a spatial object of class `sf` or
 `stars` that has a coordinate reference system set, and as a second
@@ -1005,7 +1013,7 @@ position with respect to the Greenwich meridian.
 
 ### proj.db, datum grids, cdn.proj.org, local cache
 
-Datum grids (section \@ref(proj)) can be installed locally, or
+Datum grids (section \@ref(projlib)) can be installed locally, or
 be read from the PROJ datum grid CDN at https://cdn.proj.org/. If
 installed locally, they are read from the PROJ search path, which
 is shown by
@@ -1083,7 +1091,35 @@ The default, most accurate pipeline chosen by `st_transform` can
 be overriden by specifying `pipeline` argument, as selected from
 the set of options in `p$definition`.
 
-## transforming and warping rasters {#warp}
+### Axis order {#axisorder}
+
+As mentioned in section \@ref(wkt2), the definition of `EPSG:4326`,
+```{r echo=FALSE}
+cat(st_crs("EPSG:4326")$wkt, "\n")
+```
+indicates that the first axis is associated with latitude and the
+second with longitude; this is also the case for a number of other
+ellipsoidal coordinate reference systems. Although this is how
+the authority (EPSG) prescribes this, it is not how most datasets
+are currently stored! As most other software, package `sf` by default
+ignores this, and interprets ellipsoidal coordinates as (longitude,
+latitude) by default. If however data needs to be read e.g. from a
+WFS service that wants to be compliant to the authority, one can set
+```{r eval=FALSE}
+st_axis_order(TRUE)
+```
+to globally instruct `sf`, when calling GDAL and PROJ routines, that
+authority compliance (latitude, longitude order) is assumed. It is
+anticipated that problems may happen in case of authority compliance,
+e.g. with plotting data.  At the time of writing this, the `plot`
+method for `sf` objects respects the axis order flag and will swap
+coordinates using the transformation pipeline `"+proj=pipeline
++step +proj=axisswap +order=2,1"` before plotting them, but
+e.g. `geom_sf()` in `ggplot2` has not been modified to do this.
+As mentioned earlier, the ambiguity of `EPSG:4326` is resolved by
+replacing it with `OGC:CRS84`.
+
+## Transforming and warping rasters {#warp}
 
 When using `st_transform` on a raster data set, as e.g. in
 ```{r}

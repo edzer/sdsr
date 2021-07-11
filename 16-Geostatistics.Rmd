@@ -2,6 +2,7 @@
 
 ```{r load16, eval = Sys.getenv("USER") == "edzer", echo=FALSE}
 # try(load("data/ch16.rda"))
+set.seed(123)
 ```
 
 Building on the simple interpolation methods presented in chapter
@@ -37,51 +38,51 @@ In the following, we will read all the files into a list,
 files = list.files("aq", pattern = "*.csv", full.names = TRUE)
 r = lapply(files[-1], function(f) read.csv(f))
 ```
-then convert the time variable into a `POSIXct` variable, and time order them
+then convert the time variable into a `POSIXct` variable, and put them in time order by
 ```{r fixtimes}
-Sys.setenv(TZ = "UTC") # make sure times are not interpreted as DST
+Sys.setenv(TZ = "UTC") # make sure times are not interpreted in local time zone
 r = lapply(r, function(f) {
 		f$t = as.POSIXct(f$DatetimeBegin) 
 		f[order(f$t), ] 
 	}
 ) 
 ```
-and we deselect smaller datasets that do not contain hourly data:
+We remove smaller datasets, which for this dataset have no hourly data:
 ```{r deselect_smaller_datasets}
 r = r[sapply(r, nrow) > 1000]
 names(r) =  sapply(r, function(f) unique(f$AirQualityStationEoICode))
 length(r) == length(unique(names(r)))
 ```
-and then combine all files using `xts::cbind`, so that they are matched based on time:
+and then combine all files using `xts::cbind`, so that they are matched based on matching times:
 ```{r converttoxts}
 library(xts)
 r = lapply(r, function(f) xts(f$Concentration, f$t))
 aq = do.call(cbind, r)
 ```
-We can now select those stations for which we have 75\% of the hourly values measured, i.e. drop those with more than 25\% hourly values missing:
+A usual further selection for this dataset is to select stations
+for which we 75\% of the hourly values measured are valid, i.e. drop
+those with more than 25\% hourly values missing. We can do this by
 ```{r removestationswithmissingvalues}
-# remove stations with more than 75% missing values:
-sel = apply(aq, 2, function(x) sum(is.na(x)) < 0.75 * 365 * 24)
-aqsel = aq[, sel] # stations are in columns
+sel = apply(aq, 2, function(x) mean(is.na(x)) < 0.75)
+aqsel = aq[, sel]
 ```
 
 Next, the [station metadata](http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_stations.zip) was read 
-and filtered for rural background stations in Germany by
+and filtered for rural background stations in Germany (`"DE"`) by
 ```{r filterruralbackground}
 library(tidyverse)
 read.csv("aq/AirBase_v8_stations.csv", sep = "\t", stringsAsFactors = FALSE) %>% 
-	as_tibble  %>% 
+	as_tibble()  %>% 
 	filter(country_iso_code == "DE", station_type_of_area == "rural", 
 				 type_of_station == "Background") -> a2
 ```
 These stations contain coordinates, and an `sf` object with (static) station metadata is created by
 ```{r importstationcoords}
 library(sf)
-library(stars)
-a2.sf = st_as_sf(a2, coords = c("station_longitude_deg", "station_latitude_deg"), crs = 4326)
+a2.sf = st_as_sf(a2, coords = c("station_longitude_deg", "station_latitude_deg"), crs = 'EPSG:4326')
 ```
 
-We now subset the air quality data to stations that are of type rural background:
+We now subset the air quality measurements to include only stations that are of type rural background:
 ```{r subseteuropean}
 sel =  colnames(aqsel) %in% a2$station_european_code
 aqsel = aqsel[, sel]
@@ -92,10 +93,12 @@ We can compute station means, and join these to stations locations by
 tb = tibble(NO2 = apply(aqsel, 2, mean, na.rm = TRUE), station_european_code = colnames(aqsel))
 crs = 32632
 right_join(a2.sf, tb) %>% st_transform(crs) -> no2.sf 
+```
+Station mean NO$_2$ concentrations, along with country borders, are shown in in figure \@ref(fig:plotDE).
+```{r plot_stationmeans,echo=FALSE}
 # load German boundaries
 data(air, package = "spacetime")
 de <- st_transform(st_as_sf(DE_NUTS1), crs)
-ggplot() + geom_sf(data = de) +  geom_sf(data = no2.sf, mapping = aes(col = NO2))
 ```
 
 ## Multivariable geostatistics
@@ -119,7 +122,7 @@ library(gstat)
 demo(cokriging)
 demo(cosimulation)
 ```
-and are illustrated and discussed in [@asdar].
+and are further illustrated and discussed in [@asdar].
 
 In case the different variables considered are observed at
 the same set of locations, for instance different air quality
@@ -167,26 +170,41 @@ upon the dataset used throughout this chapter.
 ### A spatiotemporal variogram model
 Starting with the spatiotemporal matrix of NO$_2$ data in `aq`
 constructed at the beginning of this chapter, we will first select
-the rural background stations:
+the measurements taken at rural background stations:
 
-```{r computespacetimesamplevariogram, eval = !exists("v.st")}
+```{r}
 aqx = aq[ , colnames(aq) %in% a2$station_european_code]
+```
+Then we will select the spatial locations for these stations by
+```{r}
 sfc = st_geometry(a2.sf)[match(colnames(aqx), a2.sf$station_european_code)]
+```
+and finally build a `stars` object with time and station as dimensions:
+```{r}
+library(stars)
 st_as_stars(NO2 = as.matrix(aqx)) %>%
 	st_set_dimensions(names = c("time", "station")) %>%
 	st_set_dimensions("time", index(aqx)) %>%
 	st_set_dimensions("station", sfc) -> no2.st
+```
+From this, we can compute the spatiotemporal variogram using
+```{r computespacetimesamplevariogram, eval = !exists("v.st")}
 v.st = variogramST(NO2~1, no2.st[,1:(24*31)], tlags = 0:48, 
 	cores = getOption("mc.cores", 2))
 ```
 
-```{r plotvariograms}
+(ref:samplevariogram) Spatiotemporal sample variogram for hourly NO$_2$ concentrations at rural background stations in Germany over 2027
+
+which is shown in figure \@ref(fig:plotvariograms).
+```{r plotvariograms,fig.cap = '(ref:samplevariogram)', echo=!knitr::is_latex_output()}
 v1 = plot(v.st)
 v2 = plot(v.st, map = FALSE)
 print(v1, split = c(1,1,2,1), more = TRUE)
 print(v2, split = c(2,1,2,1), more = FALSE)
 ```
 
+To this sample variogram, we can fit a variogram model. One relatively
+flexible model we try here is the product-sum model [@RJ-2016-014], fitted by
 ```{r fitprodsummodel}
 # product-sum
 prodSumModel <- vgmST("productSum",
@@ -198,11 +216,15 @@ StAni = estiStAni(v.st, c(0,200000))
 	stAni = StAni, method = "L-BFGS-B",
 	control = list(parscale = c(1,10,1,1,0.1,1,10)),
 	lower = rep(0.0001, 7)))
+```
+and shown in figure \@ref(fig:prodsummodelplot).
+```{r prodsummodelplot, fig.cap = "Product-sum model, fitted to the spatiotemporal sample variogram", echo=!knitr::is_latex_output()}
 plot(v.st, fitProdSumModel, wireframe=FALSE, all=TRUE, scales=list(arrows=FALSE), zlim=c(0,150))
 ```
-which can also be plotted as wireframes, by
-```{r plotprodsummodel}
-plot(v.st, model=fitProdSumModel, wireframe=TRUE, all=TRUE, scales=list(arrows=FALSE), zlim=c(0,185))
+which can also be plotted as wireframes, shown in figure \@ref(fig:modelwire).
+```{r modelwire, fig.cap = "Wireframe plot of the fitted spatiotemporal variogram model", echo = !knitr::is_latex_output()}
+plot(v.st, model = fitProdSumModel, wireframe = TRUE, all = TRUE, 
+	 scales = list(arrows = FALSE), zlim = c(0, 185))
 ```
 
 Hints about the fitting strategy and alternative models for
@@ -222,9 +244,9 @@ More in general, we can estimate at arbitrary locations and time
 points, and we will illustrate this with predicting time series at
 particular locations, and and predicting spatial slices [@RJ-2016-014]. 
 We can create
-a `stars` object to denote two points and all time instances with
+a `stars` object for two randomly picked spatial points and all time instances 
+is created by 
 ```{r createstarsobject}
-set.seed(123)
 pt = st_sample(de, 2)
 t = st_get_dimension_values(no2.st, 1)
 st_as_stars(list(pts = matrix(1, length(t), length(pt)))) %>%
@@ -233,20 +255,22 @@ st_as_stars(list(pts = matrix(1, length(t), length(pt)))) %>%
 	st_set_dimensions("station", pt) -> new_pt
 ```
 
-and obtain the corresponding spatiotemporal predictions using `krigeST` with
+and we obtain the spatiotemporal predictions at these two points using `krigeST` by
 ```{r spacetimekriging, eval = !exists("new_ts")}
 no2.st <- st_transform(no2.st, crs)
 new_ts <- krigeST(NO2~1, data = no2.st["NO2"], newdata = new_pt,
 	     nmax = 50, stAni = StAni, modelList = fitProdSumModel,
 		 progress = FALSE)
+```
+where the results are shown in figure \@ref(fig:plotxts).
+```{r plotxts, fig.cap = "Time series plot of spatiotemporal predictions for two points", echo=!knitr::is_latex_output()}
 plot(as.xts(new_ts[2]))
 ```
 
 Alternatively, we can create spatiotemporal predictions for a set of time-stamped
-raster maps, created by
+raster maps, evenly spaced over the year 2017, created by
 ```{r spatiotemporalpredictionsgrid}
 t4 = t[(1:4 - 0.5) * (3*24*30)]
-
 d = dim(grd)
 st_as_stars(pts = array(1, c(d[1], d[2], time=length(t4)))) %>%
 	st_set_dimensions("time", t4) %>%
@@ -262,7 +286,7 @@ new_int <- krigeST(NO2~1, data = no2.st["NO2"], newdata = grd.st,
          progress = FALSE)
 names(new_int)[2] = "NO2"
 ```
-```{r plotspatiotemporalpredictions}
+```{r plotspatiotemporalpredictions,fig.cap="Spatiotemporal predictions for four selected time slices", echo=!knitr::is_latex_output()}
 g + geom_stars(data = new_int, aes(fill = NO2, x = x, y = y)) + 
     facet_wrap(~as.Date(time)) +
     geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
