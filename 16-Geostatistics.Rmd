@@ -10,7 +10,7 @@ Building on the simple interpolation methods presented in chapter
 spatiotemporal interpolation, using NO$_2$ air quality data, and
 populations density as covariate.
 
-## Preparing the air quality dataset
+## Preparing the air quality dataset {#preparing}
 
 The dataset we work with is an air quality dataset obtained from
 the European Environmental Agency (EEA). European member states report
@@ -60,10 +60,12 @@ r = lapply(r, function(f) xts(f$Concentration, f$t))
 aq = do.call(cbind, r)
 ```
 A usual further selection for this dataset is to select stations
-for which we 75\% of the hourly values measured are valid, i.e. drop
-those with more than 25\% hourly values missing. We can do this by
+for which 75\% of the hourly values measured are valid, i.e. drop
+those with more than 25\% hourly values missing. 
+Knowing that `mean(is.na(x))` gives the _fraction_ of missing values
+in a vector `x`, we can apply this function to the columns (stations):
 ```{r removestationswithmissingvalues}
-sel = apply(aq, 2, function(x) mean(is.na(x)) < 0.75)
+sel = apply(aq, 2, function(x) mean(is.na(x)) < 0.25)
 aqsel = aq[, sel]
 ```
 
@@ -101,7 +103,7 @@ data(air, package = "spacetime")
 de <- st_transform(st_as_sf(DE_NUTS1), crs)
 ```
 
-## Multivariable geostatistics
+## Multivariable geostatistics {#cokriging}
 
 Multivariable geostatics involves the _joint_ modelling, prediction
 and simulation of multiple variables, 
@@ -298,3 +300,19 @@ and shown in figure \@ref(fig:plotspatiotemporalpredictions).
 A larger value for `nmax` was needed here to decrease the visible
 disturbance (sharp edges) caused by discrete neighbourhood
 selections, which are now done in space _and_ time.
+
+## Exercises
+
+1. Which fraction of the stations is removed in section \@ref(preparing) when
+the criterion applied that a station must be 75% complete?
+1. From the hourly time series in `no2.st`, compute daily mean concentrations
+using `aggregate`, and compute the spatiotemporal variogram of this. How does
+it compare to the variogram of hourly values?
+1. Carry out a spatiotemporal interpolation for daily mean values for the days
+corresponding to those shown in \@ref(fig:plotspatiotemporalpredictions), and
+compare the results.
+1. Following the example in the demo scripts pointed
+at in section \@ref(cokriging), carry out a cokriging
+on the daily mean station data for the four days shown in
+\@ref(fig:plotspatiotemporalpredictions).  What are the differences
+of this approach to spatiotemporal kriging?
