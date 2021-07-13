@@ -425,6 +425,14 @@ Figure \@ref(fig:shortestpath) shows that contiguity neighbours represent the sa
 gridExtra::grid.arrange(tmap_grob(tm1), g1, nrow=1)
 ```
 
+## Exercises
+
+1. Which kinds of geometry support are appropriate for which functions creating neighbour objects?
+2. Which functions creating neighbour objects are only appropriate for planar representations?
+3. What difference might the choice of `rook` rather than `queen` contiguities make on a chessboard?
+4. What are the relationships between neighbour set cardinalities (neighbour counts) and row-standardized weights, and how do they open analyses up to edge effects? Use the chessboard you constructed in exercise 3 for both `rook` and `queen` neighbours.
+
+
 
 # Measures of spatial autocorrelation {#spatautocorr}
 
@@ -716,6 +724,55 @@ tm_shape(pol_pres15) + tm_fill(c("hs_an_q", "hs_ac_q", "hs_cp_q"), colorNA="grey
 ```
 Figure \@ref(fig:Iihotspots) shows the impact of using analytical or conditional permutation standard deviates, and no or Bonferroni adjustment, reducing the counts of observations in "Low-Low clusters" from 370 to 14, and "High-High clusters" from 342 to 54; the "High-High clusters" are metropolitan areas.
 
+@tiefelsdorf:02 argues that standard approaches to the calculation of the standard deviates of local Moran's $I_i$ should be supplemented by numerical estimates, and shows that Saddlepoint approximations are a computationally efficient way of achieving this goal. The `localmoran.sad()` function takes a fitted linear model as its first argument, so we first fit a null (intercept only) model, but use case weights because the numbers entitled to vote vary greatly between observations:
+
+```{r}
+lm(z ~ 1, weights=pol_pres15$I_entitled_to_vote) -> lm_null
+```
+Saddlepoint approximation is much more computationally intensive than conditional permutation:
+
+```{r, cache=TRUE}
+system.time(lm_null %>% localmoran.sad(nb=nb_q, style="W", alternative="two.sided") %>%
+        summary() -> locm_sad_null)
+```
+However, standard approaches do not permit richer mean models with covariates or case weights. Next we add the categorical variable distinguising between rural, urban and other types of observational unit:
+
+```{r}
+lm(z ~ Types, weights=pol_pres15$I_entitled_to_vote) -> lm_types
+```
+
+```{r, cache=TRUE}
+system.time(lm_types %>% localmoran.sad(nb=nb_q, style="W", alternative="two.sided") %>%
+        summary() -> locm_sad_types)
+```
+To conclude, we add the spatially lagged categories, although the spatial lag of a categorical variable, represented by dummies in the model matrix, is not well defined:
+
+```{r}
+spatialreg::lmSLX(z ~ Types, listw=lw_q_W, 
+    weights=pol_pres15$I_entitled_to_vote) -> lm_Dtypes
+```
+
+```{r, cache=TRUE}
+system.time(lm_Dtypes %>% localmoran.sad(nb=nb_q, style="W", alternative="two.sided") %>%
+        summary() -> locm_sad_Dtypes)
+```
+
+(ref:localmoranZfc_sad) Saddlepoint weighted null model, weighted types model, weighted Durbin types model, and analytical conditional standard deviates of local Moran's I for first round turnout, row-standardised neighbours
+```{r localmoranZ_sad, out.width='100%', fig.cap='(ref:localmoranZfc_sad)', fig=TRUE}
+pol_pres15$locm_sad_null_Z <- locm_sad_null[, "Saddlepoint"]
+pol_pres15$locm_sad_types_Z <- locm_sad_types[, "Saddlepoint"]
+pol_pres15$locm_sad_Dtypes_Z <- locm_sad_Dtypes[, "Saddlepoint"]
+tm_shape(pol_pres15) + tm_fill(c("locm_sad_null_Z", "locm_sad_types_Z",
+    "locm_sad_Dtypes_Z", "locm_c_Z"), breaks=brks, midpoint=0,
+    title="Standard deviates of\nLocal Moran's I") +
+    tm_facets(free.scales=FALSE, ncol=2) + tm_layout(panel.labels=c(
+        "Saddlepoint weighted null",
+        "Saddlepoint weighted types",
+        "Saddlepoint weighted Durbin types",
+        "Analytical conditional"))
+```
+Figure \@ref(fig:localmoranZ_sad) includes the analytical conditional standard deviates for comparison (lower right panel), but in general it can be seen that the Saddlepoint approximation standard deviates lie closer to zero, possibly because some of the mis-specification in the mean model has been removed by using richer versions, and possibly because the approximation approach is inherently local, relating regression residual values at $i$ to those of its neighbours. It is also possible to use Saddlepoint approximation where the global spatial process has been incorporated, removing the conflation of global and local spatial autocorrelation in standard approaches. The same can also be accomplished using exxact methods [@bivandetal:09].
+
 ### Local Getis-Ord $G_i$
 
 The local Getis-Ord $G$ measure is reported as a standard deviate, and may also take the $G^*_i$ form where self-neighbours are inserted into the neighbour object using `include.self()`. The observed and expected values of local $G$ with their analytical variances may also be returned if `return_internals=TRUE`. 
@@ -785,4 +842,13 @@ all.equal(card(nb_q), lisa_num_nbrs(lisa), check.attributes=FALSE)
 all.equal(lisa_values(lisa), localmoran(pol_pres15$I_turnout, 
     listw=lw_q_W, mlvar=FALSE)[,1], check.attributes=FALSE)
 ```
+
+
+## Exercises
+
+1. Why are join-count measures on a chessboard so different between `rook` and `queen` neighbours?
+2. Please repeat the simulation shown in section 15.1 using the chessboard polygons and the row-standardized `queen` contiguity neighbours. Why is it important to understand that spatial autocorrelation usually signals (unavoidable) mis-specification in our data?
+3. Do we need to use conditional permutation in inference for local measures of spatial autocorrelation?
+4. Why is false discovery rate adjustment recommended for local measures of spatial autocorrelation?
+5. Compare the local Moran's $I_i$ standard deviate values for the simulated data from exercise 15.2 for the analytical conditional approach, and Saddlepoint approximation. Consider the advantages and disadvantages of the Saddlepoint approximation approach.
 
