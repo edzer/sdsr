@@ -1,4 +1,4 @@
-# (PART) R for Spatial Data Science {-}
+#directly (PART) R for Spatial Data Science {-}
 
 # Introduction to sf and stars {#sf}
 
@@ -203,7 +203,7 @@ Further `tidyverse` generics with methods for `sf` objects include
 `sample_n`, and `sample_frac`. Most of these methods simply manage
 the metadata of `sf` objects, and make sure the geometry remains
 present. In case a user wants the geometry to be removed, one can
-use `st_set_geometry(nc, NULL)` or simply coerce to a `tibble` or 
+use `st_drop_geometry()` or simply coerce to a `tibble` or 
 `data.frame` before selecting:
 ```{r}
 library(tidyverse)
@@ -512,7 +512,29 @@ set.seed(115517)
 pts = st_bbox(r) %>% st_as_sfc() %>% st_sample(20)
 (e = st_extract(r, pts))
 ```
-which results in a vector data cube with 4 points and 6 bands.
+which results in a vector data cube with 20 points and 6 bands.
+
+Another way of extracting information from data cubes is by
+aggregating it. One way of doing is by spatial aggregation,
+e.g. to values for spatial polygons or lines (section
+\@ref(vectordatacubes)). We can for instance compute the maximum
+pixel value for each band for each of the circles shown in figure
+\@ref(fig:ras)d by
+
+```{r echo=FALSE}
+set.seed(131)
+```
+```{r}
+circles = st_sample(st_as_sfc(st_bbox(r)), 3) %>%
+    st_buffer(500)
+aggregate(r, circles, max)
+```
+which gives a data cube with 3 geometries and 6 bands.  Aggregation
+over a temporal dimension is done by passing a time variable as the
+second argument to `aggregate`, as
+
+* a set of time stamps indicating the start of time intervals or
+* a time period like `"weeks"`, `"5 days"` or `"years"`
 
 ### Predictive models
 
@@ -546,7 +568,7 @@ rs = split(r)
 trn = st_extract(rs, pts)
 trn$cls = rep("land", 20)
 trn$cls[c(8, 14, 15, 18, 19)] = "water"
-model = MASS::lda(cls ~ ., st_set_geometry(trn, NULL))
+model = MASS::lda(cls ~ ., st_drop_geometry(trn))
 pr = predict(rs, model)
 ```
 Here, we used the `MASS::` prefix to avoid loading `MASS`, as that
@@ -560,8 +582,6 @@ plot(pr[1], key.pos = 4, key.width = lcm(3.5), key.length = lcm(2))
 
 We also see that the layer plotted in figure \@ref(fig:lda) is a
 `factor` variable, with class labels.
-
-### GDAL utils
 
 
 ### Plotting raster data
@@ -658,6 +678,44 @@ may have a regular raster in the direction of the satellite (not
 aligned with $x$ or $y$), and rectilinear in the direction perpendicular to that
 (e.g. if the sensor discretizes the viewing _angle_ in equal sections)
 
+### GDAL utils
+
+The GDAL library is typically shipped with a number of executable
+binaries, the GDAL command line utilities for data translation and
+processing. A package like `gdalUtils` [@R-gdalUtils] provides R
+functions that actually call these binaries, using R's `system()`
+call mechanism. This requires that these binaries are properly
+installed, and findable by R, which is something that an R package
+by itself cannot guarantee.
+
+Several of these utilities (all except for those written in Python)
+are also available as C functions in the GDAL library, through the
+"GDAL Algorithms C API".  If an R package like `sf` that links to
+the GDAL library uses these C API algorithms, it means that the user
+no longer needs to install any GDAL binary command line utilities in
+addition to the R package.
+
+Package `sf` allows calling these C API algorithms through function
+`gdal_utils()`, where the first argument is the name of the utility
+(stripped from the `gdal` prefix):
+
+* `info` prints information on GDAL (raster) datasets
+* `warp` warps a raster to a new raster, possibly in another CRS
+* `rasterize` rasterizes a vector dataset
+* `translate` translates a raster file to another format
+* `vectortranslate` (for ogr2ogr) translates a vector file to another format
+* `buildvrt` creates a virtual raster tile (a raster created from several files)
+* `demprocessing` does varios processing steps of digital elevation models (dems)
+* `nearblack` converts nearly black/white borders to black
+* `grid` creates a regular grid from scattered data
+* `mdiminfo` prints information on a multidimensional array
+* `mdimtranslate` translates a multidimensional array into another format
+
+These utilities work on files, and not not directly on `sf` or
+`stars` objects.  However, `stars_proxy` objects are essentially
+pointers to files, and other objects can be written to file. Several
+of these utilities are (always or optionally) used, e.g. by
+`st_mosaic`, `st_warp` or `st_write`.
 
 ## Vector data cube examples
 
@@ -803,7 +861,7 @@ We can take a single slice through from this three-dimensional
 array, e.g. for zone 33 (figure \@ref(fig:bristol1)), by `odm[,,33]`, 
 and plot it with
 ```{r odm33, fig.cap = "OD matrix sliced for destination zone 33, by transportation mode"}
-plot(odm[,,33] + 1, logz = TRUE)
+plot(adrop(odm[,,33]) + 1, logz = TRUE)
 ```
 the result of which is shown in figure \@ref(fig:odm33).
 Subsetting this way, we take all attributes (there is only one: N)
