@@ -37,7 +37,7 @@ write_csv(right_join(a2, tb), "no2.csv")
 
 We can read NO$_2$ data, which is prepared in chapter \@ref(stgeostatistics), from
 package `gstat` using
-```{r}
+```{r, message=FALSE}
 library(tidyverse)
 no2 = read_csv(system.file("external/no2.csv", package = "gstat"))
 ```
@@ -79,7 +79,7 @@ grd
 Here, we chose grid cells to be not too fine, so that we still see
 them in plots.
 
-Perhaps the simples intepolation method is inverse distance weighted
+Perhaps the simplest interpolation method is inverse distance weighted
 interpolation, which is a weighted average, using weights inverse
 proportional to distances from the interpolation location:
 
@@ -90,7 +90,7 @@ $$
 with $w_i = |s_0-s_i|^p$, and the inverse distance power typically
 taken as 2, or optimized using cross validation. We can compute
 inverse distance interpolated values using `gstat::idw`, 
-```{r}
+```{r, message=FALSE}
 library(gstat)
 i = idw(NO2~1, no2.sf, grd)
 ```
@@ -101,7 +101,7 @@ and plot them in figure \@ref(fig:idw).
 
 ```{r idw,fig.cap = '(ref:idw)'}
 ggplot() + geom_stars(data = i, aes(fill = var1.pred, x = x, y = y)) + 
-	geom_sf(data = st_cast(de, "MULTILINESTRING"), aes(col = 'grey')) + 
+	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
 	geom_sf(data = no2.sf)
 ```
 
@@ -154,9 +154,9 @@ through argument `fit.method`.
 ## Kriging interpolation {#kriging}
 
 Typically, when we interpolate a variable, we do that on
-points on a regular grid covering the target area.  We first create
+points on a regular grid covering the target area. We first create
 a `stars` object with a raster covering the target area, and NA's
-outside it:
+outside it.
 
 Kriging involves the prediction of $Z(s_0)$ at arbitrary locations
 $s_0$.  We can krige NO$_2$ by using `gstat::krige`, with the model for the 
@@ -199,6 +199,7 @@ b$kriging = b$var1.pred
 ```{r aggregations,fig.cap = '(ref:agg)', echo = !knitr::is_latex_output()}
 b %>% select(sample, kriging) %>% 
 		pivot_longer(1:2, names_to = "var", values_to = "NO2") -> b2
+b2$var = factor(b2$var, levels = c("sample", "kriging"))
 ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +
 	 scale_fill_gradientn(colors = sf.colors(20))
 ```
@@ -224,10 +225,11 @@ b$kriging = sqrt(b$var1.var)
 
 (ref:aggse) Standard errors for mean NO$_2$ values obtained by simple averaging (left) and block kriging (right)
 
-```{r aggrSE,fig.cap = '(ref:aggse)',
+```{r aggrSE,fig.cap = '(ref:aggse)'}
 b %>% select(sample, kriging) %>% 
-		pivot_longer(1:2, names_to = "var", values_to = "NO2") -> b2
-ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +
+		pivot_longer(1:2, names_to = "var", values_to = "Standard_error") -> b2
+b2$var = factor(b2$var, levels = c("sample", "kriging"))
+ggplot() + geom_sf(data = b2, mapping = aes(fill = Standard_error)) + facet_wrap(~var, as.table = FALSE) +
 	 scale_fill_gradientn(colors = sf.colors(20))
 ```
 where we see that the simple approach gives clearly more variability
@@ -254,7 +256,7 @@ steps through the prediction locations and at each location:
 
 until all locations have been visited. 
 
-This is caried out by `gstat::krige` when `nsim` is set to a positive
+This is carried out by `gstat::krige` when `nsim` is set to a positive
 value. In addition, it is good to constrain `nmax`, the (maximum)
 number of nearest neigbours to include in kriging estimation,
 because the dataset grows each step, leading otherwise quickly to
@@ -262,12 +264,12 @@ very long computing times and large memory requirements (figure
 \@ref(fig:plotkrigingvalues)):
 
 ```{r condsim}
-s = krige(NO2~1, no2.sf, grd, v.m, nmax = 30, nsim = 10)
+s = krige(NO2~1, no2.sf, grd, v.m, nmax = 30, nsim = 6)
 ```
 
-(ref:condsim) Ten conditional simulations for NO$_2$ values
+(ref:condsim) Six conditional simulations for NO$_2$ values
 
-```{r plotkrigingvalues,fig.cap = '(ref:condsim)', echo=!knitr::is_latex_output()}
+```{r plotkrigingvalues,fig.cap = '(ref:condsim)', echo=!knitr::is_latex_output(), message=FALSE}
 library(viridis)
 g = ggplot() + coord_equal() +
 	scale_fill_viridis() +
@@ -306,7 +308,7 @@ As a potential predictor for NO2 in the air, we use population
 density. NO2 is mostly caused by traffic, and traffic is stronger
 in more densely populated areas.
 Population density is obtained from the [2011 census](https://www.zensus2011.de/DE/Home/Aktuelles/DemografischeGrunddaten.html), and is downloaded as a csv file with the number of inhabitants per 100 m grid cell. We can aggregate these data to the target grid cells by summing the inhabitants:
-```{r vroom1, eval = Sys.getenv("USER") == "edzer"}
+```{r vroom1, eval = Sys.getenv("USER") == "edzer", message=FALSE}
 v = vroom::vroom("aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv")
 v %>% filter(Einwohner > 0) %>% 
 	select(-Gitter_ID_100m) %>%
@@ -329,7 +331,7 @@ gc()
 Now we have the population counts per grid cell in `a`. To get to
 population density, we need to find the area of each cell; for cells
 crossing the country border, this will be less than 10 x 10 km:
-```{r}
+```{r, message=FALSE}
 grd$ID = 1:prod(dim(grd)) # so we can find out later which grid cell we have
 ii = st_intersects(grd["ID"], st_cast(st_union(de), "MULTILINESTRING"))
 grd_sf = st_as_sf(grd["ID"], na.rm = FALSE)[lengths(ii) > 0,]
