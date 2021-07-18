@@ -4,9 +4,9 @@ Areal units of observation are very often used when simultaneous observations ar
 
 With support of data we mean the physical size (length, area, volume) associated with an individual observational unit (measurement).  It is possible to represent the support of areal data by a point, despite the fact that the data have polygonal support. The centroid of the polygon may be taken as a representative point, or the centroid of the largest polygon in a multi-polygon object. When data with intrinsic point support are treated as areal data, the change of support goes the other way, from the known point to a non-overlapping tessellation such as a Voronoi diagram or Dirichlet tessellation or Thiessen polygons often through a Delaunay triangulation using projected coordinates. Here, different metrics may also be chosen, or distances measured on a network rather than on the plane. There is also a literature using weighted Voronoi diagrams in local spatial analysis [see for example @doi:10.1080/13658810601034267; @doi:10.1080/13658810701587891; @SHE201570].
 
-When the intrinsic support of the data is as points, but the underlying process is between proximate observations rather than driven chiefly by distance however measured between observations, the data may be aggregate counts or totals (polling stations, retail turnover) or represent a directly observed characteristic of the observation (opening hours of the polling station). Obviously, the risk of mis-representing the footprint of the underlying spatial processes remains in all of these cases, not least because the observations are taken as encompassing the entirety of the underlying process in the case of tessellation of the whole area of interest. This is distinct from the geostatistical setting in which observations are rather samples taken using some scheme within the area of interest. It is also partly distinct from the practice of taking areal sample plots within the area of interest but covering only a small proportion of the area, typically used in ecological and environmental research.
+When the intrinsic support of the data is represented as points, but the underlying process is between proximate observations rather than driven chiefly by distance however measured between observations, the data may be aggregate counts or totals (polling stations, retail turnover) or represent a directly observed characteristic of the observation (opening hours of the polling station). Obviously, the risk of mis-representing the footprint of the underlying spatial processes remains in all of these cases, not least because the observations are taken as encompassing the entirety of the underlying process in the case of tessellation of the whole area of interest. This is distinct from the geostatistical setting in which observations are rather samples taken using some scheme within the area of interest. It is also partly distinct from the practice of taking areal sample plots within the area of interest but covering only a small proportion of the area, typically used in ecological and environmental research.
 
-In order to explore and analyse areal data of these kinds in Chapters \@ref(spatautocorr), \@ref(spatglmm) and \@ref(spatecon), methods are needed to represent the proximity of observations. This chapter then considers a subset of the such methods, where the spatial processes are considered as working through proximity understood in the first instance as contiguity, as a graph linking observations taken as neighbours. This graph is typically undirected and unweighted, but may be directed and/or weighted in certain settings, which then leads to further issues with regard to symmetry. In principle, proximity would be expected to operate symmetrically in space, that is that the influence of $i$ on $j$ and of $j$ on $i$ based on their relative positions should be equivalent. Edge effects are not considered in standard treatments.
+In order to explore and analyse areal data of these kinds in chapters \@ref(spatautocorr), \@ref(spatglmm) and \@ref(spatecon), methods are needed to represent the proximity of observations. This chapter then considers a subset of the such methods, where the spatial processes are considered as working through proximity understood in the first instance as contiguity, as a graph linking observations taken as neighbours. This graph is typically undirected and unweighted, but may be directed and/or weighted in certain settings, which then leads to further issues with regard to symmetry. In principle, proximity would be expected to operate symmetrically in space, that is that the influence of $i$ on $j$ and of $j$ on $i$ based on their relative positions should be equivalent. Edge effects are not considered in standard treatments.
 
 
 ## Representing proximity in **spdep**
@@ -21,7 +21,7 @@ The **spdep** package provides an `nb` class for neighbours, a list of length eq
 
 **spdep** builds on the `nb` representation (undirected or directed graphs) with the `listw` object, a list with three components, an `nb` object, a matching list of numerical weights, and a single element character vector containing the single letter name of the way in which the weights were calculated. The most frequently used approach in the social sciences is calculating weights by row standardization, so that all the non-zero weights for one observation will be the inverse of the cardinality of its set of neighbours (`1/card(nb[[i]])`).
 
-We will be using election data from the 2015 Polish Presidential election in this chapter, with 2495 municipalities and Warsaw boroughs (see Figure \@ref(fig:plotpolpres15) for a **tmap** map (section \@ref(tmap)) of the municipality types), and complete count data from polling stations aggregated to these areal units. The data are an **sf** `sf` object:
+We will be using election data from the 2015 Polish Presidential election in this chapter, with 2495 municipalities and Warsaw boroughs (see figure \@ref(fig:plotpolpres15) for a **tmap** map (section \@ref(tmap)) of the municipality types), and complete count data from polling stations aggregated to these areal units. The data are an **sf** `sf` object:
 
 ```{r setup_sa, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, paged.print=FALSE)
@@ -32,9 +32,9 @@ library(sf)
 ```
 
 ```{r}
-data(pol_pres15, package="spDataLarge")
+data(pol_pres15, package = "spDataLarge")
 pol_pres15 %>% 
-    subset(select=c(TERYT, name, types)) %>% 
+    subset(select = c(TERYT, name, types)) %>% 
     head()
 ```
 (ref:plotpolpres15fc) Polish municipality types 2015
@@ -49,11 +49,9 @@ For safety's sake, we impose topological validity:
 if (!all(st_is_valid(pol_pres15))) pol_pres15 <- st_make_valid(pol_pres15)
 ```
 
-
-
 Between early 2002 and April 2019, **spdep** contained functions for constructing and handling neighbour and spatial weights objects, tests for spatial autocorrelation, and model fitting functions. The latter have been split out into **spatialreg**, and will be discussed in the next chapter. **spdep** [@R-spdep] now accommodates objects represented using **sf** classes and **sp** classes directly.
 
-```{r}
+```{r, message=FALSE}
 library(spdep)
 ```
 
@@ -67,7 +65,7 @@ args(poly2nb)
 From **spdep** 1.1-7, the GEOS interface of the **sf** package is used within `poly2nb()` if `foundInBox=NULL` to find the candidate neighbours and populate `foundInBox` internally. In this case, this use of spatial indexing (STRtree queries) in GEOS through **sf** is the default:
 
 ```{r}
-system.time(pol_pres15 %>% poly2nb(queen=TRUE) -> nb_q)
+system.time(pol_pres15 %>% poly2nb(queen = TRUE) -> nb_q)
 ```
 Earlier, `foundInBox=` accepted the output of the  **rgeos** `gUnarySTRtreeQuery()` function to list candidate neighbours, that is polygons whose bounding boxes intersect the bounding boxes of other polygons. The print method shows the summary structure of the neighbour object:
 
@@ -75,7 +73,7 @@ Earlier, `foundInBox=` accepted the output of the  **rgeos** `gUnarySTRtreeQuery
 nb_q
 ```
 
-From **sf** version 1.0-0, the **s2** package [@R-s2] is used by default for spherical geometries, as `st_intersects()` used in `poly2nb()` passes calculation to `s2::s2_intersects_matrix()` (see \@ref(spherical)). From **spdep** version 1.1-9, if `sf_use_s2()`is `TRUE`, spherical intersection is used to find candidate neighbours; as with GEOS, the underlying `s2` library uses fast spatial indexing.
+From **sf** version 1.0-0, the **s2** package [@R-s2] is used by default for spherical geometries, as `st_intersects()` used in `poly2nb()` passes calculation to `s2::s2_intersects_matrix()` (see chapter \@ref(spherical)). From **spdep** version 1.1-9, if `sf_use_s2()`is `TRUE`, spherical intersection is used to find candidate neighbours; as with GEOS, the underlying `s2` library uses fast spatial indexing.
 
 ```{r, echo=FALSE}
 old_use_s2 <- sf_use_s2()
@@ -87,7 +85,7 @@ sf_use_s2(TRUE)
 
 ```{r}
 (pol_pres15 %>% st_transform("OGC:CRS84") -> pol_pres15_ll) %>% 
-    poly2nb(queen=TRUE) -> nb_q_s2
+    poly2nb(queen = TRUE) -> nb_q_s2
 ```
 
 Spherical and planar intersection of the input polygons yield the same contiguity neighbours in this case; in both cases valid input geometries are desirable:
@@ -108,11 +106,11 @@ We can also check that this undirected graph is connected using the `n.comp.nb()
 This approach is equivalent to treating the neighbour object as a graph and using graph analysis on that graph [@csardi+nepusz:06; @R-igraph], by first coercing to a binary sparse matrix [@R-Matrix]:
 
 ```{r}
-library(Matrix, warn.conflicts=FALSE)
+library(Matrix, warn.conflicts = FALSE)
 nb_q %>% 
-    nb2listw(style="B") %>% 
+    nb2listw(style = "B") %>% 
     as("CsparseMatrix") -> smat
-library(igraph, warn.conflicts=FALSE)
+library(igraph, warn.conflicts = FALSE)
 (smat %>% 
         graph.adjacency() -> g1) %>% 
     count_components()
@@ -121,11 +119,9 @@ library(igraph, warn.conflicts=FALSE)
 Neighbour objects may be exported and imported in GAL format for exchange with other software, using `write.nb.gal()` and `read.gal()`:
 
 ```{r}
-tf <- tempfile(fileext=".gal")
+tf <- tempfile(fileext = ".gal")
 write.nb.gal(nb_q, tf)
 ```
-
-
 
 ## Graph-based neighbours
 
@@ -136,7 +132,7 @@ The output of these functions is then converted to the `nb` representation using
 ```{r}
 pol_pres15 %>% 
     st_geometry() %>% 
-    st_centroid(of_largest_polygon=TRUE) -> coords 
+    st_centroid(of_largest_polygon = TRUE) -> coords 
 (coords %>% tri2nb() -> nb_tri)
 ```
 
@@ -177,15 +173,15 @@ The largest length edges along the convex hull have been removed, but "holes" ha
 
 (ref:plotnbdifffc) Triangulated (orange + black) and sphere of influence neighbours (black)
 ```{r plotnbdiff, out.width='100%', fig.cap='(ref:plotnbdifffc)', fig=TRUE}
-opar <- par(mar=c(0,0,0,0)+0.5)
+opar <- par(mar = c(0,0,0,0)+0.5)
 pol_pres15 %>% 
     st_geometry() %>% 
-    plot(border="grey", lwd=0.5)
+    plot(border = "grey", lwd = 0.5)
 nb_soi %>% 
-    plot(coords=coords, add=TRUE, points=FALSE, lwd=0.5)
+    plot(coords = coords, add = TRUE, points = FALSE, lwd = 0.5)
 nb_tri %>% 
     diffnb(nb_soi) %>% 
-    plot(coords=coords, col="orange", add=TRUE, points=FALSE, lwd=0.5)
+    plot(coords = coords, col = "orange", add = TRUE, points = FALSE, lwd = 0.5)
 par(opar)
 ```
 
@@ -201,7 +197,7 @@ The `nbdists()` function returns the length of neighbour relationship edges in t
 
 ```{r}
 coords %>% 
-    knearneigh(k=1) %>% 
+    knearneigh(k = 1) %>% 
     knn2nb() %>% 
     nbdists(coords) %>% 
     unlist() %>% 
@@ -216,13 +212,13 @@ system.time(coords %>% dnearneigh(0, 18000) -> nb_d18)
 For this moderate number of observations, use of spatial indexing does not yield advantages in run times:
 
 ```{r}
-system.time(coords %>% dnearneigh(0, 18000, use_kd_tree=FALSE) -> nb_d18a)
+system.time(coords %>% dnearneigh(0, 18000, use_kd_tree = FALSE) -> nb_d18a)
 ```
 
 and the output objects are the same:
 
 ```{r}
-all.equal(nb_d18, nb_d18a, check.attributes=FALSE)
+all.equal(nb_d18, nb_d18a, check.attributes = FALSE)
 ```
 ```{r}
 nb_d18
@@ -251,12 +247,12 @@ For use later, we also construct a neighbour object with no-neighbour units, usi
 
 It is possible to control the numbers of neighbours directly using $k$-nearest neighbours, either accepting asymmetric neighbours:
 ```{r}
-((coords %>% knearneigh(k=6) -> knn_k6) %>% knn2nb() -> nb_k6)
+((coords %>% knearneigh(k = 6) -> knn_k6) %>% knn2nb() -> nb_k6)
 ```
 
 or imposing symmetry:
 ```{r}
-(knn_k6 %>% knn2nb(sym=TRUE) -> nb_k6s)
+(knn_k6 %>% knn2nb(sym = TRUE) -> nb_k6s)
 ```
 
 Here the size of `k=` is sufficient to ensure connectedness, although the graph is not planar as edges cross at locations other than nodes, which is not the case for contiguous or graph-based neighbours.
@@ -277,18 +273,18 @@ sf_use_s2(TRUE)
 ```{r}
 pol_pres15_ll %>% 
     st_geometry() %>% 
-    st_centroid(of_largest_polygon=TRUE) -> coords_ll
+    st_centroid(of_largest_polygon = TRUE) -> coords_ll
 ```
 
 From **spdep** version 1.1-9, fast spatial indexing in **s2** is used to find the nearest neighbours:
 
 ```{r}
-(coords_ll %>% knearneigh(k=6) %>% knn2nb() -> nb_k6_ll)
+(coords_ll %>% knearneigh(k = 6) %>% knn2nb() -> nb_k6_ll)
 ```
 These neighbours differ from the planar `k=6` nearest neighbours as would be expected:
 
 ```{r}
-isTRUE(all.equal(nb_k6, nb_k6_ll, check.attributes=FALSE))
+isTRUE(all.equal(nb_k6, nb_k6_ll, check.attributes = FALSE))
 ```
 The `nbdists()` function also uses **s2** to find distances on the sphere when the `"sf"` or `"sfc"`input object is in geographical coordinates (distances returned in kilometres):
 
@@ -312,7 +308,7 @@ Once neighbour objects are available, further choices need to made in specifying
 ```{r}
 args(nb2listw)
 ```
-We will be using the helper function `spweights.constants()` below to show some consequences of varing style choices. It returns constants for a `listw` object, $n$ is the number of observations, `n1` to `n3` are $n-1, \ldots$, `nn` is $n^2$ and $S_0$, $S_1$ and $S_2$ are constants, $S_0$ being the sum of the weights. There is a full discussion of the constants in Bivand and Wong [-@Bivand2018].
+We will be using the helper function `spweights.constants()` below to show some consequences of varying style choices. It returns constants for a `listw` object, $n$ is the number of observations, `n1` to `n3` are $n-1, \ldots$, `nn` is $n^2$ and $S_0$, $S_1$ and $S_2$ are constants, $S_0$ being the sum of the weights. There is a full discussion of the constants in Bivand and Wong [-@Bivand2018].
 
 ```{r}
 args(spweights.constants)
@@ -321,20 +317,20 @@ The `"B"` binary style gives a weight of unity to each neighbour relationship, a
 
 ```{r}
 (nb_q %>% 
-        nb2listw(style="B") -> lw_q_B) %>% 
+        nb2listw(style = "B") -> lw_q_B) %>% 
     spweights.constants() %>% 
     data.frame() %>% 
-    subset(select=c(n, S0, S1, S2))
+    subset(select = c(n, S0, S1, S2))
 ```
 
 The `"W"` row-standardized style upweights units around the edge of the study area that necessarily have fewer neighbours. This style first gives a weight of unity to each neighbour relationship, then divides these weights by the per unit sums of weights. Naturally this leads to division by zero where there are no neighbours, a not-a-number result, unless the chosen policy is to permit no-neighbour observations. We can see that $S_0$ is now equal to $n$.
 
 ```{r}
 (nb_q %>% 
-        nb2listw(style="W") -> lw_q_W) %>% 
+        nb2listw(style = "W") -> lw_q_W) %>% 
     spweights.constants() %>% 
     data.frame() %>% 
-    subset(select=c(n, S0, S1, S2))
+    subset(select = c(n, S0, S1, S2))
 ```
 Inverse distance weights are used in a number of scientific fields. Some use dense inverse distance matrices, but many of the inverse distances are close to zero, so have little practical contribution, especially as the spatial process matrix is itself dense. Inverse distance weights may be constructed by taking the lengths of edges, changing units to avoid most weights being too large or small (here from m to km), taking the inverse, and passing through the `glist=` argument to `nb2listw()`:
 
@@ -404,7 +400,7 @@ pol_pres15$name0[mr]
 
 ```{r, echo=FALSE}
 pol_pres15$sps1 <- sps[,mr]
-tm1 <- tm_shape(pol_pres15) + tm_fill("sps1", title="Shortest path\ncount")
+tm1 <- tm_shape(pol_pres15) + tm_fill("sps1", title = "Shortest path\ncount")
 ```
 
 
@@ -415,13 +411,13 @@ coords[mr] %>%
     (function(x) x/1000)() %>% 
     units::set_units(NULL) -> pol_pres15$dist_52
 library(ggplot2)
-g1 <- ggplot(pol_pres15, aes(x=sps1, y=dist_52)) + geom_point() + xlab("shortest path count") +  ylab("km distance")
+g1 <- ggplot(pol_pres15, aes(x = sps1, y = dist_52)) + geom_point() + xlab("Shortest path count") +  ylab("km distance")
 ```
 
 Figure \@ref(fig:shortestpath) shows that contiguity neighbours represent the same kinds of relationships with other observations as distance. Some approaches prefer distance neighbours on the basis that, for example, inverse distance neighbours show clearly how all observations are related to each other. However, the development of tests for spatial autocorrelation and spatial regression models has involved the inverse of a spatial process model, which in turn can be represented as the sum of a power series of the product of a coefficient and a spatial weights matrix, so intrinsically acknowledging the relationships of all observations with all other. Sparse contiguity neighbour objects accommodate rich dependency structures without the need to make the structures explicit.
 
 (ref:shortestpathfc) Relationship of shortest paths to distance for Lutowiska; left panel: shortest path counts from Lutowiska; right panel: plot of shortest paths from Lutowiska to other observations and distances (km) from Lutowiska to other observations
-```{r shortestpath, out.width='100%', fig.cap='(ref:shortestpathfc)', fig=TRUE, echo=TRUE}
+```{r shortestpath, out.width='100%', fig.cap='(ref:shortestpathfc)', fig=TRUE, echo=TRUE, message=FALSE}
 gridExtra::grid.arrange(tmap_grob(tm1), g1, nrow=1)
 ```
 
