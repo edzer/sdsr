@@ -47,8 +47,8 @@ r = lapply(r, function(f) {
 	}
 ) 
 ```
-We remove smaller datasets, which for this dataset have no hourly data:
-```{r deselect_smaller_datasets}
+We remove smaller subdatasets, which for this dataset have no hourly data:
+```{r deselect_smaller_datasets, results='hide'}
 r = r[sapply(r, nrow) > 1000]
 names(r) =  sapply(r, function(f) unique(f$AirQualityStationEoICode))
 length(r) == length(unique(names(r)))
@@ -73,7 +73,7 @@ Next, the [station metadata](http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_
 and filtered for rural background stations in Germany (`"DE"`) by
 ```{r filterruralbackground}
 library(tidyverse)
-read.csv("aq/AirBase_v8_stations.csv", sep = "\t", stringsAsFactors = FALSE) %>% 
+read.csv("aq/AirBase_v8_stations.csv", sep = "\t") %>% 
 	as_tibble()  %>% 
 	filter(country_iso_code == "DE", station_type_of_area == "rural", 
 				 type_of_station == "Background") -> a2
@@ -91,9 +91,9 @@ aqsel = aqsel[, sel]
 ```
 
 We can compute station means, and join these to stations locations by
-```{r computestationmeans}
+```{r computestationmeans, message=FALSE}
 tb = tibble(NO2 = apply(aqsel, 2, mean, na.rm = TRUE), station_european_code = colnames(aqsel))
-crs = 32632
+crs = "EPSG:32632"
 right_join(a2.sf, tb) %>% st_transform(crs) -> no2.sf 
 ```
 Station mean NO$_2$ concentrations, along with country borders, are shown in in figure \@ref(fig:plotDE).
@@ -124,7 +124,7 @@ library(gstat)
 demo(cokriging)
 demo(cosimulation)
 ```
-and are further illustrated and discussed in [@asdar].
+and are further illustrated and discussed in @asdar.
 
 In case the different variables considered are observed at
 the same set of locations, for instance different air quality
@@ -158,15 +158,15 @@ $Z(s,t)$, which we will do in the next section.
 
 Spatiotemporal geostatistical processes are modelled as variables
 having a value everywhere in space and time, $Z(s,t)$, with $s$ and
-$t$ the continuously indext space and time index. Given observations
+$t$ the continuously indexed space and time index. Given observations
 $Z(s_i,t_j)$ and a variogram (covariance) model $\gamma(s,t)$ we can
 predict $Z(s_0,t_0)$ at arbitrary space/time locations $(s_0,t_0)$
 using standard Gaussian process theory.
 
 Several books have been written recently about modern approaches
 to handling and modelling spatiotemporal geostatistical data,
-including [@wikle2019spatio] and [@blangiardo2015spatial]. Here,
-we will use [@RJ-2016-014] and give some simple examples using the
+including @wikle2019spatio and @blangiardo2015spatial. Here,
+we will use @RJ-2016-014 and give some simple examples using the
 dataset also used for the previous chapter.
 
 ### A spatiotemporal variogram model
@@ -210,9 +210,9 @@ flexible model we try here is the product-sum model [@RJ-2016-014], fitted by
 ```{r fitprodsummodel}
 # product-sum
 prodSumModel <- vgmST("productSum",
-	space=vgm(150, "Exp", 200, 0),
-	time= vgm(20, "Sph",   40, 0),
-	k=2)
+	space = vgm(150, "Exp", 200, 0),
+	time = vgm(20, "Sph", 40, 0),
+	k = 2)
 StAni = estiStAni(v.st, c(0,200000))
 (fitProdSumModel <- fit.StVariogram(v.st, prodSumModel, fit.method = 7,
 	stAni = StAni, method = "L-BFGS-B",
@@ -221,7 +221,7 @@ StAni = estiStAni(v.st, c(0,200000))
 ```
 and shown in figure \@ref(fig:prodsummodelplot).
 ```{r prodsummodelplot, fig.cap = "Product-sum model, fitted to the spatiotemporal sample variogram", echo=!knitr::is_latex_output()}
-plot(v.st, fitProdSumModel, wireframe=FALSE, all=TRUE, scales=list(arrows=FALSE), zlim=c(0,150))
+plot(v.st, fitProdSumModel, wireframe = FALSE, all = TRUE, scales = list(arrows=FALSE), zlim = c(0,150))
 ```
 which can also be plotted as wireframes, shown in figure \@ref(fig:modelwire).
 ```{r modelwire, fig.cap = "Wireframe plot of the fitted spatiotemporal variogram model", echo = !knitr::is_latex_output()}
@@ -230,7 +230,7 @@ plot(v.st, model = fitProdSumModel, wireframe = TRUE, all = TRUE,
 ```
 
 Hints about the fitting strategy and alternative models for
-spatiotemporal variograms are given in [@RJ-2016-014].  
+spatiotemporal variograms are given in @RJ-2016-014.  
 
 With this fitted model, and given the observations, we can
 carry out kriging or simulation at arbitrary points in space and
@@ -247,7 +247,7 @@ points, and we will illustrate this with predicting time series at
 particular locations, and and predicting spatial slices [@RJ-2016-014]. 
 We can create
 a `stars` object for two randomly picked spatial points and all time instances 
-is created by 
+are created by 
 ```{r createstarsobject}
 pt = st_sample(de, 2)
 t = st_get_dimension_values(no2.st, 1)
@@ -274,7 +274,7 @@ raster maps, evenly spaced over the year 2017, created by
 ```{r spatiotemporalpredictionsgrid}
 t4 = t[(1:4 - 0.5) * (3*24*30)]
 d = dim(grd)
-st_as_stars(pts = array(1, c(d[1], d[2], time=length(t4)))) %>%
+st_as_stars(pts = array(1, c(d[1], d[2], time = length(t4)))) %>%
 	st_set_dimensions("time", t4) %>%
 	st_set_dimensions("x", st_get_dimension_values(grd, "x")) %>%
 	st_set_dimensions("y", st_get_dimension_values(grd, "y")) %>%
