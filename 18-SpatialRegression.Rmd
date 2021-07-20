@@ -45,18 +45,18 @@ More recent books expounding the theoretical bases for modelling with areal data
 Here we shall use the Boston housing data set, which has been restructured and furnished with census tract boundaries [@bivand17]. The original data set used 506 census tracts and a hedonic model to try to estimate willingness to pay for clean air. The response was constructed from counts of ordinal answers to a 1970 census question about house value. The response is left and right censored in the census source and has been treated as Gaussian. The key covariate was created from a calibrated meteorological model showing the annual nitrogen oxides (NOX) level for a smaller number of model output zones. The numbers of houses responding also varies by tract and model output zone. There are several other covariates, some measured at the tract level, some by town only, where towns broadly correspond to the air pollution model output zones.
 
 ```{r setup_sr, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, paged.print=FALSE)
+knitr::opts_chunk$set(echo = TRUE, paged.print = FALSE)
 ```
 
 We can start by reading in the 506 tract data set from **spData** [@R-spData], and creating a contiguity neighbour object and from that again a row standardized spatial weights object. 
-```{r}
+```{r, message=FALSE}
 library(sf)
 library(spData)
-boston_506 <- st_read(system.file("shapes/boston_tracts.shp", package="spData")[1])
+boston_506 <- st_read(system.file("shapes/boston_tracts.shp", package = "spData")[1])
 ```
 ```{r}
 nb_q <- spdep::poly2nb(boston_506)
-lw_q <- spdep::nb2listw(nb_q, style="W")
+lw_q <- spdep::nb2listw(nb_q, style = "W")
 ```
 
 If we examine the median house values, we find that those for censored values have been assigned as missing, and that 17 tracts are affected.
@@ -73,13 +73,13 @@ Next, we can subset to the remaining 489 tracts with non-censored house values, 
 boston_506$CHAS <- as.factor(boston_506$CHAS)
 boston_489 <- boston_506[!is.na(boston_506$median),]
 nb_q_489 <- spdep::poly2nb(boston_489)
-lw_q_489 <- spdep::nb2listw(nb_q_489, style="W", zero.policy=TRUE)
+lw_q_489 <- spdep::nb2listw(nb_q_489, style = "W", zero.policy = TRUE)
 ```
 The `NOX_ID` variable specifies the upper level aggregation, letting us aggregate the tracts to air pollution model output zones. We can create aggregate neighbour and row standardized spatial weights objects, and aggregate the `NOX` variable taking means, and the `CHAS` Charles River dummy variable for observations on the river. Here we follow the principles outlined in section \@ref(extensiveintensive) for spatially extensive and intensive variables; neither `NOX` nor `CHAS` can be summed as they are not count variables.
 
 ```{r}
 agg_96 <- list(as.character(boston_506$NOX_ID))
-boston_96 <- aggregate(boston_506[, "NOX_ID"], by=agg_96, unique)
+boston_96 <- aggregate(boston_506[, "NOX_ID"], by = agg_96, unique)
 nb_q_96 <- spdep::poly2nb(boston_96)
 lw_q_96 <- spdep::nb2listw(nb_q_96)
 boston_96$NOX <- aggregate(boston_506$NOX, agg_96, mean)$x
@@ -93,9 +93,9 @@ ccounts <- 23:31
 for (nm in nms[c(22, ccounts, 36)]) {
   boston_96[[nm]] <- aggregate(boston_506[[nm]], agg_96, sum)$x
 }
-br2 <- c(3.50,  6.25,  8.75, 12.50, 17.50, 22.50, 30.00, 42.50, 60.00)*1000
+br2 <- c(3.50, 6.25, 8.75, 12.50, 17.50, 22.50, 30.00, 42.50, 60.00)*1000
 counts <- as.data.frame(boston_96)[, nms[ccounts]]
-f <- function(x) matrixStats::weightedMedian(x=br2, w=x, interpolate=TRUE)
+f <- function(x) matrixStats::weightedMedian(x = br2, w = x, interpolate = TRUE)
 boston_96$median <- apply(counts, 1, f)
 is.na(boston_96$median) <- boston_96$median > 50000
 summary(boston_96$median)
@@ -145,12 +145,12 @@ form <- formula(log(median) ~ CRIM + ZN + INDUS + CHAS + I((NOX*10)^2) + I(RM^2)
 
 The **lme4** package [@R-lme4] lets us add an independent and identically distributed (IID) unstructured random effect at the model output zone level by updating the model formula with a random effects term:
 
-```{r}
+```{r, message=FALSE}
 library(Matrix)
 library(lme4)
-MLM <- lmer(update(form, . ~ . + (1 | NOX_ID)), data=boston_487, REML=FALSE)
+MLM <- lmer(update(form, . ~ . + (1 | NOX_ID)), data = boston_487, REML = FALSE)
 ```
-copying the random effect into the `"sf"` object for mapping below.
+Copying the random effect into the `"sf"` object for mapping is performed below.
 
 ```{r}
 boston_93$MLM_re <- ranef(MLM)[[1]][,1]
@@ -162,22 +162,22 @@ The same model may be estimated using the **hglm** package [@R-hglm], which also
 
 ```{r}
 suppressPackageStartupMessages(library(hglm))
-suppressWarnings(HGLM_iid <- hglm(fixed=form, random= ~1 | NOX_ID, data=boston_487,
-    family=gaussian()))
+suppressWarnings(HGLM_iid <- hglm(fixed = form, random = ~1 | NOX_ID, data = boston_487,
+    family = gaussian()))
 boston_93$HGLM_re <- unname(HGLM_iid$ranef)
 ```
 
 The same package has been extended to spatially structured SAR and CAR random effects, for which a sparse spatial weights matrix is required [@alam-ronnegard-shen:2015]; we choose binary spatial weights:
 
 ```{r}
-W <- as(spdep::nb2listw(nb_q_93, style="B"), "CsparseMatrix")
+W <- as(spdep::nb2listw(nb_q_93, style = "B"), "CsparseMatrix")
 ```
 
 We fit a CAR model at the upper level, using the `rand.family=` argument, where the values of the indexing variable `NOX_ID` match the row names of $W$:
 
 ```{r}
-suppressWarnings(HGLM_car <- hglm(fixed=form, random= ~ 1 | NOX_ID, data=boston_487,
-    family=gaussian(), rand.family=CAR(D=W)))
+suppressWarnings(HGLM_car <- hglm(fixed = form, random = ~ 1 | NOX_ID, data = boston_487,
+    family = gaussian(), rand.family = CAR(D=W)))
 boston_93$HGLM_ss <- HGLM_car$ranef[,1]
 ```
 
@@ -187,8 +187,8 @@ The **HSAR** package [@R-HSAR] is restricted to the Gaussian response case [@don
 
 ```{r}
 library(HSAR)
-library(MatrixModels, warn.conflicts=FALSE)
-Z <- as(model.Matrix(~ -1 + as.factor(NOX_ID), data=boston_487, sparse=TRUE),
+library(MatrixModels, warn.conflicts = FALSE)
+Z <- as(model.Matrix(~ -1 + as.factor(NOX_ID), data = boston_487, sparse = TRUE),
     "dgCMatrix")
 ```
 
@@ -196,8 +196,8 @@ Z <- as(model.Matrix(~ -1 + as.factor(NOX_ID), data=boston_487, sparse=TRUE),
 
 ```{r, cache=TRUE}
 set.seed(123)
-suppressWarnings(HSAR_ss <- hsar(form, data=boston_487, W=NULL, M=W, Delta=Z, 
-                              burnin=2000, Nsim=12000, thinning=2))
+suppressWarnings(HSAR_ss <- hsar(form, data=boston_487, W = NULL, M = W, Delta = Z, 
+                              burnin = 2000, Nsim = 12000, thinning = 2))
 ```
 
 ```{r}
@@ -213,8 +213,8 @@ suppressPackageStartupMessages(library(R2BayesX))
 ```
 
 ```{r, cache=TRUE}
-BX_iid <- bayesx(update(form, . ~ . + sx(NOX_ID, bs="re")), family="gaussian",
-    data=boston_487, method="MCMC", iterations=12000, burnin=2000, step=2, seed=123)
+BX_iid <- bayesx(update(form, . ~ . + sx(NOX_ID, bs = "re")), family = "gaussian",
+    data = boston_487, method = "MCMC", iterations = 12000, burnin = 2000, step = 2, seed = 123)
 ```
 
 ```{r}
@@ -227,7 +227,7 @@ and the `"mrf"` (Markov Random Field) spatially structured intrinsic CAR random 
 RBX_gra <- nb2gra(nb_q_93)
 all.equal(row.names(RBX_gra), attr(nb_q_93, "region.id"))
 ```
-As we  saw above in the intrinsic CAR model  definition, the counts of neighbours are entered on the diagonal, but the current implementation uses a dense, not sparse, matrix:
+As we saw above in the intrinsic CAR model definition, the counts of neighbours are entered on the diagonal, but the current implementation uses a dense, not sparse, matrix:
 
 ```{r}
 all.equal(unname(diag(RBX_gra)), spdep::card(nb_q_93))
@@ -236,9 +236,9 @@ all.equal(unname(diag(RBX_gra)), spdep::card(nb_q_93))
 The `sx()` model term continues to include the indexing variable, and now passes through the intrinsic CAR precision matrix:
 
 ```{r, cache=TRUE}
-BX_mrf <- bayesx(update(form, . ~ . + sx(NOX_ID, bs="mrf", map=RBX_gra)), 
-                 family="gaussian", data=boston_487, method="MCMC", 
-                 iterations=12000, burnin=2000, step=2, seed=123)
+BX_mrf <- bayesx(update(form, . ~ . + sx(NOX_ID, bs = "mrf", map = RBX_gra)), 
+                 family = "gaussian", data = boston_487, method = "MCMC", 
+                 iterations = 12000, burnin = 2000, step = 2, seed = 123)
 ```
 
 ```{r}
@@ -256,8 +256,8 @@ suppressPackageStartupMessages(library(INLA))
 Although differing in details, the approach by updating the fixed model formula with an unstructured random effects term is very similar to that seen above:
 
 ```{r, cache=TRUE}
-INLA_iid <- inla(update(form, . ~ . + f(NOX_ID, model="iid")), family="gaussian", 
-    data=boston_487)
+INLA_iid <- inla(update(form, . ~ . + f(NOX_ID, model = "iid")), family = "gaussian", 
+    data = boston_487)
 ```
 
 ```{r}
@@ -273,8 +273,8 @@ ID2 <- as.integer(as.factor(boston_487$NOX_ID))
 The same sparse binary spatial weights matrix is used, and the intrinsic CAR representation is constructed internally:
 
 ```{r, cache=TRUE}
-INLA_ss <- inla(update(form, . ~ . + f(ID2, model="besag", graph=W)), family="gaussian",
-    data=boston_487)
+INLA_ss <- inla(update(form, . ~ . + f(ID2, model = "besag", graph = W)), family = "gaussian",
+    data = boston_487)
 ```
 
 ```{r}
@@ -288,11 +288,11 @@ M <- Diagonal(nrow(W), rowSums(W)) - W
 Cmatrix <- Diagonal(nrow(M), 1) -  M
 ```
 
-This model can be estimatted using the `"generic1"` model with the specified precision matrix:
+This model can be estimated using the `"generic1"` model with the specified precision matrix:
 
 ```{r, cache=TRUE}
 INLA_lr <- inla(update(form, . ~ . + f(ID2, model = "generic1", Cmatrix = Cmatrix)),
-    family="gaussian", data=boston_487)
+    family = "gaussian", data = boston_487)
 ```
 
 ```{r}
@@ -312,14 +312,14 @@ boston_487$NOX_ID <- as.factor(boston_487$NOX_ID)
 The specification of the spatially structured term again differs in details from those above, but achieves the same purpose. The `"REML"` method of `bayesx()` gives the same results as `gam()` using `"REML"` in this case:
 
 ```{r, cache=TRUE}
-GAM_MRF <- gam(update(form, . ~ . + s(NOX_ID, bs="mrf", xt=list(nb=nb_q_93))),
-               data=boston_487, method="REML")
+GAM_MRF <- gam(update(form, . ~ . + s(NOX_ID, bs = "mrf", xt = list(nb = nb_q_93))),
+               data = boston_487, method = "REML")
 ```
 
 The upper level random effects may be extracted by predicting terms; as we can see, the values in all lower-level tracts belonging to the same upper-level air pollution model output zones are identical:
 
 ```{r}
-ssre <- predict(GAM_MRF, type="terms", se=FALSE)[, "s(NOX_ID)"]
+ssre <- predict(GAM_MRF, type = "terms", se = FALSE)[, "s(NOX_ID)"]
 all(sapply(tapply(ssre, list(boston_487$NOX_ID), c), function(x) length(unique(x)) == 1))
 ```
 so we can return the first value for each upper-level unit:
@@ -339,9 +339,9 @@ Figure \@ref(fig:multi-levelmaps1) shows that the air pollution model output zon
 (ref:multi-levelmaps1) Air pollution model output zone level IID random effects estimated using **lme4**, **hglm**, **INLA** and **R2BayesX**; the range of the response, `log(median)` is 2.1893.
 ```{r multi-levelmaps1, out.width='100%', fig.cap='(ref:multi-levelmaps1)', fig=TRUE}
 library(tmap, warn.conflicts=FALSE)
-tm_shape(boston_93) + tm_fill(c("MLM_re", "HGLM_re", "INLA_re", "BX_re"), midpoint=0,
-    title="IID")  + tm_facets(free.scales=FALSE) + tm_borders(lwd=0.3, alpha=0.4) + 
-    tm_layout(panel.labels=c("lmer", "hglm", "inla", "bayesx"))
+tm_shape(boston_93) + tm_fill(c("MLM_re", "HGLM_re", "INLA_re", "BX_re"), midpoint = 0,
+    title = "IID")  + tm_facets(free.scales = FALSE) + tm_borders(lwd = 0.3, alpha = 0.4) + 
+    tm_layout(panel.labels = c("lmer", "hglm", "inla", "bayesx"))
 ```
 
 Figure \@ref(fig:multi-levelmaps2) shows that the spatially structured random effects are also very similar to each other, with the `"SAR"` spatial smooth being perhaps a little smoother than the `"CAR"` smooths when considering the range of values taken by the random effect term.
@@ -349,8 +349,8 @@ Figure \@ref(fig:multi-levelmaps2) shows that the spatially structured random ef
 (ref:multi-levelmaps2) Air pollution model output zone level spatially structured random effects estimated using **hglm**, **HSAR**, **INLA**, **R2BayesX** and **mgcv**.
 ```{r multi-levelmaps2, out.width='100%', fig.cap='(ref:multi-levelmaps2)', fig=TRUE}
 tm_shape(boston_93) + tm_fill(c("HGLM_ss", "HSAR_ss", "INLA_lr", "INLA_ss", "BX_ss",
-    "GAM_ss"), midpoint=0, title="SSRE")  + tm_facets(free.scales=FALSE) + 
-    tm_borders(lwd=0.3, alpha=0.4) + tm_layout(panel.labels=c("hglm CAR", "hsar SAR",
+    "GAM_ss"), midpoint = 0, title = "SSRE")  + tm_facets(free.scales = FALSE) + 
+    tm_borders(lwd = 0.3, alpha = 0.4) + tm_layout(panel.labels = c("hglm CAR", "hsar SAR",
         "inla Leroux", "inla ICAR", "bayesx ICAR", "gam ICAR"))
 ```
 
@@ -358,9 +358,9 @@ Although there is still a great need for more thorough comparative studies of mo
 
 # Spatial econometrics models {#spatecon}
 
-Spatial autoregression models using spatial weights matrices were described in some detail using maximum likelihood estimation some time ago [@cliff+ord:73; @cliff+ord:81]. A family of models was elaborated in spatial econometric terms extending earlier work, and in many cases using the simultaneous autoregressive framework and row standardization of spatial weights [@a88]. The simultaneous  and conditional autoregressive frameworks can be compared, and both can be supplemented using case weights to reflect the relative importance of different observations [@WallerGotway:2004].
+Spatial autoregression models using spatial weights matrices were described in some detail using maximum likelihood estimation some time ago [@cliff+ord:73; @cliff+ord:81]. A family of models was elaborated in spatial econometric terms extending earlier work, and in many cases using the simultaneous autoregressive framework and row standardization of spatial weights [@a88]. The simultaneous and conditional autoregressive frameworks can be compared, and both can be supplemented using case weights to reflect the relative importance of different observations [@WallerGotway:2004].
 
-Before moving to presentations of issues raised in fitting spatial regression models, it is worth making a few further points. A recent review of spatial regression in a spatial econometrics setting is given by Kelejian and Piras [-@kelejian+piras:17]; note that their usage is to call the spatial coefficient of the lagged response $\lambda$ and that of the lagged residuals $\rho$, the reverse of other usage  [@a88; @lesage+pace:09]; here we use $\rho_{\mathrm{Lag}}$ for the spatial coefficient in the spatial lag model, and $\rho_{\mathrm{Err}}$ for the spatial error model. One interesting finding is that relatively dense spatial weights matrices may downweight model estimates, suggesting that sparser weights are preferable [@smith:09]. Another useful finding is that the presence of residual spatial autocorrelation need not bias the estimates of variance of regression coefficients, provided that the covariates themselves do not exhibit spatial autocorrelation [@smith+lee12]. In general, however, the footprints of the spatial processes of the response and covariates may not be aligned, and if covariates and the residual are autocorrelated, it is likely that the estimates of variance of regression coefficients will be biassed downwards if attempts are not made to model the spatial processes.
+Before moving to presentations of issues raised in fitting spatial regression models, it is worth making a few further points. A recent review of spatial regression in a spatial econometrics setting is given by Kelejian and Piras [-@kelejian+piras:17]; note that their usage is to call the spatial coefficient of the lagged response $\lambda$ and that of the lagged residuals $\rho$, the reverse of other usage [@a88; @lesage+pace:09]; here we use $\rho_{\mathrm{Lag}}$ for the spatial coefficient in the spatial lag model, and $\rho_{\mathrm{Err}}$ for the spatial error model. One interesting finding is that relatively dense spatial weights matrices may downweight model estimates, suggesting that sparser weights are preferable [@smith:09]. Another useful finding is that the presence of residual spatial autocorrelation need not bias the estimates of variance of regression coefficients, provided that the covariates themselves do not exhibit spatial autocorrelation [@smith+lee12]. In general, however, the footprints of the spatial processes of the response and covariates may not be aligned, and if covariates and the residual are autocorrelated, it is likely that the estimates of variance of regression coefficients will be biassed downwards if attempts are not made to model the spatial processes.
 
 ## Spatial econometric models: definitions
 
@@ -444,13 +444,13 @@ Where larger data sets are used, a numerical Hessian approach is used to calcula
 
 The examples use the objects read and created in chapter \@ref(spatglmm), based on @bivand17.
 
-```{r}
+```{r, message=FALSE}
 library(spatialreg)
 eigs_489 <- eigenw(lw_q_489)
-SDEM_489 <- errorsarlm(form, data=boston_489, listw=lw_q_489, Durbin=TRUE, 
-                       zero.policy=TRUE, control=list(pre_eig=eigs_489))
-SEM_489 <- errorsarlm(form, data=boston_489, listw=lw_q_489, 
-                      zero.policy=TRUE, control=list(pre_eig=eigs_489))
+SDEM_489 <- errorsarlm(form, data = boston_489, listw = lw_q_489, Durbin = TRUE, 
+                       zero.policy = TRUE, control = list(pre_eig = eigs_489))
+SEM_489 <- errorsarlm(form, data = boston_489, listw = lw_q_489, 
+                      zero.policy = TRUE, control = list(pre_eig = eigs_489))
 ```
 Here we are using the `control=` list argument to pass through pre-computed eigenvalues for the default `"eigen"` method. 
 
@@ -491,32 +491,32 @@ broom::tidy(lmtest::lrtest(SEM_94, SDEM_94))
 The SLX model is fitted using least squares, and also returns a log likelihood value, letting us test whether we need a spatial process in the residuals. In the tract data set we obviously do:
 
 ```{r, warning=FALSE}
-SLX_489 <- lmSLX(form, data=boston_489, listw=lw_q_489, zero.policy=TRUE)
+SLX_489 <- lmSLX(form, data = boston_489, listw = lw_q_489, zero.policy = TRUE)
 broom::tidy(lmtest::lrtest(SLX_489, SDEM_489))
 ```
 but in the output zone case we do not.
 
 ```{r, warning=FALSE}
-SLX_94 <- lmSLX(form, data=boston_94, listw=lw_q_94)
+SLX_94 <- lmSLX(form, data = boston_94, listw = lw_q_94)
 broom::tidy(lmtest::lrtest(SLX_94, SDEM_94))
 ```
 These outcomes are sustained also when we use the counts of house units by tract and output zones as case weights:
 
 ```{r, warning=FALSE}
-SLX_489w <- lmSLX(form, data=boston_489, listw=lw_q_489, weights=units, zero.policy=TRUE)
-SDEM_489w <- errorsarlm(form, data=boston_489, listw=lw_q_489, Durbin=TRUE,
-    weights=units, zero.policy=TRUE, control=list(pre_eig=eigs_489))
+SLX_489w <- lmSLX(form, data = boston_489, listw = lw_q_489, weights = units, zero.policy = TRUE)
+SDEM_489w <- errorsarlm(form, data = boston_489, listw = lw_q_489, Durbin  =TRUE,
+    weights = units, zero.policy = TRUE, control = list(pre_eig = eigs_489))
 broom::tidy(lmtest::lrtest(SLX_489w, SDEM_489w))
 ```
 
 ```{r, warning=FALSE}
-SLX_94w <- lmSLX(form, data=boston_94, listw=lw_q_94, weights=units)
-SDEM_94w <- errorsarlm(form, data=boston_94, listw=lw_q_94, Durbin=TRUE, weights=units,
-                       control=list(pre_eig=eigs_94))
+SLX_94w <- lmSLX(form, data = boston_94, listw = lw_q_94, weights = units)
+SDEM_94w <- errorsarlm(form, data = boston_94, listw = lw_q_94, Durbin = TRUE, weights = units,
+                       control = list(pre_eig = eigs_94))
 broom::tidy(lmtest::lrtest(SLX_94w, SDEM_94w))
 ```
 
-In this case and based on arguments advanced in @bivand17, the use of weights is justified because tract counts of reported housing units underlyinng the weighted median values vary from 5 to 3,031, and air pollution model output zone counts vary from 25 to 12,411. Because of this, and because a weighted general nested model has not been developed, we cannot take the GNM as the starting point for general-to-simpler testing, but start rather from the SDEM model, and use the Hausman test to guide the choice of units of observation.
+In this case and based on arguments advanced in @bivand17, the use of weights is justified because tract counts of reported housing units underlying the weighted median values vary from 5 to 3,031, and air pollution model output zone counts vary from 25 to 12,411. Because of this, and because a weighted general nested model has not been developed, we cannot take the GNM as the starting point for general-to-simpler testing, but start rather from the SDEM model, and use the Hausman test to guide the choice of units of observation.
 
 ## Impacts
 
@@ -526,25 +526,25 @@ Since sampling is not required for inference for SLX and SDEM models, linear com
 
 ```{r}
 sum_imp_94_SDEM <- summary(impacts(SDEM_94))
-rbind(Impacts=sum_imp_94_SDEM$mat[5,], SE=sum_imp_94_SDEM$semat[5,])
+rbind(Impacts = sum_imp_94_SDEM$mat[5,], SE = sum_imp_94_SDEM$semat[5,])
 ```
 In the SLX and SDEM models, the direct impacts are the consequences for the response of changes in air pollution in the same observational entity, and the indirect (local) impacts are the consequences for the response of changes in air pollution in neighbouring observational entities.
 
 ```{r}
 sum_imp_94_SLX <- summary(impacts(SLX_94))
-rbind(Impacts=sum_imp_94_SLX$mat[5,], SE=sum_imp_94_SLX$semat[5,])
+rbind(Impacts = sum_imp_94_SLX$mat[5,], SE = sum_imp_94_SLX$semat[5,])
 ```
 Applying the same approaches to the weighted spatial regressions, the total impacts of air pollution on house values are reduced, but remain significant:
 
 ```{r}
 sum_imp_94_SDEMw <- summary(impacts(SDEM_94w))
-rbind(Impacts=sum_imp_94_SDEMw$mat[5,], SE=sum_imp_94_SDEMw$semat[5,])
+rbind(Impacts = sum_imp_94_SDEMw$mat[5,], SE = sum_imp_94_SDEMw$semat[5,])
 ```
-On balance, using a weighted spatial regression representation including only the spatially lagged covariates aggregated to  the air pollution model output zone level seems to clear most of the mis-specification issues, and as @bivand17 discusses in more detail, gives a willingness to pay for pollution abatement that is much larger than mis-specified alternative models:
+On balance, using a weighted spatial regression representation including only the spatially lagged covariates aggregated to the air pollution model output zone level seems to clear most of the mis-specification issues, and as @bivand17 discusses in more detail, gives a willingness to pay for pollution abatement that is much larger than mis-specified alternative models:
 
 ```{r}
 sum_imp_94_SLXw <- summary(impacts(SLX_94w))
-rbind(Impacts=sum_imp_94_SLXw$mat[5,], SE=sum_imp_94_SLXw$semat[5,])
+rbind(Impacts = sum_imp_94_SLXw$mat[5,], SE = sum_imp_94_SLXw$semat[5,])
 ```
 
 ## Predictions {#spatecon_pred}
@@ -557,11 +557,11 @@ Here, we'll list the predictions for the censored tract observations using three
 
 ```{r}
 nd <- boston_506[is.na(boston_506$median),]
-t0 <- exp(predict(SDEM_489, newdata=nd, listw=lw_q, pred.type="TS", zero.policy=TRUE))
-suppressWarnings(t1  <- exp(predict(SDEM_489, newdata=nd, listw=lw_q, pred.type="KP2",
-                                    zero.policy=TRUE)))
-suppressWarnings(t2  <- exp(predict(SDEM_489, newdata=nd, listw=lw_q, pred.type="KP5",
-                                    zero.policy=TRUE)))
+t0 <- exp(predict(SDEM_489, newdata = nd, listw = lw_q, pred.type = "TS", zero.policy  =TRUE))
+suppressWarnings(t1  <- exp(predict(SDEM_489, newdata = nd, listw = lw_q, pred.type = "KP2",
+                                    zero.policy = TRUE)))
+suppressWarnings(t2  <- exp(predict(SDEM_489, newdata = nd, listw = lw_q, pred.type = "KP5",
+                                    zero.policy = TRUE)))
 ```
 
 We can also use the `"slm"` model in INLA to predict missing response values as part of the model fitting function call. A certain amount of set-up code is required as the `"slm"` model is still experimental:
@@ -576,15 +576,15 @@ rho.max <- 1/max(Re(e[re.idx]))
 rho.min <- 1/min(Re(e[re.idx]))
 rho <- mean(c(rho.min, rho.max))
 boston_506$idx <- 1:n
-zero.variance = list(prec=list(initial = 25, fixed=TRUE))
+zero.variance = list(prec=list(initial = 25, fixed = TRUE))
 args.slm <- list(rho.min = rho.min, rho.max = rho.max, W = W, X = matrix(0, n, 0),
     Q.beta = matrix(1,0,0))
 hyper.slm <- list(prec = list(prior = "loggamma", param = c(0.01, 0.01)),
-    rho = list(initial=0, prior = "logitbeta", param = c(1,1)))
+    rho = list(initial = 0, prior = "logitbeta", param = c(1,1)))
 WX <- create_WX(model.matrix(update(form, CMEDV ~ .), data=boston_506), lw_q)
-SDEM_506_slm <- inla(update(form, . ~ . + WX + f(idx, model="slm", args.slm=args.slm,
-    hyper=hyper.slm)), data=boston_506, family="gaussian", control.family=
-        list(hyper=zero.variance), control.compute=list(dic=TRUE, cpo=TRUE))
+SDEM_506_slm <- inla(update(form, . ~ . + WX + f(idx, model = "slm", args.slm = args.slm,
+    hyper = hyper.slm)), data = boston_506, family = "gaussian", control.family = 
+        list(hyper = zero.variance), control.compute = list(dic = TRUE, cpo = TRUE))
 mvs <- SDEM_506_slm$marginals.fitted.values[which(is.na(boston_506$median))]
 mv_mean <- sapply(mvs, function(x) mean(exp(x[, 1]), ))
 mv_sd <- sapply(mvs, function(x) sd(exp(x[, 1])))
@@ -593,8 +593,8 @@ mv_sd <- sapply(mvs, function(x) sd(exp(x[, 1])))
 INLA also provide gridded estimates of the marginal distributions of the predictions, offering a way to assess the uncertainty associated with the predicted values:
 
 ```{r}
-data.frame(fit_TS=t0[,1], fit_KP2=c(t1), fit_KP5=c(t2), INLA_slm=mv_mean,
-    INLA_slm_sd=mv_sd, censored=boston_506$censored[as.integer(attr(t0, "region.id"))])
+data.frame(fit_TS = t0[,1], fit_KP2 = c(t1), fit_KP5 = c(t2), INLA_slm = mv_mean,
+    INLA_slm_sd = mv_sd, censored = boston_506$censored[as.integer(attr(t0, "region.id"))])
 ```
 
 The spatial regression toolbox remains incomplete, and it will take time to fill in blanks. It remains unfortunate that the several traditions in spatial regression seldom seem to draw on each others' understandings and advances.
