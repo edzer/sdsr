@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>Chapter 12 Spatial Interpolation | Spatial Data Science</title>
   <meta name="description" content="description_xx" />
-  <meta name="generator" content="bookdown 0.22 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="Chapter 12 Spatial Interpolation | Spatial Data Science" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Edzer Pebesma, Roger Bivand" />
 
 
-<meta name="date" content="2021-11-15" />
+<meta name="date" content="2021-12-28" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,7 +33,8 @@
   
 <link rel="prev" href="pointpatterns.html"/>
 <link rel="next" href="stgeostatistics.html"/>
-<script src="libs/jquery-2.2.3/jquery.min.js"></script>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -41,7 +42,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -1087,20 +1087,20 @@ and comparisons of methods for large datasets is given in
 <h2><span class="header-section-number">12.1</span> A first dataset</h2>
 <p>We can read NO<span class="math inline">\(_2\)</span> data, which is prepared in chapter <a href="stgeostatistics.html#stgeostatistics">13</a>, from
 package <code>gstat</code> using</p>
-<div class="sourceCode" id="cb369"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb369-1" title="1"><span class="kw">library</span>(tidyverse)</a>
-<a class="sourceLine" id="cb369-2" title="2">no2 =<span class="st"> </span><span class="kw">read_csv</span>(<span class="kw">system.file</span>(<span class="st">&quot;external/no2.csv&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;gstat&quot;</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb368"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb368-1" title="1"><span class="kw">library</span>(tidyverse)</a>
+<a class="sourceLine" id="cb368-2" title="2">no2 =<span class="st"> </span><span class="kw">read_csv</span>(<span class="kw">system.file</span>(<span class="st">&quot;external/no2.csv&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;gstat&quot;</span>))</a></code></pre></div>
 <p>and convert it into an <code>sf</code> object using</p>
-<div class="sourceCode" id="cb370"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb370-1" title="1"><span class="kw">library</span>(sf)</a>
-<a class="sourceLine" id="cb370-2" title="2">crs =<span class="st"> </span><span class="kw">st_crs</span>(<span class="st">&quot;EPSG:32632&quot;</span>)</a>
-<a class="sourceLine" id="cb370-3" title="3">no2.sf =<span class="st"> </span><span class="kw">st_as_sf</span>(no2, <span class="dt">coords =</span> <span class="kw">c</span>(<span class="st">&quot;station_longitude_deg&quot;</span>, <span class="st">&quot;station_latitude_deg&quot;</span>), <span class="dt">crs =</span> <span class="st">&quot;OGC:CRS84&quot;</span>) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb370-4" title="4"><span class="st">    </span><span class="kw">st_transform</span>(crs)</a></code></pre></div>
+<div class="sourceCode" id="cb369"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb369-1" title="1"><span class="kw">library</span>(sf)</a>
+<a class="sourceLine" id="cb369-2" title="2">crs =<span class="st"> </span><span class="kw">st_crs</span>(<span class="st">&quot;EPSG:32632&quot;</span>)</a>
+<a class="sourceLine" id="cb369-3" title="3">no2.sf =<span class="st"> </span><span class="kw">st_as_sf</span>(no2, <span class="dt">coords =</span> <span class="kw">c</span>(<span class="st">&quot;station_longitude_deg&quot;</span>, <span class="st">&quot;station_latitude_deg&quot;</span>), <span class="dt">crs =</span> <span class="st">&quot;OGC:CRS84&quot;</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb369-4" title="4"><span class="st">    </span><span class="kw">st_transform</span>(crs)</a></code></pre></div>
 <p>Next, we can load country boundaries and plot these data using <code>ggplot</code>, shown
 in figure <a href="interpolation.html#fig:plotDE">12.1</a>.</p>
-<div class="sourceCode" id="cb371"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb371-1" title="1"><span class="kw">data</span>(air, <span class="dt">package =</span> <span class="st">&quot;spacetime&quot;</span>) <span class="co"># this loads German boundaries into DE_NUTS1</span></a>
-<a class="sourceLine" id="cb371-2" title="2">de &lt;-<span class="st"> </span><span class="kw">st_transform</span>(<span class="kw">st_as_sf</span>(DE_NUTS1), crs)</a></code></pre></div>
+<div class="sourceCode" id="cb370"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb370-1" title="1"><span class="kw">data</span>(air, <span class="dt">package =</span> <span class="st">&quot;spacetime&quot;</span>) <span class="co"># this loads German boundaries into DE_NUTS1</span></a>
+<a class="sourceLine" id="cb370-2" title="2">de &lt;-<span class="st"> </span><span class="kw">st_transform</span>(<span class="kw">st_as_sf</span>(DE_NUTS1), crs)</a></code></pre></div>
 
-<div class="sourceCode" id="cb372"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb372-1" title="1"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> de) <span class="op">+</span><span class="st">  </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">col =</span> NO2))</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:plotDE"></span>
+<div class="sourceCode" id="cb371"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb371-1" title="1"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> de) <span class="op">+</span><span class="st">  </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">col =</span> NO2))</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:plotDE"></span>
 <img src="sds_files/figure-html/plotDE-1.png" alt="Mean NO\(_2\) concentrations in air for rural background stations in Germany over 2017" width="672" />
 <p class="caption">
 Figure 12.1: Mean NO<span class="math inline">\(_2\)</span> concentrations in air for rural background stations in Germany over 2017
@@ -1109,13 +1109,12 @@ Figure 12.1: Mean NO<span class="math inline">\(_2\)</span> concentrations in ai
 <p>If we want to interpolate, we first need to decide where. This
 is typically done on a regular grid covering the area of
 interest. Starting with the country outline <code>de</code> we can create a
-regular grid with 10 km grid cells (pixels) by</p>
-<div class="sourceCode" id="cb373"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb373-1" title="1"><span class="co"># build a grid over Germany:</span></a>
-<a class="sourceLine" id="cb373-2" title="2"><span class="kw">library</span>(stars)</a>
-<a class="sourceLine" id="cb373-3" title="3"><span class="kw">st_bbox</span>(de) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb373-4" title="4"><span class="st">  </span><span class="kw">st_as_stars</span>(<span class="dt">dx =</span> <span class="dv">10000</span>) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb373-5" title="5"><span class="st">  </span><span class="kw">st_crop</span>(de) -&gt;<span class="st"> </span>grd</a>
-<a class="sourceLine" id="cb373-6" title="6">grd</a></code></pre></div>
+regular grid with 10 km grid cells (pixels) over Germany by</p>
+<div class="sourceCode" id="cb372"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb372-1" title="1"><span class="kw">library</span>(stars)</a>
+<a class="sourceLine" id="cb372-2" title="2"><span class="kw">st_bbox</span>(de) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb372-3" title="3"><span class="st">  </span><span class="kw">st_as_stars</span>(<span class="dt">dx =</span> <span class="dv">10000</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb372-4" title="4"><span class="st">  </span><span class="kw">st_crop</span>(de) -&gt;<span class="st"> </span>grd</a>
+<a class="sourceLine" id="cb372-5" title="5">grd</a></code></pre></div>
 <pre><code># stars object with 2 dimensions and 1 attribute
 # attribute(s):
 #         Min. 1st Qu. Median Mean 3rd Qu. Max. NA&#39;s
@@ -1135,15 +1134,15 @@ proportional to distances from the interpolation location:</p>
 <p>with <span class="math inline">\(w_i = |s_0-s_i|^p\)</span>, and the inverse distance power typically
 taken as 2, or optimized using cross validation. We can compute
 inverse distance interpolated values using <code>gstat::idw</code>,</p>
-<div class="sourceCode" id="cb375"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb375-1" title="1"><span class="kw">library</span>(gstat)</a>
-<a class="sourceLine" id="cb375-2" title="2">i =<span class="st"> </span><span class="kw">idw</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, grd)</a></code></pre></div>
+<div class="sourceCode" id="cb374"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb374-1" title="1"><span class="kw">library</span>(gstat)</a>
+<a class="sourceLine" id="cb374-2" title="2">i =<span class="st"> </span><span class="kw">idw</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, grd)</a></code></pre></div>
 <pre><code># [inverse distance weighted interpolation]</code></pre>
 <p>and plot them in figure <a href="interpolation.html#fig:idw">12.2</a>.</p>
 
-<div class="sourceCode" id="cb377"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb377-1" title="1"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> i, <span class="kw">aes</span>(<span class="dt">fill =</span> var1.pred, <span class="dt">x =</span> x, <span class="dt">y =</span> y)) <span class="op">+</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb377-2" title="2"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb377-3" title="3"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf)</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:idw"></span>
+<div class="sourceCode" id="cb376"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb376-1" title="1"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> i, <span class="kw">aes</span>(<span class="dt">fill =</span> var1.pred, <span class="dt">x =</span> x, <span class="dt">y =</span> y)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb376-2" title="2"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb376-3" title="3"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf)</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:idw"></span>
 <img src="sds_files/figure-html/idw-1.png" alt="Inverse distance weighted interpolated values for NO\(_2\) over Germany" width="672" />
 <p class="caption">
 Figure 12.2: Inverse distance weighted interpolated values for NO<span class="math inline">\(_2\)</span> over Germany
@@ -1159,21 +1158,21 @@ Figure 12.2: Inverse distance weighted interpolated values for NO<span class="ma
 \]</span></p>
 <p>with <span class="math inline">\(N(h_i)\)</span> the number of sample pairs available for distance interval <span class="math inline">\(h_i\)</span>.
 Function <code>gstat::variogram</code> computes sample variograms,</p>
-<div class="sourceCode" id="cb378"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb378-1" title="1">v =<span class="st"> </span><span class="kw">variogram</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf)</a></code></pre></div>
+<div class="sourceCode" id="cb377"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb377-1" title="1">v =<span class="st"> </span><span class="kw">variogram</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf)</a></code></pre></div>
 <p>and the result of plotting this is shown in figure <a href="interpolation.html#fig:vgm">12.3</a>.</p>
-<div class="sourceCode" id="cb379"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb379-1" title="1"><span class="kw">plot</span>(v, <span class="dt">plot.numbers =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:vgm"></span>
+<div class="sourceCode" id="cb378"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb378-1" title="1"><span class="kw">plot</span>(v, <span class="dt">plot.numbers =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:vgm"></span>
 <img src="sds_files/figure-html/vgm-1.png" alt="Sample variogram plot" width="672" />
 <p class="caption">
 Figure 12.3: Sample variogram plot
 </p>
 </div>
 <p>Function <code>variogram</code> chooses default for maximum distance (<code>cutoff</code>: one third of the length of the bounding box diagonal) and (constant) interval widths (<code>width</code>: cutoff divided by 15). These defaults can be changed, e.g. by</p>
-<div class="sourceCode" id="cb380"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb380-1" title="1"><span class="kw">library</span>(gstat)</a>
-<a class="sourceLine" id="cb380-2" title="2">v0 =<span class="st"> </span><span class="kw">variogram</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, <span class="dt">cutoff =</span> <span class="dv">100000</span>, <span class="dt">width =</span> <span class="dv">10000</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb379"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb379-1" title="1"><span class="kw">library</span>(gstat)</a>
+<a class="sourceLine" id="cb379-2" title="2">v0 =<span class="st"> </span><span class="kw">variogram</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, <span class="dt">cutoff =</span> <span class="dv">100000</span>, <span class="dt">width =</span> <span class="dv">10000</span>)</a></code></pre></div>
 <p>shown in figure <a href="interpolation.html#fig:vgm2">12.4</a>.</p>
-<div class="sourceCode" id="cb381"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb381-1" title="1"><span class="kw">plot</span>(v0, <span class="dt">plot.numbers =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:vgm2"></span>
+<div class="sourceCode" id="cb380"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb380-1" title="1"><span class="kw">plot</span>(v0, <span class="dt">plot.numbers =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:vgm2"></span>
 <img src="sds_files/figure-html/vgm2-1.png" alt="Sample variogram plot with adjusted cutoff and lag width" width="672" />
 <p class="caption">
 Figure 12.4: Sample variogram plot with adjusted cutoff and lag width
@@ -1185,10 +1184,10 @@ Figure 12.4: Sample variogram plot with adjusted cutoff and lag width
 <h2><span class="header-section-number">12.3</span> Fitting variogram models</h2>
 <p>In order to progress toward spatial predictions, we need a variogram <em>model</em> <span class="math inline">\(\gamma(h)\)</span> for (potentially) all distances <span class="math inline">\(h\)</span>, rather than the set of estimates derived above: in case we would for instance connect these estimates with straight lines, or assume they reflect constant values over their respective distance intervals, this would lead to statisical models with non-positive covariance matrices, which is a complicated way of expressing that you are in a lot of trouble.</p>
 <p>To avoid these troubles we fit parametric models <span class="math inline">\(\gamma(h)\)</span> to the estimates <span class="math inline">\(\hat{\gamma}(h_i)\)</span>, where we take <span class="math inline">\(h_i\)</span> as the mean value of all the <span class="math inline">\(h&#39;\)</span> values involved in estimating <span class="math inline">\(\hat{\gamma}(h_i)\)</span>. For this, when we fit a model like the exponential variogram, fitted by</p>
-<div class="sourceCode" id="cb382"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb382-1" title="1">v.m =<span class="st"> </span><span class="kw">fit.variogram</span>(v, <span class="kw">vgm</span>(<span class="dv">1</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">50000</span>, <span class="dv">1</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb381"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb381-1" title="1">v.m =<span class="st"> </span><span class="kw">fit.variogram</span>(v, <span class="kw">vgm</span>(<span class="dv">1</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">50000</span>, <span class="dv">1</span>))</a></code></pre></div>
 <p>and shown in figure <a href="interpolation.html#fig:fitvariogrammodel">12.5</a>.</p>
-<div class="sourceCode" id="cb383"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb383-1" title="1"><span class="kw">plot</span>(v, v.m, <span class="dt">plot.numbers =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:fitvariogrammodel"></span>
+<div class="sourceCode" id="cb382"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb382-1" title="1"><span class="kw">plot</span>(v, v.m, <span class="dt">plot.numbers =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:fitvariogrammodel"></span>
 <img src="sds_files/figure-html/fitvariogrammodel-1.png" alt="Sample variogram with fitted model" width="672" />
 <p class="caption">
 Figure 12.5: Sample variogram with fitted model
@@ -1208,14 +1207,14 @@ outside it.</p>
 <p>Kriging involves the prediction of <span class="math inline">\(Z(s_0)\)</span> at arbitrary locations
 <span class="math inline">\(s_0\)</span>. We can krige NO<span class="math inline">\(_2\)</span> by using <code>gstat::krige</code>, with the model for the
 trend, the data, the prediction grid, and the variogram model (figure <a href="interpolation.html#fig:krigeovergermany">12.6</a>):</p>
-<div class="sourceCode" id="cb384"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb384-1" title="1">k =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, grd, v.m)</a></code></pre></div>
+<div class="sourceCode" id="cb383"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb383-1" title="1">k =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, grd, v.m)</a></code></pre></div>
 <pre><code># [using ordinary kriging]</code></pre>
 
-<div class="sourceCode" id="cb386"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb386-1" title="1"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> k, <span class="kw">aes</span>(<span class="dt">fill =</span> var1.pred, <span class="dt">x =</span> x, <span class="dt">y =</span> y)) <span class="op">+</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb386-2" title="2"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb386-3" title="3"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf) <span class="op">+</span></a>
-<a class="sourceLine" id="cb386-4" title="4"><span class="st">    </span><span class="kw">coord_sf</span>(<span class="dt">lims_method =</span> <span class="st">&quot;geometry_bbox&quot;</span>)</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:krigeovergermany"></span>
+<div class="sourceCode" id="cb385"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb385-1" title="1"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> k, <span class="kw">aes</span>(<span class="dt">fill =</span> var1.pred, <span class="dt">x =</span> x, <span class="dt">y =</span> y)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb385-2" title="2"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb385-3" title="3"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf) <span class="op">+</span></a>
+<a class="sourceLine" id="cb385-4" title="4"><span class="st">    </span><span class="kw">coord_sf</span>(<span class="dt">lims_method =</span> <span class="st">&quot;geometry_bbox&quot;</span>)</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:krigeovergermany"></span>
 <img src="sds_files/figure-html/krigeovergermany-1.png" alt="Kriged NO\(_2\) concentrations over Germany" width="672" />
 <p class="caption">
 Figure 12.6: Kriged NO<span class="math inline">\(_2\)</span> concentrations over Germany
@@ -1226,23 +1225,23 @@ Figure 12.6: Kriged NO<span class="math inline">\(_2\)</span> concentrations ove
 <h2><span class="header-section-number">12.5</span> Areal means: block kriging</h2>
 <p>Computing areal means can be done in several ways. The simples is to take
 the average of point samples falling inside the target polygons:</p>
-<div class="sourceCode" id="cb387"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb387-1" title="1">a =<span class="st"> </span><span class="kw">aggregate</span>(no2.sf[<span class="st">&quot;NO2&quot;</span>], <span class="dt">by =</span> de, <span class="dt">FUN =</span> mean)</a></code></pre></div>
+<div class="sourceCode" id="cb386"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb386-1" title="1">a =<span class="st"> </span><span class="kw">aggregate</span>(no2.sf[<span class="st">&quot;NO2&quot;</span>], <span class="dt">by =</span> de, <span class="dt">FUN =</span> mean)</a></code></pre></div>
 <p>A more complicated way is to use <em>block kriging</em> <span class="citation">(Journel and Huijbregts <a href="#ref-jh78">1978</a>)</span>, which
 uses <em>all</em> the data to estimate the mean of the variable over the
 target area. With <code>krige</code>, this can be done by giving the target
 areas (polygons) as the <code>newdata</code> argument:</p>
-<div class="sourceCode" id="cb388"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb388-1" title="1">b =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, de, v.m)</a></code></pre></div>
+<div class="sourceCode" id="cb387"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb387-1" title="1">b =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, de, v.m)</a></code></pre></div>
 <pre><code># [using ordinary kriging]</code></pre>
 <p>we can now merge the two maps into a single object to create a single plot (figure <a href="interpolation.html#fig:aggregations">12.7</a>):</p>
-<div class="sourceCode" id="cb390"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb390-1" title="1">b<span class="op">$</span>sample =<span class="st"> </span>a<span class="op">$</span>NO2</a>
-<a class="sourceLine" id="cb390-2" title="2">b<span class="op">$</span>kriging =<span class="st"> </span>b<span class="op">$</span>var1.pred</a></code></pre></div>
+<div class="sourceCode" id="cb389"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb389-1" title="1">b<span class="op">$</span>sample =<span class="st"> </span>a<span class="op">$</span>NO2</a>
+<a class="sourceLine" id="cb389-2" title="2">b<span class="op">$</span>kriging =<span class="st"> </span>b<span class="op">$</span>var1.pred</a></code></pre></div>
 
-<div class="sourceCode" id="cb391"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb391-1" title="1">b <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(sample, kriging) <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb391-2" title="2"><span class="st">        </span><span class="kw">pivot_longer</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">2</span>, <span class="dt">names_to =</span> <span class="st">&quot;var&quot;</span>, <span class="dt">values_to =</span> <span class="st">&quot;NO2&quot;</span>) -&gt;<span class="st"> </span>b2</a>
-<a class="sourceLine" id="cb391-3" title="3">b2<span class="op">$</span>var =<span class="st"> </span><span class="kw">factor</span>(b2<span class="op">$</span>var, <span class="dt">levels =</span> <span class="kw">c</span>(<span class="st">&quot;sample&quot;</span>, <span class="st">&quot;kriging&quot;</span>))</a>
-<a class="sourceLine" id="cb391-4" title="4"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> b2, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">fill =</span> NO2)) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>var) <span class="op">+</span></a>
-<a class="sourceLine" id="cb391-5" title="5"><span class="st">     </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>))</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:aggregations"></span>
+<div class="sourceCode" id="cb390"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb390-1" title="1">b <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(sample, kriging) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb390-2" title="2"><span class="st">        </span><span class="kw">pivot_longer</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">2</span>, <span class="dt">names_to =</span> <span class="st">&quot;var&quot;</span>, <span class="dt">values_to =</span> <span class="st">&quot;NO2&quot;</span>) -&gt;<span class="st"> </span>b2</a>
+<a class="sourceLine" id="cb390-3" title="3">b2<span class="op">$</span>var =<span class="st"> </span><span class="kw">factor</span>(b2<span class="op">$</span>var, <span class="dt">levels =</span> <span class="kw">c</span>(<span class="st">&quot;sample&quot;</span>, <span class="st">&quot;kriging&quot;</span>))</a>
+<a class="sourceLine" id="cb390-4" title="4"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> b2, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">fill =</span> NO2)) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>var) <span class="op">+</span></a>
+<a class="sourceLine" id="cb390-5" title="5"><span class="st">     </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>))</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:aggregations"></span>
 <img src="sds_files/figure-html/aggregations-1.png" alt="Aggregated NO\(_2\) values from simple averaging (left) and block kriging (right)" width="672" />
 <p class="caption">
 Figure 12.7: Aggregated NO<span class="math inline">\(_2\)</span> values from simple averaging (left) and block kriging (right)
@@ -1254,21 +1253,21 @@ the smoothing effect of kriging: data points outside the target
 area are weighted, too.</p>
 <p>To compare the standard errors of means, for the sample mean we
 can get a rough guess of the standard error by <span class="math inline">\(\sqrt{(\sigma^2/n)}\)</span>:</p>
-<div class="sourceCode" id="cb392"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb392-1" title="1">SE =<span class="st"> </span><span class="cf">function</span>(x) <span class="kw">sqrt</span>(<span class="kw">var</span>(x)<span class="op">/</span><span class="kw">length</span>(x))</a>
-<a class="sourceLine" id="cb392-2" title="2">a =<span class="st"> </span><span class="kw">aggregate</span>(no2.sf[<span class="st">&quot;NO2&quot;</span>], de, SE)</a></code></pre></div>
+<div class="sourceCode" id="cb391"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb391-1" title="1">SE =<span class="st"> </span><span class="cf">function</span>(x) <span class="kw">sqrt</span>(<span class="kw">var</span>(x)<span class="op">/</span><span class="kw">length</span>(x))</a>
+<a class="sourceLine" id="cb391-2" title="2">a =<span class="st"> </span><span class="kw">aggregate</span>(no2.sf[<span class="st">&quot;NO2&quot;</span>], de, SE)</a></code></pre></div>
 <p>which would have been the actual estimate in design-based inference
 if the sample was obtained by spatially random sampling.
 The block kriging variance is the model-based estimate, and is
 a by-product of kriging. We combine and rename the two:</p>
-<div class="sourceCode" id="cb393"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb393-1" title="1">b<span class="op">$</span>sample =<span class="st"> </span>a<span class="op">$</span>NO2</a>
-<a class="sourceLine" id="cb393-2" title="2">b<span class="op">$</span>kriging =<span class="st"> </span><span class="kw">sqrt</span>(b<span class="op">$</span>var1.var)</a></code></pre></div>
+<div class="sourceCode" id="cb392"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb392-1" title="1">b<span class="op">$</span>sample =<span class="st"> </span>a<span class="op">$</span>NO2</a>
+<a class="sourceLine" id="cb392-2" title="2">b<span class="op">$</span>kriging =<span class="st"> </span><span class="kw">sqrt</span>(b<span class="op">$</span>var1.var)</a></code></pre></div>
 
-<div class="sourceCode" id="cb394"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb394-1" title="1">b <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(sample, kriging) <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb394-2" title="2"><span class="st">        </span><span class="kw">pivot_longer</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">2</span>, <span class="dt">names_to =</span> <span class="st">&quot;var&quot;</span>, <span class="dt">values_to =</span> <span class="st">&quot;Standard_error&quot;</span>) -&gt;<span class="st"> </span>b2</a>
-<a class="sourceLine" id="cb394-3" title="3">b2<span class="op">$</span>var =<span class="st"> </span><span class="kw">factor</span>(b2<span class="op">$</span>var, <span class="dt">levels =</span> <span class="kw">c</span>(<span class="st">&quot;sample&quot;</span>, <span class="st">&quot;kriging&quot;</span>))</a>
-<a class="sourceLine" id="cb394-4" title="4"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> b2, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">fill =</span> Standard_error)) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>var, <span class="dt">as.table =</span> <span class="ot">FALSE</span>) <span class="op">+</span></a>
-<a class="sourceLine" id="cb394-5" title="5"><span class="st">     </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>))</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:aggrSE"></span>
+<div class="sourceCode" id="cb393"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb393-1" title="1">b <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(sample, kriging) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb393-2" title="2"><span class="st">        </span><span class="kw">pivot_longer</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">2</span>, <span class="dt">names_to =</span> <span class="st">&quot;var&quot;</span>, <span class="dt">values_to =</span> <span class="st">&quot;Standard_error&quot;</span>) -&gt;<span class="st"> </span>b2</a>
+<a class="sourceLine" id="cb393-3" title="3">b2<span class="op">$</span>var =<span class="st"> </span><span class="kw">factor</span>(b2<span class="op">$</span>var, <span class="dt">levels =</span> <span class="kw">c</span>(<span class="st">&quot;sample&quot;</span>, <span class="st">&quot;kriging&quot;</span>))</a>
+<a class="sourceLine" id="cb393-4" title="4"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> b2, <span class="dt">mapping =</span> <span class="kw">aes</span>(<span class="dt">fill =</span> Standard_error)) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>var, <span class="dt">as.table =</span> <span class="ot">FALSE</span>) <span class="op">+</span></a>
+<a class="sourceLine" id="cb393-5" title="5"><span class="st">     </span><span class="kw">scale_fill_gradientn</span>(<span class="dt">colors =</span> <span class="kw">sf.colors</span>(<span class="dv">20</span>))</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:aggrSE"></span>
 <img src="sds_files/figure-html/aggrSE-1.png" alt="Standard errors for mean NO\(_2\) values obtained by simple averaging (left) and block kriging (right)" width="672" />
 <p class="caption">
 Figure 12.8: Standard errors for mean NO<span class="math inline">\(_2\)</span> values obtained by simple averaging (left) and block kriging (right)
@@ -1302,18 +1301,18 @@ number of nearest neigbours to include in kriging estimation,
 because the dataset grows each step, leading otherwise quickly to
 very long computing times and large memory requirements (figure
 <a href="interpolation.html#fig:plotkrigingvalues">12.9</a>):</p>
-<div class="sourceCode" id="cb395"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb395-1" title="1">s =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, grd, v.m, <span class="dt">nmax =</span> <span class="dv">30</span>, <span class="dt">nsim =</span> <span class="dv">6</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb394"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb394-1" title="1">s =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="dv">1</span>, no2.sf, grd, v.m, <span class="dt">nmax =</span> <span class="dv">30</span>, <span class="dt">nsim =</span> <span class="dv">6</span>)</a></code></pre></div>
 <pre><code># drawing 6 GLS realisations of beta...
 # [using conditional Gaussian simulation]</code></pre>
 
-<div class="sourceCode" id="cb397"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb397-1" title="1"><span class="kw">library</span>(viridis)</a>
-<a class="sourceLine" id="cb397-2" title="2">g =<span class="st"> </span><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">coord_equal</span>() <span class="op">+</span></a>
-<a class="sourceLine" id="cb397-3" title="3"><span class="st">    </span><span class="kw">scale_fill_viridis</span>() <span class="op">+</span></a>
-<a class="sourceLine" id="cb397-4" title="4"><span class="st">    </span><span class="kw">theme_void</span>() <span class="op">+</span></a>
-<a class="sourceLine" id="cb397-5" title="5"><span class="st">    </span><span class="kw">scale_x_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)) <span class="op">+</span></a>
-<a class="sourceLine" id="cb397-6" title="6"><span class="st">    </span><span class="kw">scale_y_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))</a>
-<a class="sourceLine" id="cb397-7" title="7">g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> s[,,,<span class="dv">1</span><span class="op">:</span><span class="dv">6</span>]) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>sample)</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:plotkrigingvalues"></span>
+<div class="sourceCode" id="cb396"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb396-1" title="1"><span class="kw">library</span>(viridis)</a>
+<a class="sourceLine" id="cb396-2" title="2">g =<span class="st"> </span><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">coord_equal</span>() <span class="op">+</span></a>
+<a class="sourceLine" id="cb396-3" title="3"><span class="st">    </span><span class="kw">scale_fill_viridis</span>() <span class="op">+</span></a>
+<a class="sourceLine" id="cb396-4" title="4"><span class="st">    </span><span class="kw">theme_void</span>() <span class="op">+</span></a>
+<a class="sourceLine" id="cb396-5" title="5"><span class="st">    </span><span class="kw">scale_x_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)) <span class="op">+</span></a>
+<a class="sourceLine" id="cb396-6" title="6"><span class="st">    </span><span class="kw">scale_y_discrete</span>(<span class="dt">expand=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))</a>
+<a class="sourceLine" id="cb396-7" title="7">g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> s[,,,<span class="dv">1</span><span class="op">:</span><span class="dv">6</span>]) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>sample)</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:plotkrigingvalues"></span>
 <img src="sds_files/figure-html/plotkrigingvalues-1.png" alt="Six conditional simulations for NO\(_2\) values" width="672" />
 <p class="caption">
 Figure 12.9: Six conditional simulations for NO<span class="math inline">\(_2\)</span> values
@@ -1347,37 +1346,37 @@ simulations.</p>
 density. NO2 is mostly caused by traffic, and traffic is stronger
 in more densely populated areas.
 Population density is obtained from the <a href="https://www.zensus2011.de/DE/Home/Aktuelles/DemografischeGrunddaten.html">2011 census</a>, and is downloaded as a csv file with the number of inhabitants per 100 m grid cell. We can aggregate these data to the target grid cells by summing the inhabitants:</p>
-<div class="sourceCode" id="cb398"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb398-1" title="1">v =<span class="st"> </span>vroom<span class="op">::</span><span class="kw">vroom</span>(<span class="st">&quot;aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv&quot;</span>)</a>
-<a class="sourceLine" id="cb398-2" title="2">v <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">filter</span>(Einwohner <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb398-3" title="3"><span class="st">    </span><span class="kw">select</span>(<span class="op">-</span>Gitter_ID_100m) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb398-4" title="4"><span class="st">    </span><span class="kw">st_as_sf</span>(<span class="dt">coords =</span> <span class="kw">c</span>(<span class="st">&quot;x_mp_100m&quot;</span>, <span class="st">&quot;y_mp_100m&quot;</span>), <span class="dt">crs =</span> <span class="dv">3035</span>) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb398-5" title="5"><span class="st">    </span><span class="kw">st_transform</span>(<span class="kw">st_crs</span>(grd)) -&gt;<span class="st"> </span>b</a>
-<a class="sourceLine" id="cb398-6" title="6">a =<span class="st"> </span><span class="kw">aggregate</span>(b, <span class="kw">st_as_sf</span>(grd, <span class="dt">na.rm =</span> <span class="ot">FALSE</span>), sum)</a></code></pre></div>
+<div class="sourceCode" id="cb397"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb397-1" title="1">v =<span class="st"> </span>vroom<span class="op">::</span><span class="kw">vroom</span>(<span class="st">&quot;aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv&quot;</span>)</a>
+<a class="sourceLine" id="cb397-2" title="2">v <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">filter</span>(Einwohner <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb397-3" title="3"><span class="st">    </span><span class="kw">select</span>(<span class="op">-</span>Gitter_ID_100m) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb397-4" title="4"><span class="st">    </span><span class="kw">st_as_sf</span>(<span class="dt">coords =</span> <span class="kw">c</span>(<span class="st">&quot;x_mp_100m&quot;</span>, <span class="st">&quot;y_mp_100m&quot;</span>), <span class="dt">crs =</span> <span class="dv">3035</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb397-5" title="5"><span class="st">    </span><span class="kw">st_transform</span>(<span class="kw">st_crs</span>(grd)) -&gt;<span class="st"> </span>b</a>
+<a class="sourceLine" id="cb397-6" title="6">a =<span class="st"> </span><span class="kw">aggregate</span>(b, <span class="kw">st_as_sf</span>(grd, <span class="dt">na.rm =</span> <span class="ot">FALSE</span>), sum)</a></code></pre></div>
 <p>Now we have the population counts per grid cell in <code>a</code>. To get to
 population density, we need to find the area of each cell; for cells
 crossing the country border, this will be less than 10 x 10 km:</p>
-<div class="sourceCode" id="cb399"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb399-1" title="1">grd<span class="op">$</span>ID =<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="kw">prod</span>(<span class="kw">dim</span>(grd)) <span class="co"># so we can find out later which grid cell we have</span></a>
-<a class="sourceLine" id="cb399-2" title="2">ii =<span class="st"> </span><span class="kw">st_intersects</span>(grd[<span class="st">&quot;ID&quot;</span>], <span class="kw">st_cast</span>(<span class="kw">st_union</span>(de), <span class="st">&quot;MULTILINESTRING&quot;</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb398"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb398-1" title="1">grd<span class="op">$</span>ID =<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="kw">prod</span>(<span class="kw">dim</span>(grd)) <span class="co"># so we can find out later which grid cell we have</span></a>
+<a class="sourceLine" id="cb398-2" title="2">ii =<span class="st"> </span><span class="kw">st_intersects</span>(grd[<span class="st">&quot;ID&quot;</span>], <span class="kw">st_cast</span>(<span class="kw">st_union</span>(de), <span class="st">&quot;MULTILINESTRING&quot;</span>))</a></code></pre></div>
 <pre><code># Warning in st_intersects.stars(grd[&quot;ID&quot;], st_cast(st_union(de),
 # &quot;MULTILINESTRING&quot;)): as_points is NA: assuming here that raster cells are small
 # polygons, not points</code></pre>
-<div class="sourceCode" id="cb401"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb401-1" title="1">grd_sf =<span class="st"> </span><span class="kw">st_as_sf</span>(grd[<span class="st">&quot;ID&quot;</span>], <span class="dt">na.rm =</span> <span class="ot">FALSE</span>)[<span class="kw">lengths</span>(ii) <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span>,]</a>
-<a class="sourceLine" id="cb401-2" title="2">iii =<span class="st"> </span><span class="kw">st_intersection</span>(grd_sf, <span class="kw">st_union</span>(de))</a></code></pre></div>
+<div class="sourceCode" id="cb400"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb400-1" title="1">grd_sf =<span class="st"> </span><span class="kw">st_as_sf</span>(grd[<span class="st">&quot;ID&quot;</span>], <span class="dt">na.rm =</span> <span class="ot">FALSE</span>)[<span class="kw">lengths</span>(ii) <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span>,]</a>
+<a class="sourceLine" id="cb400-2" title="2">iii =<span class="st"> </span><span class="kw">st_intersection</span>(grd_sf, <span class="kw">st_union</span>(de))</a></code></pre></div>
 <pre><code># Warning: attribute variables are assumed to be spatially constant throughout all
 # geometries</code></pre>
-<div class="sourceCode" id="cb403"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb403-1" title="1">grd<span class="op">$</span>area =<span class="st"> </span><span class="kw">st_area</span>(grd)[[<span class="dv">1</span>]] <span class="op">+</span><span class="st"> </span>units<span class="op">::</span><span class="kw">set_units</span>(grd<span class="op">$</span>values, m<span class="op">^</span><span class="dv">2</span>) <span class="co"># NA&#39;s</span></a>
-<a class="sourceLine" id="cb403-2" title="2">grd<span class="op">$</span>area[iii<span class="op">$</span>ID] =<span class="st"> </span><span class="kw">st_area</span>(iii)</a></code></pre></div>
+<div class="sourceCode" id="cb402"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb402-1" title="1">grd<span class="op">$</span>area =<span class="st"> </span><span class="kw">st_area</span>(grd)[[<span class="dv">1</span>]] <span class="op">+</span><span class="st"> </span>units<span class="op">::</span><span class="kw">set_units</span>(grd<span class="op">$</span>values, m<span class="op">^</span><span class="dv">2</span>) <span class="co"># NA&#39;s</span></a>
+<a class="sourceLine" id="cb402-2" title="2">grd<span class="op">$</span>area[iii<span class="op">$</span>ID] =<span class="st"> </span><span class="kw">st_area</span>(iii)</a></code></pre></div>
 <p>Instead of doing the two-stage procedure above: first finding cells that
 have a border crossing it, then computing its area, we could also directly
 use <code>st_intersection</code> on all cells, but that takes considerably longer.
 From the counts and areas we can compute densities, and verify totals (figure <a href="interpolation.html#fig:popdens">12.10</a>):</p>
-<div class="sourceCode" id="cb404"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb404-1" title="1">grd<span class="op">$</span>pop_dens =<span class="st"> </span>a<span class="op">$</span>Einwohner <span class="op">/</span><span class="st"> </span>grd<span class="op">$</span>area</a>
-<a class="sourceLine" id="cb404-2" title="2"><span class="kw">sum</span>(grd<span class="op">$</span>pop_dens <span class="op">*</span><span class="st"> </span>grd<span class="op">$</span>area, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>) <span class="co"># verify</span></a></code></pre></div>
+<div class="sourceCode" id="cb403"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb403-1" title="1">grd<span class="op">$</span>pop_dens =<span class="st"> </span>a<span class="op">$</span>Einwohner <span class="op">/</span><span class="st"> </span>grd<span class="op">$</span>area</a>
+<a class="sourceLine" id="cb403-2" title="2"><span class="kw">sum</span>(grd<span class="op">$</span>pop_dens <span class="op">*</span><span class="st"> </span>grd<span class="op">$</span>area, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>) <span class="co"># verify</span></a></code></pre></div>
 <pre><code># 80323301 [1]</code></pre>
-<div class="sourceCode" id="cb406"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb406-1" title="1"><span class="kw">sum</span>(b<span class="op">$</span>Einwohner)</a></code></pre></div>
+<div class="sourceCode" id="cb405"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb405-1" title="1"><span class="kw">sum</span>(b<span class="op">$</span>Einwohner)</a></code></pre></div>
 <pre><code># [1] 80324282</code></pre>
-<div class="sourceCode" id="cb408"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb408-1" title="1">g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> grd, <span class="kw">aes</span>(<span class="dt">fill =</span> <span class="kw">sqrt</span>(pop_dens), <span class="dt">x =</span> x, <span class="dt">y =</span> y))</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:popdens"></span>
+<div class="sourceCode" id="cb407"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb407-1" title="1">g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> grd, <span class="kw">aes</span>(<span class="dt">fill =</span> <span class="kw">sqrt</span>(pop_dens), <span class="dt">x =</span> x, <span class="dt">y =</span> y))</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:popdens"></span>
 <img src="sds_files/figure-html/popdens-1.png" alt="Population density for 100 m x 100 m grid cells" width="672" />
 <p class="caption">
 Figure 12.10: Population density for 100 m x 100 m grid cells
@@ -1388,18 +1387,18 @@ m grid points contributing to it, in order to convert population
 counts into population density.</p>
 <p>To obtain population density values at monitoring network stations,
 we can use</p>
-<div class="sourceCode" id="cb409"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb409-1" title="1">(<span class="dt">a =</span> <span class="kw">aggregate</span>(grd[<span class="st">&quot;pop_dens&quot;</span>], no2.sf, mean))</a></code></pre></div>
+<div class="sourceCode" id="cb408"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb408-1" title="1">(<span class="dt">a =</span> <span class="kw">aggregate</span>(grd[<span class="st">&quot;pop_dens&quot;</span>], no2.sf, mean))</a></code></pre></div>
 <pre><code># stars object with 1 dimensions and 1 attribute
 # attribute(s):
-#               Min.  1st Qu.   Median     Mean  3rd Qu.    Max. NA&#39;s
-# pop_dens  3.37e-06 4.98e-05 8.93e-05 0.000195 0.000237 0.00224    1
+#                      Min.  1st Qu.   Median     Mean  3rd Qu.    Max. NA&#39;s
+# pop_dens [1/m^2] 3.37e-06 4.98e-05 8.93e-05 0.000195 0.000237 0.00224    1
 # dimension(s):
 #          from to offset delta            refsys point
 # geometry    1 74     NA    NA WGS 84 / UTM z...  TRUE
 #                                                     values
 # geometry POINT (545414 5930802),...,POINT (835252 5630738)</code></pre>
-<div class="sourceCode" id="cb411"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb411-1" title="1">no2.sf<span class="op">$</span>pop_dens =<span class="st"> </span><span class="kw">st_as_sf</span>(a)[[<span class="dv">1</span>]]</a>
-<a class="sourceLine" id="cb411-2" title="2"><span class="kw">summary</span>(<span class="kw">lm</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf))</a></code></pre></div>
+<div class="sourceCode" id="cb410"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb410-1" title="1">no2.sf<span class="op">$</span>pop_dens =<span class="st"> </span><span class="kw">st_as_sf</span>(a)[[<span class="dv">1</span>]]</a>
+<a class="sourceLine" id="cb410-2" title="2"><span class="kw">summary</span>(<span class="kw">lm</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf))</a></code></pre></div>
 <pre><code># 
 # Call:
 # lm(formula = NO2 ~ sqrt(pop_dens), data = no2.sf)
@@ -1420,9 +1419,9 @@ we can use</p>
 # Multiple R-squared:  0.374,   Adjusted R-squared:  0.365 
 # F-statistic: 42.4 on 1 and 71 DF,  p-value: 9.19e-09</code></pre>
 <p>and the corresponding scatterplot is shown in <a href="interpolation.html#fig:no2scat">12.11</a>.</p>
-<div class="sourceCode" id="cb413"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb413-1" title="1"><span class="kw">plot</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf)</a>
-<a class="sourceLine" id="cb413-2" title="2"><span class="kw">abline</span>(<span class="kw">lm</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf))</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:no2scat"></span>
+<div class="sourceCode" id="cb412"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb412-1" title="1"><span class="kw">plot</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf)</a>
+<a class="sourceLine" id="cb412-2" title="2"><span class="kw">abline</span>(<span class="kw">lm</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf))</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:no2scat"></span>
 <img src="sds_files/figure-html/no2scat-1.png" alt="Scatter plot of 2017 annual mean NO2 concentration against population density, for rural background air quality stations" width="70%" />
 <p class="caption">
 Figure 12.11: Scatter plot of 2017 annual mean NO2 concentration against population density, for rural background air quality stations
@@ -1430,31 +1429,31 @@ Figure 12.11: Scatter plot of 2017 annual mean NO2 concentration against populat
 </div>
 <p>Prediction under this new model involves first modelling a residual
 variogram (figure <a href="interpolation.html#fig:predictusingpopulationdensity">12.12</a>):</p>
-<div class="sourceCode" id="cb414"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb414-1" title="1">no2.sf =<span class="st"> </span>no2.sf[<span class="op">!</span><span class="kw">is.na</span>(no2.sf<span class="op">$</span>pop_dens),]</a>
-<a class="sourceLine" id="cb414-2" title="2">vr =<span class="st"> </span><span class="kw">variogram</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf)</a>
-<a class="sourceLine" id="cb414-3" title="3">vr.m =<span class="st"> </span><span class="kw">fit.variogram</span>(vr, <span class="kw">vgm</span>(<span class="dv">1</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">50000</span>, <span class="dv">1</span>))</a></code></pre></div>
-<div class="sourceCode" id="cb415"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb415-1" title="1"><span class="kw">plot</span>(vr, vr.m, <span class="dt">plot.numbers =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:predictusingpopulationdensity"></span>
+<div class="sourceCode" id="cb413"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb413-1" title="1">no2.sf =<span class="st"> </span>no2.sf[<span class="op">!</span><span class="kw">is.na</span>(no2.sf<span class="op">$</span>pop_dens),]</a>
+<a class="sourceLine" id="cb413-2" title="2">vr =<span class="st"> </span><span class="kw">variogram</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf)</a>
+<a class="sourceLine" id="cb413-3" title="3">vr.m =<span class="st"> </span><span class="kw">fit.variogram</span>(vr, <span class="kw">vgm</span>(<span class="dv">1</span>, <span class="st">&quot;Exp&quot;</span>, <span class="dv">50000</span>, <span class="dv">1</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb414"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb414-1" title="1"><span class="kw">plot</span>(vr, vr.m, <span class="dt">plot.numbers =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:predictusingpopulationdensity"></span>
 <img src="sds_files/figure-html/predictusingpopulationdensity-1.png" alt="Residual variogram after subtracting population density trend" width="672" />
 <p class="caption">
 Figure 12.12: Residual variogram after subtracting population density trend
 </p>
 </div>
 <p>and subsequently, kriging prediction is done by (figure <a href="interpolation.html#fig:residualkriging">12.13</a>)</p>
-<div class="sourceCode" id="cb416"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb416-1" title="1">kr =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf, grd[<span class="st">&quot;pop_dens&quot;</span>], vr.m)</a></code></pre></div>
+<div class="sourceCode" id="cb415"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb415-1" title="1">kr =<span class="st"> </span><span class="kw">krige</span>(NO2<span class="op">~</span><span class="kw">sqrt</span>(pop_dens), no2.sf, grd[<span class="st">&quot;pop_dens&quot;</span>], vr.m)</a></code></pre></div>
 <pre><code># [using universal kriging]</code></pre>
-<div class="sourceCode" id="cb418"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb418-1" title="1">k<span class="op">$</span>kr1 =<span class="st"> </span>k<span class="op">$</span>var1.pred</a>
-<a class="sourceLine" id="cb418-2" title="2">k<span class="op">$</span>kr2 =<span class="st"> </span>kr<span class="op">$</span>var1.pred</a>
-<a class="sourceLine" id="cb418-3" title="3"><span class="kw">st_redimension</span>(k[<span class="kw">c</span>(<span class="st">&quot;kr1&quot;</span>, <span class="st">&quot;kr2&quot;</span>)], </a>
-<a class="sourceLine" id="cb418-4" title="4">    <span class="dt">along =</span> <span class="kw">list</span>(<span class="dt">what =</span> <span class="kw">c</span>(<span class="st">&quot;kriging&quot;</span>, <span class="st">&quot;residual kriging&quot;</span>))) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb418-5" title="5"><span class="st">    </span><span class="kw">setNames</span>(<span class="st">&quot;NO2&quot;</span>) -&gt;<span class="st"> </span>km</a></code></pre></div>
+<div class="sourceCode" id="cb417"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb417-1" title="1">k<span class="op">$</span>kr1 =<span class="st"> </span>k<span class="op">$</span>var1.pred</a>
+<a class="sourceLine" id="cb417-2" title="2">k<span class="op">$</span>kr2 =<span class="st"> </span>kr<span class="op">$</span>var1.pred</a>
+<a class="sourceLine" id="cb417-3" title="3"><span class="kw">st_redimension</span>(k[<span class="kw">c</span>(<span class="st">&quot;kr1&quot;</span>, <span class="st">&quot;kr2&quot;</span>)], </a>
+<a class="sourceLine" id="cb417-4" title="4">    <span class="dt">along =</span> <span class="kw">list</span>(<span class="dt">what =</span> <span class="kw">c</span>(<span class="st">&quot;kriging&quot;</span>, <span class="st">&quot;residual kriging&quot;</span>))) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb417-5" title="5"><span class="st">    </span><span class="kw">setNames</span>(<span class="st">&quot;NO2&quot;</span>) -&gt;<span class="st"> </span>km</a></code></pre></div>
 
-<div class="sourceCode" id="cb419"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb419-1" title="1">g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> km, <span class="kw">aes</span>(<span class="dt">fill =</span> NO2, <span class="dt">x =</span> x, <span class="dt">y =</span> y)) <span class="op">+</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb419-2" title="2"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb419-3" title="3"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>what) <span class="op">+</span></a>
-<a class="sourceLine" id="cb419-4" title="4"><span class="st">    </span><span class="kw">coord_sf</span>(<span class="dt">lims_method =</span> <span class="st">&quot;geometry_bbox&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb418"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb418-1" title="1">g <span class="op">+</span><span class="st"> </span><span class="kw">geom_stars</span>(<span class="dt">data =</span> km, <span class="kw">aes</span>(<span class="dt">fill =</span> NO2, <span class="dt">x =</span> x, <span class="dt">y =</span> y)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb418-2" title="2"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> <span class="kw">st_cast</span>(de, <span class="st">&quot;MULTILINESTRING&quot;</span>)) <span class="op">+</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb418-3" title="3"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> no2.sf) <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>what) <span class="op">+</span></a>
+<a class="sourceLine" id="cb418-4" title="4"><span class="st">    </span><span class="kw">coord_sf</span>(<span class="dt">lims_method =</span> <span class="st">&quot;geometry_bbox&quot;</span>)</a></code></pre></div>
 <pre><code># Coordinate system already present. Adding new coordinate system, which will replace the existing one.</code></pre>
-<div class="figure" style="text-align: center"><span id="fig:residualkriging"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:residualkriging"></span>
 <img src="sds_files/figure-html/residualkriging-1.png" alt="Kriging NO\(_2\) values using population density as a trend variable" width="672" />
 <p class="caption">
 Figure 12.13: Kriging NO<span class="math inline">\(_2\)</span> values using population density as a trend variable
@@ -1482,7 +1481,8 @@ that has the inverse distance interpolated map of figure
 <a href="interpolation.html#fig:idw">12.2</a> added on left side.</li>
 <li>Create a scatter plot of the map values of the idw and kriging
 map, and a scatter plot of map values of idw and residual kriging.</li>
-<li>Carry out a <em>block kriging</em> by setting the <code>block</code> argument in
+<li>Carry out a <em>block kriging</em>, predicting block averages for blocks
+centered over grid cells, by setting the <code>block</code> argument in
 <code>krige()</code>, and do this for block sizes of 10 km (the grid cell size),
 50 km and 200 km. Compare the resulting maps of estimates for these
 three blocks sizes with those obtained by point kriging, and
@@ -1541,7 +1541,6 @@ kriging errors.</li>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -1581,6 +1580,10 @@ gitbook.start({
 "text": null
 },
 "download": null,
+"search": {
+"engine": "fuse",
+"options": null
+},
 "toc": {
 "collapse": "subsection"
 }
