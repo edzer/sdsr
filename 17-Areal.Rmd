@@ -2,11 +2,11 @@
 
 Areal units of observation are very often used when simultaneous observations are aggregated within non-overlapping boundaries. The boundaries may be those of administrative entities, and may be related to underlying spatial processes, such as commuting flows, but are usually arbitrary. If they do not match the underlying and unobserved spatial processes in one or more variables of interest, proximate areal units will contain parts of the underlying processes, engendering spatial autocorrelation. By proximity, we mean _closeness_ in ways that make sense for the data generation processes thought to be involved. In cross-sectional geostatistical analysis with point support, measured distance makes sense for typical data generation processes. In similar analysis of areal data, sharing a border may make more sense, because that is what we do know, but we cannot measure the distance between the areas in as adequate a way.  
 
-With support of data we mean the physical size (length, area, volume) associated with an individual observational unit (measurement).  It is possible to represent the support of areal data by a point, despite the fact that the data have polygonal support. The centroid of the polygon may be taken as a representative point, or the centroid of the largest polygon in a multi-polygon object. When data with intrinsic point support are treated as areal data, the change of support goes the other way, from the known point to a non-overlapping tessellation such as a Voronoi diagram or Dirichlet tessellation or Thiessen polygons often through a Delaunay triangulation using projected coordinates. Here, different metrics may also be chosen, or distances measured on a network rather than on the plane. There is also a literature using weighted Voronoi diagrams in local spatial analysis [see for example @doi:10.1080/13658810601034267; @doi:10.1080/13658810701587891; @SHE201570].
+With support of data we mean the physical size (length, area, volume) associated with an individual observational unit (measurement; see chapter\@ref(featureattributes)).  It is possible to represent the support of areal data by a point, despite the fact that the data have polygonal support. The centroid of the polygon may be taken as a representative point, or the centroid of the largest polygon in a multi-polygon object. When data with intrinsic point support are treated as areal data, the change of support goes the other way, from the known point to a non-overlapping tessellation such as a Voronoi diagram or Dirichlet tessellation or Thiessen polygons often through a Delaunay triangulation using projected coordinates. Here, different metrics may also be chosen, or distances measured on a network rather than on the plane. There is also a literature using weighted Voronoi diagrams in local spatial analysis [see for example @doi:10.1080/13658810601034267; @doi:10.1080/13658810701587891; @SHE201570].
 
 When the intrinsic support of the data is represented as points, but the underlying process is between proximate observations rather than driven chiefly by distance however measured between observations, the data may be aggregate counts or totals (polling stations, retail turnover) or represent a directly observed characteristic of the observation (opening hours of the polling station). Obviously, the risk of mis-representing the footprint of the underlying spatial processes remains in all of these cases, not least because the observations are taken as encompassing the entirety of the underlying process in the case of tessellation of the whole area of interest. This is distinct from the geostatistical setting in which observations are rather samples taken using some scheme within the area of interest. It is also partly distinct from the practice of taking areal sample plots within the area of interest but covering only a small proportion of the area, typically used in ecological and environmental research.
 
-In order to explore and analyse areal data of these kinds in chapters \@ref(spatautocorr), \@ref(spatglmm) and \@ref(spatecon), methods are needed to represent the proximity of observations. This chapter then considers a subset of the such methods, where the spatial processes are considered as working through proximity understood in the first instance as contiguity, as a graph linking observations taken as neighbours. This graph is typically undirected and unweighted, but may be directed and/or weighted in certain settings, which then leads to further issues with regard to symmetry. In principle, proximity would be expected to operate symmetrically in space, that is that the influence of $i$ on $j$ and of $j$ on $i$ based on their relative positions should be equivalent. Edge effects are not considered in standard treatments.
+In order to explore and analyse areal data of these kinds in chapters \@ref(spatautocorr), \@ref(spatglmm) and \@ref(spatecon), methods are needed to represent the proximity of observations. This chapter considers a subset of the such methods, where the spatial processes are considered as working through proximity understood in the first instance as contiguity, as a graph linking observations taken as neighbours. This graph is typically undirected and unweighted, but may be directed and/or weighted in certain settings, which then leads to further issues with regard to symmetry. In principle, proximity would be expected to operate symmetrically in space, that is that the influence of $i$ on $j$ and of $j$ on $i$ based on their relative positions should be equivalent. Edge effects are not considered in standard treatments.
 
 
 ## Representing proximity in **spdep**
@@ -19,7 +19,7 @@ No-neighbour observations can also occur when a distance threshold is used betwe
 
 The **spdep** package provides an `nb` class for neighbours, a list of length equal to the number of observations, with integer vector components. No-neighbours are encoded as an integer vector with a single element `0L`, and observations with neighbours as sorted integer vectors containing values in `1L:n` pointing to the neighbouring observations. This is a typical row-oriented sparse representation of neighbours. **spdep** provides many ways of constructing `nb` objects, and the representation and construction functions are widely used in other packages. 
 
-**spdep** builds on the `nb` representation (undirected or directed graphs) with the `listw` object, a list with three components, an `nb` object, a matching list of numerical weights, and a single element character vector containing the single letter name of the way in which the weights were calculated. The most frequently used approach in the social sciences is calculating weights by row standardization, so that all the non-zero weights for one observation will be the inverse of the cardinality of its set of neighbours (`1/card(nb[[i]])`).
+**spdep** builds on the `nb` representation (undirected or directed graphs) with the `listw` object, a list with three components, an `nb` object, a matching list of numerical weights, and a single element character vector containing the single letter name of the way in which the weights were calculated. The most frequently used approach in the social sciences is calculating weights by row standardization, so that all the non-zero weights for one observation will be the inverse of the cardinality of its set of neighbours (`1/card(nb)[i]`).
 
 We will be using election data from the 2015 Polish Presidential election in this chapter, with 2495 municipalities and Warsaw boroughs (see figure \@ref(fig:plotpolpres15) for a **tmap** map (section \@ref(tmap)) of the municipality types), and complete count data from polling stations aggregated to these areal units. The data are an **sf** `sf` object:
 
@@ -39,7 +39,7 @@ pol_pres15 %>%
 ```
 (ref:plotpolpres15fc) Polish municipality types 2015
 ```{r plotpolpres15, out.width='100%', fig.cap='(ref:plotpolpres15fc)', fig=TRUE, echo=TRUE}
-library(tmap)
+library(tmap, warn.conflicts = FALSE)
 tm_shape(pol_pres15) + tm_fill("types")
 ```
 
@@ -67,7 +67,7 @@ From **spdep** 1.1-7, the GEOS interface of the **sf** package is used within `p
 ```{r}
 system.time(pol_pres15 %>% poly2nb(queen = TRUE) -> nb_q)
 ```
-Earlier, `foundInBox=` accepted the output of the  **rgeos** `gUnarySTRtreeQuery()` function to list candidate neighbours, that is polygons whose bounding boxes intersect the bounding boxes of other polygons. The print method shows the summary structure of the neighbour object:
+The `foundInBox=` argument originally accepted the output of the  **rgeos** `gUnarySTRtreeQuery()` function to list candidate neighbours, that is polygons whose bounding boxes intersect the bounding boxes of other polygons, but is only retained to support legacy code. The print method shows the summary structure of the neighbour object:
 
 ```{r}
 nb_q
@@ -94,7 +94,7 @@ Spherical and planar intersection of the input polygons yield the same contiguit
 all.equal(nb_q, nb_q_s2, check.attributes=FALSE)
 ```
 
-Note that `nb` objects record both symmetric neighbour relationships, because these objects admit asymmetric relationships as well, but these duplications are not needed for object construction.
+Note that `nb` objects record both symmetric neighbour relationships `i` to `j` and `j` to `i`, because these objects admit asymmetric relationships as well, but these duplications are not needed for object construction.
 
 Most of the **spdep** functions for constructing neighbour objects take a `row.names=` argument, the value of which is stored as a `region.id` attribute. If not given, the values are taken from `row.names()` of the first argument. These can be used to check that the neighbours object is in the same order as data. If `nb` objects are subsetted, the indices change to continue to be within `1:length(subsetted_nb)`, but the `region.id` attribute values point back to the object from which it was constructed. This is used in out-of-sample prediction from spatial regression models discussed briefly in section \@ref(spateconpred).
 
@@ -187,7 +187,7 @@ par(opar)
 
 ## Distance-based neighbours
 
-Distance-based neighbours can be constructed using `dnearneigh()`, with a distance band with lower `d1=` and upper `d2=` bounds controlled by the `bounds=` argument. If spherical coordinates are used and either specified in the coordinates object `x` or with `x` as a two column matrix and `longlat=TRUE`, great circle distances in km will be calculated assuming the WGS84 reference ellipsoid, or if `use_s2=TRUE`, a 200-cell `s2` buffer is constructed around each point, points falling within the buffer chosen, and then chosen points beyond `d2=` dropped. From tests, it appears that spherical spatial indexing is not used, and so is slower than the legacy brute-force approach (see chapter \@ref(spherical)). 
+Distance-based neighbours can be constructed using `dnearneigh()`, with a distance band with lower `d1=` and upper `d2=` bounds controlled by the `bounds=` argument. If spherical coordinates are used and either specified in the coordinates object `x` or with `x` as a two column matrix and `longlat=TRUE`, great circle distances in km will be calculated assuming the WGS84 reference ellipsoid, or if `use_s2=TRUE`, a 200-cell `s2` buffer is constructed around each point, points falling within the buffer chosen, and then chosen points beyond `d2=` dropped. From tests, it appears that spherical spatial indexing is not used, and so is substantially slower than the legacy brute-force approach (see chapter \@ref(spherical)). 
 
 From **spdep** 1.1-7, two arguments have been added, to use functionality in the **dbscan** package [@R-dbscan] for finding neighbours using planar spatial indexing in two or three dimensions by default, and not to test the symmetry of the output neighbour object. 
 
@@ -313,7 +313,7 @@ We will be using the helper function `spweights.constants()` below to show some 
 ```{r}
 args(spweights.constants)
 ```
-The `"B"` binary style gives a weight of unity to each neighbour relationship, and typically upweights units with no boundaries on the edge of the study area.
+The `"B"` binary style gives a weight of unity to each neighbour relationship, and typically upweights units with no boundaries on the edge of the study area, so having a higher count of neighbours.
 
 ```{r}
 (nb_q %>% 
