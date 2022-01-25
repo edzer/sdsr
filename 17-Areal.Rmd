@@ -2,7 +2,7 @@
 
 Areal units of observation are very often used when simultaneous observations are aggregated within non-overlapping boundaries. The boundaries may be those of administrative entities, and may be related to underlying spatial processes, such as commuting flows, but are usually arbitrary. If they do not match the underlying and unobserved spatial processes in one or more variables of interest, proximate areal units will contain parts of the underlying processes, engendering spatial autocorrelation. By proximity, we mean _closeness_ in ways that make sense for the data generation processes thought to be involved. In cross-sectional geostatistical analysis with point support, measured distance makes sense for typical data generation processes. In similar analysis of areal data, sharing a border may make more sense, because that is what we do know, but we cannot measure the distance between the areas in as adequate a way.  
 
-With support of data we mean the physical size (length, area, volume) associated with an individual observational unit (measurement; see chapter\@ref(featureattributes)).  It is possible to represent the support of areal data by a point, despite the fact that the data have polygonal support. The centroid of the polygon may be taken as a representative point, or the centroid of the largest polygon in a multi-polygon object. When data with intrinsic point support are treated as areal data, the change of support goes the other way, from the known point to a non-overlapping tessellation such as a Voronoi diagram or Dirichlet tessellation or Thiessen polygons often through a Delaunay triangulation using projected coordinates. Here, different metrics may also be chosen, or distances measured on a network rather than on the plane. There is also a literature using weighted Voronoi diagrams in local spatial analysis [see for example @doi:10.1080/13658810601034267; @doi:10.1080/13658810701587891; @SHE201570].
+By support of data we mean the physical size (length, area, volume) associated with an individual observational unit (measurement; see chapter \@ref(featureattributes)).  It is possible to represent the support of areal data by a point, despite the fact that the data have polygonal support. The centroid of the polygon may be taken as a representative point, or the centroid of the largest polygon in a multi-polygon object. When data with intrinsic point support are treated as areal data, the change of support goes the other way, from the known point to a non-overlapping tessellation such as a Voronoi diagram or Dirichlet tessellation or Thiessen polygons often through a Delaunay triangulation using projected coordinates. Here, different metrics may also be chosen, or distances measured on a network rather than on the plane. There is also a literature using weighted Voronoi diagrams in local spatial analysis [see for example @doi:10.1080/13658810601034267; @doi:10.1080/13658810701587891; @SHE201570].
 
 When the intrinsic support of the data is represented as points, but the underlying process is between proximate observations rather than driven chiefly by distance however measured between observations, the data may be aggregate counts or totals (polling stations, retail turnover) or represent a directly observed characteristic of the observation (opening hours of the polling station). Obviously, the risk of mis-representing the footprint of the underlying spatial processes remains in all of these cases, not least because the observations are taken as encompassing the entirety of the underlying process in the case of tessellation of the whole area of interest. This is distinct from the geostatistical setting in which observations are rather samples taken using some scheme within the area of interest. It is also partly distinct from the practice of taking areal sample plots within the area of interest but covering only a small proportion of the area, typically used in ecological and environmental research.
 
@@ -75,7 +75,7 @@ nb_q
 
 From **sf** version 1.0-0, the **s2** package [@R-s2] is used by default for spherical geometries, as `st_intersects()` used in `poly2nb()` passes calculation to `s2::s2_intersects_matrix()` (see chapter \@ref(spherical)). From **spdep** version 1.1-9, if `sf_use_s2()`is `TRUE`, spherical intersection is used to find candidate neighbours; as with GEOS, the underlying `s2` library uses fast spatial indexing.
 
-```{r, echo=FALSE}
+```{r}
 old_use_s2 <- sf_use_s2()
 ```
 
@@ -107,6 +107,7 @@ This approach is equivalent to treating the neighbour object as a graph and usin
 
 ```{r}
 library(Matrix, warn.conflicts = FALSE)
+library(spatialreg, warn.conflicts = FALSE)
 nb_q %>% 
     nb2listw(style = "B") %>% 
     as("CsparseMatrix") -> smat
@@ -187,13 +188,13 @@ par(opar)
 
 ## Distance-based neighbours
 
-Distance-based neighbours can be constructed using `dnearneigh()`, with a distance band with lower `d1=` and upper `d2=` bounds controlled by the `bounds=` argument. If spherical coordinates are used and either specified in the coordinates object `x` or with `x` as a two column matrix and `longlat=TRUE`, great circle distances in km will be calculated assuming the WGS84 reference ellipsoid, or if `use_s2=TRUE`, a 200-cell `s2` buffer is constructed around each point, points falling within the buffer chosen, and then chosen points beyond `d2=` dropped. From tests, it appears that spherical spatial indexing is not used, and so is substantially slower than the legacy brute-force approach (see chapter \@ref(spherical)). 
+Distance-based neighbours can be constructed using `dnearneigh()`, with a distance band with lower `d1=` and upper `d2=` bounds controlled by the `bounds=` argument. If spherical coordinates are used and either specified in the coordinates object `x` or with `x` as a two column matrix and `longlat=TRUE`, great circle distances in km will be calculated assuming the WGS84 reference ellipsoid, or if `use_s2=TRUE`, the default value if the version of **s2** is greater than `1.0.7`, using the spheroid (see chapter \@ref(spherical)) If `dwithin=` is `FALSE` and the version of **s2** is greater than `1.0.7`, `s2_closest_edges()` may be used, if `TRUE` and `use_s2=TRUE`, `s2_dwithin_matrix()` is used; both of these methods use fast spherical spatial indexing, but because `s2_closest_edges()` takes minumum and maximum bounds, it only needs one pass in the R code of `dnearneigh()`. 
 
-From **spdep** 1.1-7, two arguments have been added, to use functionality in the **dbscan** package [@R-dbscan] for finding neighbours using planar spatial indexing in two or three dimensions by default, and not to test the symmetry of the output neighbour object. 
+Arguments have been added, to use functionality in the **dbscan** package [@R-dbscan] for finding neighbours using planar spatial indexing in two or three dimensions by default, and not to test the symmetry of the output neighbour object. In addition, three arguments relate to the use of spherical geometry distance measurements.
 
-The `knearneigh()` function for $k$-nearest neighbours returns a `knn` object, converted to an `nb` object using `knn2nb()`. It can also use great circle distances, not least because nearest neighbours may differ when uprojected coordinates are treated as planar. `k=` should be a small number. For projected coordinates, the **dbscan** package is used to compute nearest neighbours more efficiently. Note that `nb` objects constructed in this way are most unlikely to be symmetric, hence `knn2nb()` has a `sym=` argument to permit the imposition of symmetry, which will mean that all units have at least `k=` neighbours, not that all units will have exactly `k=` neighbours. From **spdep** version 1.1-9 and when `sf_use_s2()` is `TRUE`, `knearneigh()` will use fast spherical spatial indexing when the input object is of class `"sf"` or `"sfc"`.
+The `knearneigh()` function for $k$-nearest neighbours returns a `knn` object, converted to an `nb` object using `knn2nb()`. It can also use great circle distances, not least because nearest neighbours may differ when uprojected coordinates are treated as planar. `k=` should be a small number. For projected coordinates, the **dbscan** package is used to compute nearest neighbours more efficiently. Note that `nb` objects constructed in this way are most unlikely to be symmetric, hence `knn2nb()` has a `sym=` argument to permit the imposition of symmetry, which will mean that all units have at least `k=` neighbours, not that all units will have exactly `k=` neighbours. When `sf_use_s2()` is `TRUE`, `knearneigh()` will use fast spherical spatial indexing when the input object is of class `"sf"` or `"sfc"`.
 
-The `nbdists()` function returns the length of neighbour relationship edges in the units of the coordinates if the coordinates are projected, in km otherwise. In order to set the upper limit for distance bands, one may first find the maximum first nearest neighbour distance, using `unlist()` to remove the list structure of the returned object. From **spdep** version 1.1-9 and when `sf_use_s2()` is `TRUE`, `nbdists()` will use fast spherical distance calculations when the input object is of class `"sf"` or `"sfc"`.
+The `nbdists()` function returns the length of neighbour relationship edges in the units of the coordinates if the coordinates are projected, in km otherwise. In order to set the upper limit for distance bands, one may first find the maximum first nearest neighbour distance, using `unlist()` to remove the list structure of the returned object. When `sf_use_s2()` is `TRUE`, `nbdists()` will use fast spherical distance calculations when the input object is of class `"sf"` or `"sfc"`.
 
 ```{r}
 coords %>% 
@@ -262,7 +263,7 @@ Here the size of `k=` is sufficient to ensure connectedness, although the graph 
 
 In the case of points on the sphere (see chapter \@ref(spherical)), the output of `st_centroid()` will differ, so rather than inverse projecting the points, we extract points as geographical coordinates from the inverse projected polygon geometries:
 
-```{r, echo=FALSE}
+```{r}
 old_use_s2 <- sf_use_s2()
 ```
 
@@ -276,12 +277,34 @@ pol_pres15_ll %>%
     st_centroid(of_largest_polygon = TRUE) -> coords_ll
 ```
 
-From **spdep** version 1.1-9, fast spatial indexing in **s2** is used to find the nearest neighbours:
+For spherical coordinates, distance bounds are in kilometres:
+
+```{r}
+(coords_ll %>% dnearneigh(0, 18.3, use_s2=TRUE, dwithin=TRUE) -> nb_d183_ll)
+```
+These neighbours differ from the spherical 18.3 kilometre neighbours as would be expected:
+
+```{r}
+isTRUE(all.equal(nb_d183, nb_d183_ll, check.attributes = FALSE))
+```
+If **s2** providing faster distance neighbour indexing is available, by default `s2_closest_edges()` will be used for geographical coordinates:
+
+```{r}
+if (packageVersion("s2") > "1.0.7") (coords_ll %>% dnearneigh(0, 18.3) -> nb_d183_llce)
+```
+
+where the two **s2**-based neighbour objects are the same:
+
+```{r}
+isTRUE(all.equal(nb_d183_llce, nb_d183_ll, check.attributes = FALSE))
+```
+
+Fast spherical spatial indexing in **s2** is used to find $k$ nearest neighbours:
 
 ```{r}
 (coords_ll %>% knearneigh(k = 6) %>% knn2nb() -> nb_k6_ll)
 ```
-These neighbours differ from the planar `k=6` nearest neighbours as would be expected:
+These neighbours differ from the planar `k=6` nearest neighbours as would be expected, but will also differ slightly from legacy brute-force ellipsoid distances:
 
 ```{r}
 isTRUE(all.equal(nb_k6, nb_k6_ll, check.attributes = FALSE))
@@ -291,12 +314,12 @@ The `nbdists()` function also uses **s2** to find distances on the sphere when t
 ```{r}
 nb_q %>% nbdists(coords_ll) %>% unlist() %>% summary()
 ```
-These differ a little for the same weights object when planar coordinates are used (distances returned in the metric of the points):
+These differ a little for the same weights object when planar coordinates are used (distances returned in the metric of the points for planar geometries and kilometres for ellipsoidal and spherical geometries):
 
 ```{r}
 nb_q %>% nbdists(coords) %>% unlist() %>% summary()
 ```
-```{r, echo=FALSE, results='hide'}
+```{r, results='hide'}
 sf_use_s2(old_use_s2)
 ```
 
@@ -398,13 +421,13 @@ mr <- which.max(spmax)
 pol_pres15$name0[mr]
 ```
 
-```{r, echo=FALSE}
+```{r}
 pol_pres15$sps1 <- sps[,mr]
 tm1 <- tm_shape(pol_pres15) + tm_fill("sps1", title = "Shortest path\ncount")
 ```
 
 
-```{r, echo=FALSE}
+```{r}
 coords[mr] %>% 
     st_distance(coords) %>% 
     c() %>% 
@@ -432,19 +455,21 @@ gridExtra::grid.arrange(tmap_grob(tm1), g1, nrow=1)
 
 # Measures of spatial autocorrelation {#spatautocorr}
 
-When analysing areal data, it has long been recognised that, if present, spatial autocorrelation changes how we may infer, relative to the default position of independent observations. In the presence of spatial autocorrelation, we can predict the values of observation $i$ from the values observed at $j \in N_i$, the set of its proximate neighbours. Early results [@moran48; @geary:54], entered into research practice gradually, for example the social sciences [@duncanetal61]. These results were then collated and extended to yield a set of basic tools of analysis [@cliff+ord:73; @cliff+ord:81]. 
+When analysing areal data, it has long been recognised that, if present, spatial autocorrelation changes how we may infer, relative to the default position of independent observations. In the presence of spatial autocorrelation, we can predict the values of observation $i$ from the values observed at $j \in N_i$, the set of its proximate neighbours. Early results [@moran48; @geary:54] entered into research practice gradually, for example the social sciences [@duncanetal61]. These results were then collated and extended to yield a set of basic tools of analysis [@cliff+ord:73; @cliff+ord:81]. 
 
 Cliff and Ord [-@cliff+ord:73] generalised and extended the expression of the spatial weights matrix representation as part of the framework for establishing the distribution theory for join count, Moran's $I$ and Geary's $C$ statistics. This development of what have become known as global measures, returning a single value of autocorrelation for the total study area, has been supplemented by local measures returning values for each areal unit [@getis+ord:92; @anselin:95].
 
+The measures offered by the **spdep** package have been written partly to provide implementations, but also to permit the comparative investigation of these measures and their implementation. For this reason, the implementations are written in R rather than compiled code, and are generally slower but more flexible than implementations in the newly released **rgeoda** package [@rgeoda-package; @https://doi.org/10.1111/gean.12311].
+
 ## Measures and process mis-specification
 
-It is not and has never been the case that Tobler's first law of geography: "Everything is related to everything else, but near things are more related than distant things" always holds absolutely. This is and has always been an oversimplification, disguising the underlying entitation, support and other mis-specification problems. Are the units of observation appropriate for the scale of the underlying spatial process?  Could the spatial patterning of the variable of interest for the chosen entitation be accounted for by another variable? 
+It is not and has never been the case that Tobler's first law of geography: "Everything is related to everything else, but near things are more related than distant things" always holds absolutely. This is and has always been an oversimplification, disguising possible underlying entitation, support and other mis-specification problems. Are the units of observation appropriate for the scale of the underlying spatial process?  Could the spatial patterning of the variable of interest for the chosen entitation be accounted for by another variable? 
 
 @10.2307/143141 was published in the same special issue of *Economic Geography* as @10.2307/143140, but Olsson does grasp the important point that spatial autocorrelation is not inherent in spatial phenomena, but often is engendered by inappropriate entitation, by omitted variables and/or inappropriate functional form. The key quote from Olsson is on p. 228:
 
 > The existence of such autocorrelations makes it tempting to agree with Tobler (1970, 236 [the original refers to the pagination of a conference paper]) that 'everything is related to everything else, but near things are more related than distant things.' On the other hand, the fact that the autocorrelations seem to hide systematic specification errors suggests that the elevation of this statement to the status of 'the first law of geography' is at best premature. At worst, the statement may represent the spatial variant of the post hoc fallacy, which would mean that coincidence has been mistaken for a causal relation.
 
-The status of the "first law" is very similar to the belief that John Snow induced the cause of cholera as water-borne from a map. It may be a good way of selling GIS, but it is inaccurate; Snow had a strong working hypothesis prior to visiting Soho, and the map was prepared after the Broad street pump was disabled as documentation that the hypothesis held [@BRODY200064].
+The status of the "first law" is very similar to the belief that John Snow induced the cause of cholera as water-borne from a map. It may be a good way of selling GIS, but it is inaccurate; Snow had a strong working hypothesis prior to visiting Soho, and the map was prepared after the Broad street pump was disabled as documentation that his hypothesis held [@BRODY200064].
 
 Measures of spatial autocorrelation unfortunately pick up other mis-specifications in the way that we model data [@schabenberger+gotway:2005; @McMillen:2003]. For reference, Moran's $I$ is given as [@cliff+ord:81, page 17]:
 
@@ -530,7 +555,7 @@ The implementation of Moran's $I$ in **spdep** in the `moran.test()` function ha
 args(moran.test)
 ```
 
-The default for the `randomisation=` argument is `TRUE`, but here we will simply show that the test under normality is the same as a test of least squares residuals with only the intercept used in the mean model; the analysed variable is first round turnout proportion of registered voters in municipalities and Warsaw burroughs in the 2015 Polish presidential election. The spelling of randomisation is that of Cliff and Ord [-@cliff+ord:73].
+The default for the `randomisation=` argument is `TRUE`, but here we will simply show that the test under normality is the same as a test of least squares residuals with only the intercept used in the mean model; the analysed variable is first round turnout proportion of registered voters in municipalities and Warsaw boroughs in the 2015 Polish presidential election. The spelling of randomisation is that of Cliff and Ord [-@cliff+ord:73].
 
 ```{r}
 (pol_pres15 %>% 
@@ -581,7 +606,7 @@ Global measures of spatial autocorrelation using spatial weights objects based o
 
 Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s [@anselin:95; @getis+ord:92; @getis+ord:96]. 
 
-In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable [@anselin:96]. The `moran.plot()` function also returns an influence measures object used to label observations exerting more than propotional influence on the slope of the line representing global Moran's $I$. In figure \@ref(fig:moranplot), we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. 
+In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable [@anselin:96]. The `moran.plot()` function also returns an influence measures object used to label observations exerting more than proportional influence on the slope of the line representing global Moran's $I$. In figure \@ref(fig:moranplot), we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. In `moran.plot()`, the quadrants are split on the means of the variable and its spatial lag; alternative splits are on zero for the centred variable and the spatial lag of the centred variable.
 
 (ref:moranplotfc) Moran plot of I round turnout, row standardised weights
 ```{r moranplot, out.width='100%', fig.cap='(ref:moranplotfc)', fig=TRUE}
@@ -599,47 +624,45 @@ tm_shape(pol_pres15) + tm_fill("hat_value")
 
 ### Local Moran's $I_i$
 
-Bivand and Wong [-@Bivand2018] discuss issues impacting the use of local indicators, such as local Moran's $I_i$ and local Getis-Ord $G_i$. Some issues affect the calculation of the local indicators, others inference from their values. Because $n$ statistics may be being calculated from the same number of observations, there are multiple comparison problems that need to be addressed. Although the apparent detection of hotspots from values of local indicators has been quite widely adopted, it remains fraught with difficulty because adjustment of the inferential basis to accommodate multiple comparisons is not often chosen, and as in the global case, mis-specification also remains a source of confusion. Further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging [@ord+getis:01; @tiefelsdorf:02; @bivandetal:09]. 
+Bivand and Wong [-@Bivand2018] discuss issues impacting the use of local indicators, such as local Moran's $I_i$ and local Getis-Ord $G_i$. Some issues affect the calculation of the local indicators, others inference from their values. Because $n$ statistics may be being calculated from the same number of observations, there are multiple comparison problems that need to be addressed. @https://doi.org/10.1111/j.0016-7363.2006.00682.x  conclude, based on a typical data set and a simulation exercise, that the false discovery rate (FDR) adjustment of probability values will certainly give a better picture of interesting clusters than no adjustment. Following this up, @https://doi.org/10.1111/gean.12164 explores the combination of FDR adjustments with the use of redefined "significance" cutoffs [@benjaminetal:18], for example $0.01$, $0.005$ and $0.001$ instead of $0.1$, $0.05$ and $0.01$; the use of the term *interesting* rather than *significant* is also preferred. As in the global case, miss-specification remains a source of confusion, and, further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging [@ord+getis:01; @tiefelsdorf:02; @bivandetal:09]. 
 
 ```{r}
 args(localmoran)
 ```
 
-The `mlvar=` and `adjust.x=` arguments to `localmoran()` are discussed in Bivand and Wong [-@Bivand2018], and permit matching with other implementations. The `p.adjust.method=` argument uses an untested speculation implemented in `p.adjustSP()` that adjustment should only take into account the cardinality of the neighbour set of each observation when adjusting for multiple comparisons; using `stats::p.adjust()` is preferable.
+In an important clarification, @sauer_oshan_rey_wolf_2021 show that the comparison of standard deviates for local Moran's $I_i$ based on analytical formulae and conditional permutation in @Bivand2018 was based on a misunderstanding. @sokaletal:98 provide alternative analytical formulae for standard deviates of local Moran's $I_i$ based either on total or conditional permutation, but the analytical formulae used in @Bivand2018, based on earlier practice, only use total permutation, and consequently do not match the simulation conditional permutations. Thanks to a timely pull request, `localmoran()` now has a `conditional=` argument (default `TRUE`) using alternative formulae from the appendix of @sokaletal:98. The `mlvar=` and `adjust.x=` arguments to `localmoran()` are discussed in @Bivand2018, and permit matching with other implementations. Taking `"two.sided"` probability values (the default), we obtain:
 
-Taking `"two.sided"` p-values, we obtain:
 
 ```{r}
 z %>% 
-    localmoran(listw = lw_q_W, alternative = "two.sided") -> locm
+    localmoran(listw = lw_q_W) -> locm
 ```
 
 The $I_i$ local indicators when summed and divided by the sum of the spatial weights equal global Moran's $I$, showing the possible presence of positive and negative local spatial autocorrelation:
 ```{r}
 all.equal(sum(locm[,1])/Szero(lw_q_W), unname(moran.test(z, lw_q_W)$estimate[1]))
 ```
-Using `stats::p.adjust()` to adjust for multiple comparisons, we see that almost 29\% of the 2495 local measures have p-values < 0.05 if no adjustment is applied, but only 12\% using Bonferroni adjustment to control the familywise error rate, with two other choices shown: `fdr` is the @fdr-BH false discovery rate and `BY` [@10.1214/aos/1013699998], another false discovery rate adjustment:
+Using `stats::p.adjust()` to adjust for multiple comparisons, we see that over 15\% of the 2495 local measures have p-values < 0.005 if no adjustment is applied, but only 1.5\% using Bonferroni adjustment to control the familywise error rate, with two other choices shown: `"fdr"` is the @fdr-BH false discovery rate (almost 6\%) and `"BY"` [@10.1214/aos/1013699998], another false discovery rate adjustment (about 2.5\%):
 
 ```{r}
-pva <- function(pv) cbind("none" = pv, "bonferroni" = p.adjust(pv, "bonferroni"),
-    "fdr" = p.adjust(pv, "fdr"), "BY" = p.adjust(pv, "BY"))
+pva <- function(pv) cbind("none" = pv, "FDR" = p.adjust(pv, "fdr"),
+    "BY" = p.adjust(pv, "BY"), "Bonferroni" = p.adjust(pv, "bonferroni"))
 locm %>% 
     subset(select = "Pr(z != E(Ii))", drop = TRUE) %>% 
     pva() -> pvsp
-f <- function(x) sum(x < 0.05)
+f <- function(x) sum(x < 0.005)
 apply(pvsp, 2, f)
 ```
 
-In the global measure case, bootstrap permutations may be used as an alternative to analytical methods for possible inference, where both the theoretical development of the analytical variance of the measure, and the permutation scheme, shuffle all of the observed values. In the local case, conditional permutation may be used, fixing the value at observation $i$ and randomly sampling from the remaining $n-1$ values to find randomised values at neighbours, and is provided as `localmoran_perm()`, which may use multiple nodes to sample in parallel if provided, and permits the setting of a seed for the random number generator across the compute nodes:
+In the global measure case, bootstrap permutations may be used as an alternative to analytical methods for possible inference, where both the theoretical development of the analytical variance of the measure, and the permutation scheme, shuffle all of the observed values. In the local case, conditional permutation should be used, fixing the value at observation $i$ and randomly sampling from the remaining $n-1$ values to find randomised values at neighbours, and is provided as `localmoran_perm()`, which may use multiple compute nodes to sample in parallel if provided, and permits the setting of a seed for the random number generator across the compute nodes. The number of simulations `nsim=` also controls the precision of the ranked estimates of the probability value based on the rank of observed $I_i$ among the simulated values:
 
-```{r, message=FALSE}
+```{r, message=FALSE, cache=TRUE}
 library(parallel)
-set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L))
+invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
 system.time(z %>% 
-        localmoran_perm(listw = lw_q_W, nsim = 499, alternative = "two.sided",
-            iseed = 1) -> locm_p)
+        localmoran_perm(listw = lw_q_W, nsim = 9999, iseed = 1) -> locm_p)
 ```
-The outcome is that almost 32\% of observations have two sided p-values < 0.05 without multiple comparison adjustment, and under 3\% with Bonferroni adjustment.
+The outcome is that over 15\% of observations have two sided p-values < 0.005 without multiple comparison adjustment, and about 1.5\% with Bonferroni adjustment, when the p-values are calculated using the standard deviate of the permutation samples and the normal distribution.
 
 ```{r}
 locm_p %>% 
@@ -647,204 +670,351 @@ locm_p %>%
     pva() -> pvsp
 apply(pvsp, 2, f)
 ```
-We can see what is happening by tabulating counts of the standard deviate of local Moran's $I$, where the two-sided $\alpha=0.05$ bounds would be $0.025$ and $0.975$, but Bonferroni adjustment is close to $0.00001$ and $0.99999$. Without adjustment, almost 800 observations are significant, with Bonferroni adjustment, only almost 70 in the conditional permutation case:
+Since the variable under analysis may not be normally distributed, the p-values can also be calculated by finding the rank of the observed $I_i$ among the rank-based simulated values, and looking up the probability value from the uniform distribution taking the `alternative=` choice into account:
 
 ```{r}
-brks <- qnorm(c(0, 0.00001, 0.0001, 0.001, 0.01, 0.025, 0.5, 0.975, 0.99, 0.999, 0.9999,
-    0.99999, 1))
-(locm_p %>% 
-        subset(select = Z.Ii, drop = TRUE) %>% 
-        cut(brks) %>% 
-        table()-> tab)
-sum(tab[c(1:5, 8:12)])
-sum(tab[c(1, 12)])
-```
-In an important clarification, @sauer_oshan_rey_wolf_2021 show that the comparison of standard deviates for local Moran's $I_i$ based on analytical formulae and conditional permutation in @Bivand2018 was based on a misunderstanding. @sokaletal:98 provide alternative analytical formulae for standard deviates of local Moran's $I_i$ based either on total or conditional permutation, but the analytical formulae used in @Bivand2018, based on earlier practice, only use total permutation, and consequently do not match the simulation conditional permutations. Thanks to a timely pull request, `localmoran()` now has a `conditional=` argument using alternative formulae from the appendix of @sokaletal:98:
-
-```{r}
-z %>% 
-    localmoran(listw = lw_q_W, conditional = TRUE, alternative = "two.sided") -> locm_c
-```
-
-yielding standard deviates that correspond closely to those from simulation:
-```{r}
-locm_c %>% 
-    subset(select = "Pr(z != E(Ii))", drop = TRUE) %>% 
+locm_p %>% 
+    subset(select = "Pr(z != E(Ii)) Sim", drop = TRUE) %>% 
     pva() -> pvsp
 apply(pvsp, 2, f)
 ```
-(ref:localmoranZfc) Analytical total and conditional permutation, and bootstrap conditional permutation standard deviates of local Moran's I for first round turnout, row-standardised neighbours
-```{r localmoranZ, out.width='100%', fig.cap='(ref:localmoranZfc)', fig=TRUE}
-pol_pres15$locm_Z <- locm[, "Z.Ii"]
-pol_pres15$locm_c_Z <- locm_c[, "Z.Ii"]
-pol_pres15$locm_p_Z <- locm_p[, "Z.Ii"]
-tm_shape(pol_pres15) + tm_fill(c("locm_Z", "locm_c_Z", "locm_p_Z"), breaks = brks,
-    midpoint = 0, title = "Standard deviates of\nLocal Moran's I") +
-    tm_facets(free.scales = FALSE, ncol = 2) + tm_layout(panel.labels = c("Analytical total",
-        "Analytical conditional", "Conditional permutation"))
-```
-Figure \@ref(fig:localmoranZ) shows that conditional permutation scales back the proportion of standard deviate values taking extreme values, especially positive values. The analytical total standard deviates of local Moran's $I$ should probably not be used since alternatives are available, not least thanks to the clarification by @sauer_oshan_rey_wolf_2021.
+Now the `"BY"` and Bonferroni counts of *interesting* locations are zero with 9999 samples, but may be recovered by increasing the sample count to 999999 if required; the FDR adjustment and *interesting* cutoff 0.005 yields about 5\% locations. 
 
-In presenting local Moran's $I$, use is often made of "hotspot" maps. Because $I_i$ takes high values both for strong positive autocorrelation of low and high values of the input variable, it is hard to show where "clusters" of similar neighbours with low or high values of the input variable occur. The quadrants of the Moran plot are used, by creating a categorical quadrant variable interacting the input variable and its spatial lag split at their means. The quadrant categories are then set to NA if, for the chosen standard deviate and adjustment, $I_i$ would be considered insignificant. Here, for the Bonferroni adjusted conditional analytical standard deviates, 14 observations belong to "Low-Low clusters", and 55 to "High-High clusters":
+(ref:localmoranPrc) Local Moran's I FDR probability values: left panel upper: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first round turnout, row-standardised neighbours
+```{r localmoranPr, out.width='100%', fig.cap='(ref:localmoranPrc)', fig=TRUE}
+pol_pres15$locm_pv <- p.adjust(locm[, "Pr(z != E(Ii))"], "fdr")
+pol_pres15$locm_std_pv <- p.adjust(locm_p[, "Pr(z != E(Ii))"], "fdr")
+pol_pres15$locm_p_pv <- p.adjust(locm_p[, "Pr(z != E(Ii)) Sim"], "fdr")
+tm_shape(pol_pres15) + tm_fill(c("locm_pv", "locm_std_pv", "locm_p_pv"),
+    breaks=c(0, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.75, 1), 
+    title = "Pseudo p-values\nLocal Moran's I", palette="-YlOrBr") +
+    tm_facets(free.scales = FALSE, ncol = 2) +
+    tm_layout(panel.labels = c("Analytical conditional", "Permutation std. dev.",
+        "Permutation rank"))
+```
+Proceeding using the FDR adjustment and an *interesting* location cutoff of $0.005$, we can see from Figure \@ref(fig:localmoranPr) that the adjusted probability values for the analytical conditional approach, the approach using the moments of the sampled values from permutation sampling, and the approach using the ranks of observed values among permutation samples all yield similar maps, as the input variable is quite close to normal.
+
+In presenting local Moran's $I$, use is often made of "hotspot" maps. Because $I_i$ takes high values both for strong positive autocorrelation of low and high values of the input variable, it is hard to show where "clusters" of similar neighbours with low or high values of the input variable occur. The quadrants of the Moran plot are used, by creating a categorical quadrant variable interacting the input variable and its spatial lag split at their means. The quadrant categories are then set to NA if, for the chosen probability value and adjustment, $I_i$ would not be considered *interesting*. Here, for the FDR adjusted conditional analytical probability values (Figure \@ref(fig:localmoranPr) upper left panel), 53 observations belong to `"Low-Low"` cluster cores, and 96 to `"High-High"` cluster cores, similarly for the standard deviate-based permutation p-values \@ref(fig:localmoranPr) upper right panel), but the rank-based permutation p-values reduce the `"High-High"` count and increase the `"Low-Low"` count \@ref(fig:localmoranPr) lower left panel):
 
 ```{r}
-quadr <- interaction(
-    cut(infl_W$x, c(-Inf, mean(infl_W$x), Inf), labels=c("Low X", "High X")),
-    cut(infl_W$wx, c(-Inf, mean(infl_W$wx), Inf), labels=c("Low WX", "High WX")),
-    sep=" : ")
-a <- table(quadr)
-pol_pres15$hs_an_q <- quadr
-is.na(pol_pres15$hs_an_q) <- !(pol_pres15$locm_Z < brks[6] | 
-        pol_pres15$locm_Z > brks[8])
-b <- table(pol_pres15$hs_an_q)
-pol_pres15$hs_ac_q <- quadr
-is.na(pol_pres15$hs_ac_q) <- !(pol_pres15$locm_c_Z < brks[2] | 
-        pol_pres15$locm_c_Z > brks[12])
-c <- table(pol_pres15$hs_ac_q)
-pol_pres15$hs_cp_q <- quadr
-is.na(pol_pres15$hs_cp_q) <- !(pol_pres15$locm_p_Z < brks[2] | 
-        pol_pres15$locm_p_Z > brks[12])
-d <- table(pol_pres15$hs_cp_q)
-t(rbind("Moran plot quadrants" = a, "Unadjusted analytical total" = b, 
-    "Bonferroni analytical cond." = c, "Bonferroni cond. perm." = d))
+quadr <- attr(locm, "quadr")$mean
+a <- table(addNA(quadr))
+pol_pres15$hs_an_q <- pol_pres15$hs_ac_q <- pol_pres15$hs_cp_q <- quadr
+is.na(pol_pres15$hs_an_q) <- pol_pres15$locm_pv >= 0.005
+b <- table(addNA(pol_pres15$hs_an_q))
+is.na(pol_pres15$hs_ac_q) <- pol_pres15$locm_std_pv >= 0.005
+c <- table(addNA(pol_pres15$hs_ac_q))
+is.na(pol_pres15$hs_cp_q) <- pol_pres15$locm_p_pv >= 0.005
+d <- table(addNA(pol_pres15$hs_cp_q))
+t(rbind("Moran plot quadrants" = a, "Analytical cond." = b, 
+    "Permutation std. cond." = c, "Permutation rank cond." = d))
 ```
 
-(ref:morani) Local Moran's I hotspot maps $\alpha = 0.05$: left panel upper: unadjusted analytical standard deviates; right upper panel: Bonferroni adjusted analytical conditional standard deviates; left lower panel: Bonferroni adjusted bootstrap conditional permutation standard deviates, first round turnout, row-standardised neighbours
+```{r}
+pol_pres15$hs_an_q <- droplevels(pol_pres15$hs_an_q)
+pol_pres15$hs_ac_q <- droplevels(pol_pres15$hs_ac_q)
+pol_pres15$hs_cp_q <- droplevels(pol_pres15$hs_cp_q)
+```
 
+
+
+(ref:morani) Local Moran's I FDR hotspot cluster core maps $\alpha = 0.005$: left panel upper: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first round turnout, row-standardised neighbours
 ```{r Iihotspots, out.width='100%', fig.cap='(ref:morani)' }
 tm_shape(pol_pres15) + tm_fill(c("hs_an_q", "hs_ac_q", "hs_cp_q"), colorNA="grey95",
-    textNA="Not significant", title="Turnout hotspot status\nLocal Moran's I") +
+    textNA="Not \"interesting\"", title="Turnout hotspot status\nLocal Moran's I",
+    palette=RColorBrewer::brewer.pal(4, "Set3")[-c(2,3)]) +
     tm_facets(free.scales=FALSE, ncol=2) + tm_layout(panel.labels=
-            c("Unadjusted analytical total", "Bonferroni analytical cond.", 
-              "Cond. perm. with Bonferroni"))
+            c("Analytical conditional", "Permutation std. cond.", 
+              "Permutation rank cond."))
 ```
-Figure \@ref(fig:Iihotspots) shows the impact of using analytical or conditional permutation standard deviates, and no or Bonferroni adjustment, reducing the counts of observations in "Low-Low clusters" from 370 to 14, and "High-High clusters" from 342 to 54; the "High-High clusters" are metropolitan areas.
+Figure \@ref(fig:Iihotspots) shows that there is very little difference between the FDR-adjusted *interesting* clusters with a choice of an $\alpha=0.005$ probability value cutoff for the three approaches of analytical conditional standard deviates, permutation-based standard deviates, and rank-based probability values; the `"High-High"` cluster cores are metropolitan areas.
 
 @tiefelsdorf:02 argues that standard approaches to the calculation of the standard deviates of local Moran's $I_i$ should be supplemented by numerical estimates, and shows that Saddlepoint approximations are a computationally efficient way of achieving this goal. The `localmoran.sad()` function takes a fitted linear model as its first argument, so we first fit a null (intercept only) model, but use case weights because the numbers entitled to vote vary greatly between observations:
 
 ```{r}
-lm(z ~ 1, weights = pol_pres15$I_entitled_to_vote) -> lm_null
+lm(z ~ 1) -> lm_null
 ```
-Saddlepoint approximation is much more computationally intensive than conditional permutation:
+Saddlepoint approximation is as computationally intensive as conditional permutation, because, rather than computing a simple measure on many samples, a good deal of numerical calculation is needed for each local approximation:
 
 ```{r, cache=TRUE}
+invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
 system.time(lm_null %>% localmoran.sad(nb = nb_q, style = "W", alternative = "two.sided") %>%
         summary() -> locm_sad_null)
 ```
-However, standard approaches do not permit richer mean models with covariates or case weights. Next we add the categorical variable distinguishing between rural, urban and other types of observational unit:
-
-```{r}
-lm(z ~ Types, weights=pol_pres15$I_entitled_to_vote) -> lm_types
-```
+The chief advantage of the Saddlepoint approximation is that it takes a fitted linear model rather than simply a numerical variable, so the residuals are analysed. With an intercept-only model, the results are similar to local Moran's $I_i$, but we can weight the observations, here by the count of those entitled to vote, which should down-weight small units of observation:
 
 ```{r, cache=TRUE}
+lm(z ~ 1, weights = pol_pres15$I_entitled_to_vote) -> lm_null_weights
+invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
+system.time(lm_null_weights %>% localmoran.sad(nb = nb_q, style = "W", alternative = "two.sided") %>%
+        summary() -> locm_sad_null_weights)
+```
+Next we add the categorical variable distinguishing between rural, urban and other types of observational unit:
+
+```{r, cache=TRUE}
+lm(z ~ Types, weights=pol_pres15$I_entitled_to_vote) -> lm_types
+invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
 system.time(lm_types %>% localmoran.sad(nb = nb_q, style = "W", alternative = "two.sided") %>%
         summary() -> locm_sad_types)
 ```
-To conclude, we add the spatially lagged categories, although the spatial lag of a categorical variable, represented by dummies in the model matrix, is not well defined:
 
-```{r}
-spatialreg::lmSLX(z ~ Types, listw = lw_q_W, 
-    weights = pol_pres15$I_entitled_to_vote) -> lm_Dtypes
+
+(ref:localmoranHSsad) Local Moran's I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.005$: left panel upper: permutation rank conditional p-values; right upper panel:  null (intercept only) model Saddlepoint p-values; left lower panel: weighted null (intercept only) model Saddlepoint p-values; right lower panel: weighted types model Saddlepoint p-values, for first round turnout, row-standardised neighbours
+```{r localmoranHsad, out.width='100%', fig.cap='(ref:localmoranHSsad)', fig=TRUE}
+pol_pres15$locm_sad0 <- pol_pres15$locm_sad1 <- pol_pres15$locm_sad2 <- quadr
+is.na(pol_pres15$locm_sad0) <- p.adjust(locm_sad_null[, "Pr. (Sad)"], "fdr")  >= 0.005
+pol_pres15$locm_sad0 <- droplevels(pol_pres15$locm_sad0)
+is.na(pol_pres15$locm_sad1) <- p.adjust(locm_sad_null_weights[,
+    "Pr. (Sad)"], "fdr") >= 0.005
+pol_pres15$locm_sad1 <- droplevels(pol_pres15$locm_sad1)
+is.na(pol_pres15$locm_sad2) <- p.adjust(locm_sad_types[, "Pr. (Sad)"], "fdr") >= 0.005
+pol_pres15$locm_sad2 <- droplevels(pol_pres15$locm_sad2)
+tm_shape(pol_pres15) + tm_fill(c("hs_cp_q", "locm_sad0", "locm_sad1",  "locm_sad2"),
+    colorNA="grey95", textNA="Not \"interesting\"",
+    title="Turnout hotspot status\nLocal Moran's I",
+    palette=RColorBrewer::brewer.pal(4, "Set3")[c(1, 4, 2)]) +
+    tm_facets(free.scales = FALSE, ncol = 2) + tm_layout(panel.labels = c(
+        "Permutation rank",
+        "Saddlepoint null",
+        "Saddlepoint weighted null",
+        "Saddlepoint weighted types"))
 ```
+```{r}
+rbind(null=append(table(addNA(pol_pres15$locm_sad0)), c("Low-High"=0), 1),
+    weighted=append(table(addNA(pol_pres15$locm_sad1)), c("Low-High"=0), 1),
+    type_weighted=table(addNA(pol_pres15$locm_sad2)))
+```
+
+Figure \@ref(fig:localmoranHsad) includes the permutation rank cluster cores for comparison (upper left panel). Because Saddlepoint approximation permits richer mean models to be used, and possibly because the approximation approach is inherently local, relating regression residual values at $i$ to those of its neighbours, the remaining three panels diverge somewhat. The intercept-only (null) model is fairly similar to standard local Moran's $I_i$, but weighting by counts of eligible voters removes most of the `"Low-Low"` cluster cores. Adding the type categorical variable strengthens the urban `"High-High"` cluster cores, but removes the Warsaw boroughs as *interesting* cluster cores. The central boroughs are surrounded by other boroughs, all with high turnout, not driven by autocorrelation but by being metropolitan boroughs. It is also possible to use Saddlepoint approximation where the global spatial process has been incorporated, removing the conflation of global and local spatial autocorrelation in standard approaches. 
+
+The same can also be accomplished using exact methods, but may require more tuning as numerical integration may fail, returning `NaN` rather than the exact estimate of the standard deviate [@bivandetal:09]:
 
 ```{r, cache=TRUE}
-system.time(lm_Dtypes %>% localmoran.sad(nb = nb_q, style = "W", alternative = "two.sided") %>%
-        summary() -> locm_sad_Dtypes)
+invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
+system.time(lm_types %>% localmoran.exact(nb = nb_q, style = "W", 
+    alternative = "two.sided", useTP=TRUE, truncErr=1e-8) %>% 
+        as.data.frame() -> locm_ex_types)
 ```
 
-(ref:localmoranZfcsad) Saddlepoint weighted null model, weighted types model, weighted Durbin types model, and analytical conditional standard deviates of local Moran's I for first round turnout, row-standardised neighbours
-```{r localmoranZsad, out.width='100%', fig.cap='(ref:localmoranZfcsad)', fig=TRUE}
-pol_pres15$locm_sad_null_Z <- locm_sad_null[, "Saddlepoint"]
-pol_pres15$locm_sad_types_Z <- locm_sad_types[, "Saddlepoint"]
-pol_pres15$locm_sad_Dtypes_Z <- locm_sad_Dtypes[, "Saddlepoint"]
-tm_shape(pol_pres15) + tm_fill(c("locm_sad_null_Z", "locm_sad_types_Z",
-    "locm_sad_Dtypes_Z", "locm_c_Z"), breaks = brks, midpoint=0,
-    title="Standard deviates of\nLocal Moran's I") +
+
+(ref:localmoranHSsadex) Local Moran's I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.005$: left panel: weighted types model Saddlepoint p-values; right panel: weighted types model exact p-values, for first round turnout, row-standardised neighbours
+```{r localmoranHsadex, out.width='100%', fig.cap='(ref:localmoranHSsadex)', fig=TRUE}
+pol_pres15$locm_ex <- quadr
+is.na(pol_pres15$locm_ex) <- p.adjust(locm_ex_types[, "Pr. (exact)"], "fdr") >= 0.005
+pol_pres15$locm_ex <- droplevels(pol_pres15$locm_ex)
+tm_shape(pol_pres15) + tm_fill(c("locm_sad2", "locm_ex"),
+    colorNA="grey95", textNA="Not \"interesting\"",
+    title="Turnout hotspot status\nLocal Moran's I",
+    palette=RColorBrewer::brewer.pal(4, "Set3")[c(1, 2, 4)]) +
     tm_facets(free.scales = FALSE, ncol = 2) + tm_layout(panel.labels = c(
-        "Saddlepoint weighted null",
         "Saddlepoint weighted types",
-        "Saddlepoint weighted Durbin types",
-        "Analytical conditional"))
+        "Exact weighted types"))
 ```
-Figure \@ref(fig:localmoranZsad) includes the analytical conditional standard deviates for comparison (lower right panel), but in general it can be seen that the Saddlepoint approximation standard deviates lie closer to zero, possibly because some of the mis-specification in the mean model has been removed by using richer versions, and possibly because the approximation approach is inherently local, relating regression residual values at $i$ to those of its neighbours. It is also possible to use Saddlepoint approximation where the global spatial process has been incorporated, removing the conflation of global and local spatial autocorrelation in standard approaches. The same can also be accomplished using exact methods [@bivandetal:09].
+As Figure \@ref(fig:localmoranHsadex) shows, the exact and Saddlepoint approximation methods yield almost identical cluster classifications from the same regression residuals, multiple comparison adjustment method and cutoff level, with the exact method returning four more *interesting* observations:
+
+```{r}
+table(Saddlepoint=addNA(pol_pres15$locm_sad2), exact=addNA(pol_pres15$locm_ex))
+```
+
 
 ### Local Getis-Ord $G_i$
 
-The local Getis-Ord $G$ measure is reported as a standard deviate, and may also take the $G^*_i$ form where self-neighbours are inserted into the neighbour object using `include.self()`. The observed and expected values of local $G$ with their analytical variances may also be returned if `return_internals=TRUE`. 
+The local Getis-Ord $G_i$ measure [@getis+ord:92; @getis+ord:96] is reported as a standard deviate, and may also take the $G^*_i$ form where self-neighbours are inserted into the neighbour object using `include.self()`. The observed and expected values of local $G$ with their analytical variances may also be returned if `return_internals=TRUE`. 
 
 ```{r}
 system.time(z %>% 
-        localG(lw_q_W) -> locG)
+        localG(lw_q_W, return_internals=TRUE) -> locG)
+```
+Permutation inference is also available for this measure:
+
+```{r, cache=TRUE} 
+invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
 system.time(z %>% 
-        localG_perm(lw_q_W, nsim = 499, iseed = 1) -> locG_p)
+        localG_perm(lw_q_W, nsim = 9999, iseed = 1) -> locG_p)
 ```
-Once again we face the problem of multiple comparisons, with the count of areal unit p-values < 0.05 being reduced by an order of magnitude when employing Bonferroni correction:
+The correlation between the two-sided probability values for analytical and permutation-based standard deviates (first two columns and rows) and permutation rank-based probability values are very strong:
 
 ```{r}
-locG %>% 
-    c() %>% 
-    abs() %>% 
-    pnorm(lower.tail = FALSE) %>% 
-    (function(x) x*2)() %>% 
-    pva() -> pvsp
-apply(pvsp, 2, f)
+cor(cbind(localG=attr(locG, "internals")[, "Pr(z != E(Gi))"], 
+    attr(locG_p, "internals")[, c("Pr(z != E(Gi))", "Pr(z != E(Gi)) Sim")]))
 ```
 
+### Local Geary's $C_i$
 
-(ref:localZvaluesfc) Plots of analytical conditional against bootstrap standard deviates; left: local Moran's I; right: local G; first round turnout, row-standardised neighbours
-```{r localZvalues, out.width='100%', fig.cap='(ref:localZvaluesfc)'}
-library(ggplot2)
-p1 <- ggplot(data.frame(Zi=locm_c[,4], Zi_perm=locm_p[,4])) + geom_point(aes(x=Zi,
-    y=Zi_perm), alpha=0.2) + xlab("Analytical conditional") + 
-    ylab("Bootstrap conditional") + coord_fixed() + ggtitle("Local Moran's I")
-p2 <- ggplot(data.frame(Zi=c(locG), Zi_perm=c(locG_p))) + geom_point(aes(x=Zi, 
-    y=Zi_perm), alpha=0.2) + xlab("Analytical conditional") + 
-    ylab("Bootstrap conditional") + coord_fixed() + ggtitle("Local G")
-gridExtra::grid.arrange(p1, p2, nrow=1)
+@https://doi.org/10.1111/gean.12164 extends @anselin:95, and has been recently added to **spdep** thanks to contributions by Josiah Parry (pull request https://github.com/r-spatial/spdep/pull/66 and subsequent). The conditional permutation framework used for $I_i$ and $G_i$ is also used for $C_i$:
+
+```{r, cache=TRUE}
+invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
+system.time(z %>% 
+        localC_perm(lw_q_W, nsim=9999, iseed=1) -> locC_p)
 ```
-
-Figure \@ref(fig:localZvalues) shows that, when using analytical conditional standard deviates, the values from analytical and bootstrap estimates coincide for both $I_i$ and $G_i$. In both cases, one may argue that the bootstrap approach is superfluous in exploratory spatial data analysis.
+The permutation standard deviate-based and rank-based probability values are not as highly correlated as for $G_i$, in part reflecting the difference in view of autocorrelation in $C_i$ as represented by a function of the differences between values rather than the products of values:
 
 ```{r}
-pol_pres15$locG_Z <- c(locG)
-pol_pres15$hs_G <- cut(c(locG), c(-Inf, brks[2], brks[12], Inf), 
-    labels = c("Low", "Not significant", "High"))
-table(pol_pres15$hs_G)
+cor(attr(locC_p, "pseudo-p")[, c("Pr(z != E(Ci))", "Pr(z != E(Ci)) Sim")])
 ```
 
-(ref:localGfc) Left: analytical standard deviates of local G; right: Bonferroni hotspots; first round turnout, row-standardised neighbours
-```{r localG, out.width='100%', fig.cap='(ref:localGfc)', fig=TRUE}
-m1 <- tm_shape(pol_pres15) + tm_fill(c("locG_Z"), midpoint = 0, title = "Standard\ndeviate")
-m2 <- tm_shape(pol_pres15) + tm_fill(c("hs_G"), 
-    title="Local G Bonferroni\nadjusted hotspot status")
-tmap_arrange(m1, m2, nrow=1)
+
+```{r}
+pol_pres15$hs_C <- attr(locC_p, "cluster")
+is.na(pol_pres15$hs_C) <- p.adjust(attr(locC_p, "pseudo-p")[,"Pr(z != E(Ci)) Sim"], "fdr") >= 0.005
+pol_pres15$hs_C <- droplevels(pol_pres15$hs_C)
 ```
 
-As can be seen from Figure \@ref(fig:localZvalues), we do not need to contrast the two estimation methods, and showing the mapped standard deviate is as informative as the "hotspot" status for the chosen adjustment (Figure \@ref(fig:localG)). In the case of $G_i$, the values taken by the measure reflect the values of the input variable, so a "High cluster" is found for observations with high values of the input variable, here high turnout in metropolitan areas.
 
-Very recently, Geoda has been wrapped for R as **rgeoda** [@R-rgeoda], and will provide very similar functionalities for the exploration of spatial autocorrelation in areal data as **spdep**. The active objects are kept as pointers to a compiled code workspace; using compiled code for all operations (as in Geoda itself) makes **rgeoda** perform fast, but leaves less flexible when modifications or enhancements are desired.
+```{r}
+pol_pres15$hs_G <- cut(z, c(-Inf, mean(z), Inf), 
+    labels = c("Low", "High"))
+is.na(pol_pres15$hs_G) <- p.adjust(attr(locG_p, "internals")[,"Pr(z != E(Gi))"], "fdr") >= 0.005
+pol_pres15$hs_G <- droplevels(pol_pres15$hs_G)
+```
 
-The contiguity neighbours it constructs are the same as those found by `poly2nb()`, as almost are the $I_i$ measures. The difference is as established by @Bivand2018, that `localmoran()` calculates the input variable variance divinding by $n$, but Geoda uses $(n-1)$, as can be reproduced by setting `mlvar=FALSE`:
+(ref:localIGCfc) FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.005$: left panel: local Moran's $I_i$; centre panel: local Getis-Ord $G_i$; right panel: local Geary's $C_i$; first round turnout, row-standardised neighbours
+```{r localIGC, out.width='100%', fig.cap='(ref:localIGCfc)', fig=TRUE}
+m1 <- tm_shape(pol_pres15) + tm_fill("hs_cp_q", palette=RColorBrewer::brewer.pal(4,
+    "Set3")[-c(2,3)], colorNA="grey95", textNA="Not \"interesting\"",
+    title="Turnout hotspot status\nLocal Moran I")
+m2 <- tm_shape(pol_pres15) + tm_fill("hs_G", palette=RColorBrewer::brewer.pal(4,
+    "Set3")[-c(2,3)], colorNA="grey95", textNA="Not \"interesting\"",
+    title="Turnout hotspot status\nLocal Getis/Ord G")
+m3 <- tm_shape(pol_pres15) + tm_fill("hs_C", palette=RColorBrewer::brewer.pal(4,
+    "Set3")[c(4, 1)], colorNA="grey95", textNA="Not \"interesting\"",
+    title="Turnout hotspot status\nLocal Geary C")
+tmap_arrange(m1, m2, m3, nrow=1)
+```
+Figure \@ref(fig:localIGC) shows that the cluster cores identified as *interesting* using $I_i$, $G_i$ and $C_i$ for the same variable, first round turnout, and the same spatial weights, for rank-based permutation FDR adjusted probability values and an $\alpha = 0.005$ cutoff, are very similar. In most cases, the `"High-High"` cluster cores are urban areas, and `"Low-Low"` cores are sparsely populated rural areas in the North, in addition to the German national minority areas close to the southern border. The three measures use slightly different strategies for naming cluster cores: $I_i$ uses quadrants of the Moran scatterplot, $G_i$ splits into `"Low"` and `"High"` on the mean of the input variable (which is the same as the first component in the $I_i$ tuple), and univariate $C_i$ on the mean of the input variable and zero for its lag. As before, cluster categories that do not occur are dropped.
+
+For comparison, and before moving to multivariate $C_i$, let us take the univariate $C_i$ for the second (final) round turnout. One would expect that the run-off between the two top candidates from the first round might mobilise some voters who did not have a clear first-round preference, but discourage some of those with strong loyalty to a candidate eliminated after the first round:
+
+```{r, cache=TRUE}
+invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
+system.time(pol_pres15 %>% 
+        st_drop_geometry() %>% 
+        subset(select = II_turnout) %>% 
+        localC_perm(lw_q_W, nsim=9999, iseed=1) -> locC_p_II)
+```
+
+```{r}
+pol_pres15$hs_C_II <- attr(locC_p_II, "cluster")
+is.na(pol_pres15$hs_C_II) <- p.adjust(attr(locC_p_II, "pseudo-p")[,"Pr(z != E(Ci)) Sim"], "fdr") >= 0.005
+pol_pres15$hs_C_II <- droplevels(pol_pres15$hs_C_II)
+```
+
+Multivariate $C_i$ [@https://doi.org/10.1111/gean.12164] is taken as the sum of univariate $C_i$ divided by the number of variables, but permutation is fixed so that the correlation between the variables is unchanged:
+
+```{r, cache=TRUE}
+invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
+system.time(pol_pres15 %>% 
+        st_drop_geometry() %>% 
+        subset(select = c(I_turnout, II_turnout)) %>%
+        localC_perm(lw_q_W, nsim=9999, iseed=1) -> locMvC_p)
+```
+Let us check that the multivariate $C_i$ is equal  to  the mean of the univariate $C_i$:
+
+```{r}
+all.equal(locMvC_p, (locC_p+locC_p_II)/2, check.attributes=FALSE)
+```
+
+```{r}
+pol_pres15$hs_MvC <- attr(locMvC_p, "cluster")
+is.na(pol_pres15$hs_MvC) <- p.adjust(attr(locMvC_p, "pseudo-p")[,"Pr(z != E(Ci)) Sim"], "fdr") >= 0.005
+pol_pres15$hs_MvC <- droplevels(pol_pres15$hs_MvC)
+```
+
+(ref:localCfmulti) FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.005$: left panel: local $C_i$, first round turnout; centre panel: local $C_i$, second round turnout; right panel: local multivariate $C_i$, both turnout rounds; row-standardised neighbours
+
+```{r localCmulti, out.width='100%', fig.cap='(ref:localCfmulti)', fig=TRUE}
+m3 <- tm_shape(pol_pres15) + tm_fill("hs_C", palette=RColorBrewer::brewer.pal(4,
+    "Set3")[c(4, 1)], colorNA="grey95", textNA="Not \"interesting\"",
+    title="First round turnout\nLocal Geary C")
+m4 <- tm_shape(pol_pres15) + tm_fill("hs_C_II", palette=RColorBrewer::brewer.pal(4,
+    "Set3")[c(4, 1, 3, 2)], colorNA="grey95", textNA="Not \"interesting\"",
+    title="Second round turnout\nLocal Geary C")
+m5 <- tm_shape(pol_pres15) + tm_fill("hs_MvC", palette=RColorBrewer::brewer.pal(4,
+    "Set3")[c(4, 1)], colorNA="grey95", textNA="Not \"interesting\"",
+    title="Both rounds turnout\nLocal Multivariate Geary C")
+tmap_arrange(m3, m4, m5, nrow=1)
+```
+
+Figure \@ref(fig:localCmulti) indicates that the multivariate measure picks up aggregated elements of observations found *interesting* in the two univariate measures. We can break this down by interacting the first and second round univariate measures, and tabulating against the multivariate measure. 
+
+```{r}
+table(droplevels(interaction(addNA(pol_pres15$hs_C), addNA(pol_pres15$hs_C_II), sep=":")), addNA(pol_pres15$hs_MvC))
+```
+For these permutation outcomes, 47 observations in the multivariate case are found *interesting* where neither of the univariate $C_i$ were found *interesting* (FDR, cutoff $0.005$). Almost all of the observations found *interesting* in both first and second round are also interesting in the multivariate case, but outcomes are more mixed when observations were only found interesting in one of the two rounds.
+
+### The **rgeoda** package
+
+Geoda has been wrapped for R as **rgeoda** [@R-rgeoda], and provides very similar functionalities for the exploration of spatial autocorrelation in areal data as matching parts of **spdep**. The active objects are kept as pointers to a compiled code workspace; using compiled code for all operations (as in Geoda itself) makes **rgeoda** perform fast, but is less flexible when modifications or enhancements are desired.
 
 ```{r, message=FALSE}
 library(rgeoda)
 system.time(Geoda_w <- queen_weights(pol_pres15))
 summary(Geoda_w)
-system.time(lisa <- local_moran(Geoda_w, pol_pres15["I_turnout"], 
+```
+For comparison, let us take the multivariate $C_i$ measure of turnout in the two rounds of the 2015 Polish presidential election as above:
+
+```{r, message=FALSE}
+system.time(lisa <- local_multigeary(Geoda_w, 
+    pol_pres15[c("I_turnout", "II_turnout")], 
     cpu_threads = ifelse(parallel::detectCores() == 1, 1, parallel::detectCores()-1L),
-    permutations = 499, seed = 1))
+    permutations = 99999, seed = 1))
+```
+The contiguity neighbours are the same as those found by `poly2nb()`:
+
+```{r, message=FALSE}
 all.equal(card(nb_q), lisa_num_nbrs(lisa), check.attributes = FALSE)
-all.equal(lisa_values(lisa), localmoran(pol_pres15$I_turnout, 
-    listw=lw_q_W, mlvar = FALSE)[,1], check.attributes = FALSE)
+```
+as are the multivariate $C_i$ values the same as those found above:
+
+```{r, message=FALSE}
+all.equal(lisa_values(lisa), c(locMvC_p), check.attributes = FALSE)
+```
+One difference is that the range of the folded two-sided rank-based permutation probability values used by **rgeoda** is $[0, 0.5]$, also reported in **spdep**:
+
+```{r}
+apply(attr(locMvC_p, "pseudo-p")[,c("Pr(z != E(Ci)) Sim", "Pr(folded) Sim")], 2, range)
+```
+This means that the cutoff corresponding to $0.005$ over $[0, 1]$ is $0.0025$ over $[0, 0.5]$:
+
+```{r}
+hs_MvCa <- attr(locMvC_p, "cluster")
+is.na(hs_MvCa) <- p.adjust(attr(locMvC_p, "pseudo-p")[,"Pr(folded) Sim"], "fdr") >= 0.0025
+pol_pres15$hs_MvCa <- droplevels(hs_MvCa)
 ```
 
+So although `local_multigeary()` used the default cutoff of $0.05$ in setting cluster core classes, we can sharpen the cutoff and apply the FDR adjustment on output components of the `lisa` object in the compiled code workspace:
+
+```{r}
+mvc <- factor(lisa_clusters(lisa), levels=0:2, labels=lisa_labels(lisa)[1:3])
+is.na(mvc) <- p.adjust(lisa_pvalues(lisa), "fdr") >= 0.0025
+pol_pres15$geoda_mvc <- droplevels(mvc)
+```
+
+About 80 more observations are found *interesting* in the **rgeoda** permutation, and further analysis of implementation details is still in progress:
+
+```{r}
+addmargins(table(spdep=addNA(pol_pres15$hs_MvCa), rgeoda=addNA(pol_pres15$geoda_mvc)))
+```
+
+
+(ref:localCfmultix) FDR local multivariate $C_i$ hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.0025$ over $[0, 0.5]$: left panel: **spdep**, both turnout rounds; right panel: **rgeoda**, both turnout rounds; row-standardised neighbours
+
+```{r localCmultix, out.width='100%', fig.cap='(ref:localCfmultix)', fig=TRUE}
+m5 <- tm_shape(pol_pres15) + tm_fill("hs_MvCa", palette=RColorBrewer::brewer.pal(4,
+    "Set3")[c(4, 1)], colorNA="grey95", textNA="Not \"interesting\"",
+    title="Both rounds turnout (spdep)\nLocal Multivariate Geary C")
+m6 <- tm_shape(pol_pres15) + tm_fill("geoda_mvc", palette=RColorBrewer::brewer.pal(4,
+    "Set3")[c(4, 1)], colorNA="grey95", textNA="Not \"interesting\"",
+    title="Both rounds turnout (rgeoda)\nLocal Multivariate Geary C")
+tmap_arrange(m5, m6, nrow=1)
+```
+Figure \@ref(fig:localCmultix) shows that while almost all of the 242 observations found *interesting* in the **spdep** implementation were also *interesting* for **rgeoda**, the latter found a further 86 *interesting*. Of course, permutation outcomes are bound to vary, but it remains to establish whether either or both of the implementations require revision.
 
 ## Exercises
 
 1. Why are join-count measures on a chessboard so different between `rook` and `queen` neighbours?
 2. Please repeat the simulation shown in section 15.1 using the chessboard polygons and the row-standardized `queen` contiguity neighbours. Why is it important to understand that spatial autocorrelation usually signals (unavoidable) mis-specification in our data?
-3. Do we need to use conditional permutation in inference for local measures of spatial autocorrelation?
-4. Why is false discovery rate adjustment recommended for local measures of spatial autocorrelation?
-5. Compare the local Moran's $I_i$ standard deviate values for the simulated data from exercise 15.2 for the analytical conditional approach, and Saddlepoint approximation. Consider the advantages and disadvantages of the Saddlepoint approximation approach.
+3. Why is false discovery rate adjustment recommended for local measures of spatial autocorrelation? 
+5. Compare the local Moran's $I_i$ standard deviate values for the simulated data from exercise 15.2 for the analytical conditional approach, and Saddlepoint approximation. Consider the advantages and disadvantages of the Saddlepoint approximation approach. 
 
