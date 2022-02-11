@@ -558,10 +558,15 @@ args(moran.test)
 The default for the `randomisation=` argument is `TRUE`, but here we will simply show that the test under normality is the same as a test of least squares residuals with only the intercept used in the mean model; the analysed variable is first round turnout proportion of registered voters in municipalities and Warsaw boroughs in the 2015 Polish presidential election. The spelling of randomisation is that of Cliff and Ord [-@cliff+ord:73].
 
 ```{r}
-(pol_pres15 %>% 
+pol_pres15 %>% 
         st_drop_geometry() %>% 
-        subset(select = I_turnout, drop = TRUE) -> z) %>% 
-    moran.test(listw = lw_q_B, randomisation = FALSE) %>% 
+        subset(select = I_turnout, drop = TRUE) -> I_turnout
+```
+
+
+
+```{r}
+I_turnout %>% moran.test(listw = lw_q_B, randomisation = FALSE) %>% 
     glance_htest()
 ```
 
@@ -575,7 +580,7 @@ lm(I_turnout ~ 1, pol_pres15) %>%
 The only difference between tests under normality and randomisation is that an extra term is added if the kurtosis of the variable of interest indicates a flatter or more peaked distribution, where the measure used is the classical measure of kurtosis. Under the default randomisation assumption of analytical randomisation, the results are largely unchanged.
 
 ```{r}
-(z %>% 
+(I_turnout %>% 
     moran.test(listw = lw_q_B) -> mtr) %>% 
     glance_htest()
 ```
@@ -584,7 +589,7 @@ From the very beginning in the early 1970s, interest was shown in Monte Carlo te
 
 ```{r}
 set.seed(1)
-z %>% 
+I_turnout %>% 
     moran.mc(listw = lw_q_B, nsim = 999, return_boot = TRUE) -> mmc
 ```
 The bootstrap permutation retains the outcomes of each of the random permutations, reporting the observed value of the statistic, here Moran's $I$, the difference between this value and the mean of the simulations under randomisation (equivalent to $E(I)$), and the standard deviation of the simulations under randomisation. 
@@ -610,7 +615,7 @@ In addition, the Moran plot was introduced, plotting the values of the variable 
 
 (ref:moranplotfc) Moran plot of I round turnout, row standardised weights
 ```{r moranplot, out.width='100%', fig.cap='(ref:moranplotfc)', fig=TRUE}
-z %>% 
+I_turnout %>% 
     moran.plot(listw = lw_q_W, labels = pol_pres15$TERYT, cex = 1, pch = ".",
         xlab = "I round turnout", ylab = "lagged turnout") -> infl_W
 ```
@@ -634,13 +639,13 @@ In an important clarification, @sauer_oshan_rey_wolf_2021 show that the comparis
 
 
 ```{r}
-z %>% 
+I_turnout %>% 
     localmoran(listw = lw_q_W) -> locm
 ```
 
 The $I_i$ local indicators when summed and divided by the sum of the spatial weights equal global Moran's $I$, showing the possible presence of positive and negative local spatial autocorrelation:
 ```{r}
-all.equal(sum(locm[,1])/Szero(lw_q_W), unname(moran.test(z, lw_q_W)$estimate[1]))
+all.equal(sum(locm[,1])/Szero(lw_q_W), unname(moran.test(I_turnout, lw_q_W)$estimate[1]))
 ```
 Using `stats::p.adjust()` to adjust for multiple comparisons, we see that over 15\% of the 2495 local measures have p-values < 0.005 if no adjustment is applied, but only 1.5\% using Bonferroni adjustment to control the familywise error rate, with two other choices shown: `"fdr"` is the @fdr-BH false discovery rate (almost 6\%) and `"BY"` [@10.1214/aos/1013699998], another false discovery rate adjustment (about 2.5\%):
 
@@ -659,7 +664,7 @@ In the global measure case, bootstrap permutations may be used as an alternative
 ```{r, message=FALSE, cache=TRUE}
 library(parallel)
 invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
-system.time(z %>% 
+system.time(I_turnout %>% 
         localmoran_perm(listw = lw_q_W, nsim = 9999, iseed = 1) -> locm_p)
 ```
 The outcome is that over 15\% of observations have two sided p-values < 0.005 without multiple comparison adjustment, and about 1.5\% with Bonferroni adjustment, when the p-values are calculated using the standard deviate of the permutation samples and the normal distribution.
@@ -732,7 +737,7 @@ Figure \@ref(fig:Iihotspots) shows that there is very little difference between 
 @tiefelsdorf:02 argues that standard approaches to the calculation of the standard deviates of local Moran's $I_i$ should be supplemented by numerical estimates, and shows that Saddlepoint approximations are a computationally efficient way of achieving this goal. The `localmoran.sad()` function takes a fitted linear model as its first argument, so we first fit a null (intercept only) model, but use case weights because the numbers entitled to vote vary greatly between observations:
 
 ```{r}
-lm(z ~ 1) -> lm_null
+lm(I_turnout ~ 1) -> lm_null
 ```
 Saddlepoint approximation is as computationally intensive as conditional permutation, because, rather than computing a simple measure on many samples, a good deal of numerical calculation is needed for each local approximation:
 
@@ -744,7 +749,7 @@ system.time(lm_null %>% localmoran.sad(nb = nb_q, style = "W", alternative = "tw
 The chief advantage of the Saddlepoint approximation is that it takes a fitted linear model rather than simply a numerical variable, so the residuals are analysed. With an intercept-only model, the results are similar to local Moran's $I_i$, but we can weight the observations, here by the count of those entitled to vote, which should down-weight small units of observation:
 
 ```{r, cache=TRUE}
-lm(z ~ 1, weights = pol_pres15$I_entitled_to_vote) -> lm_null_weights
+lm(I_turnout ~ 1, weights = pol_pres15$I_entitled_to_vote) -> lm_null_weights
 invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
 system.time(lm_null_weights %>% localmoran.sad(nb = nb_q, style = "W", alternative = "two.sided") %>%
         summary() -> locm_sad_null_weights)
@@ -752,7 +757,7 @@ system.time(lm_null_weights %>% localmoran.sad(nb = nb_q, style = "W", alternati
 Next we add the categorical variable distinguishing between rural, urban and other types of observational unit:
 
 ```{r, cache=TRUE}
-lm(z ~ Types, weights=pol_pres15$I_entitled_to_vote) -> lm_types
+lm(I_turnout ~ Types, weights=pol_pres15$I_entitled_to_vote) -> lm_types
 invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
 system.time(lm_types %>% localmoran.sad(nb = nb_q, style = "W", alternative = "two.sided") %>%
         summary() -> locm_sad_types)
@@ -822,14 +827,14 @@ table(Saddlepoint=addNA(pol_pres15$locm_sad2), exact=addNA(pol_pres15$locm_ex))
 The local Getis-Ord $G_i$ measure [@getis+ord:92; @getis+ord:96] is reported as a standard deviate, and may also take the $G^*_i$ form where self-neighbours are inserted into the neighbour object using `include.self()`. The observed and expected values of local $G$ with their analytical variances may also be returned if `return_internals=TRUE`. 
 
 ```{r}
-system.time(z %>% 
+system.time(I_turnout %>% 
         localG(lw_q_W, return_internals=TRUE) -> locG)
 ```
 Permutation inference is also available for this measure:
 
 ```{r, cache=TRUE} 
 invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
-system.time(z %>% 
+system.time(I_turnout %>% 
         localG_perm(lw_q_W, nsim = 9999, iseed = 1) -> locG_p)
 ```
 The correlation between the two-sided probability values for analytical and permutation-based standard deviates (first two columns and rows) and permutation rank-based probability values are very strong:
@@ -845,7 +850,7 @@ cor(cbind(localG=attr(locG, "internals")[, "Pr(z != E(Gi))"],
 
 ```{r, cache=TRUE}
 invisible(spdep::set.coresOption(ifelse(detectCores() == 1, 1, detectCores()-1L)))
-system.time(z %>% 
+system.time(I_turnout %>% 
         localC_perm(lw_q_W, nsim=9999, iseed=1) -> locC_p)
 ```
 The permutation standard deviate-based and rank-based probability values are not as highly correlated as for $G_i$, in part reflecting the difference in view of autocorrelation in $C_i$ as represented by a function of the differences between values rather than the products of values:
@@ -863,7 +868,7 @@ pol_pres15$hs_C <- droplevels(pol_pres15$hs_C)
 
 
 ```{r}
-pol_pres15$hs_G <- cut(z, c(-Inf, mean(z), Inf), 
+pol_pres15$hs_G <- cut(I_turnout, c(-Inf, mean(I_turnout), Inf), 
     labels = c("Low", "High"))
 is.na(pol_pres15$hs_G) <- p.adjust(attr(locG_p, "internals")[,"Pr(z != E(Gi))"], "fdr") >= 0.005
 pol_pres15$hs_G <- droplevels(pol_pres15$hs_G)
