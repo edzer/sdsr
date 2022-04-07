@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Chapter 15 Measures of spatial autocorrelation | Spatial Data Science</title>
+  <meta name="description" content="description_xx" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="Chapter 15 Measures of spatial autocorrelation | Spatial Data Science" />
+  <meta property="og:type" content="book" />
+  
+  
+  <meta property="og:description" content="description_xx" />
+  <meta name="github-repo" content="edzer/sdsr" />
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Chapter 15 Measures of spatial autocorrelation | Spatial Data Science" />
+  
+  <meta name="twitter:description" content="description_xx" />
+  
+
+<meta name="author" content="Edzer Pebesma, Roger Bivand" />
+
+
+<meta name="date" content="2022-04-07" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="area.html"/>
+<link rel="next" href="spatglmm.html"/>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+<link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
+<script src="libs/htmlwidgets-1.5.4/htmlwidgets.js"></script>
+<link href="libs/leaflet-1.3.1/leaflet.css" rel="stylesheet" />
+<script src="libs/leaflet-1.3.1/leaflet.js"></script>
+<link href="libs/leafletfix-1.0.0/leafletfix.css" rel="stylesheet" />
+<script src="libs/proj4-2.6.2/proj4.min.js"></script>
+<script src="libs/Proj4Leaflet-1.0.1/proj4leaflet.js"></script>
+<link href="libs/rstudio_leaflet-1.3.1/rstudio_leaflet.css" rel="stylesheet" />
+<script src="libs/leaflet-binding-2.0.4.1/leaflet.js"></script>
+<script src="libs/leaflet-providers-1.9.0/leaflet-providers_1.9.0.js"></script>
+<script src="libs/leaflet-providers-plugin-2.0.4.1/leaflet-providers-plugin.js"></script>
+<link href="libs/HomeButton-0.0.1/home-button.css" rel="stylesheet" />
+<script src="libs/HomeButton-0.0.1/home-button.js"></script>
+<script src="libs/HomeButton-0.0.1/easy-button-src.min.js"></script>
+<script src="libs/clipboard-0.0.1/setClipboardText.js"></script>
+<link href="libs/mapviewCSS-0.0.1/mapview-popup.css" rel="stylesheet" />
+<link href="libs/mapviewCSS-0.0.1/mapview.css" rel="stylesheet" />
+
+<script>
+/* ========================================================================
+ * Bootstrap: transition.js v3.3.7
+ * http://getbootstrap.com/javascript/#transitions
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // CSS TRANSITION SUPPORT (Shoutout: http://www.modernizr.com/)
+  // ============================================================
+
+  function transitionEnd() {
+    var el = document.createElement('bootstrap')
+
+    var transEndEventNames = {
+      WebkitTransition : 'webkitTransitionEnd',
+      MozTransition    : 'transitionend',
+      OTransition      : 'oTransitionEnd otransitionend',
+      transition       : 'transitionend'
+    }
+
+    for (var name in transEndEventNames) {
+      if (el.style[name] !== undefined) {
+        return { end: transEndEventNames[name] }
+      }
+    }
+
+    return false // explicit for ie8 (  ._.)
+  }
+
+  // http://blog.alexmaccaw.com/css-transitions
+  $.fn.emulateTransitionEnd = function (duration) {
+    var called = false
+    var $el = this
+    $(this).one('bsTransitionEnd', function () { called = true })
+    var callback = function () { if (!called) $($el).trigger($.support.transition.end) }
+    setTimeout(callback, duration)
+    return this
+  }
+
+  $(function () {
+    $.support.transition = transitionEnd()
+
+    if (!$.support.transition) return
+
+    $.event.special.bsTransitionEnd = {
+      bindType: $.support.transition.end,
+      delegateType: $.support.transition.end,
+      handle: function (e) {
+        if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
+      }
+    }
+  })
+
+}(jQuery);
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: collapse.js v3.3.7
+ * http://getbootstrap.com/javascript/#collapse
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+/* jshint latedef: false */
+
++function ($) {
+  'use strict';
+
+  // COLLAPSE PUBLIC CLASS DEFINITION
+  // ================================
+
+  var Collapse = function (element, options) {
+    this.$element      = $(element)
+    this.options       = $.extend({}, Collapse.DEFAULTS, options)
+    this.$trigger      = $('[data-toggle="collapse"][href="#' + element.id + '"],' +
+                           '[data-toggle="collapse"][data-target="#' + element.id + '"]')
+    this.transitioning = null
+
+    if (this.options.parent) {
+      this.$parent = this.getParent()
+    } else {
+      this.addAriaAndCollapsedClass(this.$element, this.$trigger)
+    }
+
+    if (this.options.toggle) this.toggle()
+  }
+
+  Collapse.VERSION  = '3.3.7'
+
+  Collapse.TRANSITION_DURATION = 350
+
+  Collapse.DEFAULTS = {
+    toggle: true
+  }
+
+  Collapse.prototype.dimension = function () {
+    var hasWidth = this.$element.hasClass('width')
+    return hasWidth ? 'width' : 'height'
+  }
+
+  Collapse.prototype.show = function () {
+    if (this.transitioning || this.$element.hasClass('in')) return
+
+    var activesData
+    var actives = this.$parent && this.$parent.children('.panel').children('.in, .collapsing')
+
+    if (actives && actives.length) {
+      activesData = actives.data('bs.collapse')
+      if (activesData && activesData.transitioning) return
+    }
+
+    var startEvent = $.Event('show.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    if (actives && actives.length) {
+      Plugin.call(actives, 'hide')
+      activesData || actives.data('bs.collapse', null)
+    }
+
+    var dimension = this.dimension()
+
+    this.$element
+      .removeClass('collapse')
+      .addClass('collapsing')[dimension](0)
+      .attr('aria-expanded', true)
+
+    this.$trigger
+      .removeClass('collapsed')
+      .attr('aria-expanded', true)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse in')[dimension]('')
+      this.transitioning = 0
+      this.$element
+        .trigger('shown.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    var scrollSize = $.camelCase(['scroll', dimension].join('-'))
+
+    this.$element
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)[dimension](this.$element[0][scrollSize])
+  }
+
+  Collapse.prototype.hide = function () {
+    if (this.transitioning || !this.$element.hasClass('in')) return
+
+    var startEvent = $.Event('hide.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    var dimension = this.dimension()
+
+    this.$element[dimension](this.$element[dimension]())[0].offsetHeight
+
+    this.$element
+      .addClass('collapsing')
+      .removeClass('collapse in')
+      .attr('aria-expanded', false)
+
+    this.$trigger
+      .addClass('collapsed')
+      .attr('aria-expanded', false)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.transitioning = 0
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse')
+        .trigger('hidden.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    this.$element
+      [dimension](0)
+      .one('bsTransitionEnd', $.proxy(complete, this))
+      .emulateTransitionEnd(Collapse.TRANSITION_DURATION)
+  }
+
+  Collapse.prototype.toggle = function () {
+    this[this.$element.hasClass('in') ? 'hide' : 'show']()
+  }
+
+  Collapse.prototype.getParent = function () {
+    return $(this.options.parent)
+      .find('[data-toggle="collapse"][data-parent="' + this.options.parent + '"]')
+      .each($.proxy(function (i, element) {
+        var $element = $(element)
+        this.addAriaAndCollapsedClass(getTargetFromTrigger($element), $element)
+      }, this))
+      .end()
+  }
+
+  Collapse.prototype.addAriaAndCollapsedClass = function ($element, $trigger) {
+    var isOpen = $element.hasClass('in')
+
+    $element.attr('aria-expanded', isOpen)
+    $trigger
+      .toggleClass('collapsed', !isOpen)
+      .attr('aria-expanded', isOpen)
+  }
+
+  function getTargetFromTrigger($trigger) {
+    var href
+    var target = $trigger.attr('data-target')
+      || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
+
+    return $(target)
+  }
+
+
+  // COLLAPSE PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.collapse')
+      var options = $.extend({}, Collapse.DEFAULTS, $this.data(), typeof option == 'object' && option)
+
+      if (!data && options.toggle && /show|hide/.test(option)) options.toggle = false
+      if (!data) $this.data('bs.collapse', (data = new Collapse(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  var old = $.fn.collapse
+
+  $.fn.collapse             = Plugin
+  $.fn.collapse.Constructor = Collapse
+
+
+  // COLLAPSE NO CONFLICT
+  // ====================
+
+  $.fn.collapse.noConflict = function () {
+    $.fn.collapse = old
+    return this
+  }
+
+
+  // COLLAPSE DATA-API
+  // =================
+
+  $(document).on('click.bs.collapse.data-api', '[data-toggle="collapse"]', function (e) {
+    var $this   = $(this)
+
+    if (!$this.attr('data-target')) e.preventDefault()
+
+    var $target = getTargetFromTrigger($this)
+    var data    = $target.data('bs.collapse')
+    var option  = data ? 'toggle' : $this.data()
+
+    Plugin.call($target, option)
+  })
+
+}(jQuery);
+</script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    // close the dropdown menu when an option is clicked
+    $("#allCodeButton").dropdown("toggle");
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.sourceCode, pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan');
+  rCodeBlocks.each(function() {
+
+    // if code block has been labeled with class `fold-show`, show the code on init!
+    var classList = $(this).attr('class').split(/\s+/);
+    for (var i = 0; i < classList.length; i++) {
+    if (classList[i] === 'fold-show') {
+        show = true;
+      }
+    }
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    if (show)
+      div.addClass('in');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (show ? 'Hide' : 'Code') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs code-folding-btn pull-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-target', '#' + id)
+        .attr('aria-expanded', show)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // hack: return show to false, otherwise all next codeBlocks will be shown!
+    show = false;
+
+    // update state of button on show/hide
+    div.on('hidden.bs.collapse', function () {
+      showCodeText.text('Code');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+    });
+  });
+
+}
+</script>
+<script>
+/* ========================================================================
+ * Bootstrap: dropdown.js v3.3.7
+ * http://getbootstrap.com/javascript/#dropdowns
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // DROPDOWN CLASS DEFINITION
+  // =========================
+
+  var backdrop = '.dropdown-backdrop'
+  var toggle   = '[data-toggle="dropdown"]'
+  var Dropdown = function (element) {
+    $(element).on('click.bs.dropdown', this.toggle)
+  }
+
+  Dropdown.VERSION = '3.3.7'
+
+  function getParent($this) {
+    var selector = $this.attr('data-target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+    }
+
+    var $parent = selector && $(selector)
+
+    return $parent && $parent.length ? $parent : $this.parent()
+  }
+
+  function clearMenus(e) {
+    if (e && e.which === 3) return
+    $(backdrop).remove()
+    $(toggle).each(function () {
+      var $this         = $(this)
+      var $parent       = getParent($this)
+      var relatedTarget = { relatedTarget: this }
+
+      if (!$parent.hasClass('open')) return
+
+      if (e && e.type == 'click' && /input|textarea/i.test(e.target.tagName) && $.contains($parent[0], e.target)) return
+
+      $parent.trigger(e = $.Event('hide.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this.attr('aria-expanded', 'false')
+      $parent.removeClass('open').trigger($.Event('hidden.bs.dropdown', relatedTarget))
+    })
+  }
+
+  Dropdown.prototype.toggle = function (e) {
+    var $this = $(this)
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    clearMenus()
+
+    if (!isActive) {
+      if ('ontouchstart' in document.documentElement && !$parent.closest('.navbar-nav').length) {
+        // if mobile we use a backdrop because click events don't delegate
+        $(document.createElement('div'))
+          .addClass('dropdown-backdrop')
+          .insertAfter($(this))
+          .on('click', clearMenus)
+      }
+
+      var relatedTarget = { relatedTarget: this }
+      $parent.trigger(e = $.Event('show.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this
+        .trigger('focus')
+        .attr('aria-expanded', 'true')
+
+      $parent
+        .toggleClass('open')
+        .trigger($.Event('shown.bs.dropdown', relatedTarget))
+    }
+
+    return false
+  }
+
+  Dropdown.prototype.keydown = function (e) {
+    if (!/(38|40|27|32)/.test(e.which) || /input|textarea/i.test(e.target.tagName)) return
+
+    var $this = $(this)
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    if (!isActive && e.which != 27 || isActive && e.which == 27) {
+      if (e.which == 27) $parent.find(toggle).trigger('focus')
+      return $this.trigger('click')
+    }
+
+    var desc = ' li:not(.disabled):visible a'
+    var $items = $parent.find('.dropdown-menu' + desc)
+
+    if (!$items.length) return
+
+    var index = $items.index(e.target)
+
+    if (e.which == 38 && index > 0)                 index--         // up
+    if (e.which == 40 && index < $items.length - 1) index++         // down
+    if (!~index)                                    index = 0
+
+    $items.eq(index).trigger('focus')
+  }
+
+
+  // DROPDOWN PLUGIN DEFINITION
+  // ==========================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this = $(this)
+      var data  = $this.data('bs.dropdown')
+
+      if (!data) $this.data('bs.dropdown', (data = new Dropdown(this)))
+      if (typeof option == 'string') data[option].call($this)
+    })
+  }
+
+  var old = $.fn.dropdown
+
+  $.fn.dropdown             = Plugin
+  $.fn.dropdown.Constructor = Dropdown
+
+
+  // DROPDOWN NO CONFLICT
+  // ====================
+
+  $.fn.dropdown.noConflict = function () {
+    $.fn.dropdown = old
+    return this
+  }
+
+
+  // APPLY TO STANDARD DROPDOWN ELEMENTS
+  // ===================================
+
+  $(document)
+    .on('click.bs.dropdown.data-api', clearMenus)
+    .on('click.bs.dropdown.data-api', '.dropdown form', function (e) { e.stopPropagation() })
+    .on('click.bs.dropdown.data-api', toggle, Dropdown.prototype.toggle)
+    .on('keydown.bs.dropdown.data-api', toggle, Dropdown.prototype.keydown)
+    .on('keydown.bs.dropdown.data-api', '.dropdown-menu', Dropdown.prototype.keydown)
+
+}(jQuery);
+</script>
+<style type="text/css">
+.code-folding-btn {
+  margin-bottom: 4px;
+}
+
+.row { display: flex; }
+.collapse { display: none; }
+.in { display:block }
+.pull-right > .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    float: left;
+    min-width: 160px;
+    padding: 5px 0;
+    margin: 2px 0 0;
+    font-size: 14px;
+    text-align: left;
+    list-style: none;
+    background-color: #fff;
+    -webkit-background-clip: padding-box;
+    background-clip: padding-box;
+    border: 1px solid #ccc;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: 4px;
+    -webkit-box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    box-shadow: 0 6px 12px rgba(0,0,0,.175);
+}
+
+.open > .dropdown-menu {
+    display: block;
+    color: #ffffff;
+    background-color: #ffffff;
+    background-image: none;
+    border-color: #92897e;
+}
+
+.dropdown-menu > li > a {
+  display: block;
+  padding: 3px 20px;
+  clear: both;
+  font-weight: 400;
+  line-height: 1.42857143;
+  color: #000000;
+  white-space: nowrap;
+}
+
+.dropdown-menu > li > a:hover,
+.dropdown-menu > li > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+}
+
+.dropdown-menu > .active > a,
+.dropdown-menu > .active > a:hover,
+.dropdown-menu > .active > a:focus {
+  color: #ffffff;
+  text-decoration: none;
+  background-color: #e95420;
+  outline: 0;
+}
+.dropdown-menu > .disabled > a,
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  color: #aea79f;
+}
+
+.dropdown-menu > .disabled > a:hover,
+.dropdown-menu > .disabled > a:focus {
+  text-decoration: none;
+  cursor: not-allowed;
+  background-color: transparent;
+  background-image: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(enabled = false);
+}
+
+.btn {
+  display: inline-block;
+  margin-bottom: 1;
+  font-weight: normal;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  -ms-touch-action: manipulation;
+      touch-action: manipulation;
+  cursor: pointer;
+  background-image: none;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.42857143;
+  border-radius: 4px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn.active:focus,
+.btn.focus,
+.btn:active.focus,
+.btn.active.focus {
+  outline: 5px auto -webkit-focus-ring-color;
+  outline-offset: -2px;
+}
+.btn:hover,
+.btn:focus,
+.btn.focus {
+  color: #ffffff;
+  text-decoration: none;
+}
+.btn:active,
+.btn.active {
+  background-image: none;
+  outline: 0;
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn.disabled,
+.btn[disabled],
+fieldset[disabled] .btn {
+  cursor: not-allowed;
+  filter: alpha(opacity=65);
+  opacity: 0.65;
+  box-shadow: none;
+}
+a.btn.disabled,
+fieldset[disabled] a.btn {
+  pointer-events: none;
+}
+.btn-default {
+  color: #ffffff;
+  background-color: #aea79f; #important
+  border-color: #aea79f;
+}
+
+.btn-default:focus,
+.btn-default.focus {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #6f675e;
+}
+
+.btn-default:hover {
+  color: #ffffff;
+  background-color: #978e83;
+  border-color: #92897e;
+}
+.btn-default:active,
+.btn-default.active,
+.btn-group > .btn:not(:first-child):not(:last-child):not(.dropdown-toggle) {
+  border-radius: 0;
+}
+.btn-group > .btn:first-child {
+  margin-left: 0;
+}
+.btn-group > .btn:first-child:not(:last-child):not(.dropdown-toggle) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn:last-child:not(:first-child),
+.btn-group > .dropdown-toggle:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group > .btn-group {
+  float: left;
+}
+.btn-group > .btn-group:not(:first-child):not(:last-child) > .btn {
+  border-radius: 0;
+}
+.btn-group > .btn-group:first-child:not(:last-child) > .btn:last-child,
+.btn-group > .btn-group:first-child:not(:last-child) > .dropdown-toggle {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.btn-group > .btn-group:last-child:not(:first-child) > .btn:first-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.btn-group .dropdown-toggle:active,
+.btn-group.open .dropdown-toggle {
+  outline: 0;
+}
+.btn-group > .btn + .dropdown-toggle {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+.btn-group > .btn-lg + .dropdown-toggle {
+  padding-right: 12px;
+  padding-left: 12px;
+}
+.btn-group.open .dropdown-toggle {
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+.btn-group.open .dropdown-toggle.btn-link {
+  box-shadow: none;
+}
+
+</style>
+<script>
+var str = '<div class="btn-group pull-right" style="position: fixed; right: 50px; top: 10px; z-index: 200"><button type="button" class="btn btn-default btn-xs dropdown-toggle" id="allCodeButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" data-_extension-text-contrast=""><span>Code</span> <span class="caret"></span></button><ul class="dropdown-menu" style="min-width: 50px;"><li><a id="rmd-show-all-code" href="#">Show All Code</a></li><li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li></ul></div>';
+document.write(str);
+</script>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "hide");
+});
+</script>
+
+
+<style type="text/css">
+a.sourceLine { display: inline-block; line-height: 1.25; }
+a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
+a.sourceLine:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+a.sourceLine { text-indent: -1em; padding-left: 1em; }
+}
+pre.numberSource a.sourceLine
+  { position: relative; left: -4em; }
+pre.numberSource a.sourceLine::before
+  { content: attr(title);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  }
+@media screen {
+a.sourceLine::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li><a href="./">Spatial Data Science</a></li>
+
+<li class="divider"></li>
+<li><a href="index.html#preface">Preface<span></span></a><ul>
+<li><a href="index.html#acknowledgements">Acknowledgements<span></span></a></li>
+</ul></li>
+<li class="part"><span><b>I Spatial Data<span></span></b></span></li>
+<li class="chapter" data-level="1" data-path="intro.html"><a href="intro.html"><i class="fa fa-check"></i><b>1</b> Getting Started<span></span></a><ul>
+<li class="chapter" data-level="1.1" data-path="intro.html"><a href="intro.html#a-first-map"><i class="fa fa-check"></i><b>1.1</b> A first map<span></span></a></li>
+<li class="chapter" data-level="1.2" data-path="intro.html"><a href="intro.html#coordinate-reference-systems"><i class="fa fa-check"></i><b>1.2</b> Coordinate reference systems<span></span></a></li>
+<li class="chapter" data-level="1.3" data-path="intro.html"><a href="intro.html#rasterize"><i class="fa fa-check"></i><b>1.3</b> Raster and vector data<span></span></a></li>
+<li class="chapter" data-level="1.4" data-path="intro.html"><a href="intro.html#raster-types"><i class="fa fa-check"></i><b>1.4</b> Raster types<span></span></a></li>
+<li class="chapter" data-level="1.5" data-path="intro.html"><a href="intro.html#time-series-arrays-data-cubes"><i class="fa fa-check"></i><b>1.5</b> Time series, arrays, data cubes<span></span></a></li>
+<li class="chapter" data-level="1.6" data-path="intro.html"><a href="intro.html#support"><i class="fa fa-check"></i><b>1.6</b> Support<span></span></a></li>
+<li class="chapter" data-level="1.7" data-path="intro.html"><a href="intro.html#spatial-data-science-software"><i class="fa fa-check"></i><b>1.7</b> Spatial data science software<span></span></a></li>
+<li class="chapter" data-level="1.8" data-path="intro.html"><a href="intro.html#exercises"><i class="fa fa-check"></i><b>1.8</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="cs.html"><a href="cs.html"><i class="fa fa-check"></i><b>2</b> Coordinates<span></span></a><ul>
+<li class="chapter" data-level="2.1" data-path="cs.html"><a href="cs.html#units"><i class="fa fa-check"></i><b>2.1</b> Quantities, units, datum<span></span></a></li>
+<li class="chapter" data-level="2.2" data-path="cs.html"><a href="cs.html#ellipsoidal-coordinates"><i class="fa fa-check"></i><b>2.2</b> Ellipsoidal coordinates<span></span></a></li>
+<li class="chapter" data-level="2.3" data-path="cs.html"><a href="cs.html#crs"><i class="fa fa-check"></i><b>2.3</b> Coordinate Reference Systems<span></span></a></li>
+<li class="chapter" data-level="2.4" data-path="cs.html"><a href="cs.html#projlib"><i class="fa fa-check"></i><b>2.4</b> PROJ and mapping accuracy<span></span></a></li>
+<li class="chapter" data-level="2.5" data-path="cs.html"><a href="cs.html#wkt2"><i class="fa fa-check"></i><b>2.5</b> WKT-2<span></span></a></li>
+<li class="chapter" data-level="2.6" data-path="cs.html"><a href="cs.html#exercises-1"><i class="fa fa-check"></i><b>2.6</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="geometries.html"><a href="geometries.html"><i class="fa fa-check"></i><b>3</b> Geometries<span></span></a><ul>
+<li class="chapter" data-level="3.1" data-path="geometries.html"><a href="geometries.html#simplefeatures"><i class="fa fa-check"></i><b>3.1</b> Simple feature geometries<span></span></a></li>
+<li class="chapter" data-level="3.2" data-path="geometries.html"><a href="geometries.html#opgeom"><i class="fa fa-check"></i><b>3.2</b> Operations on geometries<span></span></a></li>
+<li class="chapter" data-level="3.3" data-path="geometries.html"><a href="geometries.html#precision"><i class="fa fa-check"></i><b>3.3</b> Precision<span></span></a></li>
+<li class="chapter" data-level="3.4" data-path="geometries.html"><a href="geometries.html#coverages"><i class="fa fa-check"></i><b>3.4</b> Coverages: tessellations and rasters<span></span></a></li>
+<li class="chapter" data-level="3.5" data-path="geometries.html"><a href="geometries.html#networks"><i class="fa fa-check"></i><b>3.5</b> Networks<span></span></a></li>
+<li class="chapter" data-level="3.6" data-path="geometries.html"><a href="geometries.html#exercises-2"><i class="fa fa-check"></i><b>3.6</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="4" data-path="spherical.html"><a href="spherical.html"><i class="fa fa-check"></i><b>4</b> Spherical Geometries<span></span></a><ul>
+<li class="chapter" data-level="4.1" data-path="spherical.html"><a href="spherical.html#straight-lines"><i class="fa fa-check"></i><b>4.1</b> Straight lines<span></span></a></li>
+<li class="chapter" data-level="4.2" data-path="spherical.html"><a href="spherical.html#ring-direction"><i class="fa fa-check"></i><b>4.2</b> Ring direction<span></span></a></li>
+<li class="chapter" data-level="4.3" data-path="spherical.html"><a href="spherical.html#full-polygon"><i class="fa fa-check"></i><b>4.3</b> Full polygon<span></span></a></li>
+<li class="chapter" data-level="4.4" data-path="spherical.html"><a href="spherical.html#bounding-box-rectangle-and-cap"><i class="fa fa-check"></i><b>4.4</b> Bounding box, rectangle, and cap<span></span></a></li>
+<li class="chapter" data-level="4.5" data-path="spherical.html"><a href="spherical.html#validity-on-the-sphere"><i class="fa fa-check"></i><b>4.5</b> Validity on the sphere<span></span></a></li>
+<li class="chapter" data-level="4.6" data-path="spherical.html"><a href="spherical.html#exercises-3"><i class="fa fa-check"></i><b>4.6</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="5" data-path="featureattributes.html"><a href="featureattributes.html"><i class="fa fa-check"></i><b>5</b> Attributes and Support<span></span></a><ul>
+<li class="chapter" data-level="5.1" data-path="featureattributes.html"><a href="featureattributes.html#agr"><i class="fa fa-check"></i><b>5.1</b> Attribute-geometry relationships and support<span></span></a></li>
+<li class="chapter" data-level="5.2" data-path="featureattributes.html"><a href="featureattributes.html#aggregating-and-summarising"><i class="fa fa-check"></i><b>5.2</b> Aggregating and summarising<span></span></a></li>
+<li class="chapter" data-level="5.3" data-path="featureattributes.html"><a href="featureattributes.html#area-weighted"><i class="fa fa-check"></i><b>5.3</b> Area-weighted interpolation<span></span></a></li>
+<li class="chapter" data-level="5.4" data-path="featureattributes.html"><a href="featureattributes.html#updownscaling"><i class="fa fa-check"></i><b>5.4</b> Up- and Downscaling<span></span></a></li>
+<li class="chapter" data-level="5.5" data-path="featureattributes.html"><a href="featureattributes.html#exercises-4"><i class="fa fa-check"></i><b>5.5</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="6" data-path="datacube.html"><a href="datacube.html"><i class="fa fa-check"></i><b>6</b> Data Cubes<span></span></a><ul>
+<li class="chapter" data-level="6.1" data-path="datacube.html"><a href="datacube.html#a-four-dimensional-data-cube"><i class="fa fa-check"></i><b>6.1</b> A four-dimensional data cube<span></span></a></li>
+<li class="chapter" data-level="6.2" data-path="datacube.html"><a href="datacube.html#dimensions-attributes-and-support"><i class="fa fa-check"></i><b>6.2</b> Dimensions, attributes, and support<span></span></a></li>
+<li class="chapter" data-level="6.3" data-path="datacube.html"><a href="datacube.html#dcoperations"><i class="fa fa-check"></i><b>6.3</b> Operations on data cubes<span></span></a></li>
+<li class="chapter" data-level="6.4" data-path="datacube.html"><a href="datacube.html#vectordatacubes"><i class="fa fa-check"></i><b>6.4</b> Aggregating raster to vector cubes<span></span></a></li>
+<li class="chapter" data-level="6.5" data-path="datacube.html"><a href="datacube.html#switching"><i class="fa fa-check"></i><b>6.5</b> Switching dimension with attributes<span></span></a></li>
+<li class="chapter" data-level="6.6" data-path="datacube.html"><a href="datacube.html#otherdynamic"><i class="fa fa-check"></i><b>6.6</b> Other dynamic spatial data<span></span></a></li>
+<li class="chapter" data-level="6.7" data-path="datacube.html"><a href="datacube.html#exercises-5"><i class="fa fa-check"></i><b>6.7</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="part"><span><b>II R for Spatial Data Science<span></span></b></span></li>
+<li class="chapter" data-level="7" data-path="sf.html"><a href="sf.html"><i class="fa fa-check"></i><b>7</b> Introduction to sf and stars<span></span></a><ul>
+<li class="chapter" data-level="7.1" data-path="sf.html"><a href="sf.html#sfintro"><i class="fa fa-check"></i><b>7.1</b> Package <code>sf</code><span></span></a></li>
+<li class="chapter" data-level="7.2" data-path="sf.html"><a href="sf.html#spatial-joins"><i class="fa fa-check"></i><b>7.2</b> Spatial joins<span></span></a></li>
+<li class="chapter" data-level="7.3" data-path="sf.html"><a href="sf.html#package-stars"><i class="fa fa-check"></i><b>7.3</b> Package <code>stars</code><span></span></a></li>
+<li class="chapter" data-level="7.4" data-path="sf.html"><a href="sf.html#vector-data-cube-examples"><i class="fa fa-check"></i><b>7.4</b> Vector data cube examples<span></span></a></li>
+<li class="chapter" data-level="7.5" data-path="sf.html"><a href="sf.html#raster-to-vector"><i class="fa fa-check"></i><b>7.5</b> raster-to-vector, vector-to-raster<span></span></a></li>
+<li class="chapter" data-level="7.6" data-path="sf.html"><a href="sf.html#projsf"><i class="fa fa-check"></i><b>7.6</b> Coordinate transformations and conversions<span></span></a></li>
+<li class="chapter" data-level="7.7" data-path="sf.html"><a href="sf.html#warp"><i class="fa fa-check"></i><b>7.7</b> Transforming and warping rasters<span></span></a></li>
+<li class="chapter" data-level="7.8" data-path="sf.html"><a href="sf.html#exercises-6"><i class="fa fa-check"></i><b>7.8</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="8" data-path="large.html"><a href="large.html"><i class="fa fa-check"></i><b>8</b> Large data sets<span></span></a><ul>
+<li class="chapter" data-level="8.1" data-path="large.html"><a href="large.html#largesf"><i class="fa fa-check"></i><b>8.1</b> Vector data: <code>sf</code><span></span></a></li>
+<li class="chapter" data-level="8.2" data-path="large.html"><a href="large.html#raster-data-stars"><i class="fa fa-check"></i><b>8.2</b> Raster data: <code>stars</code><span></span></a></li>
+<li class="chapter" data-level="8.3" data-path="large.html"><a href="large.html#very-large-data-cubes"><i class="fa fa-check"></i><b>8.3</b> Very large data cubes<span></span></a></li>
+<li class="chapter" data-level="8.4" data-path="large.html"><a href="large.html#exercises-7"><i class="fa fa-check"></i><b>8.4</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="9" data-path="plotting.html"><a href="plotting.html"><i class="fa fa-check"></i><b>9</b> Plotting spatial data<span></span></a><ul>
+<li class="chapter" data-level="9.1" data-path="plotting.html"><a href="plotting.html#transform"><i class="fa fa-check"></i><b>9.1</b> Every plot is a projection<span></span></a></li>
+<li class="chapter" data-level="9.2" data-path="plotting.html"><a href="plotting.html#plotting-points-lines-polygons-grid-cells"><i class="fa fa-check"></i><b>9.2</b> Plotting points, lines, polygons, grid cells<span></span></a></li>
+<li class="chapter" data-level="9.3" data-path="plotting.html"><a href="plotting.html#base-plot"><i class="fa fa-check"></i><b>9.3</b> Base <code>plot</code><span></span></a></li>
+<li class="chapter" data-level="9.4" data-path="plotting.html"><a href="plotting.html#geomsf"><i class="fa fa-check"></i><b>9.4</b> Maps with <code>ggplot2</code><span></span></a></li>
+<li class="chapter" data-level="9.5" data-path="plotting.html"><a href="plotting.html#tmap"><i class="fa fa-check"></i><b>9.5</b> Maps with <code>tmap</code><span></span></a></li>
+<li class="chapter" data-level="9.6" data-path="plotting.html"><a href="plotting.html#interactive-maps-leaflet-mapview-tmap"><i class="fa fa-check"></i><b>9.6</b> Interactive maps: <code>leaflet</code>, <code>mapview</code>, <code>tmap</code><span></span></a></li>
+<li class="chapter" data-level="9.7" data-path="plotting.html"><a href="plotting.html#exercises-8"><i class="fa fa-check"></i><b>9.7</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="part"><span><b>III Models for Spatial Data<span></span></b></span></li>
+<li class="chapter" data-level="10" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html"><i class="fa fa-check"></i><b>10</b> Statistical modelling of spatial data<span></span></a><ul>
+<li class="chapter" data-level="10.1" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html#design"><i class="fa fa-check"></i><b>10.1</b> Design-based and model-based inference<span></span></a></li>
+<li class="chapter" data-level="10.2" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html#predictive-models-with-coordinates"><i class="fa fa-check"></i><b>10.2</b> Predictive models with coordinates<span></span></a></li>
+<li class="chapter" data-level="10.3" data-path="statistical-modelling-of-spatial-data.html"><a href="statistical-modelling-of-spatial-data.html#further-reading"><i class="fa fa-check"></i><b>10.3</b> Further reading<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="11" data-path="pointpatterns.html"><a href="pointpatterns.html"><i class="fa fa-check"></i><b>11</b> Point Pattern Analysis<span></span></a><ul>
+<li class="chapter" data-level="11.1" data-path="pointpatterns.html"><a href="pointpatterns.html#observation-window"><i class="fa fa-check"></i><b>11.1</b> Observation window<span></span></a></li>
+<li class="chapter" data-level="11.2" data-path="pointpatterns.html"><a href="pointpatterns.html#coordinate-reference-systems-1"><i class="fa fa-check"></i><b>11.2</b> Coordinate reference systems<span></span></a></li>
+<li class="chapter" data-level="11.3" data-path="pointpatterns.html"><a href="pointpatterns.html#marked-point-patterns-points-on-linear-networks"><i class="fa fa-check"></i><b>11.3</b> Marked point patterns, points on linear networks<span></span></a></li>
+<li class="chapter" data-level="11.4" data-path="pointpatterns.html"><a href="pointpatterns.html#spatial-sampling-and-simulating-a-point-process"><i class="fa fa-check"></i><b>11.4</b> Spatial sampling and simulating a point process<span></span></a></li>
+<li class="chapter" data-level="11.5" data-path="pointpatterns.html"><a href="pointpatterns.html#simulating-points-on-the-globe"><i class="fa fa-check"></i><b>11.5</b> Simulating points on the globe<span></span></a></li>
+<li class="chapter" data-level="11.6" data-path="pointpatterns.html"><a href="pointpatterns.html#exercises-9"><i class="fa fa-check"></i><b>11.6</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="12" data-path="interpolation.html"><a href="interpolation.html"><i class="fa fa-check"></i><b>12</b> Spatial Interpolation<span></span></a><ul>
+<li class="chapter" data-level="12.1" data-path="interpolation.html"><a href="interpolation.html#a-first-dataset"><i class="fa fa-check"></i><b>12.1</b> A first dataset<span></span></a></li>
+<li class="chapter" data-level="12.2" data-path="interpolation.html"><a href="interpolation.html#sample-variogram"><i class="fa fa-check"></i><b>12.2</b> Sample variogram<span></span></a></li>
+<li class="chapter" data-level="12.3" data-path="interpolation.html"><a href="interpolation.html#fitting-variogram-models"><i class="fa fa-check"></i><b>12.3</b> Fitting variogram models<span></span></a></li>
+<li class="chapter" data-level="12.4" data-path="interpolation.html"><a href="interpolation.html#kriging"><i class="fa fa-check"></i><b>12.4</b> Kriging interpolation<span></span></a></li>
+<li class="chapter" data-level="12.5" data-path="interpolation.html"><a href="interpolation.html#blockkriging"><i class="fa fa-check"></i><b>12.5</b> Areal means: block kriging<span></span></a></li>
+<li class="chapter" data-level="12.6" data-path="interpolation.html"><a href="interpolation.html#conditional-simulation"><i class="fa fa-check"></i><b>12.6</b> Conditional simulation<span></span></a></li>
+<li class="chapter" data-level="12.7" data-path="interpolation.html"><a href="interpolation.html#trend-models"><i class="fa fa-check"></i><b>12.7</b> Trend models<span></span></a></li>
+<li class="chapter" data-level="12.8" data-path="interpolation.html"><a href="interpolation.html#exercises-10"><i class="fa fa-check"></i><b>12.8</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="13" data-path="stgeostatistics.html"><a href="stgeostatistics.html"><i class="fa fa-check"></i><b>13</b> Multivariate and Spatiotemporal Geostatistics<span></span></a><ul>
+<li class="chapter" data-level="13.1" data-path="stgeostatistics.html"><a href="stgeostatistics.html#preparing"><i class="fa fa-check"></i><b>13.1</b> Preparing the air quality dataset<span></span></a></li>
+<li class="chapter" data-level="13.2" data-path="stgeostatistics.html"><a href="stgeostatistics.html#cokriging"><i class="fa fa-check"></i><b>13.2</b> Multivariable geostatistics<span></span></a></li>
+<li class="chapter" data-level="13.3" data-path="stgeostatistics.html"><a href="stgeostatistics.html#spatiotemporal-geostatistics"><i class="fa fa-check"></i><b>13.3</b> Spatiotemporal geostatistics<span></span></a></li>
+<li class="chapter" data-level="13.4" data-path="stgeostatistics.html"><a href="stgeostatistics.html#exercises-11"><i class="fa fa-check"></i><b>13.4</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="14" data-path="area.html"><a href="area.html"><i class="fa fa-check"></i><b>14</b> Proximity and Areal Data<span></span></a><ul>
+<li class="chapter" data-level="14.1" data-path="area.html"><a href="area.html#representing-proximity-in-spdep"><i class="fa fa-check"></i><b>14.1</b> Representing proximity in <strong>spdep</strong><span></span></a></li>
+<li class="chapter" data-level="14.2" data-path="area.html"><a href="area.html#contiguous-neighbours"><i class="fa fa-check"></i><b>14.2</b> Contiguous neighbours<span></span></a></li>
+<li class="chapter" data-level="14.3" data-path="area.html"><a href="area.html#graph-based-neighbours"><i class="fa fa-check"></i><b>14.3</b> Graph-based neighbours<span></span></a></li>
+<li class="chapter" data-level="14.4" data-path="area.html"><a href="area.html#distance-based-neighbours"><i class="fa fa-check"></i><b>14.4</b> Distance-based neighbours<span></span></a></li>
+<li class="chapter" data-level="14.5" data-path="area.html"><a href="area.html#weights-specification"><i class="fa fa-check"></i><b>14.5</b> Weights specification<span></span></a></li>
+<li class="chapter" data-level="14.6" data-path="area.html"><a href="area.html#higher-order-neighbours"><i class="fa fa-check"></i><b>14.6</b> Higher order neighbours<span></span></a></li>
+<li class="chapter" data-level="14.7" data-path="area.html"><a href="area.html#exercises-12"><i class="fa fa-check"></i><b>14.7</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="15" data-path="spatautocorr.html"><a href="spatautocorr.html"><i class="fa fa-check"></i><b>15</b> Measures of spatial autocorrelation<span></span></a><ul>
+<li class="chapter" data-level="15.1" data-path="spatautocorr.html"><a href="spatautocorr.html#measures-and-process-mis-specification"><i class="fa fa-check"></i><b>15.1</b> Measures and process mis-specification<span></span></a></li>
+<li class="chapter" data-level="15.2" data-path="spatautocorr.html"><a href="spatautocorr.html#global-measures"><i class="fa fa-check"></i><b>15.2</b> Global measures<span></span></a></li>
+<li class="chapter" data-level="15.3" data-path="spatautocorr.html"><a href="spatautocorr.html#local-measures"><i class="fa fa-check"></i><b>15.3</b> Local measures<span></span></a></li>
+<li class="chapter" data-level="15.4" data-path="spatautocorr.html"><a href="spatautocorr.html#exercises-13"><i class="fa fa-check"></i><b>15.4</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="16" data-path="spatglmm.html"><a href="spatglmm.html"><i class="fa fa-check"></i><b>16</b> Spatial Regression<span></span></a><ul>
+<li class="chapter" data-level="16.1" data-path="spatglmm.html"><a href="spatglmm.html#markov-random-field-and-multilevel-models-with-spatial-weights"><i class="fa fa-check"></i><b>16.1</b> Markov random field and multilevel models with spatial weights<span></span></a></li>
+<li class="chapter" data-level="16.2" data-path="spatglmm.html"><a href="spatglmm.html#multilevel-models-of-the-boston-data-set"><i class="fa fa-check"></i><b>16.2</b> Multilevel models of the Boston data set<span></span></a></li>
+<li class="chapter" data-level="16.3" data-path="spatglmm.html"><a href="spatglmm.html#exercises-14"><i class="fa fa-check"></i><b>16.3</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="17" data-path="spatecon.html"><a href="spatecon.html"><i class="fa fa-check"></i><b>17</b> Spatial econometrics models<span></span></a><ul>
+<li class="chapter" data-level="17.1" data-path="spatecon.html"><a href="spatecon.html#spatial-econometric-models-definitions"><i class="fa fa-check"></i><b>17.1</b> Spatial econometric models: definitions<span></span></a></li>
+<li class="chapter" data-level="17.2" data-path="spatecon.html"><a href="spatecon.html#maximum-likelihood-estimation-in-spatialreg"><i class="fa fa-check"></i><b>17.2</b> Maximum likelihood estimation in <strong>spatialreg</strong><span></span></a></li>
+<li class="chapter" data-level="17.3" data-path="spatecon.html"><a href="spatecon.html#impacts"><i class="fa fa-check"></i><b>17.3</b> Impacts<span></span></a></li>
+<li class="chapter" data-level="17.4" data-path="spatecon.html"><a href="spatecon.html#spateconpred"><i class="fa fa-check"></i><b>17.4</b> Predictions<span></span></a></li>
+<li class="chapter" data-level="17.5" data-path="spatecon.html"><a href="spatecon.html#exercises-15"><i class="fa fa-check"></i><b>17.5</b> Exercises<span></span></a></li>
+</ul></li>
+<li class="chapter" data-level="18" data-path="older.html"><a href="older.html"><i class="fa fa-check"></i><b>18</b> Older R Spatial Packages<span></span></a><ul>
+<li class="chapter" data-level="18.1" data-path="older.html"><a href="older.html#retire"><i class="fa fa-check"></i><b>18.1</b> Retiring <code>rgdal</code> and <code>rgeos</code><span></span></a></li>
+<li class="chapter" data-level="18.2" data-path="older.html"><a href="older.html#links-and-differences-between-sf-and-sp"><i class="fa fa-check"></i><b>18.2</b> Links and differences between sf and sp<span></span></a></li>
+<li class="chapter" data-level="18.3" data-path="older.html"><a href="older.html#migration-code-and-packages"><i class="fa fa-check"></i><b>18.3</b> Migration code and packages<span></span></a></li>
+<li class="chapter" data-level="18.4" data-path="older.html"><a href="older.html#package-raster-and-terra"><i class="fa fa-check"></i><b>18.4</b> Package raster and terra<span></span></a></li>
+</ul></li>
+<li><a href="all-r-code-in-this-book.html#all-r-code-in-this-book">All R code in this book<span></span></a></li>
+<li><a href="r-basics.html#r-basics">R basics<span></span></a><ul>
+<li><a href="r-basics.html#pipes">Pipes<span></span></a></li>
+<li><a href="r-basics.html#data-structures">Data structures<span></span></a></li>
+<li><a href="r-basics.html#dissecting-a-multipolygon">dissecting a <code>MULTIPOLYGON</code><span></span></a></li>
+</ul></li>
+<li><a href="references.html#references">References<span></span></a></li>
+<li class="divider"></li>
+<li><a href="https://github.com/rstudio/bookdown" target="blank">Published with bookdown</a></li>
+
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Spatial Data Science</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="spatautocorr" class="section level1 hasAnchor">
+<h1><span class="header-section-number">Chapter 15</span> Measures of spatial autocorrelation<a href="spatautocorr.html#spatautocorr" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<p>When analysing areal data, it has long been recognised that, if present, spatial autocorrelation changes how we may infer, relative to the default position of independent observations. In the presence of spatial autocorrelation, we can predict the values of observation <span class="math inline">\(i\)</span> from the values observed at <span class="math inline">\(j \in N_i\)</span>, the set of its proximate neighbours. Early results <span class="citation">(Moran <a href="#ref-moran48">1948</a>; Geary <a href="#ref-geary:54">1954</a>)</span> entered into research practice gradually, for example the social sciences <span class="citation">(Duncan, Cuzzort, and Duncan <a href="#ref-duncanetal61">1961</a>)</span>. These results were then collated and extended to yield a set of basic tools of analysis <span class="citation">(Cliff and Ord <a href="#ref-cliff+ord:73">1973</a>, <a href="#ref-cliff+ord:81">1981</a>)</span>.</p>
+<p>Cliff and Ord <span class="citation">(<a href="#ref-cliff+ord:73">1973</a>)</span> generalised and extended the expression of the spatial weights matrix representation as part of the framework for establishing the distribution theory for join count, Moran’s <span class="math inline">\(I\)</span> and Geary’s <span class="math inline">\(C\)</span> statistics. This development of what have become known as global measures, returning a single value of autocorrelation for the total study area, has been supplemented by local measures returning values for each areal unit <span class="citation">(Getis and Ord <a href="#ref-getis+ord:92">1992</a>; Anselin <a href="#ref-anselin:95">1995</a>)</span>.</p>
+<p>The measures offered by the <strong>spdep</strong> package have been written partly to provide implementations, but also to permit the comparative investigation of these measures and their implementation. For this reason, the implementations are written in R rather than compiled code, and are generally slower but more flexible than implementations in the newly released <strong>rgeoda</strong> package <span class="citation">(Li and Anselin <a href="#ref-rgeoda-package">2021</a><a href="#ref-rgeoda-package">a</a>; Anselin, Li, and Koschinsky <a href="#ref-https://doi.org/10.1111/gean.12311">2021</a>)</span>.</p>
+<div id="measures-and-process-mis-specification" class="section level2 hasAnchor">
+<h2><span class="header-section-number">15.1</span> Measures and process mis-specification<a href="spatautocorr.html#measures-and-process-mis-specification" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>It is not and has never been the case that Tobler’s first law of geography: “Everything is related to everything else, but near things are more related than distant things” always holds absolutely. This is and has always been an oversimplification, disguising possible underlying entitation, support and other mis-specification problems. Are the units of observation appropriate for the scale of the underlying spatial process? Could the spatial patterning of the variable of interest for the chosen entitation be accounted for by another variable?</p>
+<p><span class="citation">Tobler (<a href="#ref-10.2307/143141">1970</a>)</span> was published in the same special issue of <em>Economic Geography</em> as <span class="citation">Olsson (<a href="#ref-10.2307/143140">1970</a>)</span>, but Olsson does grasp the important point that spatial autocorrelation is not inherent in spatial phenomena, but often is engendered by inappropriate entitation, by omitted variables and/or inappropriate functional form. The key quote from Olsson is on p. 228:</p>
+<blockquote>
+<p>The existence of such autocorrelations makes it tempting to agree with Tobler (1970, 236 [the original refers to the pagination of a conference paper]) that ‘everything is related to everything else, but near things are more related than distant things.’ On the other hand, the fact that the autocorrelations seem to hide systematic specification errors suggests that the elevation of this statement to the status of ‘the first law of geography’ is at best premature. At worst, the statement may represent the spatial variant of the post hoc fallacy, which would mean that coincidence has been mistaken for a causal relation.</p>
+</blockquote>
+<p>The status of the “first law” is very similar to the belief that John Snow induced the cause of cholera as water-borne from a map. It may be a good way of selling GIS, but it is inaccurate; Snow had a strong working hypothesis prior to visiting Soho, and the map was prepared after the Broad street pump was disabled as documentation that his hypothesis held <span class="citation">(Brody et al. <a href="#ref-BRODY200064">2000</a>)</span>.</p>
+<p>Measures of spatial autocorrelation unfortunately pick up other mis-specifications in the way that we model data <span class="citation">(Schabenberger and Gotway <a href="#ref-schabenberger+gotway:2005">2005</a>; McMillen <a href="#ref-McMillen:2003">2003</a>)</span>. For reference, Moran’s <span class="math inline">\(I\)</span> is given as <span class="citation">(Cliff and Ord <a href="#ref-cliff+ord:81">1981</a>, 17)</span>:</p>
+<p><span class="math display">\[
+I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
+\]</span>
+where <span class="math inline">\(x_i, i=1, \ldots, n\)</span> are <span class="math inline">\(n\)</span> observations on the numeric variable of interest, <span class="math inline">\(z_i = x_i - \bar{x}\)</span>, <span class="math inline">\(\bar{x} = \sum_{i=1}^{n} x_i / n\)</span>, <span class="math inline">\(\sum_{(2)} = \stackrel{\sum_{i=1}^{n} \sum_{j=1}^{n}}{i \neq j}\)</span>, <span class="math inline">\(w_{ij}\)</span> are the spatial weights, and <span class="math inline">\(S_0 = \sum_{(2)} w_{ij}\)</span>.
+First we test a random variable using the Moran test, here under the normality assumption (argument <code>randomisation=FALSE</code>, default <code>TRUE</code>). Inference is made on the statistic <span class="math inline">\(Z(I) = \frac{I - E(I)}{\sqrt{\mathrm{Var}(I)}}\)</span>, the z-value compared with the Normal distribution for <span class="math inline">\(E(I)\)</span> and <span class="math inline">\(\mathrm{Var}(I)\)</span> for the chosen assumptions; this <code>x</code> does not show spatial autocorrelation with these spatial weights:</p>
+<div class="sourceCode" id="cb564"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb564-1" title="1">glance_htest &lt;-<span class="st"> </span><span class="cf">function</span>(ht) <span class="kw">c</span>(ht<span class="op">$</span>estimate, </a>
+<a class="sourceLine" id="cb564-2" title="2">    <span class="st">&quot;Std deviate&quot;</span> =<span class="st"> </span><span class="kw">unname</span>(ht<span class="op">$</span>statistic), </a>
+<a class="sourceLine" id="cb564-3" title="3">    <span class="st">&quot;p.value&quot;</span> =<span class="st"> </span><span class="kw">unname</span>(ht<span class="op">$</span>p.value))</a>
+<a class="sourceLine" id="cb564-4" title="4"><span class="kw">set.seed</span>(<span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb564-5" title="5">(pol_pres15 <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb564-6" title="6"><span class="st">        </span><span class="kw">nrow</span>() <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb564-7" title="7"><span class="st">        </span><span class="kw">rnorm</span>() -&gt;<span class="st"> </span>x) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb564-8" title="8"><span class="st">    </span><span class="kw">moran.test</span>(lw_q_B, <span class="dt">randomisation =</span> <span class="ot">FALSE</span>, <span class="dt">alternative =</span> <span class="st">&quot;two.sided&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb564-9" title="9"><span class="st">    </span><span class="kw">glance_htest</span>()</a></code></pre></div>
+<pre><code># Moran I statistic       Expectation          Variance       Std deviate 
+#         -0.004772         -0.000401          0.000140         -0.369320 
+#           p.value 
+#          0.711889</code></pre>
+<p>The test however detects quite strong positive spatial autocorrelation when we insert a gentle trend into the data, but omit to include it in the mean model, thus creating a missing variable problem but finding spatial autocorrelation instead:</p>
+<div class="sourceCode" id="cb566"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb566-1" title="1">beta &lt;-<span class="st"> </span><span class="fl">0.0015</span></a>
+<a class="sourceLine" id="cb566-2" title="2">coords <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb566-3" title="3"><span class="st">    </span><span class="kw">st_coordinates</span>() <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb566-4" title="4"><span class="st">    </span><span class="kw">subset</span>(<span class="dt">select =</span> <span class="dv">1</span>, <span class="dt">drop =</span> <span class="ot">TRUE</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb566-5" title="5"><span class="st">    </span>(<span class="cf">function</span>(x) x<span class="op">/</span><span class="dv">1000</span>)() -&gt;<span class="st"> </span>t</a>
+<a class="sourceLine" id="cb566-6" title="6">(x <span class="op">+</span><span class="st"> </span>beta <span class="op">*</span><span class="st"> </span>t -&gt;<span class="st"> </span>x_t) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb566-7" title="7"><span class="st">    </span><span class="kw">moran.test</span>(lw_q_B, <span class="dt">randomisation =</span> <span class="ot">FALSE</span>, <span class="dt">alternative =</span> <span class="st">&quot;two.sided&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb566-8" title="8"><span class="st">    </span><span class="kw">glance_htest</span>()</a></code></pre></div>
+<pre><code># Moran I statistic       Expectation          Variance       Std deviate 
+#          0.043403         -0.000401          0.000140          3.701491 
+#           p.value 
+#          0.000214</code></pre>
+<p>If we test the residuals of a linear model including the trend, the apparent spatial autocorrelation disappears:</p>
+<div class="sourceCode" id="cb568"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb568-1" title="1"><span class="kw">lm</span>(x_t <span class="op">~</span><span class="st"> </span>t) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb568-2" title="2"><span class="st">    </span><span class="kw">lm.morantest</span>(lw_q_B, <span class="dt">alternative =</span> <span class="st">&quot;two.sided&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb568-3" title="3"><span class="st">    </span><span class="kw">glance_htest</span>()</a></code></pre></div>
+<pre><code># Observed Moran I      Expectation         Variance      Std deviate 
+#        -0.004777        -0.000789         0.000140        -0.337306 
+#          p.value 
+#         0.735886</code></pre>
+<p>A comparison of implementations of measures of spatial autocorrelation shows that a wide range of measures is available in R in a number of packages, chiefly in the <strong>spdep</strong> package <span class="citation">(Bivand <a href="#ref-R-spdep">2022</a>)</span>, and that differences from other implementations can be attributed to design decisions <span class="citation">(Bivand and Wong <a href="#ref-Bivand2018">2018</a>)</span>. The <strong>spdep</strong> package also includes the only implementations of exact and saddlepoint approximations to global and local Moran’s I for regression residuals <span class="citation">(Tiefelsdorf <a href="#ref-tiefelsdorf:02">2002</a>; Bivand, Müller, and Reder <a href="#ref-bivandetal:09">2009</a>)</span>.</p>
+</div>
+<div id="global-measures" class="section level2 hasAnchor">
+<h2><span class="header-section-number">15.2</span> Global measures<a href="spatautocorr.html#global-measures" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Global measures consider the average level of spatial autocorrelation across all observations; they can of course be biassed (as most spatial statistics) by edge effects where important spatial process components fall outside the study area.</p>
+<div id="join-count-tests-for-categorical-data" class="section level3 hasAnchor">
+<h3><span class="header-section-number">15.2.1</span> Join-count tests for categorical data<a href="spatautocorr.html#join-count-tests-for-categorical-data" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>We will begin by examining join count statistics, where <code>joincount.test()</code> takes a <code>"factor"</code> vector of values <code>fx=</code> and a <code>listw</code> object, and returns a list of <code>htest</code> (hypothesis test) objects defined in the <strong>stats</strong> package, one <code>htest</code> object for each level of the <code>fx=</code> argument. The observed counts are of neighbours with the same factor levels, known as same-colour joins.</p>
+<div class="sourceCode" id="cb570"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb570-1" title="1"><span class="kw">args</span>(joincount.test)</a></code></pre></div>
+<pre><code># function (fx, listw, zero.policy = NULL, alternative = &quot;greater&quot;, 
+#     sampling = &quot;nonfree&quot;, spChk = NULL, adjust.n = TRUE) 
+# NULL</code></pre>
+<p>The function takes an <code>alternative=</code> argument for hypothesis testing, a <code>sampling=</code> argument showing the basis for the construction of the variance of the measure, where the default <code>"nonfree"</code> choice corresponds to analytical permutation; the <code>spChk=</code> argument is retained for backward compatibility. For reference, the counts of factor levels for the type of municipality or Warsaw borough are:</p>
+<div class="sourceCode" id="cb572"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb572-1" title="1">(pol_pres15 <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb572-2" title="2"><span class="st">        </span><span class="kw">st_drop_geometry</span>() <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb572-3" title="3"><span class="st">        </span><span class="kw">subset</span>(<span class="dt">select =</span> types, <span class="dt">drop =</span> <span class="ot">TRUE</span>) -&gt;<span class="st"> </span>Types) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb572-4" title="4"><span class="st">    </span><span class="kw">table</span>()</a></code></pre></div>
+<pre><code># .
+#          Rural          Urban    Urban/rural Warsaw Borough 
+#           1563            303            611             18</code></pre>
+<p>Since there are four levels, we re-arrange the list of <code>htest</code> objects to give a matrix of estimated results. The observed same-colour join counts are tabulated with their expectations based on the counts of levels of the input factor, so that few joins would be expected between for example Warsaw boroughs, because there are very few of them. The variance calculation uses the underlying constants of the chosen <code>listw</code> object and the counts of levels of the input factor. The z-value is obtained in the usual way by dividing the difference between the observed and expected join counts by the square root of the variance.</p>
+<p>The join count test was subsequently adapted for multi-colour join counts <span class="citation">(Upton and Fingleton <a href="#ref-upton+fingleton:85">1985</a>)</span>. The implementation as <code>joincount.mult()</code> in <strong>spdep</strong> returns a table based on nonfree sampling, and does not report p-values.</p>
+<div class="sourceCode" id="cb574"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb574-1" title="1">Types <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">joincount.multi</span>(<span class="dt">listw =</span> lw_q_B)</a></code></pre></div>
+<pre><code>#                               Joincount Expected Variance z-value
+# Rural:Rural                    3087.000 2793.920 1126.534    8.73
+# Urban:Urban                     110.000  104.719   93.299    0.55
+# Urban/rural:Urban/rural         656.000  426.526  331.759   12.60
+# Warsaw Borough:Warsaw Borough    41.000    0.350    0.347   68.96
+# Urban:Rural                     668.000 1083.941  708.209  -15.63
+# Urban/rural:Rural              2359.000 2185.769 1267.131    4.87
+# Urban/rural:Urban               171.000  423.729  352.190  -13.47
+# Warsaw Borough:Rural             12.000   64.393   46.460   -7.69
+# Warsaw Borough:Urban              9.000   12.483   11.758   -1.02
+# Warsaw Borough:Urban/rural        8.000   25.172   22.354   -3.63
+# Jtot                           3227.000 3795.486 1496.398  -14.70</code></pre>
+<p>So far, we have used binary weights, so the sum of join counts multiplied by the weight on that join remains integer. If we change to row standardised weights, where the weights are almost always fractions of 1, the counts, expectations and variances change, but there are few major changes in the z-values.</p>
+<p>Using an inverse distance based <code>listw</code> object does, however, change the z-values markedly, because closer centroids are upweighted relatively strongly:</p>
+<div class="sourceCode" id="cb576"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb576-1" title="1">Types <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">joincount.multi</span>(<span class="dt">listw =</span> lw_d183_idw_B)</a></code></pre></div>
+<pre><code>#                               Joincount Expected Variance z-value
+# Rural:Rural                    3.46e+02 3.61e+02 4.93e+01   -2.10
+# Urban:Urban                    2.90e+01 1.35e+01 2.23e+00   10.39
+# Urban/rural:Urban/rural        4.65e+01 5.51e+01 9.61e+00   -2.79
+# Warsaw Borough:Warsaw Borough  1.68e+01 4.53e-02 6.61e-03  206.38
+# Urban:Rural                    2.02e+02 1.40e+02 2.36e+01   12.73
+# Urban/rural:Rural              2.25e+02 2.83e+02 3.59e+01   -9.59
+# Urban/rural:Urban              3.65e+01 5.48e+01 8.86e+00   -6.14
+# Warsaw Borough:Rural           5.65e+00 8.33e+00 1.73e+00   -2.04
+# Warsaw Borough:Urban           9.18e+00 1.61e+00 2.54e-01   15.01
+# Warsaw Borough:Urban/rural     3.27e+00 3.25e+00 5.52e-01    0.02
+# Jtot                           4.82e+02 4.91e+02 4.16e+01   -1.38</code></pre>
+</div>
+<div id="morans-i" class="section level3 hasAnchor">
+<h3><span class="header-section-number">15.2.2</span> Moran’s <span class="math inline">\(I\)</span><a href="spatautocorr.html#morans-i" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>The implementation of Moran’s <span class="math inline">\(I\)</span> in <strong>spdep</strong> in the <code>moran.test()</code> function has similar arguments to those of <code>joincount.test()</code>, but <code>sampling=</code> is replaced by <code>randomisation=</code> to indicate the underlying analytical approach used for calculating the variance of the measure. It is also possible to use ranks rather than numerical values <span class="citation">(Cliff and Ord <a href="#ref-cliff+ord:81">1981</a>, 46)</span>. The <code>drop.EI2=</code> argument may be used to reproduce results where the final component of the variance term is omitted as found in some legacy software implementations.</p>
+<div class="sourceCode" id="cb578"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb578-1" title="1"><span class="kw">args</span>(moran.test)</a></code></pre></div>
+<pre><code># function (x, listw, randomisation = TRUE, zero.policy = NULL, 
+#     alternative = &quot;greater&quot;, rank = FALSE, na.action = na.fail, 
+#     spChk = NULL, adjust.n = TRUE, drop.EI2 = FALSE) 
+# NULL</code></pre>
+<p>The default for the <code>randomisation=</code> argument is <code>TRUE</code>, but here we will simply show that the test under normality is the same as a test of least squares residuals with only the intercept used in the mean model; the analysed variable is first round turnout proportion of registered voters in municipalities and Warsaw boroughs in the 2015 Polish presidential election. The spelling of randomisation is that of Cliff and Ord <span class="citation">(<a href="#ref-cliff+ord:73">1973</a>)</span>.</p>
+<div class="sourceCode" id="cb580"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb580-1" title="1">pol_pres15 <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb580-2" title="2"><span class="st">        </span><span class="kw">st_drop_geometry</span>() <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb580-3" title="3"><span class="st">        </span><span class="kw">subset</span>(<span class="dt">select =</span> I_turnout, <span class="dt">drop =</span> <span class="ot">TRUE</span>) -&gt;<span class="st"> </span>I_turnout</a></code></pre></div>
+<div class="sourceCode" id="cb581"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb581-1" title="1">I_turnout <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">moran.test</span>(<span class="dt">listw =</span> lw_q_B, <span class="dt">randomisation =</span> <span class="ot">FALSE</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb581-2" title="2"><span class="st">    </span><span class="kw">glance_htest</span>()</a></code></pre></div>
+<pre><code># Moran I statistic       Expectation          Variance       Std deviate 
+#          0.691434         -0.000401          0.000140         58.461349 
+#           p.value 
+#          0.000000</code></pre>
+<p>The <code>lm.morantest()</code> function also takes a <code>resfun=</code> argument to set the function used to extract the residuals used for testing, and clearly lets us model other salient features of the response variable <span class="citation">(Cliff and Ord <a href="#ref-cliff+ord:81">1981</a>, 203)</span>. To compare with the standard test, we are only using the intercept here and, as can be seen, the results are the same.</p>
+<div class="sourceCode" id="cb583"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb583-1" title="1"><span class="kw">lm</span>(I_turnout <span class="op">~</span><span class="st"> </span><span class="dv">1</span>, pol_pres15) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb583-2" title="2"><span class="st">    </span><span class="kw">lm.morantest</span>(<span class="dt">listw =</span> lw_q_B) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb583-3" title="3"><span class="st">    </span><span class="kw">glance_htest</span>()</a></code></pre></div>
+<pre><code># Observed Moran I      Expectation         Variance      Std deviate 
+#         0.691434        -0.000401         0.000140        58.461349 
+#          p.value 
+#         0.000000</code></pre>
+<p>The only difference between tests under normality and randomisation is that an extra term is added if the kurtosis of the variable of interest indicates a flatter or more peaked distribution, where the measure used is the classical measure of kurtosis. Under the default randomisation assumption of analytical randomisation, the results are largely unchanged.</p>
+<div class="sourceCode" id="cb585"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb585-1" title="1">(I_turnout <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb585-2" title="2"><span class="st">    </span><span class="kw">moran.test</span>(<span class="dt">listw =</span> lw_q_B) -&gt;<span class="st"> </span>mtr) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb585-3" title="3"><span class="st">    </span><span class="kw">glance_htest</span>()</a></code></pre></div>
+<pre><code># Moran I statistic       Expectation          Variance       Std deviate 
+#          0.691434         -0.000401          0.000140         58.459835 
+#           p.value 
+#          0.000000</code></pre>
+<p>From the very beginning in the early 1970s, interest was shown in Monte Carlo tests, also known as Hope-type tests and as permutation bootstrap. By default, <code>moran.mc()</code> returns a <code>"htest"</code> object, but may simply use <code>boot::boot()</code> internally and return a <code>"boot"</code> object when <code>return_boot=TRUE</code>. In addition the number of simulations needs to be given as <code>nsim=</code>; that is the number of times the values of the observations are shuffled at random.</p>
+<div class="sourceCode" id="cb587"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb587-1" title="1"><span class="kw">set.seed</span>(<span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb587-2" title="2">I_turnout <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb587-3" title="3"><span class="st">    </span><span class="kw">moran.mc</span>(<span class="dt">listw =</span> lw_q_B, <span class="dt">nsim =</span> <span class="dv">999</span>, <span class="dt">return_boot =</span> <span class="ot">TRUE</span>) -&gt;<span class="st"> </span>mmc</a></code></pre></div>
+<p>The bootstrap permutation retains the outcomes of each of the random permutations, reporting the observed value of the statistic, here Moran’s <span class="math inline">\(I\)</span>, the difference between this value and the mean of the simulations under randomisation (equivalent to <span class="math inline">\(E(I)\)</span>), and the standard deviation of the simulations under randomisation.</p>
+<p>If we compare the Monte Carlo and analytical variances of <span class="math inline">\(I\)</span> under randomisation, we typically see few differences, arguably rendering Monte Carlo testing unnecessary.</p>
+<div class="sourceCode" id="cb588"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb588-1" title="1"><span class="kw">c</span>(<span class="st">&quot;Permutation bootstrap&quot;</span> =<span class="st"> </span><span class="kw">var</span>(mmc<span class="op">$</span>t), </a>
+<a class="sourceLine" id="cb588-2" title="2">  <span class="st">&quot;Analytical randomisation&quot;</span> =<span class="st"> </span><span class="kw">unname</span>(mtr<span class="op">$</span>estimate[<span class="dv">3</span>]))</a></code></pre></div>
+<pre><code>#    Permutation bootstrap Analytical randomisation 
+#                 0.000144                 0.000140</code></pre>
+<p>Geary’s global <span class="math inline">\(C\)</span> is implemented in <code>geary.test()</code> largely following the same argument structure as <code>moran.test()</code>. The Getis-Ord <span class="math inline">\(G\)</span> test includes extra arguments to accommodate differences between implementations, as Bivand and Wong <span class="citation">(<a href="#ref-Bivand2018">2018</a>)</span> found multiple divergences from the original definitions, often to omit no-neighbour observations generated when using distance band neighbours. It is given by <span class="citation">(Getis and Ord <a href="#ref-getis+ord:92">1992</a>, 194)</span>. For <span class="math inline">\(G^*\)</span>, the <span class="math inline">\(\sum_{(2)}\)</span> constraint is relaxed by including <span class="math inline">\(i\)</span> as a neighbour of itself (thereby also removing the no-neighbour problem, because all observations have at least one neighbour).</p>
+<p>Finally, the empirical Bayes Moran’s <span class="math inline">\(I\)</span> takes account of the denominator in assessing spatial autocorrelation in rates data <span class="citation">(Assunção and Reis <a href="#ref-assuncao+reis:99">1999</a>)</span>. Until now, we have considered the proportion of valid votes cast in relation to the numbers entitled to vote by spatial entity, but using <code>EBImoran.mc()</code> we can try to accommodate uncertainty in extreme rates in entities with small numbers entitled to vote. There is, however, little impact on the outcome in this case.</p>
+<p>Global measures of spatial autocorrelation using spatial weights objects based on graphs of neighbours are, as we have seen, rather blunt tools, which for interpretation depend critically on a reasoned mean model of the variable in question. If the mean model is just the intercept, the global measures will respond to all kinds of mis-specification, not only spatial autocorrelation. The choice of entities for aggregation of data will typically be a key source of mis-specification.</p>
+</div>
+</div>
+<div id="local-measures" class="section level2 hasAnchor">
+<h2><span class="header-section-number">15.3</span> Local measures<a href="spatautocorr.html#local-measures" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s <span class="citation">(Anselin <a href="#ref-anselin:95">1995</a>; Getis and Ord <a href="#ref-getis+ord:92">1992</a>, <a href="#ref-getis+ord:96">1996</a>)</span>.</p>
+<p>In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable <span class="citation">(Anselin <a href="#ref-anselin:96">1996</a>)</span>. The <code>moran.plot()</code> function also returns an influence measures object used to label observations exerting more than proportional influence on the slope of the line representing global Moran’s <span class="math inline">\(I\)</span>. In figure <a href="spatautocorr.html#fig:moranplot">15.1</a>, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. In <code>moran.plot()</code>, the quadrants are split on the means of the variable and its spatial lag; alternative splits are on zero for the centred variable and the spatial lag of the centred variable.</p>
+
+<div class="sourceCode" id="cb590"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb590-1" title="1">I_turnout <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb590-2" title="2"><span class="st">    </span><span class="kw">moran.plot</span>(<span class="dt">listw =</span> lw_q_W, <span class="dt">labels =</span> pol_pres15<span class="op">$</span>TERYT, <span class="dt">cex =</span> <span class="dv">1</span>, <span class="dt">pch =</span> <span class="st">&quot;.&quot;</span>,</a>
+<a class="sourceLine" id="cb590-3" title="3">        <span class="dt">xlab =</span> <span class="st">&quot;I round turnout&quot;</span>, <span class="dt">ylab =</span> <span class="st">&quot;lagged turnout&quot;</span>) -&gt;<span class="st"> </span>infl_W</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:moranplot"></span>
+<img src="sds_files/figure-html/moranplot-1.png" alt="Moran plot of I round turnout, row standardised weights" width="100%" />
+<p class="caption">
+Figure 15.1: Moran plot of I round turnout, row standardised weights
+</p>
+</div>
+<p>If we extract the hat value influence measure from the returned object, Figure <a href="spatautocorr.html#fig:moranhat">15.2</a> suggests that some edge entities exert more than proportional influence (perhaps because of row standardisation), as do entities in or near larger urban areas.</p>
+
+<div class="sourceCode" id="cb591"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb591-1" title="1">pol_pres15<span class="op">$</span>hat_value &lt;-<span class="st"> </span>infl_W<span class="op">$</span>hat</a>
+<a class="sourceLine" id="cb591-2" title="2"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;hat_value&quot;</span>)</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:moranhat"></span>
+<img src="sds_files/figure-html/moranhat-1.png" alt="Moran plot hat values, row standardised neighbours" width="100%" />
+<p class="caption">
+Figure 15.2: Moran plot hat values, row standardised neighbours
+</p>
+</div>
+<div id="local-morans-i_i" class="section level3 hasAnchor">
+<h3><span class="header-section-number">15.3.1</span> Local Moran’s <span class="math inline">\(I_i\)</span><a href="spatautocorr.html#local-morans-i_i" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>Bivand and Wong <span class="citation">(<a href="#ref-Bivand2018">2018</a>)</span> discuss issues impacting the use of local indicators, such as local Moran’s <span class="math inline">\(I_i\)</span> and local Getis-Ord <span class="math inline">\(G_i\)</span>. Some issues affect the calculation of the local indicators, others inference from their values. Because <span class="math inline">\(n\)</span> statistics may be being calculated from the same number of observations, there are multiple comparison problems that need to be addressed. <span class="citation">Caldas de Castro and Singer (<a href="#ref-https://doi.org/10.1111/j.0016-7363.2006.00682.x">2006</a>)</span> conclude, based on a typical data set and a simulation exercise, that the false discovery rate (FDR) adjustment of probability values will certainly give a better picture of interesting clusters than no adjustment. Following this up, <span class="citation">Anselin (<a href="#ref-https://doi.org/10.1111/gean.12164">2019</a>)</span> explores the combination of FDR adjustments with the use of redefined “significance” cutoffs <span class="citation">(Benjamin et al. <a href="#ref-benjaminetal:18">2018</a>)</span>, for example <span class="math inline">\(0.01\)</span>, <span class="math inline">\(0.005\)</span> and <span class="math inline">\(0.001\)</span> instead of <span class="math inline">\(0.1\)</span>, <span class="math inline">\(0.05\)</span> and <span class="math inline">\(0.01\)</span>; the use of the term <em>interesting</em> rather than <em>significant</em> is also preferred. As in the global case, miss-specification remains a source of confusion, and, further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging <span class="citation">(Ord and Getis <a href="#ref-ord+getis:01">2001</a>; Tiefelsdorf <a href="#ref-tiefelsdorf:02">2002</a>; Bivand, Müller, and Reder <a href="#ref-bivandetal:09">2009</a>)</span>.</p>
+<div class="sourceCode" id="cb592"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb592-1" title="1"><span class="kw">args</span>(localmoran)</a></code></pre></div>
+<pre><code># function (x, listw, zero.policy = NULL, na.action = na.fail, 
+#     conditional = TRUE, alternative = &quot;two.sided&quot;, mlvar = TRUE, 
+#     spChk = NULL, adjust.x = FALSE) 
+# NULL</code></pre>
+<p>In an important clarification, <span class="citation">Sauer et al. (<a href="#ref-sauer_oshan_rey_wolf_2021">2021</a>)</span> show that the comparison of standard deviates for local Moran’s <span class="math inline">\(I_i\)</span> based on analytical formulae and conditional permutation in <span class="citation">Bivand and Wong (<a href="#ref-Bivand2018">2018</a>)</span> was based on a misunderstanding. <span class="citation">Sokal, Oden, and Thomson (<a href="#ref-sokaletal:98">1998</a>)</span> provide alternative analytical formulae for standard deviates of local Moran’s <span class="math inline">\(I_i\)</span> based either on total or conditional permutation, but the analytical formulae used in <span class="citation">Bivand and Wong (<a href="#ref-Bivand2018">2018</a>)</span>, based on earlier practice, only use total permutation, and consequently do not match the simulation conditional permutations. Thanks to a timely pull request, <code>localmoran()</code> now has a <code>conditional=</code> argument (default <code>TRUE</code>) using alternative formulae from the appendix of <span class="citation">Sokal, Oden, and Thomson (<a href="#ref-sokaletal:98">1998</a>)</span>. The <code>mlvar=</code> and <code>adjust.x=</code> arguments to <code>localmoran()</code> are discussed in <span class="citation">Bivand and Wong (<a href="#ref-Bivand2018">2018</a>)</span>, and permit matching with other implementations. Taking <code>"two.sided"</code> probability values (the default), we obtain:</p>
+<div class="sourceCode" id="cb594"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb594-1" title="1">I_turnout <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb594-2" title="2"><span class="st">    </span><span class="kw">localmoran</span>(<span class="dt">listw =</span> lw_q_W) -&gt;<span class="st"> </span>locm</a></code></pre></div>
+<p>The <span class="math inline">\(I_i\)</span> local indicators when summed and divided by the sum of the spatial weights equal global Moran’s <span class="math inline">\(I\)</span>, showing the possible presence of positive and negative local spatial autocorrelation:</p>
+<div class="sourceCode" id="cb595"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb595-1" title="1"><span class="kw">all.equal</span>(<span class="kw">sum</span>(locm[,<span class="dv">1</span>])<span class="op">/</span><span class="kw">Szero</span>(lw_q_W), <span class="kw">unname</span>(<span class="kw">moran.test</span>(I_turnout, lw_q_W)<span class="op">$</span>estimate[<span class="dv">1</span>]))</a></code></pre></div>
+<pre><code># [1] TRUE</code></pre>
+<p>Using <code>stats::p.adjust()</code> to adjust for multiple comparisons, we see that over 15% of the 2495 local measures have p-values &lt; 0.005 if no adjustment is applied, but only 1.5% using Bonferroni adjustment to control the familywise error rate, with two other choices shown: <code>"fdr"</code> is the <span class="citation">Benjamini and Hochberg (<a href="#ref-fdr-BH">1995</a>)</span> false discovery rate (almost 6%) and <code>"BY"</code> <span class="citation">(Benjamini and Yekutieli <a href="#ref-10.1214/aos/1013699998">2001</a>)</span>, another false discovery rate adjustment (about 2.5%):</p>
+<div class="sourceCode" id="cb597"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb597-1" title="1">pva &lt;-<span class="st"> </span><span class="cf">function</span>(pv) <span class="kw">cbind</span>(<span class="st">&quot;none&quot;</span> =<span class="st"> </span>pv, <span class="st">&quot;FDR&quot;</span> =<span class="st"> </span><span class="kw">p.adjust</span>(pv, <span class="st">&quot;fdr&quot;</span>),</a>
+<a class="sourceLine" id="cb597-2" title="2">    <span class="st">&quot;BY&quot;</span> =<span class="st"> </span><span class="kw">p.adjust</span>(pv, <span class="st">&quot;BY&quot;</span>), <span class="st">&quot;Bonferroni&quot;</span> =<span class="st"> </span><span class="kw">p.adjust</span>(pv, <span class="st">&quot;bonferroni&quot;</span>))</a>
+<a class="sourceLine" id="cb597-3" title="3">locm <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb597-4" title="4"><span class="st">    </span><span class="kw">subset</span>(<span class="dt">select =</span> <span class="st">&quot;Pr(z != E(Ii))&quot;</span>, <span class="dt">drop =</span> <span class="ot">TRUE</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb597-5" title="5"><span class="st">    </span><span class="kw">pva</span>() -&gt;<span class="st"> </span>pvsp</a>
+<a class="sourceLine" id="cb597-6" title="6">f &lt;-<span class="st"> </span><span class="cf">function</span>(x) <span class="kw">sum</span>(x <span class="op">&lt;</span><span class="st"> </span><span class="fl">0.005</span>)</a>
+<a class="sourceLine" id="cb597-7" title="7"><span class="kw">apply</span>(pvsp, <span class="dv">2</span>, f)</a></code></pre></div>
+<pre><code>#       none        FDR         BY Bonferroni 
+#        385        149         64         38</code></pre>
+<p>In the global measure case, bootstrap permutations may be used as an alternative to analytical methods for possible inference, where both the theoretical development of the analytical variance of the measure, and the permutation scheme, shuffle all of the observed values. In the local case, conditional permutation should be used, fixing the value at observation <span class="math inline">\(i\)</span> and randomly sampling from the remaining <span class="math inline">\(n-1\)</span> values to find randomised values at neighbours, and is provided as <code>localmoran_perm()</code>, which may use multiple compute nodes to sample in parallel if provided, and permits the setting of a seed for the random number generator across the compute nodes. The number of simulations <code>nsim=</code> also controls the precision of the ranked estimates of the probability value based on the rank of observed <span class="math inline">\(I_i\)</span> among the simulated values:</p>
+<div class="sourceCode" id="cb599"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb599-1" title="1"><span class="kw">library</span>(parallel)</a>
+<a class="sourceLine" id="cb599-2" title="2"><span class="kw">invisible</span>(spdep<span class="op">::</span><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L)))</a>
+<a class="sourceLine" id="cb599-3" title="3"><span class="kw">system.time</span>(I_turnout <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb599-4" title="4"><span class="st">        </span><span class="kw">localmoran_perm</span>(<span class="dt">listw =</span> lw_q_W, <span class="dt">nsim =</span> <span class="dv">9999</span>, <span class="dt">iseed =</span> <span class="dv">1</span>) -&gt;<span class="st"> </span>locm_p)</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   15.52    3.88    7.06</code></pre>
+<p>The outcome is that over 15% of observations have two sided p-values &lt; 0.005 without multiple comparison adjustment, and about 1.5% with Bonferroni adjustment, when the p-values are calculated using the standard deviate of the permutation samples and the normal distribution.</p>
+<div class="sourceCode" id="cb601"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb601-1" title="1">locm_p <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb601-2" title="2"><span class="st">    </span><span class="kw">subset</span>(<span class="dt">select =</span> <span class="st">&quot;Pr(z != E(Ii))&quot;</span>, <span class="dt">drop =</span> <span class="ot">TRUE</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb601-3" title="3"><span class="st">    </span><span class="kw">pva</span>() -&gt;<span class="st"> </span>pvsp</a>
+<a class="sourceLine" id="cb601-4" title="4"><span class="kw">apply</span>(pvsp, <span class="dv">2</span>, f)</a></code></pre></div>
+<pre><code>#       none        FDR         BY Bonferroni 
+#        379        149         63         40</code></pre>
+<p>Since the variable under analysis may not be normally distributed, the p-values can also be calculated by finding the rank of the observed <span class="math inline">\(I_i\)</span> among the rank-based simulated values, and looking up the probability value from the uniform distribution taking the <code>alternative=</code> choice into account:</p>
+<div class="sourceCode" id="cb603"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb603-1" title="1">locm_p <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb603-2" title="2"><span class="st">    </span><span class="kw">subset</span>(<span class="dt">select =</span> <span class="st">&quot;Pr(z != E(Ii)) Sim&quot;</span>, <span class="dt">drop =</span> <span class="ot">TRUE</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb603-3" title="3"><span class="st">    </span><span class="kw">pva</span>() -&gt;<span class="st"> </span>pvsp</a>
+<a class="sourceLine" id="cb603-4" title="4"><span class="kw">apply</span>(pvsp, <span class="dv">2</span>, f)</a></code></pre></div>
+<pre><code>#       none        FDR         BY Bonferroni 
+#        394        125          0          0</code></pre>
+<p>Now the <code>"BY"</code> and Bonferroni counts of <em>interesting</em> locations are zero with 9999 samples, but may be recovered by increasing the sample count to 999999 if required; the FDR adjustment and <em>interesting</em> cutoff 0.005 yields about 5% locations.</p>
+
+<div class="sourceCode" id="cb605"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb605-1" title="1">pol_pres15<span class="op">$</span>locm_pv &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(locm[, <span class="st">&quot;Pr(z != E(Ii))&quot;</span>], <span class="st">&quot;fdr&quot;</span>)</a>
+<a class="sourceLine" id="cb605-2" title="2">pol_pres15<span class="op">$</span>locm_std_pv &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(locm_p[, <span class="st">&quot;Pr(z != E(Ii))&quot;</span>], <span class="st">&quot;fdr&quot;</span>)</a>
+<a class="sourceLine" id="cb605-3" title="3">pol_pres15<span class="op">$</span>locm_p_pv &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(locm_p[, <span class="st">&quot;Pr(z != E(Ii)) Sim&quot;</span>], <span class="st">&quot;fdr&quot;</span>)</a>
+<a class="sourceLine" id="cb605-4" title="4"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;locm_pv&quot;</span>, <span class="st">&quot;locm_std_pv&quot;</span>, <span class="st">&quot;locm_p_pv&quot;</span>),</a>
+<a class="sourceLine" id="cb605-5" title="5">    <span class="dt">breaks=</span><span class="kw">c</span>(<span class="dv">0</span>, <span class="fl">0.0005</span>, <span class="fl">0.001</span>, <span class="fl">0.005</span>, <span class="fl">0.01</span>, <span class="fl">0.05</span>, <span class="fl">0.1</span>, <span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>, <span class="dv">1</span>), </a>
+<a class="sourceLine" id="cb605-6" title="6">    <span class="dt">title =</span> <span class="st">&quot;Pseudo p-values</span><span class="ch">\n</span><span class="st">Local Moran&#39;s I&quot;</span>, <span class="dt">palette=</span><span class="st">&quot;-YlOrBr&quot;</span>) <span class="op">+</span></a>
+<a class="sourceLine" id="cb605-7" title="7"><span class="st">    </span><span class="kw">tm_facets</span>(<span class="dt">free.scales =</span> <span class="ot">FALSE</span>, <span class="dt">ncol =</span> <span class="dv">2</span>) <span class="op">+</span></a>
+<a class="sourceLine" id="cb605-8" title="8"><span class="st">    </span><span class="kw">tm_layout</span>(<span class="dt">panel.labels =</span> <span class="kw">c</span>(<span class="st">&quot;Analytical conditional&quot;</span>, <span class="st">&quot;Permutation std. dev.&quot;</span>,</a>
+<a class="sourceLine" id="cb605-9" title="9">        <span class="st">&quot;Permutation rank&quot;</span>))</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:localmoranPr"></span>
+<img src="sds_files/figure-html/localmoranPr-1.png" alt="Local Moran’s I FDR probability values: left panel upper: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first round turnout, row-standardised neighbours" width="100%" />
+<p class="caption">
+Figure 15.3: Local Moran’s I FDR probability values: left panel upper: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first round turnout, row-standardised neighbours
+</p>
+</div>
+<p>Proceeding using the FDR adjustment and an <em>interesting</em> location cutoff of <span class="math inline">\(0.005\)</span>, we can see from Figure <a href="spatautocorr.html#fig:localmoranPr">15.3</a> that the adjusted probability values for the analytical conditional approach, the approach using the moments of the sampled values from permutation sampling, and the approach using the ranks of observed values among permutation samples all yield similar maps, as the input variable is quite close to normal.</p>
+<p>In presenting local Moran’s <span class="math inline">\(I\)</span>, use is often made of “hotspot” maps. Because <span class="math inline">\(I_i\)</span> takes high values both for strong positive autocorrelation of low and high values of the input variable, it is hard to show where “clusters” of similar neighbours with low or high values of the input variable occur. The quadrants of the Moran plot are used, by creating a categorical quadrant variable interacting the input variable and its spatial lag split at their means. The quadrant categories are then set to NA if, for the chosen probability value and adjustment, <span class="math inline">\(I_i\)</span> would not be considered <em>interesting</em>. Here, for the FDR adjusted conditional analytical probability values (Figure <a href="spatautocorr.html#fig:localmoranPr">15.3</a> upper left panel), 53 observations belong to <code>"Low-Low"</code> cluster cores, and 96 to <code>"High-High"</code> cluster cores, similarly for the standard deviate-based permutation p-values <a href="spatautocorr.html#fig:localmoranPr">15.3</a> upper right panel), but the rank-based permutation p-values reduce the <code>"High-High"</code> count and increase the <code>"Low-Low"</code> count <a href="spatautocorr.html#fig:localmoranPr">15.3</a> lower left panel):</p>
+<div class="sourceCode" id="cb606"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb606-1" title="1">quadr &lt;-<span class="st"> </span><span class="kw">attr</span>(locm, <span class="st">&quot;quadr&quot;</span>)<span class="op">$</span>mean</a>
+<a class="sourceLine" id="cb606-2" title="2">a &lt;-<span class="st"> </span><span class="kw">table</span>(<span class="kw">addNA</span>(quadr))</a>
+<a class="sourceLine" id="cb606-3" title="3">pol_pres15<span class="op">$</span>hs_an_q &lt;-<span class="st"> </span>pol_pres15<span class="op">$</span>hs_ac_q &lt;-<span class="st"> </span>pol_pres15<span class="op">$</span>hs_cp_q &lt;-<span class="st"> </span>quadr</a>
+<a class="sourceLine" id="cb606-4" title="4"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_an_q) &lt;-<span class="st"> </span>pol_pres15<span class="op">$</span>locm_pv <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb606-5" title="5">b &lt;-<span class="st"> </span><span class="kw">table</span>(<span class="kw">addNA</span>(pol_pres15<span class="op">$</span>hs_an_q))</a>
+<a class="sourceLine" id="cb606-6" title="6"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_ac_q) &lt;-<span class="st"> </span>pol_pres15<span class="op">$</span>locm_std_pv <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb606-7" title="7">c &lt;-<span class="st"> </span><span class="kw">table</span>(<span class="kw">addNA</span>(pol_pres15<span class="op">$</span>hs_ac_q))</a>
+<a class="sourceLine" id="cb606-8" title="8"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_cp_q) &lt;-<span class="st"> </span>pol_pres15<span class="op">$</span>locm_p_pv <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb606-9" title="9">d &lt;-<span class="st"> </span><span class="kw">table</span>(<span class="kw">addNA</span>(pol_pres15<span class="op">$</span>hs_cp_q))</a>
+<a class="sourceLine" id="cb606-10" title="10"><span class="kw">t</span>(<span class="kw">rbind</span>(<span class="st">&quot;Moran plot quadrants&quot;</span> =<span class="st"> </span>a, <span class="st">&quot;Analytical cond.&quot;</span> =<span class="st"> </span>b, </a>
+<a class="sourceLine" id="cb606-11" title="11">    <span class="st">&quot;Permutation std. cond.&quot;</span> =<span class="st"> </span>c, <span class="st">&quot;Permutation rank cond.&quot;</span> =<span class="st"> </span>d))</a></code></pre></div>
+<pre><code>#           Moran plot quadrants Analytical cond. Permutation std. cond.
+# Low-Low                   1040               53                     53
+# High-Low                   264                0                      0
+# Low-High                   213                0                      0
+# High-High                  978               96                     96
+# &lt;NA&gt;                         0             2346                   2346
+#           Permutation rank cond.
+# Low-Low                       55
+# High-Low                       0
+# Low-High                       0
+# High-High                     70
+# &lt;NA&gt;                        2370</code></pre>
+<div class="sourceCode" id="cb608"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb608-1" title="1">pol_pres15<span class="op">$</span>hs_an_q &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>hs_an_q)</a>
+<a class="sourceLine" id="cb608-2" title="2">pol_pres15<span class="op">$</span>hs_ac_q &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>hs_ac_q)</a>
+<a class="sourceLine" id="cb608-3" title="3">pol_pres15<span class="op">$</span>hs_cp_q &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>hs_cp_q)</a></code></pre></div>
+
+<div class="sourceCode" id="cb609"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb609-1" title="1"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;hs_an_q&quot;</span>, <span class="st">&quot;hs_ac_q&quot;</span>, <span class="st">&quot;hs_cp_q&quot;</span>), <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>,</a>
+<a class="sourceLine" id="cb609-2" title="2">    <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>, <span class="dt">title=</span><span class="st">&quot;Turnout hotspot status</span><span class="ch">\n</span><span class="st">Local Moran&#39;s I&quot;</span>,</a>
+<a class="sourceLine" id="cb609-3" title="3">    <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>, <span class="st">&quot;Set3&quot;</span>)[<span class="op">-</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>)]) <span class="op">+</span></a>
+<a class="sourceLine" id="cb609-4" title="4"><span class="st">    </span><span class="kw">tm_facets</span>(<span class="dt">free.scales=</span><span class="ot">FALSE</span>, <span class="dt">ncol=</span><span class="dv">2</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_layout</span>(<span class="dt">panel.labels=</span></a>
+<a class="sourceLine" id="cb609-5" title="5">            <span class="kw">c</span>(<span class="st">&quot;Analytical conditional&quot;</span>, <span class="st">&quot;Permutation std. cond.&quot;</span>, </a>
+<a class="sourceLine" id="cb609-6" title="6">              <span class="st">&quot;Permutation rank cond.&quot;</span>))</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:Iihotspots"></span>
+<img src="sds_files/figure-html/Iihotspots-1.png" alt="Local Moran’s I FDR hotspot cluster core maps \(\alpha = 0.005\): left panel upper: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first round turnout, row-standardised neighbours" width="100%" />
+<p class="caption">
+Figure 15.4: Local Moran’s I FDR hotspot cluster core maps <span class="math inline">\(\alpha = 0.005\)</span>: left panel upper: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first round turnout, row-standardised neighbours
+</p>
+</div>
+<p>Figure <a href="spatautocorr.html#fig:Iihotspots">15.4</a> shows that there is very little difference between the FDR-adjusted <em>interesting</em> clusters with a choice of an <span class="math inline">\(\alpha=0.005\)</span> probability value cutoff for the three approaches of analytical conditional standard deviates, permutation-based standard deviates, and rank-based probability values; the <code>"High-High"</code> cluster cores are metropolitan areas.</p>
+<p><span class="citation">Tiefelsdorf (<a href="#ref-tiefelsdorf:02">2002</a>)</span> argues that standard approaches to the calculation of the standard deviates of local Moran’s <span class="math inline">\(I_i\)</span> should be supplemented by numerical estimates, and shows that Saddlepoint approximations are a computationally efficient way of achieving this goal. The <code>localmoran.sad()</code> function takes a fitted linear model as its first argument, so we first fit a null (intercept only) model, but use case weights because the numbers entitled to vote vary greatly between observations:</p>
+<div class="sourceCode" id="cb610"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb610-1" title="1"><span class="kw">lm</span>(I_turnout <span class="op">~</span><span class="st"> </span><span class="dv">1</span>) -&gt;<span class="st"> </span>lm_null</a></code></pre></div>
+<p>Saddlepoint approximation is as computationally intensive as conditional permutation, because, rather than computing a simple measure on many samples, a good deal of numerical calculation is needed for each local approximation:</p>
+<div class="sourceCode" id="cb611"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb611-1" title="1"><span class="kw">invisible</span>(spdep<span class="op">::</span><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L)))</a>
+<a class="sourceLine" id="cb611-2" title="2"><span class="kw">system.time</span>(lm_null <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">localmoran.sad</span>(<span class="dt">nb =</span> nb_q, <span class="dt">style =</span> <span class="st">&quot;W&quot;</span>, <span class="dt">alternative =</span> <span class="st">&quot;two.sided&quot;</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb611-3" title="3"><span class="st">        </span><span class="kw">summary</span>() -&gt;<span class="st"> </span>locm_sad_null)</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   35.19   11.81    8.05</code></pre>
+<p>The chief advantage of the Saddlepoint approximation is that it takes a fitted linear model rather than simply a numerical variable, so the residuals are analysed. With an intercept-only model, the results are similar to local Moran’s <span class="math inline">\(I_i\)</span>, but we can weight the observations, here by the count of those entitled to vote, which should down-weight small units of observation:</p>
+<div class="sourceCode" id="cb613"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb613-1" title="1"><span class="kw">lm</span>(I_turnout <span class="op">~</span><span class="st"> </span><span class="dv">1</span>, <span class="dt">weights =</span> pol_pres15<span class="op">$</span>I_entitled_to_vote) -&gt;<span class="st"> </span>lm_null_weights</a>
+<a class="sourceLine" id="cb613-2" title="2"><span class="kw">invisible</span>(spdep<span class="op">::</span><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L)))</a>
+<a class="sourceLine" id="cb613-3" title="3"><span class="kw">system.time</span>(lm_null_weights <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">localmoran.sad</span>(<span class="dt">nb =</span> nb_q, <span class="dt">style =</span> <span class="st">&quot;W&quot;</span>, <span class="dt">alternative =</span> <span class="st">&quot;two.sided&quot;</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb613-4" title="4"><span class="st">        </span><span class="kw">summary</span>() -&gt;<span class="st"> </span>locm_sad_null_weights)</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   39.30   12.52    9.15</code></pre>
+<p>Next we add the categorical variable distinguishing between rural, urban and other types of observational unit:</p>
+<div class="sourceCode" id="cb615"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb615-1" title="1"><span class="kw">lm</span>(I_turnout <span class="op">~</span><span class="st"> </span>Types, <span class="dt">weights=</span>pol_pres15<span class="op">$</span>I_entitled_to_vote) -&gt;<span class="st"> </span>lm_types</a>
+<a class="sourceLine" id="cb615-2" title="2"><span class="kw">invisible</span>(spdep<span class="op">::</span><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L)))</a>
+<a class="sourceLine" id="cb615-3" title="3"><span class="kw">system.time</span>(lm_types <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">localmoran.sad</span>(<span class="dt">nb =</span> nb_q, <span class="dt">style =</span> <span class="st">&quot;W&quot;</span>, <span class="dt">alternative =</span> <span class="st">&quot;two.sided&quot;</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb615-4" title="4"><span class="st">        </span><span class="kw">summary</span>() -&gt;<span class="st"> </span>locm_sad_types)</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   42.64   12.95    9.31</code></pre>
+
+<div class="sourceCode" id="cb617"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb617-1" title="1">pol_pres15<span class="op">$</span>locm_sad0 &lt;-<span class="st"> </span>pol_pres15<span class="op">$</span>locm_sad1 &lt;-<span class="st"> </span>pol_pres15<span class="op">$</span>locm_sad2 &lt;-<span class="st"> </span>quadr</a>
+<a class="sourceLine" id="cb617-2" title="2"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>locm_sad0) &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(locm_sad_null[, <span class="st">&quot;Pr. (Sad)&quot;</span>], <span class="st">&quot;fdr&quot;</span>)  <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb617-3" title="3">pol_pres15<span class="op">$</span>locm_sad0 &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>locm_sad0)</a>
+<a class="sourceLine" id="cb617-4" title="4"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>locm_sad1) &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(locm_sad_null_weights[,</a>
+<a class="sourceLine" id="cb617-5" title="5">    <span class="st">&quot;Pr. (Sad)&quot;</span>], <span class="st">&quot;fdr&quot;</span>) <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb617-6" title="6">pol_pres15<span class="op">$</span>locm_sad1 &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>locm_sad1)</a>
+<a class="sourceLine" id="cb617-7" title="7"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>locm_sad2) &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(locm_sad_types[, <span class="st">&quot;Pr. (Sad)&quot;</span>], <span class="st">&quot;fdr&quot;</span>) <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb617-8" title="8">pol_pres15<span class="op">$</span>locm_sad2 &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>locm_sad2)</a>
+<a class="sourceLine" id="cb617-9" title="9"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;hs_cp_q&quot;</span>, <span class="st">&quot;locm_sad0&quot;</span>, <span class="st">&quot;locm_sad1&quot;</span>,  <span class="st">&quot;locm_sad2&quot;</span>),</a>
+<a class="sourceLine" id="cb617-10" title="10">    <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>,</a>
+<a class="sourceLine" id="cb617-11" title="11">    <span class="dt">title=</span><span class="st">&quot;Turnout hotspot status</span><span class="ch">\n</span><span class="st">Local Moran&#39;s I&quot;</span>,</a>
+<a class="sourceLine" id="cb617-12" title="12">    <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>, <span class="st">&quot;Set3&quot;</span>)[<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">2</span>)]) <span class="op">+</span></a>
+<a class="sourceLine" id="cb617-13" title="13"><span class="st">    </span><span class="kw">tm_facets</span>(<span class="dt">free.scales =</span> <span class="ot">FALSE</span>, <span class="dt">ncol =</span> <span class="dv">2</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_layout</span>(<span class="dt">panel.labels =</span> <span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb617-14" title="14">        <span class="st">&quot;Permutation rank&quot;</span>,</a>
+<a class="sourceLine" id="cb617-15" title="15">        <span class="st">&quot;Saddlepoint null&quot;</span>,</a>
+<a class="sourceLine" id="cb617-16" title="16">        <span class="st">&quot;Saddlepoint weighted null&quot;</span>,</a>
+<a class="sourceLine" id="cb617-17" title="17">        <span class="st">&quot;Saddlepoint weighted types&quot;</span>))</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:localmoranHsad"></span>
+<img src="sds_files/figure-html/localmoranHsad-1.png" alt="Local Moran’s I FDR hotspot cluster core maps, two-sided, interesting cutoff \(\alpha = 0.005\): left panel upper: permutation rank conditional p-values; right upper panel: null (intercept only) model Saddlepoint p-values; left lower panel: weighted null (intercept only) model Saddlepoint p-values; right lower panel: weighted types model Saddlepoint p-values, for first round turnout, row-standardised neighbours" width="100%" />
+<p class="caption">
+Figure 15.5: Local Moran’s I FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left panel upper: permutation rank conditional p-values; right upper panel: null (intercept only) model Saddlepoint p-values; left lower panel: weighted null (intercept only) model Saddlepoint p-values; right lower panel: weighted types model Saddlepoint p-values, for first round turnout, row-standardised neighbours
+</p>
+</div>
+<div class="sourceCode" id="cb618"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb618-1" title="1"><span class="kw">rbind</span>(<span class="dt">null=</span><span class="kw">append</span>(<span class="kw">table</span>(<span class="kw">addNA</span>(pol_pres15<span class="op">$</span>locm_sad0)), <span class="kw">c</span>(<span class="st">&quot;Low-High&quot;</span>=<span class="dv">0</span>), <span class="dv">1</span>),</a>
+<a class="sourceLine" id="cb618-2" title="2">    <span class="dt">weighted=</span><span class="kw">append</span>(<span class="kw">table</span>(<span class="kw">addNA</span>(pol_pres15<span class="op">$</span>locm_sad1)), <span class="kw">c</span>(<span class="st">&quot;Low-High&quot;</span>=<span class="dv">0</span>), <span class="dv">1</span>),</a>
+<a class="sourceLine" id="cb618-3" title="3">    <span class="dt">type_weighted=</span><span class="kw">table</span>(<span class="kw">addNA</span>(pol_pres15<span class="op">$</span>locm_sad2)))</a></code></pre></div>
+<pre><code>#               Low-Low Low-High High-High &lt;NA&gt;
+# null               19        0        55 2421
+# weighted            9        0        52 2434
+# type_weighted      10        3        81 2401</code></pre>
+<p>Figure <a href="spatautocorr.html#fig:localmoranHsad">15.5</a> includes the permutation rank cluster cores for comparison (upper left panel). Because Saddlepoint approximation permits richer mean models to be used, and possibly because the approximation approach is inherently local, relating regression residual values at <span class="math inline">\(i\)</span> to those of its neighbours, the remaining three panels diverge somewhat. The intercept-only (null) model is fairly similar to standard local Moran’s <span class="math inline">\(I_i\)</span>, but weighting by counts of eligible voters removes most of the <code>"Low-Low"</code> cluster cores. Adding the type categorical variable strengthens the urban <code>"High-High"</code> cluster cores, but removes the Warsaw boroughs as <em>interesting</em> cluster cores. The central boroughs are surrounded by other boroughs, all with high turnout, not driven by autocorrelation but by being metropolitan boroughs. It is also possible to use Saddlepoint approximation where the global spatial process has been incorporated, removing the conflation of global and local spatial autocorrelation in standard approaches.</p>
+<p>The same can also be accomplished using exact methods, but may require more tuning as numerical integration may fail, returning <code>NaN</code> rather than the exact estimate of the standard deviate <span class="citation">(Bivand, Müller, and Reder <a href="#ref-bivandetal:09">2009</a>)</span>:</p>
+<div class="sourceCode" id="cb620"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb620-1" title="1"><span class="kw">invisible</span>(spdep<span class="op">::</span><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L)))</a>
+<a class="sourceLine" id="cb620-2" title="2"><span class="kw">system.time</span>(lm_types <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">localmoran.exact</span>(<span class="dt">nb =</span> nb_q, <span class="dt">style =</span> <span class="st">&quot;W&quot;</span>, </a>
+<a class="sourceLine" id="cb620-3" title="3">    <span class="dt">alternative =</span> <span class="st">&quot;two.sided&quot;</span>, <span class="dt">useTP=</span><span class="ot">TRUE</span>, <span class="dt">truncErr=</span><span class="fl">1e-8</span>) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb620-4" title="4"><span class="st">        </span><span class="kw">as.data.frame</span>() -&gt;<span class="st"> </span>locm_ex_types)</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   40.08    9.60    8.56</code></pre>
+
+<div class="sourceCode" id="cb622"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb622-1" title="1">pol_pres15<span class="op">$</span>locm_ex &lt;-<span class="st"> </span>quadr</a>
+<a class="sourceLine" id="cb622-2" title="2"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>locm_ex) &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(locm_ex_types[, <span class="st">&quot;Pr. (exact)&quot;</span>], <span class="st">&quot;fdr&quot;</span>) <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb622-3" title="3">pol_pres15<span class="op">$</span>locm_ex &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>locm_ex)</a>
+<a class="sourceLine" id="cb622-4" title="4"><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="kw">c</span>(<span class="st">&quot;locm_sad2&quot;</span>, <span class="st">&quot;locm_ex&quot;</span>),</a>
+<a class="sourceLine" id="cb622-5" title="5">    <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>,</a>
+<a class="sourceLine" id="cb622-6" title="6">    <span class="dt">title=</span><span class="st">&quot;Turnout hotspot status</span><span class="ch">\n</span><span class="st">Local Moran&#39;s I&quot;</span>,</a>
+<a class="sourceLine" id="cb622-7" title="7">    <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>, <span class="st">&quot;Set3&quot;</span>)[<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">4</span>)]) <span class="op">+</span></a>
+<a class="sourceLine" id="cb622-8" title="8"><span class="st">    </span><span class="kw">tm_facets</span>(<span class="dt">free.scales =</span> <span class="ot">FALSE</span>, <span class="dt">ncol =</span> <span class="dv">2</span>) <span class="op">+</span><span class="st"> </span><span class="kw">tm_layout</span>(<span class="dt">panel.labels =</span> <span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb622-9" title="9">        <span class="st">&quot;Saddlepoint weighted types&quot;</span>,</a>
+<a class="sourceLine" id="cb622-10" title="10">        <span class="st">&quot;Exact weighted types&quot;</span>))</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:localmoranHsadex"></span>
+<img src="sds_files/figure-html/localmoranHsadex-1.png" alt="Local Moran’s I FDR hotspot cluster core maps, two-sided, interesting cutoff \(\alpha = 0.005\): left panel: weighted types model Saddlepoint p-values; right panel: weighted types model exact p-values, for first round turnout, row-standardised neighbours" width="100%" />
+<p class="caption">
+Figure 15.6: Local Moran’s I FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left panel: weighted types model Saddlepoint p-values; right panel: weighted types model exact p-values, for first round turnout, row-standardised neighbours
+</p>
+</div>
+<p>As Figure <a href="spatautocorr.html#fig:localmoranHsadex">15.6</a> shows, the exact and Saddlepoint approximation methods yield almost identical cluster classifications from the same regression residuals, multiple comparison adjustment method and cutoff level, with the exact method returning four more <em>interesting</em> observations:</p>
+<div class="sourceCode" id="cb623"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb623-1" title="1"><span class="kw">table</span>(<span class="dt">Saddlepoint=</span><span class="kw">addNA</span>(pol_pres15<span class="op">$</span>locm_sad2), <span class="dt">exact=</span><span class="kw">addNA</span>(pol_pres15<span class="op">$</span>locm_ex))</a></code></pre></div>
+<pre><code>#            exact
+# Saddlepoint Low-Low Low-High High-High &lt;NA&gt;
+#   Low-Low        10        0         0    0
+#   Low-High        0        3         0    0
+#   High-High       0        0        81    0
+#   &lt;NA&gt;            2        0         2 2397</code></pre>
+</div>
+<div id="local-getis-ord-g_i" class="section level3 hasAnchor">
+<h3><span class="header-section-number">15.3.2</span> Local Getis-Ord <span class="math inline">\(G_i\)</span><a href="spatautocorr.html#local-getis-ord-g_i" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>The local Getis-Ord <span class="math inline">\(G_i\)</span> measure <span class="citation">(Getis and Ord <a href="#ref-getis+ord:92">1992</a>, <a href="#ref-getis+ord:96">1996</a>)</span> is reported as a standard deviate, and may also take the <span class="math inline">\(G^*_i\)</span> form where self-neighbours are inserted into the neighbour object using <code>include.self()</code>. The observed and expected values of local <span class="math inline">\(G\)</span> with their analytical variances may also be returned if <code>return_internals=TRUE</code>.</p>
+<div class="sourceCode" id="cb625"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb625-1" title="1"><span class="kw">system.time</span>(I_turnout <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb625-2" title="2"><span class="st">        </span><span class="kw">localG</span>(lw_q_W, <span class="dt">return_internals=</span><span class="ot">TRUE</span>) -&gt;<span class="st"> </span>locG)</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   0.013   0.000   0.014</code></pre>
+<p>Permutation inference is also available for this measure:</p>
+<div class="sourceCode" id="cb627"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb627-1" title="1"><span class="kw">invisible</span>(spdep<span class="op">::</span><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L)))</a>
+<a class="sourceLine" id="cb627-2" title="2"><span class="kw">system.time</span>(I_turnout <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb627-3" title="3"><span class="st">        </span><span class="kw">localG_perm</span>(lw_q_W, <span class="dt">nsim =</span> <span class="dv">9999</span>, <span class="dt">iseed =</span> <span class="dv">1</span>) -&gt;<span class="st"> </span>locG_p)</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   21.29    4.69    7.21</code></pre>
+<p>The correlation between the two-sided probability values for analytical and permutation-based standard deviates (first two columns and rows) and permutation rank-based probability values are very strong:</p>
+<div class="sourceCode" id="cb629"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb629-1" title="1"><span class="kw">cor</span>(<span class="kw">cbind</span>(<span class="dt">localG=</span><span class="kw">attr</span>(locG, <span class="st">&quot;internals&quot;</span>)[, <span class="st">&quot;Pr(z != E(Gi))&quot;</span>], </a>
+<a class="sourceLine" id="cb629-2" title="2">    <span class="kw">attr</span>(locG_p, <span class="st">&quot;internals&quot;</span>)[, <span class="kw">c</span>(<span class="st">&quot;Pr(z != E(Gi))&quot;</span>, <span class="st">&quot;Pr(z != E(Gi)) Sim&quot;</span>)]))</a></code></pre></div>
+<pre><code>#                    localG Pr(z != E(Gi)) Pr(z != E(Gi)) Sim
+# localG                  1              1                  1
+# Pr(z != E(Gi))          1              1                  1
+# Pr(z != E(Gi)) Sim      1              1                  1</code></pre>
+</div>
+<div id="local-gearys-c_i" class="section level3 hasAnchor">
+<h3><span class="header-section-number">15.3.3</span> Local Geary’s <span class="math inline">\(C_i\)</span><a href="spatautocorr.html#local-gearys-c_i" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p><span class="citation">Anselin (<a href="#ref-https://doi.org/10.1111/gean.12164">2019</a>)</span> extends <span class="citation">Anselin (<a href="#ref-anselin:95">1995</a>)</span>, and has been recently added to <strong>spdep</strong> thanks to contributions by Josiah Parry (pull request <a href="https://github.com/r-spatial/spdep/pull/66" class="uri">https://github.com/r-spatial/spdep/pull/66</a> and subsequent). The conditional permutation framework used for <span class="math inline">\(I_i\)</span> and <span class="math inline">\(G_i\)</span> is also used for <span class="math inline">\(C_i\)</span>:</p>
+<div class="sourceCode" id="cb631"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb631-1" title="1"><span class="kw">invisible</span>(spdep<span class="op">::</span><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L)))</a>
+<a class="sourceLine" id="cb631-2" title="2"><span class="kw">system.time</span>(I_turnout <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb631-3" title="3"><span class="st">        </span><span class="kw">localC_perm</span>(lw_q_W, <span class="dt">nsim=</span><span class="dv">9999</span>, <span class="dt">iseed=</span><span class="dv">1</span>) -&gt;<span class="st"> </span>locC_p)</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   33.39    7.65    7.50</code></pre>
+<p>The permutation standard deviate-based and rank-based probability values are not as highly correlated as for <span class="math inline">\(G_i\)</span>, in part reflecting the difference in view of autocorrelation in <span class="math inline">\(C_i\)</span> as represented by a function of the differences between values rather than the products of values:</p>
+<div class="sourceCode" id="cb633"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb633-1" title="1"><span class="kw">cor</span>(<span class="kw">attr</span>(locC_p, <span class="st">&quot;pseudo-p&quot;</span>)[, <span class="kw">c</span>(<span class="st">&quot;Pr(z != E(Ci))&quot;</span>, <span class="st">&quot;Pr(z != E(Ci)) Sim&quot;</span>)])</a></code></pre></div>
+<pre><code>#                    Pr(z != E(Ci)) Pr(z != E(Ci)) Sim
+# Pr(z != E(Ci))              1.000              0.966
+# Pr(z != E(Ci)) Sim          0.966              1.000</code></pre>
+<div class="sourceCode" id="cb635"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb635-1" title="1">pol_pres15<span class="op">$</span>hs_C &lt;-<span class="st"> </span><span class="kw">attr</span>(locC_p, <span class="st">&quot;cluster&quot;</span>)</a>
+<a class="sourceLine" id="cb635-2" title="2"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_C) &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(<span class="kw">attr</span>(locC_p, <span class="st">&quot;pseudo-p&quot;</span>)[,<span class="st">&quot;Pr(z != E(Ci)) Sim&quot;</span>], <span class="st">&quot;fdr&quot;</span>) <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb635-3" title="3">pol_pres15<span class="op">$</span>hs_C &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>hs_C)</a></code></pre></div>
+<div class="sourceCode" id="cb636"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb636-1" title="1">pol_pres15<span class="op">$</span>hs_G &lt;-<span class="st"> </span><span class="kw">cut</span>(I_turnout, <span class="kw">c</span>(<span class="op">-</span><span class="ot">Inf</span>, <span class="kw">mean</span>(I_turnout), <span class="ot">Inf</span>), </a>
+<a class="sourceLine" id="cb636-2" title="2">    <span class="dt">labels =</span> <span class="kw">c</span>(<span class="st">&quot;Low&quot;</span>, <span class="st">&quot;High&quot;</span>))</a>
+<a class="sourceLine" id="cb636-3" title="3"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_G) &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(<span class="kw">attr</span>(locG_p, <span class="st">&quot;internals&quot;</span>)[,<span class="st">&quot;Pr(z != E(Gi))&quot;</span>], <span class="st">&quot;fdr&quot;</span>) <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb636-4" title="4">pol_pres15<span class="op">$</span>hs_G &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>hs_G)</a></code></pre></div>
+
+<div class="sourceCode" id="cb637"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb637-1" title="1">m1 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;hs_cp_q&quot;</span>, <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>,</a>
+<a class="sourceLine" id="cb637-2" title="2">    <span class="st">&quot;Set3&quot;</span>)[<span class="op">-</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>)], <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>,</a>
+<a class="sourceLine" id="cb637-3" title="3">    <span class="dt">title=</span><span class="st">&quot;Turnout hotspot status</span><span class="ch">\n</span><span class="st">Local Moran I&quot;</span>)</a>
+<a class="sourceLine" id="cb637-4" title="4">m2 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;hs_G&quot;</span>, <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>,</a>
+<a class="sourceLine" id="cb637-5" title="5">    <span class="st">&quot;Set3&quot;</span>)[<span class="op">-</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>)], <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>,</a>
+<a class="sourceLine" id="cb637-6" title="6">    <span class="dt">title=</span><span class="st">&quot;Turnout hotspot status</span><span class="ch">\n</span><span class="st">Local Getis/Ord G&quot;</span>)</a>
+<a class="sourceLine" id="cb637-7" title="7">m3 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;hs_C&quot;</span>, <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>,</a>
+<a class="sourceLine" id="cb637-8" title="8">    <span class="st">&quot;Set3&quot;</span>)[<span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">1</span>)], <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>,</a>
+<a class="sourceLine" id="cb637-9" title="9">    <span class="dt">title=</span><span class="st">&quot;Turnout hotspot status</span><span class="ch">\n</span><span class="st">Local Geary C&quot;</span>)</a>
+<a class="sourceLine" id="cb637-10" title="10"><span class="kw">tmap_arrange</span>(m1, m2, m3, <span class="dt">nrow=</span><span class="dv">1</span>)</a></code></pre></div>
+<pre><code># Some legend labels were too wide. These labels have been resized to 0.49. Increase legend.width (argument of tm_layout) to make the legend wider and therefore the labels larger.
+# Some legend labels were too wide. These labels have been resized to 0.49. Increase legend.width (argument of tm_layout) to make the legend wider and therefore the labels larger.
+# Some legend labels were too wide. These labels have been resized to 0.49. Increase legend.width (argument of tm_layout) to make the legend wider and therefore the labels larger.</code></pre>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:localIGC"></span>
+<img src="sds_files/figure-html/localIGC-1.png" alt="FDR hotspot cluster core maps, two-sided, interesting cutoff \(\alpha = 0.005\): left panel: local Moran’s \(I_i\); centre panel: local Getis-Ord \(G_i\); right panel: local Geary’s \(C_i\); first round turnout, row-standardised neighbours" width="100%" />
+<p class="caption">
+Figure 15.7: FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left panel: local Moran’s <span class="math inline">\(I_i\)</span>; centre panel: local Getis-Ord <span class="math inline">\(G_i\)</span>; right panel: local Geary’s <span class="math inline">\(C_i\)</span>; first round turnout, row-standardised neighbours
+</p>
+</div>
+<p>Figure <a href="spatautocorr.html#fig:localIGC">15.7</a> shows that the cluster cores identified as <em>interesting</em> using <span class="math inline">\(I_i\)</span>, <span class="math inline">\(G_i\)</span> and <span class="math inline">\(C_i\)</span> for the same variable, first round turnout, and the same spatial weights, for rank-based permutation FDR adjusted probability values and an <span class="math inline">\(\alpha = 0.005\)</span> cutoff, are very similar. In most cases, the <code>"High-High"</code> cluster cores are urban areas, and <code>"Low-Low"</code> cores are sparsely populated rural areas in the North, in addition to the German national minority areas close to the southern border. The three measures use slightly different strategies for naming cluster cores: <span class="math inline">\(I_i\)</span> uses quadrants of the Moran scatterplot, <span class="math inline">\(G_i\)</span> splits into <code>"Low"</code> and <code>"High"</code> on the mean of the input variable (which is the same as the first component in the <span class="math inline">\(I_i\)</span> tuple), and univariate <span class="math inline">\(C_i\)</span> on the mean of the input variable and zero for its lag. As before, cluster categories that do not occur are dropped.</p>
+<p>For comparison, and before moving to multivariate <span class="math inline">\(C_i\)</span>, let us take the univariate <span class="math inline">\(C_i\)</span> for the second (final) round turnout. One would expect that the run-off between the two top candidates from the first round might mobilise some voters who did not have a clear first-round preference, but discourage some of those with strong loyalty to a candidate eliminated after the first round:</p>
+<div class="sourceCode" id="cb639"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb639-1" title="1"><span class="kw">invisible</span>(spdep<span class="op">::</span><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L)))</a>
+<a class="sourceLine" id="cb639-2" title="2"><span class="kw">system.time</span>(pol_pres15 <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb639-3" title="3"><span class="st">        </span><span class="kw">st_drop_geometry</span>() <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb639-4" title="4"><span class="st">        </span><span class="kw">subset</span>(<span class="dt">select =</span> II_turnout) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb639-5" title="5"><span class="st">        </span><span class="kw">localC_perm</span>(lw_q_W, <span class="dt">nsim=</span><span class="dv">9999</span>, <span class="dt">iseed=</span><span class="dv">1</span>) -&gt;<span class="st"> </span>locC_p_II)</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   32.93    7.10    8.64</code></pre>
+<div class="sourceCode" id="cb641"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb641-1" title="1">pol_pres15<span class="op">$</span>hs_C_II &lt;-<span class="st"> </span><span class="kw">attr</span>(locC_p_II, <span class="st">&quot;cluster&quot;</span>)</a>
+<a class="sourceLine" id="cb641-2" title="2"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_C_II) &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(<span class="kw">attr</span>(locC_p_II, <span class="st">&quot;pseudo-p&quot;</span>)[,<span class="st">&quot;Pr(z != E(Ci)) Sim&quot;</span>], <span class="st">&quot;fdr&quot;</span>) <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb641-3" title="3">pol_pres15<span class="op">$</span>hs_C_II &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>hs_C_II)</a></code></pre></div>
+<p>Multivariate <span class="math inline">\(C_i\)</span> <span class="citation">(Anselin <a href="#ref-https://doi.org/10.1111/gean.12164">2019</a>)</span> is taken as the sum of univariate <span class="math inline">\(C_i\)</span> divided by the number of variables, but permutation is fixed so that the correlation between the variables is unchanged:</p>
+<div class="sourceCode" id="cb642"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb642-1" title="1"><span class="kw">invisible</span>(spdep<span class="op">::</span><span class="kw">set.coresOption</span>(<span class="kw">ifelse</span>(<span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, <span class="kw">detectCores</span>()<span class="op">-</span>1L)))</a>
+<a class="sourceLine" id="cb642-2" title="2"><span class="kw">system.time</span>(pol_pres15 <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb642-3" title="3"><span class="st">        </span><span class="kw">st_drop_geometry</span>() <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb642-4" title="4"><span class="st">        </span><span class="kw">subset</span>(<span class="dt">select =</span> <span class="kw">c</span>(I_turnout, II_turnout)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb642-5" title="5"><span class="st">        </span><span class="kw">localC_perm</span>(lw_q_W, <span class="dt">nsim=</span><span class="dv">9999</span>, <span class="dt">iseed=</span><span class="dv">1</span>) -&gt;<span class="st"> </span>locMvC_p)</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   33.68   10.19    9.72</code></pre>
+<p>Let us check that the multivariate <span class="math inline">\(C_i\)</span> is equal to the mean of the univariate <span class="math inline">\(C_i\)</span>:</p>
+<div class="sourceCode" id="cb644"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb644-1" title="1"><span class="kw">all.equal</span>(locMvC_p, (locC_p<span class="op">+</span>locC_p_II)<span class="op">/</span><span class="dv">2</span>, <span class="dt">check.attributes=</span><span class="ot">FALSE</span>)</a></code></pre></div>
+<pre><code># [1] TRUE</code></pre>
+<div class="sourceCode" id="cb646"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb646-1" title="1">pol_pres15<span class="op">$</span>hs_MvC &lt;-<span class="st"> </span><span class="kw">attr</span>(locMvC_p, <span class="st">&quot;cluster&quot;</span>)</a>
+<a class="sourceLine" id="cb646-2" title="2"><span class="kw">is.na</span>(pol_pres15<span class="op">$</span>hs_MvC) &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(<span class="kw">attr</span>(locMvC_p, <span class="st">&quot;pseudo-p&quot;</span>)[,<span class="st">&quot;Pr(z != E(Ci)) Sim&quot;</span>], <span class="st">&quot;fdr&quot;</span>) <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.005</span></a>
+<a class="sourceLine" id="cb646-3" title="3">pol_pres15<span class="op">$</span>hs_MvC &lt;-<span class="st"> </span><span class="kw">droplevels</span>(pol_pres15<span class="op">$</span>hs_MvC)</a></code></pre></div>
+
+<div class="sourceCode" id="cb647"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb647-1" title="1">m3 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;hs_C&quot;</span>, <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>,</a>
+<a class="sourceLine" id="cb647-2" title="2">    <span class="st">&quot;Set3&quot;</span>)[<span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">1</span>)], <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>,</a>
+<a class="sourceLine" id="cb647-3" title="3">    <span class="dt">title=</span><span class="st">&quot;First round turnout</span><span class="ch">\n</span><span class="st">Local Geary C&quot;</span>)</a>
+<a class="sourceLine" id="cb647-4" title="4">m4 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;hs_C_II&quot;</span>, <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>,</a>
+<a class="sourceLine" id="cb647-5" title="5">    <span class="st">&quot;Set3&quot;</span>)[<span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">2</span>)], <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>,</a>
+<a class="sourceLine" id="cb647-6" title="6">    <span class="dt">title=</span><span class="st">&quot;Second round turnout</span><span class="ch">\n</span><span class="st">Local Geary C&quot;</span>)</a>
+<a class="sourceLine" id="cb647-7" title="7">m5 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;hs_MvC&quot;</span>, <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>,</a>
+<a class="sourceLine" id="cb647-8" title="8">    <span class="st">&quot;Set3&quot;</span>)[<span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">1</span>)], <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>,</a>
+<a class="sourceLine" id="cb647-9" title="9">    <span class="dt">title=</span><span class="st">&quot;Both rounds turnout</span><span class="ch">\n</span><span class="st">Local Multivariate Geary C&quot;</span>)</a>
+<a class="sourceLine" id="cb647-10" title="10"><span class="kw">tmap_arrange</span>(m3, m4, m5, <span class="dt">nrow=</span><span class="dv">1</span>)</a></code></pre></div>
+<pre><code># Some legend labels were too wide. These labels have been resized to 0.49. Increase legend.width (argument of tm_layout) to make the legend wider and therefore the labels larger.</code></pre>
+<pre><code># Some legend labels were too wide. These labels have been resized to 0.56, 0.49. Increase legend.width (argument of tm_layout) to make the legend wider and therefore the labels larger.</code></pre>
+<pre><code># Some legend labels were too wide. These labels have been resized to 0.49. Increase legend.width (argument of tm_layout) to make the legend wider and therefore the labels larger.</code></pre>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:localCmulti"></span>
+<img src="sds_files/figure-html/localCmulti-1.png" alt="FDR hotspot cluster core maps, two-sided, interesting cutoff \(\alpha = 0.005\): left panel: local \(C_i\), first round turnout; centre panel: local \(C_i\), second round turnout; right panel: local multivariate \(C_i\), both turnout rounds; row-standardised neighbours" width="100%" />
+<p class="caption">
+Figure 15.8: FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left panel: local <span class="math inline">\(C_i\)</span>, first round turnout; centre panel: local <span class="math inline">\(C_i\)</span>, second round turnout; right panel: local multivariate <span class="math inline">\(C_i\)</span>, both turnout rounds; row-standardised neighbours
+</p>
+</div>
+<p>Figure <a href="spatautocorr.html#fig:localCmulti">15.8</a> indicates that the multivariate measure picks up aggregated elements of observations found <em>interesting</em> in the two univariate measures. We can break this down by interacting the first and second round univariate measures, and tabulating against the multivariate measure.</p>
+<div class="sourceCode" id="cb651"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb651-1" title="1"><span class="kw">table</span>(<span class="kw">droplevels</span>(<span class="kw">interaction</span>(<span class="kw">addNA</span>(pol_pres15<span class="op">$</span>hs_C), <span class="kw">addNA</span>(pol_pres15<span class="op">$</span>hs_C_II), <span class="dt">sep=</span><span class="st">&quot;:&quot;</span>)), <span class="kw">addNA</span>(pol_pres15<span class="op">$</span>hs_MvC))</a></code></pre></div>
+<pre><code>#                      
+#                       Positive &lt;NA&gt;
+#   High-High:High-High       79    1
+#   NA:High-High              49   20
+#   Low-Low:Low-Low           31    0
+#   NA:Low-Low                36   27
+#   NA:Other Positive          1    0
+#   High-High:NA              11    1
+#   Low-Low:NA                11    2
+#   NA:NA                     37 2189</code></pre>
+<p>For these permutation outcomes, 47 observations in the multivariate case are found <em>interesting</em> where neither of the univariate <span class="math inline">\(C_i\)</span> were found <em>interesting</em> (FDR, cutoff <span class="math inline">\(0.005\)</span>). Almost all of the observations found <em>interesting</em> in both first and second round are also interesting in the multivariate case, but outcomes are more mixed when observations were only found interesting in one of the two rounds.</p>
+</div>
+<div id="the-rgeoda-package" class="section level3 hasAnchor">
+<h3><span class="header-section-number">15.3.4</span> The <strong>rgeoda</strong> package<a href="spatautocorr.html#the-rgeoda-package" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>Geoda has been wrapped for R as <strong>rgeoda</strong> <span class="citation">(Li and Anselin <a href="#ref-R-rgeoda">2021</a><a href="#ref-R-rgeoda">b</a>)</span>, and provides very similar functionalities for the exploration of spatial autocorrelation in areal data as matching parts of <strong>spdep</strong>. The active objects are kept as pointers to a compiled code workspace; using compiled code for all operations (as in Geoda itself) makes <strong>rgeoda</strong> perform fast, but is less flexible when modifications or enhancements are desired.</p>
+<div class="sourceCode" id="cb653"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb653-1" title="1"><span class="kw">library</span>(rgeoda)</a>
+<a class="sourceLine" id="cb653-2" title="2"><span class="kw">system.time</span>(Geoda_w &lt;-<span class="st"> </span><span class="kw">queen_weights</span>(pol_pres15))</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+#   0.133   0.001   0.135</code></pre>
+<div class="sourceCode" id="cb655"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb655-1" title="1"><span class="kw">summary</span>(Geoda_w)</a></code></pre></div>
+<pre><code>#                      name               value
+# 1 number of observations:                2495
+# 2          is symmetric:                 TRUE
+# 3               sparsity: 0.00228786229774178
+# 4        # min neighbors:                   1
+# 5        # max neighbors:                  13
+# 6       # mean neighbors:    5.70821643286573
+# 7     # median neighbors:                   6
+# 8           has isolates:               FALSE</code></pre>
+<p>For comparison, let us take the multivariate <span class="math inline">\(C_i\)</span> measure of turnout in the two rounds of the 2015 Polish presidential election as above:</p>
+<div class="sourceCode" id="cb657"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb657-1" title="1"><span class="kw">system.time</span>(lisa &lt;-<span class="st"> </span><span class="kw">local_multigeary</span>(Geoda_w, </a>
+<a class="sourceLine" id="cb657-2" title="2">    pol_pres15[<span class="kw">c</span>(<span class="st">&quot;I_turnout&quot;</span>, <span class="st">&quot;II_turnout&quot;</span>)], </a>
+<a class="sourceLine" id="cb657-3" title="3">    <span class="dt">cpu_threads =</span> <span class="kw">ifelse</span>(parallel<span class="op">::</span><span class="kw">detectCores</span>() <span class="op">==</span><span class="st"> </span><span class="dv">1</span>, <span class="dv">1</span>, parallel<span class="op">::</span><span class="kw">detectCores</span>()<span class="op">-</span>1L),</a>
+<a class="sourceLine" id="cb657-4" title="4">    <span class="dt">permutations =</span> <span class="dv">99999</span>, <span class="dt">seed =</span> <span class="dv">1</span>))</a></code></pre></div>
+<pre><code>#    user  system elapsed 
+# 146.222   0.572  22.232</code></pre>
+<p>The contiguity neighbours are the same as those found by <code>poly2nb()</code>:</p>
+<div class="sourceCode" id="cb659"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb659-1" title="1"><span class="kw">all.equal</span>(<span class="kw">card</span>(nb_q), <span class="kw">lisa_num_nbrs</span>(lisa), <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</a></code></pre></div>
+<pre><code># [1] TRUE</code></pre>
+<p>as are the multivariate <span class="math inline">\(C_i\)</span> values the same as those found above:</p>
+<div class="sourceCode" id="cb661"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb661-1" title="1"><span class="kw">all.equal</span>(<span class="kw">lisa_values</span>(lisa), <span class="kw">c</span>(locMvC_p), <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</a></code></pre></div>
+<pre><code># [1] TRUE</code></pre>
+<p>One difference is that the range of the folded two-sided rank-based permutation probability values used by <strong>rgeoda</strong> is <span class="math inline">\([0, 0.5]\)</span>, also reported in <strong>spdep</strong>:</p>
+<div class="sourceCode" id="cb663"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb663-1" title="1"><span class="kw">apply</span>(<span class="kw">attr</span>(locMvC_p, <span class="st">&quot;pseudo-p&quot;</span>)[,<span class="kw">c</span>(<span class="st">&quot;Pr(z != E(Ci)) Sim&quot;</span>, <span class="st">&quot;Pr(folded) Sim&quot;</span>)], <span class="dv">2</span>, range)</a></code></pre></div>
+<pre><code>#      Pr(z != E(Ci)) Sim Pr(folded) Sim
+# [1,]             0.0002         0.0001
+# [2,]             0.9978         0.4989</code></pre>
+<p>This means that the cutoff corresponding to <span class="math inline">\(0.005\)</span> over <span class="math inline">\([0, 1]\)</span> is <span class="math inline">\(0.0025\)</span> over <span class="math inline">\([0, 0.5]\)</span>:</p>
+<div class="sourceCode" id="cb665"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb665-1" title="1">hs_MvCa &lt;-<span class="st"> </span><span class="kw">attr</span>(locMvC_p, <span class="st">&quot;cluster&quot;</span>)</a>
+<a class="sourceLine" id="cb665-2" title="2"><span class="kw">is.na</span>(hs_MvCa) &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(<span class="kw">attr</span>(locMvC_p, <span class="st">&quot;pseudo-p&quot;</span>)[,<span class="st">&quot;Pr(folded) Sim&quot;</span>], <span class="st">&quot;fdr&quot;</span>) <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.0025</span></a>
+<a class="sourceLine" id="cb665-3" title="3">pol_pres15<span class="op">$</span>hs_MvCa &lt;-<span class="st"> </span><span class="kw">droplevels</span>(hs_MvCa)</a></code></pre></div>
+<p>So although <code>local_multigeary()</code> used the default cutoff of <span class="math inline">\(0.05\)</span> in setting cluster core classes, we can sharpen the cutoff and apply the FDR adjustment on output components of the <code>lisa</code> object in the compiled code workspace:</p>
+<div class="sourceCode" id="cb666"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb666-1" title="1">mvc &lt;-<span class="st"> </span><span class="kw">factor</span>(<span class="kw">lisa_clusters</span>(lisa), <span class="dt">levels=</span><span class="dv">0</span><span class="op">:</span><span class="dv">2</span>, <span class="dt">labels=</span><span class="kw">lisa_labels</span>(lisa)[<span class="dv">1</span><span class="op">:</span><span class="dv">3</span>])</a>
+<a class="sourceLine" id="cb666-2" title="2"><span class="kw">is.na</span>(mvc) &lt;-<span class="st"> </span><span class="kw">p.adjust</span>(<span class="kw">lisa_pvalues</span>(lisa), <span class="st">&quot;fdr&quot;</span>) <span class="op">&gt;=</span><span class="st"> </span><span class="fl">0.0025</span></a>
+<a class="sourceLine" id="cb666-3" title="3">pol_pres15<span class="op">$</span>geoda_mvc &lt;-<span class="st"> </span><span class="kw">droplevels</span>(mvc)</a></code></pre></div>
+<p>About 80 more observations are found <em>interesting</em> in the <strong>rgeoda</strong> permutation, and further analysis of implementation details is still in progress:</p>
+<div class="sourceCode" id="cb667"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb667-1" title="1"><span class="kw">addmargins</span>(<span class="kw">table</span>(<span class="dt">spdep=</span><span class="kw">addNA</span>(pol_pres15<span class="op">$</span>hs_MvCa), <span class="dt">rgeoda=</span><span class="kw">addNA</span>(pol_pres15<span class="op">$</span>geoda_mvc)))</a></code></pre></div>
+<pre><code>#           rgeoda
+# spdep      Positive &lt;NA&gt;  Sum
+#   Positive      249    6  255
+#   &lt;NA&gt;           78 2162 2240
+#   Sum           327 2168 2495</code></pre>
+
+<div class="sourceCode" id="cb669"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb669-1" title="1">m5 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;hs_MvCa&quot;</span>, <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>,</a>
+<a class="sourceLine" id="cb669-2" title="2">    <span class="st">&quot;Set3&quot;</span>)[<span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">1</span>)], <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>,</a>
+<a class="sourceLine" id="cb669-3" title="3">    <span class="dt">title=</span><span class="st">&quot;Both rounds turnout (spdep)</span><span class="ch">\n</span><span class="st">Local Multivariate Geary C&quot;</span>)</a>
+<a class="sourceLine" id="cb669-4" title="4">m6 &lt;-<span class="st"> </span><span class="kw">tm_shape</span>(pol_pres15) <span class="op">+</span><span class="st"> </span><span class="kw">tm_fill</span>(<span class="st">&quot;geoda_mvc&quot;</span>, <span class="dt">palette=</span>RColorBrewer<span class="op">::</span><span class="kw">brewer.pal</span>(<span class="dv">4</span>,</a>
+<a class="sourceLine" id="cb669-5" title="5">    <span class="st">&quot;Set3&quot;</span>)[<span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">1</span>)], <span class="dt">colorNA=</span><span class="st">&quot;grey95&quot;</span>, <span class="dt">textNA=</span><span class="st">&quot;Not </span><span class="ch">\&quot;</span><span class="st">interesting</span><span class="ch">\&quot;</span><span class="st">&quot;</span>,</a>
+<a class="sourceLine" id="cb669-6" title="6">    <span class="dt">title=</span><span class="st">&quot;Both rounds turnout (rgeoda)</span><span class="ch">\n</span><span class="st">Local Multivariate Geary C&quot;</span>)</a>
+<a class="sourceLine" id="cb669-7" title="7"><span class="kw">tmap_arrange</span>(m5, m6, <span class="dt">nrow=</span><span class="dv">1</span>)</a></code></pre></div>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:localCmultix"></span>
+<img src="sds_files/figure-html/localCmultix-1.png" alt="FDR local multivariate \(C_i\) hotspot cluster core maps, two-sided, interesting cutoff \(\alpha = 0.0025\) over \([0, 0.5]\): left panel: spdep, both turnout rounds; right panel: rgeoda, both turnout rounds; row-standardised neighbours" width="100%" />
+<p class="caption">
+Figure 15.9: FDR local multivariate <span class="math inline">\(C_i\)</span> hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.0025\)</span> over <span class="math inline">\([0, 0.5]\)</span>: left panel: <strong>spdep</strong>, both turnout rounds; right panel: <strong>rgeoda</strong>, both turnout rounds; row-standardised neighbours
+</p>
+</div>
+<p>Figure <a href="spatautocorr.html#fig:localCmultix">15.9</a> shows that while almost all of the 242 observations found <em>interesting</em> in the <strong>spdep</strong> implementation were also <em>interesting</em> for <strong>rgeoda</strong>, the latter found a further 86 <em>interesting</em>. Of course, permutation outcomes are bound to vary, but it remains to establish whether either or both of the implementations require revision.</p>
+</div>
+</div>
+<div id="exercises-13" class="section level2 hasAnchor">
+<h2><span class="header-section-number">15.4</span> Exercises<a href="spatautocorr.html#exercises-13" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<ol style="list-style-type: decimal">
+<li>Why are join-count measures on a chessboard so different between <code>rook</code> and <code>queen</code> neighbours?</li>
+<li>Please repeat the simulation shown in section 15.1 using the chessboard polygons and the row-standardized <code>queen</code> contiguity neighbours. Why is it important to understand that spatial autocorrelation usually signals (unavoidable) mis-specification in our data?</li>
+<li>Why is false discovery rate adjustment recommended for local measures of spatial autocorrelation?</li>
+<li>Compare the local Moran’s <span class="math inline">\(I_i\)</span> standard deviate values for the simulated data from exercise 15.2 for the analytical conditional approach, and Saddlepoint approximation. Consider the advantages and disadvantages of the Saddlepoint approximation approach.</li>
+</ol>
+
+</div>
+</div>
+<h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<div id="refs" class="references">
+<div id="ref-anselin:95">
+<p>Anselin, L. 1995. “Local indicators of spatial association - LISA.” <em>Geographical Analysis</em> 27 (2): 93–115.</p>
+</div>
+<div id="ref-anselin:96">
+<p>Anselin, L. 1996. “The Moran Scatterplot as an ESDA Tool to Assess Local Instability in Spatial Association.” In <em>Spatial Analytical Perspectives on GIS</em>, edited by M. M. Fischer, H. J. Scholten, and D. Unwin, 111–25. London: Taylor &amp; Francis.</p>
+</div>
+<div id="ref-https://doi.org/10.1111/gean.12164">
+<p>Anselin, Luc. 2019. “A Local Indicator of Multivariate Spatial Association: Extending Geary’s c.” <em>Geographical Analysis</em> 51 (2): 133–50. <a href="https://doi.org/10.1111/gean.12164">https://doi.org/10.1111/gean.12164</a>.</p>
+</div>
+<div id="ref-https://doi.org/10.1111/gean.12311">
+<p>Anselin, Luc, Xun Li, and Julia Koschinsky. 2021. “GeoDa, from the Desktop to an Ecosystem for Exploring Spatial Data.” <em>Geographical Analysis</em>. <a href="https://doi.org/10.1111/gean.12311">https://doi.org/10.1111/gean.12311</a>.</p>
+</div>
+<div id="ref-assuncao+reis:99">
+<p>Assunção, R.M., and E. A. Reis. 1999. “A New Proposal to Adjust Moran’s <span class="math inline">\(I\)</span> for Population Density.” <em>Statistics in Medicine</em> 18: 2147–62.</p>
+</div>
+<div id="ref-benjaminetal:18">
+<p>Benjamin, Daniel J., James O. Berger, Johannesson Magnus, Brian A. Nosek, Wagenmakers E-J, Richard Berk, Kenneth A. Bollen, et al. 2018. “Redefine Statistical Significance.” <em>Nature Human Behaviour</em> 2 (1): 6–10.</p>
+</div>
+<div id="ref-fdr-BH">
+<p>Benjamini, Yoav, and Yosef Hochberg. 1995. “Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing.” <em>Journal of the Royal Statistical Society. Series B (Methodological)</em> 57 (1): 289–300. <a href="https://doi.org/10.1111/j.2517-6161.1995.tb02031.x">https://doi.org/10.1111/j.2517-6161.1995.tb02031.x</a>.</p>
+</div>
+<div id="ref-10.1214/aos/1013699998">
+<p>Benjamini, Yoav, and Daniel Yekutieli. 2001. “The control of the false discovery rate in multiple testing under dependency.” <em>The Annals of Statistics</em> 29 (4): 1165–88. <a href="https://doi.org/10.1214/aos/1013699998">https://doi.org/10.1214/aos/1013699998</a>.</p>
+</div>
+<div id="ref-R-spdep">
+<p>Bivand, Roger. 2022. <em>Spdep: Spatial Dependence: Weighting Schemes, Statistics</em>. <a href="https://CRAN.R-project.org/package=spdep">https://CRAN.R-project.org/package=spdep</a>.</p>
+</div>
+<div id="ref-Bivand2018">
+<p>Bivand, Roger S., and David W. S. Wong. 2018. “Comparing Implementations of Global and Local Indicators of Spatial Association.” <em>TEST</em> 27 (3): 716–48. <a href="https://doi.org/10.1007/s11749-018-0599-x">https://doi.org/10.1007/s11749-018-0599-x</a>.</p>
+</div>
+<div id="ref-bivandetal:09">
+<p>Bivand, R. S., W. Müller, and M. Reder. 2009. “Power Calculations for Global and Local Moran’s <span class="math inline">\(I\)</span>.” <em>Computational Statistics and Data Analysis</em> 53: 2859–72.</p>
+</div>
+<div id="ref-BRODY200064">
+<p>Brody, Howard, Michael Russell Rip, Peter Vinten-Johansen, Nigel Paneth, and Stephen Rachman. 2000. “Map-Making and Myth-Making in Broad Street: The London Cholera Epidemic, 1854.” <em>The Lancet</em> 356 (9223): 64–68. <a href="https://doi.org/https://doi.org/10.1016/S0140-6736(00)02442-9">https://doi.org/https://doi.org/10.1016/S0140-6736(00)02442-9</a>.</p>
+</div>
+<div id="ref-https://doi.org/10.1111/j.0016-7363.2006.00682.x">
+<p>Caldas de Castro, Marcia, and Burton H. Singer. 2006. “Controlling the False Discovery Rate: A New Application to Account for Multiple and Dependent Tests in Local Statistics of Spatial Association.” <em>Geographical Analysis</em> 38 (2): 180–208. <a href="https://doi.org/10.1111/j.0016-7363.2006.00682.x">https://doi.org/10.1111/j.0016-7363.2006.00682.x</a>.</p>
+</div>
+<div id="ref-cliff+ord:73">
+<p>Cliff, A. D., and J. K. Ord. 1973. <em>Spatial Autocorrelation</em>. London: Pion.</p>
+</div>
+<div id="ref-cliff+ord:81">
+<p>Cliff, A. 1981. <em>Spatial Processes</em>. London: Pion.</p>
+</div>
+<div id="ref-duncanetal61">
+<p>Duncan, O. D., R. P. Cuzzort, and B. Duncan. 1961. <em>Statistical Geography: Problems in Analyzing Areal Data</em>. Glencoe, IL: Free Press.</p>
+</div>
+<div id="ref-geary:54">
+<p>Geary, R. C. 1954. “The Contiguity Ratio and Statistical Mapping.” <em>The Incorporated Statistician</em> 5: 115–45.</p>
+</div>
+<div id="ref-getis+ord:92">
+<p>Getis, A., and J. K. Ord. 1992. “The Analysis of Spatial Association by the Use of Distance Statistics.” <em>Geographical Analysis</em> 24 (2): 189–206.</p>
+</div>
+<div id="ref-getis+ord:96">
+<p>Getis, A., and J. K. Ord. 1992. “The Analysis of Spatial Association by the Use of Distance Statistics.” <em>Geographical Analysis</em> 24 (2): 189–206.</p> 1996. “Local Spatial Statistics: An Overview.” In <em>Spatial Analysis: Modelling in a Gis Environment</em>, edited by P. Longley and M Batty, 261–77. Cambridge: GeoInformation International.</p>
+</div>
+<div id="ref-rgeoda-package">
+<p>Li, Xun, and Luc Anselin. 2021a. <em>Rgeoda: R Library for Spatial Data Analysis</em>. <a href="https://CRAN.R-project.org/package=rgeoda">https://CRAN.R-project.org/package=rgeoda</a>.</p>
+</div>
+<div id="ref-R-rgeoda">
+<p>Li, Xun, and Luc Anselin. 2021b. <em>Rgeoda: R Library for Spatial Data Analysis</em>. <a href="https://CRAN.R-project.org/package=rgeoda">https://CRAN.R-project.org/package=rgeoda</a>.</p>
+</div>
+<div id="ref-McMillen:2003">
+<p>McMillen, Daniel P. 2003. “Spatial Autocorrelation or Model Misspecification?” <em>International Regional Science Review</em> 26: 208–17.</p>
+</div>
+<div id="ref-moran48">
+<p>Moran, P. A. P. 1948. “The Interpretation of Statistical Maps.” <em>Journal of the Royal Statistical Society, Series B (Methodological)</em> 10 (2): 243–51.</p>
+</div>
+<div id="ref-10.2307/143140">
+<p>Olsson, Gunnar. 1970. “Explanation, Prediction, and Meaning Variance: An Assessment of Distance Interaction Models.” <em>Economic Geography</em> 46: 223–33. <a href="https://doi.org/10.2307/143140">https://doi.org/10.2307/143140</a>.</p>
+</div>
+<div id="ref-ord+getis:01">
+<p>Ord, J. K., and A. Getis. 2001. “Testing for Local Spatial Autocorrelation in the Presence of Global Autocorrelation.” <em>Journal of Regional Science</em> 41 (3): 411–32.</p>
+</div>
+<div id="ref-sauer_oshan_rey_wolf_2021">
+<p>Sauer, Jeffery, Taylor Oshan, Sergio Rey, and Levi John Wolf. 2021. “The Importance of Null Hypotheses: Understanding Differences in Local Moran’s <span class="math inline">\(I_i\)</span> Under Heteroskedasticity.” <em>Geographical Analysis</em>. <a href="https://doi.org/https://doi.org/10.1111/gean.12304">https://doi.org/https://doi.org/10.1111/gean.12304</a>.</p>
+</div>
+<div id="ref-schabenberger+gotway:2005">
+<p>Schabenberger, O., and C. A. Gotway. 2005. <em>Statistical Methods for Spatial Data Analysis</em>. Boca Raton/London: Chapman &amp; Hall/CRC.</p>
+</div>
+<div id="ref-sokaletal:98">
+<p>Sokal, R. R, N. L. Oden, and B. A. Thomson. 1998. “Local Spatial Autocorrelation in a Biological Model.” <em>Geographical Analysis</em> 30: 331–54.</p>
+</div>
+<div id="ref-tiefelsdorf:02">
+<p>Tiefelsdorf, M. 2002. “The Saddlepoint Approximation of Moran’s I and Local Moran’s <span class="math inline">\({I}_i\)</span> Reference Distributions and Their Numerical Evaluation.” <em>Geographical Analysis</em> 34: 187–206.</p>
+</div>
+<div id="ref-10.2307/143141">
+<p>Tobler, W. R. 1970. “A Computer Movie Simulating Urban Growth in the Detroit Region.” <em>Economic Geography</em> 46: 234–40. <a href="https://doi.org/10.2307/143141">https://doi.org/10.2307/143141</a>.</p>
+</div>
+<div id="ref-upton+fingleton:85">
+<p>Upton, G., and B. Fingleton. 1985. <em>Spatial Data Analysis by Example: Point Pattern and Qualitative Data</em>. New York: Wiley.</p>
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="area.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="spatglmm.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": true,
+"facebook": false,
+"twitter": true,
+"linkedin": false,
+"weibo": false,
+"instapaper": false,
+"vk": false,
+"whatsapp": false,
+"all": false
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": "https://github.com/edzer/sdsr/edit/master/17-Areal.Rmd",
+"text": "Edit"
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": null,
+"search": {
+"engine": "fuse",
+"options": null
+},
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "true";
+    if (src === "" || src === "true") src = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:")
+      if (/^https?:/.test(src))
+        src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+</body>
+
+</html>
