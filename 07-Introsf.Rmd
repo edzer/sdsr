@@ -18,7 +18,7 @@ command line completion.
 ## Package `sf` {#sfintro}
 
 Intended to succeed and replace R packages `sp`, `rgeos` and the
-vector parts of `rgdal`, R Package `sf` [@rjsf] was developed to
+vector parts of `rgdal`, R package `sf` [@rjsf] was developed to
 move spatial data analysis in R closer to standards-based approaches
 seen in the industry and open source projects, to build upon more
 modern versions of the open source geospatial software stack (figure
@@ -48,7 +48,7 @@ An `sf` object has the following meta-data:
 
 * the name of the (active) geometry column, held in attribute `sf_column`
 * for each non-geometry variable, the attribute-geometry
-relationships (section \@ref(agr)), held in attribute `agr`
+relationship (section \@ref(agr)), held in attribute `agr`
 
 An `sfc` geometry list-column has the following meta-data:
 
@@ -74,18 +74,19 @@ st_sf(elev = c(33.2, 52.1, 81.2), marker = c("Id01", "Id02", "Id03"),
 	  geom = sfc)
 ```
 
-(ref:sfcomp) components of an `sf` object
-```{r sfobj, out.width = '100%', echo = FALSE, fig.cap = '(ref:sfcomp)', echo = FALSE}
+(ref:sfobj) components of an `sf` object
+
+```{r sfobj, out.width = '100%', echo = FALSE, fig.cap = '(ref:sfobj)', echo = FALSE}
 knitr::include_graphics("images/sf_obj.png")
 ```
 
 Figure \@ref(fig:sfobj) gives an explanation of the components
 printed.  Rather than creating objects from scratch, spatial data
-in R are typically read from an external source, which can be
+in R are typically read from an external source, which can be:
 
-* an external file,
-* a request to a web service, or
-* a dataset held in some form in another R package.
+* an external file
+* a request to a web service
+* a dataset held in some form in another R package
 
 The next section introduces reading from files; section
 \@ref(largesf) discusses handling of datasets too large to fit into
@@ -93,12 +94,12 @@ working memory.
 
 ### Reading and writing
 
-Reading datasets from an exteral "data source" (file, web service,
+Reading datasets from an external "data source" (file, web service,
 or even string) is done using `st_read`:
 
 ```{r stread}
 library(sf)
-(file = system.file("gpkg/nc.gpkg", package="sf"))
+(file = system.file("gpkg/nc.gpkg", package = "sf"))
 nc = st_read(file)
 ```
 Here, the file name and path `file` is read from the `sf` package,
@@ -106,7 +107,7 @@ which has a different path on every machine, and hence is guaranteed
 to be present on every `sf` installation.
 
 Command `st_read` has two arguments: the _data set name_ (`dsn`)
-and the _layer_.  In the example above, the _geopackage_ file
+and the _layer_.  In the example above, the _geopackage_  (GPKG) file
 contains only a single layer that is being read. If it had contained
 multiple layers, then the first layer would have been read and a 
 warning would have been emitted. The available layers of a data
@@ -130,12 +131,12 @@ for this. The rules that apply to `data.frame` objects also apply to
 ```{r eval=FALSE}
 nc[2:5, 3:7]
 ```
-but with a few additional features, in particular
+but with a few additional features, in particular:
 
 * the `drop` argument is by default `FALSE` meaning that the
   geometry column is _always_ selected, and an `sf` object is
   returned; when it is set to `TRUE` and the geometry column _not_ selected,
-  it is dropped and a `data.frame` is returned;
+  it is dropped and a `data.frame` is returned
 * selection with a spatial (`sf`, `sfc` or `sfg`) object as first argument leads to
   selection of the features that spatially _intersect_ with that
   object (see next section); other predicates than _intersects_ can be chosen by setting
@@ -159,8 +160,8 @@ nc7 = nc[1:7, ]
 ```{r fig57, echo=FALSE, fig.cap = "First seven North Carolina counties"}
 plot(st_geometry(nc7))
 plot(st_geometry(nc5), add = TRUE, border = "brown")
-cc = st_coordinates(st_centroid(nc7))
-text(cc, labels=1:nrow(nc7), col="blue")
+cc = st_coordinates(st_centroid(st_geometry(nc7)))
+text(cc, labels = 1:nrow(nc7), col = "blue")
 ```
 Figure \@ref(fig:fig57) shows how the intersections of the first
 five with the first seven counties can be understood.
@@ -168,7 +169,7 @@ We can transform the sparse logical matrix into a dense matrix by
 ```{r}
 as.matrix(i)
 ```
-The number of countries that each of `nc5` intersects with is
+The number of counties that each of `nc5` intersects with is
 ```{r}
 lengths(i)
 ```
@@ -198,13 +199,13 @@ output, and overwrite existing data by default.
 
 Further `tidyverse` generics with methods for `sf` objects include
 `filter`, `select`, `group_by`, `ungroup`, `mutate`, `transmute`,
-`rowwise`, `rename`, `slice` and `summarise`, `distinct`, `gather`,
+`rowwise`, `rename`, `slice`, `summarise`, `distinct`, `gather`, `pivot_longer`,
 `spread`, `nest`, `unnest`, `unite`, `separate`, `separate_rows`,
 `sample_n`, and `sample_frac`. Most of these methods simply manage
 the metadata of `sf` objects, and make sure the geometry remains
 present. In case a user wants the geometry to be removed, one can
-use `st_set_geometry(nc, NULL)` or simply coerce to a tibble before
-selecting:
+use `st_drop_geometry()` or simply coerce to a `tibble` or 
+`data.frame` before selecting:
 ```{r}
 library(tidyverse)
 nc |> as_tibble() |> select(BIR74) |> head(3)
@@ -212,7 +213,7 @@ nc |> as_tibble() |> select(BIR74) |> head(3)
 
 The `summarise` method for `sf` objects has two special arguments:
 
-* `do_union` (default `TRUE`) determines whether grouped geometries are unioned on return, so that they form a valid geometry;
+* `do_union` (default `TRUE`) determines whether grouped geometries are unioned on return, so that they form a valid geometry
 * `is_coverage` (default `FALSE`) in case the geometries grouped form a coverage (do not have overlaps), setting this to `TRUE` speeds up the unioning
 
 The `distinct` method selects distinct records, where `st_equals`
@@ -222,12 +223,14 @@ is used to evaluate distinctness of geometries.
 use it with a spatial predicate, e.g. to select all counties less
 than 50 km away from Orange county, one could use
 ```{r}
-sf_use_s2(TRUE)
-orange <- nc |> filter(NAME == "Orange")
-wd = st_is_within_distance(nc, orange, units::set_units(50, km))
-o50 <- nc |> filter(lengths(wd) > 0)
+orange <- nc |> dplyr::filter(NAME == "Orange")
+wd <- st_is_within_distance(nc, orange, units::set_units(50, km))
+o50 <- nc |> dplyr::filter(lengths(wd) > 0)
 nrow(o50)
 ```
+(where we use `dplyr::filter` rather than `filter` to avoid confusion
+with `filter` from base R.)
+
 Figure \@ref(fig:orangebuffer) shows the results of this analysis,
 and in addition a buffer around the county borders; note that this buffer
 serves for illustration, it was _not_ used to select the counties. 
@@ -284,10 +287,10 @@ par(opar)
 ```
 
 Another way to reduce the result set is to use `aggregate` after a
-join, all matching records, and union their geometries; see Section
+join, all matching records, and union their geometries; see section
 \@ref(updownscaling).
 
-### sampling, gridding, interpolating
+### Sampling, gridding, interpolating
 
 Several convenience functions are available in package `sf`, some
 of which will be discussed here. Function `st_sample` generates
@@ -308,7 +311,7 @@ and extensive variables.
 
 ## Package `stars`
 
-Athough package `sp` has always had limited support for raster data,
+Although package `sp` has always had limited support for raster data,
 over the last decade R package `raster` [@R-raster] has clearly been
 dominant as the prime package for powerful, flexible and scalable
 raster analysis.  The raster data model of package `raster` (and
@@ -321,8 +324,8 @@ of rasters or raster stacks. A raster stack does not meaningfully
 reflect this, requiring the user to keep a register of which layer
 represents what.
 
-Also, the `raster` package, and its successer `terra` do an excellent
-job in scaling computations up to datasizes no larger than the local
+Also, the `raster` package, and its successor `terra` do an excellent
+job in scaling computations up to data sizes no larger than the local
 storage (the computer's hard drives), and doing this fast. Recent
 datasets however, including satellite imagery, climate model or
 weather forecasting data, often no longer fit in local storage
@@ -331,16 +334,16 @@ addresses the analysis of time series of vector geometries or raster
 grid cells, but does not extend to higher-dimensional arrays.
 
 Here, we introduce package `stars` for analysing raster and vector
-data cubes.  The package
+data cubes.  The package:
 
-* allows for representing dynamic (time varying) raster stacks,
-* aims at being scalable, also beyond local disk size,
+* allows for representing dynamic (time varying) raster stacks
+* aims at being scalable, also beyond local disk size
 * provides a strong integration of raster functions in the GDAL
 library
-* in addition to regular grids handles rotated, sheared, rectilinear and curvilinear rasters (figure \@ref(fig:rastertypes01)),
-* provides a tight integration with package `sf`, 
-* also handles array data with non-raster spatial dimensions, the _vector data cubes_, and
-* follows the tidyverse design principles.
+* in addition to regular grids handles rotated, sheared, rectilinear and curvilinear rasters (figure \@ref(fig:rastertypes01))
+* provides a tight integration with package `sf`
+* also handles array data with non-raster spatial dimensions, the _vector data cubes_
+* follows the tidyverse design principles
 
 Vector data cubes include for instance time series for simple
 features, or spatial graph data such as potentially dynamic
@@ -359,7 +362,7 @@ tif = system.file("tif/L7_ETMs.tif", package = "stars")
 library(stars)
 (r = read_stars(tif))
 ```
-where we see the offset, cellsize, coordinate reference system,
+where we see the offset, cell size, coordinate reference system,
 and dimensions. The dimension table reports the following for
 each dimension:
 
@@ -373,7 +376,7 @@ each dimension:
 * `x/y`: an indicator whether a dimension is associated with a spatial raster x- or y-axis
 
 For regular, rotated or sheared grids or other regularly discretized
-dimensions (e.g. time), `offset` and `delta` are not `NA` and values
+dimensions (e.g. time), `offset` and `delta` are not `NA`
 and `values` is `NULL`; for other cases, `offset` and `delta` are
 `NA` and `values` contains one of:
 
@@ -420,7 +423,7 @@ selects from `r` attributes 1-2, index 101-200 for dimension 1, and index
 5-10 for dimension 3; omitting dimension 2 means that no subsetting
 takes place. For attributes, attributes names or logical vectors
 can be used. For dimensions, logical vectors are not supported;
-Selecting discontinuous ranges supported when it it is a regular
+Selecting discontinuous ranges supported when it is a regular
 sequence. By default, `drop` is FALSE, when set to `TRUE` dimensions
 with a single value are dropped:
 ```{r}
@@ -456,7 +459,7 @@ r[b]
 ```
 selects the circular center region with a diameter of 500 metre, for
 the first band shown in figure \@ref(fig:circr),
-```{r circr, echo=FALSE,fig.cap = "circular center region of the Landsat 7 scene (band 1)"}
+```{r circr, out.width = '70%', echo=FALSE,fig.cap = "circular center region of the Landsat 7 scene (band 1)", message=FALSE}
 plot(r[b][,,,1], reset = FALSE)
 plot(b, border = 'brown', lwd = 2, col = NA, add = TRUE)
 ```
@@ -477,7 +480,7 @@ Cropping a `stars` object can alternatively be done directly with `st_crop`, as 
 st_crop(r, b)
 ```
 
-### redimensioning `stars` objects
+### Redimensioning `stars` objects
 
 Package `stars` uses package `abind` [@R-abind] for a number of
 array manipulations. One of them is `aperm` which transposes an
@@ -487,7 +490,7 @@ aperm(r, c(3, 1, 2))
 ```
 permutes the order of dimensions of the resulting object.
 
-Attributes and dimensions can be swapped, using `merge` and `split`:
+Attributes and dimensions can be swapped, using `split` and `merge`:
 ```{r}
 (rs = split(r))
 merge(rs)
@@ -500,7 +503,7 @@ dimension over two new dimensions:
 st_redimension(r, c(349, 352, 3, 2))
 ```
 
-### extracting point samples, aggregating
+### Extracting point samples, aggregating
 
 A very common use case for raster data cube analysis is the extraction
 of values at certain locations, or computing aggregations over certain 
@@ -513,11 +516,33 @@ set.seed(115517)
 pts = st_bbox(r) |> st_as_sfc() |> st_sample(20)
 (e = st_extract(r, pts))
 ```
-which results in a vector data cube with 4 points and 6 bands.
+which results in a vector data cube with 20 points and 6 bands.
+
+Another way of extracting information from data cubes is by
+aggregating it. One way of doing is by spatial aggregation,
+e.g. to values for spatial polygons or lines (section
+\@ref(vectordatacubes)). We can for instance compute the maximum
+pixel value for each band for each of the circles shown in figure
+\@ref(fig:ras)d by
+
+```{r echo=FALSE}
+set.seed(131)
+```
+```{r}
+circles = st_sample(st_as_sfc(st_bbox(r)), 3) |>
+    st_buffer(500)
+aggregate(r, circles, max)
+```
+which gives a data cube with 3 geometries and 6 bands.  Aggregation
+over a temporal dimension is done by passing a time variable as the
+second argument to `aggregate`, as
+
+* a set of time stamps indicating the start of time intervals or
+* a time period like `"weeks"`, `"5 days"` or `"years"`
 
 ### Predictive models
 
-The typical model prediction workflow in R works as follows:
+The typical model prediction workflow in R is as follows:
 
 * use a `data.frame` with response and predictor variables (covariates)
 * create a model object based on this `data.frame` 
@@ -531,7 +556,7 @@ object with the predicted values.
 We will illustrate this with a trivial two-class example mapping
 land from sea in the example Landsat data set, using the sample
 points extracted above, shown in figure \@ref(fig:rsample).
-```{r rsample,fig.cap = "randomly chosen sample locations for training data; red: water, green: land", echo=!knitr::is_latex_output()}
+```{r rsample, out.height = '80%', fig.cap = "randomly chosen sample locations for training data; red: water, green: land", echo=!knitr::is_latex_output(), message=FALSE}
 plot(r[,,,1], reset = FALSE)
 col = rep("green", 20)
 col[c(8, 14, 15, 18, 19)] = "red"
@@ -547,7 +572,7 @@ rs = split(r)
 trn = st_extract(rs, pts)
 trn$cls = rep("land", 20)
 trn$cls[c(8, 14, 15, 18, 19)] = "water"
-model = MASS::lda(cls ~ ., st_set_geometry(trn, NULL))
+model = MASS::lda(cls ~ ., st_drop_geometry(trn))
 pr = predict(rs, model)
 ```
 Here, we used the `MASS::` prefix to avoid loading `MASS`, as that
@@ -555,20 +580,19 @@ would mask `select` from `dplyr`. Another way would be to load
 `MASS` and unload it later on with `detach()`.
 
 (ref:cap) Linear discriminant classifier for land/water, based on training data of figure \@ref(fig:rsample)
-```{r lda,fig.cap = '(ref:cap)',  echo=!knitr::is_latex_output()}
+```{r lda, out.width = '70%', fig.cap = '(ref:cap)',  echo=!knitr::is_latex_output()}
 plot(pr[1], key.pos = 4, key.width = lcm(3.5), key.length = lcm(2))
 ```
 
 We also see that the layer plotted in figure \@ref(fig:lda) is a
 `factor` variable, with class labels.
 
-### GDAL utils
-
 
 ### Plotting raster data
+
 We can use the base `plot` method for `stars` objects, where the plot created with
 `plot(r)` is shown in figure \@ref(fig:firststars).
-```{r firststars,fig.cap="6 30m Landsat bands downsampled to 90m for Olinda, Br.", echo=!knitr::is_latex_output()}
+```{r firststars,fig.cap="six 30m Landsat bands downsampled to 90m for Olinda, Br.", echo=!knitr::is_latex_output(), message=FALSE}
 plot(r)
 ```
 is shown in figure \@ref(fig:firststars).
@@ -576,7 +600,7 @@ The default color scale uses grey tones, and stretches these such
 that color breaks correspond to data quantiles over all bands
 ("histogram equalization").  A more familiar view is the RGB or 
 false color composite shown in figure \@ref(fig:starsrgb).
-```{r starsrgb, out.width = '100%', fig.cap = "Two color composites", echo=!knitr::is_latex_output()}
+```{r starsrgb, out.width = '100%', fig.cap = "two color composites", echo=!knitr::is_latex_output(), message=FALSE}
 par(mfrow = c(1, 2))
 plot(r, rgb = c(3,2,1), reset = FALSE, main = "RGB")    # rgb
 plot(r, rgb = c(4,3,2), main = "False color (NIR-R-G)") # false color
@@ -653,12 +677,50 @@ curved. Other reasons are:
 * when we convert or transform a regular raster data into another
 coordinate reference system, it will become curvilinear unless we
 resample (warp; section \@ref(warp)); warping always goes at the 
-cost of some loss of data and is not reversible.
+cost of some loss of data and is not reversible
 * observation may lead to irregular rasters; e.g. for satellite swaths, we
 may have a regular raster in the direction of the satellite (not
 aligned with $x$ or $y$), and rectilinear in the direction perpendicular to that
 (e.g. if the sensor discretizes the viewing _angle_ in equal sections)
 
+### GDAL utils
+
+The GDAL library is typically shipped with a number of executable
+binaries, the GDAL command line utilities for data translation and
+processing. A package like `gdalUtils` [@R-gdalUtils] provides R
+functions that actually call these binaries, using R's `system()`
+call mechanism. This requires that these binaries are properly
+installed, and findable by R, which is something that an R package
+by itself cannot guarantee.
+
+Several of these utilities (all except for those written in Python)
+are also available as C functions in the GDAL library, through the
+"GDAL Algorithms C API".  If an R package like `sf` that links to
+the GDAL library uses these C API algorithms, it means that the user
+no longer needs to install any GDAL binary command line utilities in
+addition to the R package.
+
+Package `sf` allows calling these C API algorithms through function
+`gdal_utils()`, where the first argument is the name of the utility
+(stripped from the `gdal` prefix):
+
+* `info` prints information on GDAL (raster) datasets
+* `warp` warps a raster to a new raster, possibly in another CRS
+* `rasterize` rasterizes a vector dataset
+* `translate` translates a raster file to another format
+* `vectortranslate` (for ogr2ogr) translates a vector file to another format
+* `buildvrt` creates a virtual raster tile (a raster created from several files)
+* `demprocessing` does varios processing steps of digital elevation models (dems)
+* `nearblack` converts nearly black/white borders to black
+* `grid` creates a regular grid from scattered data
+* `mdiminfo` prints information on a multidimensional array
+* `mdimtranslate` translates a multidimensional array into another format
+
+These utilities work on files, and not not directly on `sf` or
+`stars` objects.  However, `stars_proxy` objects are essentially
+pointers to files, and other objects can be written to file. Several
+of these utilities are (always or optionally) used, e.g. by
+`st_mosaic`, `st_warp` or `st_write`.
 
 ## Vector data cube examples
 
@@ -696,7 +758,7 @@ mean PM$_{10}$ values.
 image(aperm(log(aq), 2:1), main = "NA pattern (white) in PM10 station time series")
 ```
 
-```{r airmap, fig.cap="locations of PM$_{10}$ measurement stations, showing mean values", echo=!knitr::is_latex_output()}
+```{r airmap, out.width = '70%', fig.cap="locations of PM$_{10}$ measurement stations, showing mean values", echo=!knitr::is_latex_output()}
 plot(st_as_sf(st_apply(aq, 1, mean, na.rm = TRUE)), reset = FALSE, pch = 16,
 	ylim = st_bbox(DE)[c(2,4)])
 plot(DE, add=TRUE)
@@ -727,11 +789,11 @@ plot(as.xts(a)[,4], main = DE_NUTS1$NAME_1[4])
 
 ### Example: Bristol origin-destination datacube
 
-The data used for this example come from [@geocomp], and concern
+The data used for this example come from @geocomp, and concern
 origin-destination (OD) counts: the number of persons going from
 region A to region B, by transportation mode.  We have feature
 geometries for the 102 origin and destination regions, shown in figure \@ref(fig:bristol1).
-```{r bristol1, fig.cap="Origin destination data zones for Bristol, UK, with zone 33 (E02003043) colored red"}
+```{r bristol1, fig.cap= "origin destination data zones for Bristol, UK, with zone 33 (E02003043) colored red"}
 library(spDataLarge)
 plot(st_geometry(bristol_zones), axes = TRUE, graticule = TRUE)
 plot(st_geometry(bristol_zones)[33], col = 'red', add = TRUE)
@@ -751,12 +813,13 @@ nrow(bristol_od) # non-zero combinations
 We will form a three-dimensional vector datacube with origin,
 destination and transportation mode as dimensions. For this, we
 first "tidy" the `bristol_od` table to have origin (o), destination (d),
-transportation mode (mode), and count (n) as variables, using `gather`:
+transportation mode (mode), and count (n) as variables, using 
+`pivot_longer`:
 ```{r bristol_tidy}
 # create O-D-mode array:
 bristol_tidy <- bristol_od |> 
 	select(-all) |> 
-	gather("mode", "n", -o, -d)
+	pivot_longer(3:6, names_to = "mode", values_to = "n")
 head(bristol_tidy)
 ```
 Next, we form the three-dimensional array `a`, filled with zeroes:
@@ -802,8 +865,8 @@ and finally build or stars object from `a` and `d`:
 We can take a single slice through from this three-dimensional
 array, e.g. for zone 33 (figure \@ref(fig:bristol1)), by `odm[,,33]`, 
 and plot it with
-```{r odm33, fig.cap = "OD matrix sliced for destination zone 33, by transportation mode"}
-plot(odm[,,33] + 1, logz = TRUE)
+```{r odm33, out.width = '80%', fig.cap = "OD matrix sliced for destination zone 33, by transportation mode"}
+plot(adrop(odm[,,33]) + 1, logz = TRUE)
 ```
 the result of which is shown in figure \@ref(fig:odm33).
 Subsetting this way, we take all attributes (there is only one: N)
@@ -841,7 +904,7 @@ Destination totals, summed over modes (we had this):
 d = st_apply(odm, 2, sum)
 ```
 We plot `o` and `d` together after joining them by
-```{r odjoined, fig.cap = "total commutes, summed by origin (left) or destination (right)."}
+```{r odjoined, out.height = '90%', fig.cap = "total commutes, summed by origin (left) or destination (right)."}
 x = (c(o, d, along = list(od = c("origin", "destination"))))
 plot(x, logz = TRUE)
 ```
@@ -851,7 +914,7 @@ There is something to say for the argument that such maps
 give the wrong message, as both amount (color) and polygon
 size give an impression of amount. To take out the amount
 in the count, we can compute densities (count / km$^2$), by
-```{r odbykm, fig.cap = "total commutes per square km, by area of origin (left) or destination (right)"}
+```{r odbykm, out.height = '90%', fig.cap = "total commutes per square km, by area of origin (left) or destination (right)", message=FALSE}
 library(units)
 a = set_units(st_area(st_as_sf(o)), km^2)
 o$sum_km = o$sum / a
@@ -868,7 +931,7 @@ The _tidy data_ paper [@tidy] may suggest that such array data
 should be processed not as an array, but in a long table where
 each row holds (region, class, year, value), and it is always good
 to be able to do this. For primary handling and storage however,
-this is often not an option, because
+this is often not an option, because:
 
 * a lot of array data are collected or generated as array data, e.g.
 by imagery or other sensory devices, or e.g. by climate models
@@ -912,7 +975,6 @@ and in figure \@ref(fig:asstars).
 (ref:rasterize) rasterizing vector geometry using `st_as_stars`
 
 ```{r asstars, fig.cap = '(ref:rasterize)' }
-sf_use_s2(TRUE)
 (file = system.file("gpkg/nc.gpkg", package="sf"))
 read_sf(file) |> 
 	st_geometry() |>
@@ -953,27 +1015,34 @@ reference system that can be get or replaced with `st_crs`, or be
 set or replaced in a pipe with `st_set_crs`. Coordinate reference
 systems can be set with an EPSG code, like `st_crs(4326)` which
 will be converted to `st_crs('EPSG:4326')`, or with a PROJ.4 string
-like `""+proj=utm +zone=25 +south"`, a name like "WGS84", or a name
+like `"+proj=utm +zone=25 +south"`, a name like "WGS84", or a name
 preceded by an authority like "OGC:CRS84"; alternatives include
-a coordinate reference system definition in WKT, WKT2 (section
-\@ref(wkt2)) or PROJJSON.
+a coordinate reference system definition in WKT, WKT-2 (section
+\@ref(wkt2)) or [PROJJSON](https://proj.org/specifications/projjson.html).
 
-The object returned contains two fields, `wkt` with the WKT2
-representation, and `input` with the user input, if any, or else
-a copy of the wkt field. Note that PROJ.4 strings can be used to
+The object returned contains two fields: 
+
+* `wkt` with the WKT-2 representation 
+* `input` with the user input, if any, or a human readable
+description of the coordinate reference system, if available
+
+Note that PROJ.4 strings can be used to
 _define_ some coordinate reference systems, but they cannot be used
 to _represent_ coordinate reference systems. Conversion of a
-WKT2 in a `crs` object to a proj4string using the `$proj4string`
+WKT-2 in a `crs` object to a proj4string using the `$proj4string`
 method, as in
 ```{r}
 x = st_crs("OGC:CRS84")
 x$proj4string
 ```
-may succeed but is not in general lossless or invertible.
+may succeed but is not in general lossless or invertible. Using
+PROJ.4 strings, for instance to _define_ a parameterized, projected
+coordinate reference system is fine as long as it is associated
+with the WGS84 datum.
 
 ### `st_transform`, `sf_project`
 
-Coordinate transformations or conversions (section \@ref(proj))
+Coordinate transformations or conversions (section \@ref(projlib))
 for `sf` or `stars` objects are carried out with `st_transform`,
 which takes as its first argument a spatial object of class `sf` or
 `stars` that has a coordinate reference system set, and as a second
@@ -996,18 +1065,17 @@ software. It takes a single parameter, `type`, which can have the
 following values:
 
 * `type = "proj"` lists the short and long names of available
-projections; short names can be used in a "+proj=name" string.
+projections; short names can be used in a "+proj=name" string
 * `type = "ellps"` lists available ellipses, with name, long name,
-and ellipsoidal parameters.
+and ellipsoidal parameters
 * `type = "units"` lists the available length units, with conversion
 constant to meters
 * `type = "prime_meridians"` lists the prime meridians with their
-position with respect to the Greenwich meridian.
-
+position with respect to the Greenwich meridian
 
 ### proj.db, datum grids, cdn.proj.org, local cache
 
-Datum grids (section \@ref(proj)) can be installed locally, or
+Datum grids (section \@ref(projlib)) can be installed locally, or
 be read from the PROJ datum grid CDN at https://cdn.proj.org/. If
 installed locally, they are read from the PROJ search path, which
 is shown by
@@ -1050,7 +1118,7 @@ list.files(sf_proj_search_paths()[1], full.names = TRUE)
 ```
 that will be searched first in subsequent datum grid queries.
 
-### transformation pipelines {#pipelines}
+### Transformation pipelines {#pipelines}
 
 Internally, PROJ uses a so-called _coordinate operation pipeline_,
 to represent the sequence of operations to get from a source CRS to
@@ -1067,7 +1135,7 @@ on the network search, we would have obtained a different result:
 sf_proj_network(FALSE)
 sf_proj_pipelines("EPSG:4326", "EPSG:22525")
 ```
-and a report that a datum grid is missing 
+and a report that a datum grid is missing. 
 The object returned by `sf_proj_pipelines` is a sub-classed `data.frame`, with columns
 ```{r}
 names(p)
@@ -1077,7 +1145,7 @@ and we can list for instance the accuracies by
 p$accuracy
 ```
 Here, `NA` refers to "ballpark accuracy", which may be anything in the
-30-100 m range:
+30-120 m range:
 ```{r}
 p[is.na(p$accuracy),]
 ```
@@ -1085,7 +1153,35 @@ The default, most accurate pipeline chosen by `st_transform` can
 be overriden by specifying `pipeline` argument, as selected from
 the set of options in `p$definition`.
 
-## transforming and warping rasters {#warp}
+### Axis order {#axisorder}
+
+As mentioned in section \@ref(wkt2), the definition of `EPSG:4326`,
+```{r echo=FALSE}
+cat(st_crs("EPSG:4326")$wkt, "\n")
+```
+indicates that the first axis is associated with latitude and the
+second with longitude; this is also the case for a number of other
+ellipsoidal coordinate reference systems. Although this is how
+the authority (EPSG) prescribes this, it is not how most datasets
+are currently stored! As most other software, package `sf` by default
+ignores this, and interprets ellipsoidal coordinates as (longitude,
+latitude) by default. If however data needs to be read e.g. from a
+WFS service that wants to be compliant to the authority, one can set
+```{r eval=FALSE}
+st_axis_order(TRUE)
+```
+to globally instruct `sf`, when calling GDAL and PROJ routines, that
+authority compliance (latitude, longitude order) is assumed. It is
+anticipated that problems may happen in case of authority compliance,
+e.g. with plotting data.  At the time of writing this, the `plot`
+method for `sf` objects respects the axis order flag and will swap
+coordinates using the transformation pipeline `"+proj=pipeline
++step +proj=axisswap +order=2,1"` before plotting them, but
+e.g. `geom_sf()` in `ggplot2` has not been modified to do this.
+As mentioned earlier, the ambiguity of `EPSG:4326` is resolved by
+replacing it with `OGC:CRS84`.
+
+## Transforming and warping rasters {#warp}
 
 When using `st_transform` on a raster data set, as e.g. in
 ```{r}
@@ -1133,7 +1229,19 @@ st_warp(r, grd)
 
 ## Exercises 
 
-1. NDVI, normalized differenced vegetation index, is coputed as (NIR-R)/(NIR+R), with NIR the near infrared and R the red band.  Read the `L7_ETMs.tif` file into object `x`, and distribute the band dimensions over attributes by `split(x, "band")`. Then, compute NDVI by using an expression that uses the NIR (band 4) and R (band 3) attributes directly.
-1. Compute NDVI for the S2 image, using `st_apply` and an a function `ndvi = function(x) (x[4]-x[3])/(x[4]+x[3])`. Plot the result, and write the result to a GeoTIFF. Explain the difference in runtime between plotting and writing.
-1. Use `st_transform` to transform the `stars` object read from `L7_ETMs.tif` to EPSG 4326. Print the object. Is this a regular grid? Plot the first band using arguments `axes=TRUE` and `border=NA`, and explain why this takes such a long time.
-1. Use `st_warp` to warp the `L7_ETMs.tif` object to EPSG 4326, and plot the resulting object with `axes=TRUE`. Why is the plot created much faster than after `st_transform`?
+Use R to solve the following exercises.
+
+1. Find the names of the `nc` counties that intersect `LINESTRING(-84 35,-78 35)`; use `[` for this, and as an alternative use `st_join()` for this.
+1. Repeat this after setting `sf_use_s2(FALSE)`, and _compute_ the difference (hint: use `setdiff()`), and color the counties of the difference using color '#88000088'.
+1. Plot the two different lines in a single plot; note that R will plot a straight line always straight in the projection currently used; `st_segmentize` can be used to add points on straight line, or on a great circle for ellipsoidal coordinates.
+1. NDVI, normalized differenced vegetation index, is computed as `(NIR-R)/(NIR+R)`, with NIR the near infrared and R the red band.  Read the `L7_ETMs.tif` file into object `x`, and distribute the band dimensions over attributes by `split(x, "band")`. Then, add attribute NDVI to this object by using an expression that uses the NIR (band 4) and R (band 3) attributes directly.
+1. Compute NDVI for the `L7_ETMs.tif` image by reducing the band dimension, using `st_apply` and an a function `ndvi = function(x) { (x[4]-x[3])/(x[4]+x[3]) }`. Plot the result, and write the result to a GeoTIFF. 
+1. Use `st_transform` to transform the `stars` object read from `L7_ETMs.tif` to `EPSG:4326`. Print the object. Is this a regular grid? Plot the first band using arguments `axes=TRUE` and `border=NA`, and explain why this takes such a long time.
+1. Use `st_warp` to warp the `L7_ETMs.tif` object to `EPSG:4326`, and plot the resulting object with `axes=TRUE`. Why is the plot created much faster than after `st_transform`?
+1. Using a vector representation of the raster `L7_ETMs`, plot the
+intersection with a circular area around `POINT(293716 9113692)` with
+radius 75 m,  and compute the area-weighted mean pixel values for
+this circle.  Compare the area-weighted values with those obtained
+by `aggregate` using the vector data, and by `aggregate` using
+the raster data, using `exact=FALSE` (default) and `exact=FALSE`.
+Explain the differences.

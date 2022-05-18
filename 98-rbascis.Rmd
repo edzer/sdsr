@@ -10,7 +10,7 @@ The `|>` (pipe) symbols should be read as _then_: we read
 ```{r eval=FALSE}
 a |> b() |> c() |> d(n = 10)
 ```
-as _with `a` do `b` then `c` then `d`_, and that is just alternative syntax for
+as _with `a` do `b` then `c` then `d` with `n` being 10_, and that is just alternative syntax for
 ```{r eval=FALSE}
 d(c(b(a)), n = 10)
 ```
@@ -21,15 +21,22 @@ tmp2 <- c(tmp1)
 tmp3 <- d(tmp2, n = 10)
 ```
 To many, the pipe-form is easier to read because execution order
-follows reading order (from left to right). Like nested function
-calls, it avoids the need to choose names for intermediate results.
+follows reading order,  from left to right.  Like nested function
+calls, it avoids the need to choose names for intermediate results,
+but like nested function calls, it is hard to debug intermediate
+results that diverge from out expectations. Note that the
+intermediate results do exist in memory, so neither form saves
+memory allocation. The pipe that appeared natively in R 4.1.0,
+`|>`, can be used anywhere in this book where `%>%` is used. The
+reason we kept to the `%>%` pipe is to not exclude users of older
+R version to use the code sections in this book.
 
 R versions before 4.1 do not have a native pipe operator. For
 these, the `|>` needs to be replaced by `%>%`, another pipe operator
 provided by package `magrittr`. For all occasions used in this book,
 the two behave syntactically identical.
 
-## Data structures 
+## Data structures {-}
 
 As pointed out by [@extending], _everything that exists in R is an
 object_. This includes objects that make things happen, such as
@@ -37,7 +44,7 @@ language objects or functions, but also the more basic "things",
 such as data objects. Some basic R data structures will now be
 discussed.
 
-### Homogeneous vectors
+### Homogeneous vectors {-}
 
 Data objects contain data, and possibly metadata. Data is always
 in the form of a vector, which can have different type. We can
@@ -54,7 +61,7 @@ typeof(c(TRUE, FALSE))
 ```
 Vectors of this kind can only have a single type.
 
-Note that vectors can have length zero, e.g. in, 
+Note that vectors can have zero length, e.g. in, 
 ```{r}
 i = integer(0)
 typeof(i)
@@ -74,10 +81,10 @@ a
 a[[3]] = 10
 a
 ```
-where the difference is that `[` can operate on an index range
+where the difference is that `[` can operate on an index _range_
 (or multiple indexes), and `[[` operates on a single vector value.
 
-### Heterogeneous vectors: list
+### Heterogeneous vectors: list {-}
 
 An additional vector type is the `list`, which can combine any types in
 its elements:
@@ -116,7 +123,7 @@ l
 This is convenient, but also requires name look-up in the names
 attribute (see below).
 
-#### NULL and removing list elements
+#### NULL and removing list elements {-}
 
 `NULL` is the null value in R; it is special in the sense that it doesn't work
 in simple comparisons:
@@ -142,7 +149,7 @@ l
 ```
 
 
-### Attributes
+### Attributes {-}
 
 We can glue arbitrary metadata objects to data objects, as in
 ```{r}
@@ -166,7 +173,7 @@ attributes(a)
 
 A number of attributes are treated specially by R, see e.g. `?attributes`.
 
-#### object class and class attribute
+#### object class and class attribute {-}
 
 Every object in R "has a class", meaning that `class(obj)` returns
 a character vector with the class of `obj`. Some objects have
@@ -212,7 +219,7 @@ like, we can use
 unclass(p)
 ```
 
-#### the dim attribute
+#### the dim attribute {-}
 
 The `dim` attribute sets the matrix or array dimensions:
 ```{r}
@@ -226,7 +233,7 @@ class(a)
 a
 ```
 
-### various names attributes
+### various names attributes {-}
 
 Named vectors carry their names in a `names` attribute. We saw examples
 for lists above, an example for a numeric vector is:
@@ -250,7 +257,7 @@ df = data.frame(a = 1:3, b = c(TRUE, FALSE, TRUE))
 attributes(df)
 ```
 
-### using `structure`
+### using `structure` {-}
 
 When programming, the pattern of adding or modifying attributes before returning
 an object is extremely common, an example being:
@@ -270,3 +277,72 @@ f = function(x) {
 ```
 where function `structure` adds, replaces, or (in case of value `NULL`) removes
 attributes from the object in its first argument.
+
+## dissecting a `MULTIPOLYGON` {-}
+
+We can use the above examples to dissect an `sf` object with
+`MULTIPOLYGON`s into pieces. Suppose we use the `nc` dataset,
+```{r}
+library(sf)
+system.file("gpkg/nc.gpkg", package = "sf") %>%
+	read_sf() -> nc
+```
+we can see from the attributes of `nc`,
+```{r}
+attributes(nc)
+```
+that the geometry column is named `geom`. When we take out this column,
+```{r}
+nc$geom
+```
+we see an object that has the following attributes
+```{r}
+attributes(nc$geom)
+```
+When we take the _contents_ of the fourth list element, we obtain
+```{r}
+nc$geom[[4]]
+```
+which is a list,
+```{r}
+typeof(nc$geom[[4]])
+```
+with attributes
+```{r}
+attributes(nc$geom[[4]])
+```
+and length
+```{r}
+length(nc$geom[[4]])
+```
+The length indicates the number of outer rings: a multi-polygon
+can consist of more than one polygon. We see that most counties
+only have a single polygon:
+```{r}
+lengths(nc$geom)
+```
+A multi-polygon is a list with polygons,
+```{r}
+typeof(nc$geom[[4]])
+```
+and the _first_ polygon of the fourth multi-polygon is again a list,
+because polygons have an outer ring _possibly_ followed by multiple inner 
+rings (holes)
+```{r}
+typeof(nc$geom[[4]][[1]])
+```
+we see that it contains only one ring, the exterior ring:
+```{r}
+length(nc$geom[[4]][[1]])
+```
+and we can print type, the dimension and the first set of coordinates by
+```{r}
+typeof(nc$geom[[4]][[1]][[1]])
+dim(nc$geom[[4]][[1]][[1]])
+head(nc$geom[[4]][[1]][[1]])
+```
+and we can now for instance change the latitude of the third coordinate by
+```{r}
+nc$geom[[4]][[1]][[1]][3,2] = 36.5
+```
+

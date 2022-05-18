@@ -12,9 +12,14 @@ owd = setwd(dirname(src))
 if (length(formats) == 0) formats = c(
   'bookdown::pdf_book', 'bookdown::epub_book', 'bookdown::gitbook'
 )
+
+bookdown::render_book('index.Rmd', bookdown::pdf_book(pandoc_args = '--syntax-definition=r.xml'), quiet = TRUE)
+bookdown::pdf_book('index.Rmd', quiet = TRUE, pandoc_args = '--syntax-definition=r.xml')
+q(FALSE)
+
 # render the book to all formats unless they are specified via command-line args
 for (fmt in formats) {
-  cmd = sprintf("bookdown::render_book('index.Rmd', '%s', quiet = %s)", fmt, quiet)
+  cmd = sprintf("bookdown::render_book('index.Rmd', '%s', quiet = %s, pandoc_args = '--syntax-definition=r.xml')", fmt, quiet)
   res = bookdown:::Rscript(c('-e', shQuote(cmd)))
   if (res != 0) stop('Failed to compile the book to ', fmt)
   if (!travis && fmt == 'bookdown::epub_book')

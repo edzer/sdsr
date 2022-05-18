@@ -2,13 +2,14 @@
 
 This chapter describes how large spatial and spatiotemporal datasets
 can be handled with R, with a focus on packages `sf` and `stars`.
-For practical use, we classify large data sets as either
+For practical use, we classify large data sets as either:
 
 * too large to fit in working memory, or
 * also too large to fit on the local hard drive, or
-* also too large to download it to own compute infrastructure
+* also too large to download it to locally managed compute
+infrastructure (such as network attached storage)
 
-these three categories correspond very roughly to Gigabyte-,
+These three categories correspond very roughly to Gigabyte-,
 Terabyte- and Petabyte-sized data sets.
 
 ## Vector data: `sf` {#largesf}
@@ -25,7 +26,7 @@ An example is
 
 ```{r}
 library(sf)
-(file = system.file("gpkg/nc.gpkg", package="sf"))
+(file = system.file("gpkg/nc.gpkg", package = "sf"))
 bb = "POLYGON ((-81.7 36.2, -80.4 36.2, -80.4 36.5, -81.7 36.5, -81.7 36.2))"
 nc.1 = st_read(file, wkt_filter = bb)
 ```
@@ -38,7 +39,7 @@ select features from a layer, and limit fields. An example is:
 q = paste("select BIR74,SID74,geom from 'nc.gpkg' where BIR74 > 1500")
 nc.2 = st_read(file, query = q)
 ```
-note that `nc.pgkg` is the _layer name_, which can be obtained from `file` using `st_layers`.
+Note that `nc.gpkg` is the _layer name_, which can be obtained from `file` using `st_layers`.
 Sequences of records can be read using `LIMIT` and `OFFSET`, to read records 51-60 use
 ```{r}
 q = paste("select BIR74,SID74,geom from 'nc.gpkg' LIMIT 10 OFFSET 50")
@@ -51,17 +52,21 @@ is passed on to the database and not interpreted by GDAL; this means
 that more powerful features will be available.  Further information
 is found in the GDAL documentation under "OGR SQL dialect".
 
-Very large file files or directories that are zipped can be read
+Very large files or directories that are zipped can be read
 without the need to unzip them, using the `/vsizip` (for zip),
 `/vsigzip` (for gzip) or `/vsitar` (for tar files) prefix to files;
 this is followed by the path to the zip file, and then followed by
 the file inside this zip file. Reading files this way may come at
-some computatational cost.
+some computational cost.
 
 ### Reading from databases, dbplyr
 
 ```{r, echo=FALSE}
-has_PG <- any("PostgreSQL" %in% st_drivers()$name)
+has_PG <- any("PostgreSQL" %in% st_drivers()$name) &&
+	!inherits(try(DBI::dbConnect( 
+    	RPostgres::Postgres(),
+    	host = "localhost",
+    	dbname = "postgis"), silent = TRUE), "try-error")
 ```
 
 ```{r echo=FALSE, eval=has_PG}
@@ -71,8 +76,8 @@ write_sf(nc, "PG:dbname=postgis", "nc")
 
 Although GDAL has support for several spatial databases, and as
 mentioned above it passes on SQL in the `query` argument to the
-database, it is sometimes beneficial to directly read and 
-to a spatial database using the R database drivers for this. An
+database, it is sometimes beneficial to directly read from and 
+write to a spatial database using the R database drivers for this. An
 example of this is:
 ```{r, eval=has_PG}
 pg <- DBI::dbConnect(
@@ -111,7 +116,7 @@ are ellipsoidal.
 
 ### Reading from online resources or web services
 
-GDAL drivers support reading from online recourses, by prepending
+GDAL drivers support reading from online resources, by prepending
 `/vsicurl/` before the URL starting with e.g. `https://`. A number of
 similar drivers specialized for particular clouds include `/vsis3`
 for Amazon S3, `/vsigs`  for Google Cloud Storage, `/vsiaz` for
@@ -121,7 +126,7 @@ Swift Object Storage. These prepositions can be combined e.g. with
 file format used, reading information this way may always involve
 reading the entire file, or reading it multiple times, and may not
 always be the most efficient way of handling resources. A format
-like "cloud-optimized geotiff" (COG) has been specially designed
+like "cloud-optimized GeoTIFF" (COG) has been specially designed
 to be efficient and resource-friendly in many cases, e.g. for only
 reading the metadata, or for only reading overviews (low-resolutions
 versions of the full imagery) or spatial segments. COGs can also
@@ -136,8 +141,8 @@ data create data on the fly, and give access to this through an API.
 As an example, data from [OpenStreetMap](https://openstreetmap.org/)
 can be bulk downloaded and read locally, e.g. using the GDAL vector
 driver, but more typical a user wants to obtain a small subset of
-the data or use the data for a small query. Several R pacages exist
-that query openstreetmap data: 
+the data or use the data for a small query. Several R packages exist
+that query OpenStreetMap data: 
 
 * Package `OpenStreetMap` downloads data as raster tiles, typically
   used as backdrop or reference for plotting other features
@@ -145,7 +150,7 @@ that query openstreetmap data:
   in `sf` or `sp` format
 * Package `osmar` returns vector data, but in addition the network
   topology (as an `igraph` object) that contains how road elements
-  form a network, and has functions that compute the shortest route.
+  form a network, and has functions that compute the shortest route
 
 When provided with a correctly formulated API call in the URL the
 highly configurable GDAL OSM driver (in `st_read`) can read an
@@ -157,7 +162,7 @@ bounding box query to OpenStreetMap could look like
 
 ```{r,eval=FALSE}
 download.file(
-  "https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970"
+  "https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970",
   "data/ms.osm", method = "auto")
 ```
 and from this file we can read the layer `lines`, and plot its
@@ -178,12 +183,12 @@ functionality to OpenStreetMap data.
 ## Raster data: `stars`
 
 A common challenge with raster datasets is not only that they come
-in large files (single Sentinel-2 tiles are around 1 Gb), but that
+in large files (single Sentinel-2 tiles are around 1 GB), but that
 many of these files, potentially thousands, are needed to address
 the area and time period of interest. At time of writing this, the
 Copernicus program that runs all Sentinel satellites publishes 160
-Tb of images per day.  This means that a classic pattern in using R,
-consisting of
+TB of images per day.  This means that a classic pattern in using R,
+consisting of:
 
 * downloading data to local disc, 
 * loading the data in memory, 
@@ -197,10 +202,10 @@ recognize this and let users work with datasets up to the petabyte
 range rather easily and with a great deal of interactivity. They
 share the following properties:
 
-* computations are posponed as long as possible (lazy evaluation),
-* only the data you ask for are being computed and returned, and nothing more,
-* storing intermediate results is avoided in favour of on-the-fly computations,
-* maps with useful results are generated and shown quickly to allow for interactive model development.
+* computations are postponed as long as possible (lazy evaluation)
+* only the data you ask for are being computed and returned, and nothing more
+* storing intermediate results is avoided in favour of on-the-fly computations
+* maps with useful results are generated and shown quickly to allow for interactive model development
 
 This is similar to the `dbplyr` interface to databases and
 cloud-based analytics environments, but differs in the aspect of
@@ -221,7 +226,7 @@ mentioned, zooming in the map triggers further computations on a
 finer resolution and smaller extent.
 
 A simple optimisation that follows these lines is how stars' plot
-method works:  in case of plotting large rasters, it subsamples
+method works:  in the case of plotting large rasters, it subsamples
 the array before it plots, drastically saving time.  The degree
 of subsampling is derived from the plotting region size and the
 plotting resolution (pixel density). For vector devices, such as pdf,
@@ -234,8 +239,9 @@ devices will create a plot at target density.
 To handle datasets that are too large to fit in memory, `stars`
 provides `stars_proxy` objects.  To demonstrate its use, we will
 use the `starsdata` package, an R data package with larger datasets
-(around 1 Gb total). It can be installed by
+(around 1 GB total). It can be installed by
 ```{r eval=FALSE}
+options(timeout = 600) # or large in case of slow network
 install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", 
 	type = "source")
 ```
@@ -262,7 +268,7 @@ p2 = p * 2
 ```
 but that the computations for this are postponed. Only when we
 really need the data, e.g. because we want to plot it, is `p *
-2` evaluated.  We need data when either
+2` evaluated.  We need data when either:
 
 * we want to `plot` data, or
 * we want to write an object to disk, with `write_stars`, or
@@ -272,14 +278,14 @@ In case the entire object does not fit in memory, `plot` and
 `write_stars` choose different strategies to deal with this:
 
 * `plot` fetches only the pixels that can be seen, rather than all
-pixels available, and
-* `write_stars` reads, processes, and writes data chunk by chunk.
+pixels available
+* `write_stars` reads, processes, and writes data chunk by chunk
 
 Downsampling and chunking is implemented for spatially dense images,
 not e.g. for dense time series, or other dense dimensions.
 
 As an example, the output of `plot(p)`, shown in figure \@ref(fig:plotp)
-```{r plotp, fig.cap="Plot of downsampled 10 m bands of a Sentinel-2 scene", echo=!knitr::is_latex_output()}
+```{r plotp, fig.cap="downsampled 10 m bands of a Sentinel-2 scene", echo=!knitr::is_latex_output(), message=FALSE}
 plot(p)
 ```
 only fetches the pixels that can be seen on the plot device, rather
@@ -295,7 +301,7 @@ the key on the plotting device.
 
 ### Operations on proxy objects
 
-A few dedicated methods are available for `stars_proxy` objects:
+Several dedicated methods are available for `stars_proxy` objects:
 ```{r}
 methods(class = "stars_proxy")
 ```
@@ -307,7 +313,7 @@ The three methods that actually fetch data are `st_as_stars`,
 `stars` object, its argument `downsample` controls the downsampling
 rate. `plot` does this too, choosing an appropriate `downsample`
 value from the device resolution, and plots the object. `write_stars`
-writes a `star_proxy` object to disc.
+writes a `stars_proxy` object to disk.
 
 All other methods for `stars_proxy` objects do not actually operate
 on the raster data but add the operations to a _to do_ list,
@@ -332,17 +338,15 @@ be sufficient, network bandwidth may become limiting. Examples are
 satellite image archives such as those from Landsat and Copernicus
 (Sentinel-x), or model computations such as the ERA5 [@era5], a
 model reanalysis of the global atmosphere, land surface and ocean
-waves from 1950 onwards. In such cases it may be most helpful to
-either gain access to (typically: rent) virtual machines in a cloud
-where these data are available and nearby (i.e., the data should be
-stored in the same data center as where the virtual machine is),
-or to use a system that lets the user carry out such computations
-without having to worry about virtual machines. Both options will
-be discussed.
+waves from 1950 onwards. In such cases it may be most helpful to gain
+access to virtual machines in a cloud that has these data available,
+or to use a system that lets the user carry out computations without
+having to worry about virtual machines and storage. Both options
+will be discussed.
 
 ### Finding and processing assets
 
-When working on a virtual machine on a cloud, a first task is usally
+When working on a virtual machine on a cloud, a first task is usually
 to find the assets (files) to work on. It looks attractive to obtain
 a file listing, and then parse file names such as
 ```
@@ -363,7 +367,9 @@ to create queries, and manage the information returned.
 Processing the resulting files may involve creating a data cube at
 a lower spatial and/or temporal resolution, from images that may
 span a range of coordinate reference systems (e.g., several UTM
-zones). An R package that can do that is gdalcubes [@R-gdalcubes; @appel2019demand].
+zones). An R package that can do that is gdalcubes [@R-gdalcubes;
+@appel2019demand], which can also directly use STAC output
+[@appelblog].
 
 ### Processing data: GEE, openEO
 
@@ -383,11 +389,11 @@ Python or R. R package `rgee` [@R-rgee] provides an R client
 interface to GEE.
 
 Cloud-based data cube processing platforms built entirely around
-open source software are arising, several of which using the openEO
-API [@openEO]. This API has room for user-defined functions (UDFs)
+open source software are emerging, several of which using the openEO
+API [@openEO]. This API allows for user-defined functions (UDFs)
 written in Python or R that are being passed on through the API and
 executed at the pixel level, e.g. to aggregate or reduce dimensions.
-UDFs in R represent the data chunk to be processed as `stars`
+UDFs in R represent the data chunk to be processed as a `stars`
 object, in Python `xarray` objects are used.
 
 Other platforms include the Copernicus climate data store [@cds]
@@ -395,3 +401,31 @@ or atmosphere data store, which allow processing of atmospheric
 or climate data from ECMWF, including ERA5. An R package with an
 interface to both data stores is `ecmwfr` [@R-ecmwfr].
 
+## Exercises 
+
+Use R to solve the following exercises.
+
+1. For the S2 image (above), find out in which order the bands are by
+using `st_get_dimension_values()`, and try to find out (e.g. by internet
+search) which spectral bands / colors they correspond to.
+1. Compute NDVI for the S2 image, using `st_apply` and an an appropriate 
+`ndvi` function.  Plot the result to screen, and then write the
+result to a GeoTIFF. Explain the difference in runtime between
+plotting and writing.
+1. Plot an RGB composite of the S2 image, using the `rgb` argument
+to `plot()`, and then by using `st_rgb()` first.
+1. Select five random points from the bounding box of `S2`, and extract
+the band values at these points; convert the object returned to an `sf`
+object.
+1.  For the 10 km radius circle around `POINT(390000  5940000)`, use
+`aggregate` to compute the mean pixel values of the S2 image
+when downsampling the images with factor 30, and on the original
+resolution. Compute the relative difference between the results.
+1. Use `hist` to compute the histogram on the downsampled S2 image.
+Also do this for each of the bands. Use `ggplot2` to compute a
+single plot with all four histograms.
+1.  Use `st_crop` to crop the S2 image to the area covered by the 10 km circle.
+Plot the results. Explore the effect of setting argument `crop = FALSE`
+1.  With the downsampled image, compute the logical layer where all four
+bands have pixel values higher than 1000. Use a raster algebra expression
+on the four bands (use `split` first), or use `st_apply` for this.

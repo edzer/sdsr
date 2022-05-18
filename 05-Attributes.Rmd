@@ -4,12 +4,12 @@ Feature _attributes_ refer to the properties of features ("things")
 that do not describe the feature's geometry. Feature attributes can
 be _derived_ from geometry (e.g. length of a `LINESTRING`, area
 of a `POLYGON`) but they can also refer to non-derived properties,
-such as
+such as:
 
-* the name of a street or a county, 
-* the number of people living in a country, 
+* the name of a street or a county
+* the number of people living in a country
 * the type of a road
-* the soil type in a polygon from a soil map.
+* the soil type in a polygon from a soil map
 * the opening hours of a shop
 * the body weight or heart beat rate of an animal
 * the NO$_2$ concentration measured at an air quality monitoring station
@@ -84,14 +84,14 @@ relationship (**AGR**):
 * **constant** the attribute value is valid everywhere in or over the
 geometry; we can think of the feature as consisting of an infinite
 number of points that all have this attribute value; in the geostatistical
-literature this is known as a variable with _point support_;
+literature this is known as a variable with _point support_
 * **aggregate** the attribute is an aggregate, a summary value over
 the geometry; we can think of the feature as a _single_ observation
 with a value that is associated with the _entire_ geometry; this is
-also known as as a variable having _block support_.
+also known as a variable having _block support_
 
 For polygon data, typical examples of **constant** AGR (point
-support) variables are
+support) variables are:
 
 * land use for a land use polygon
 * rock units or geologic strata in a geological map
@@ -104,7 +104,7 @@ that are not man-made and also not associated with a sensor device
 (such as remote sensing image pixel boundaries). Instead, the geometry
 follows from the variable observed.
 
-Examples for the **aggregate** AGR (block support) variables are
+Examples for the **aggregate** AGR (block support) variables are:
 
 * population, either as number of persons or as population density
 * other socio-economic variables, summarised by area
@@ -128,24 +128,24 @@ attribute. An example is:
 
 * an arbitrary point (or region) inside a county is still part of the
 county and must have the same value for county name, but it does not
-longer identify the (entire) geometry corresponding to that county.
+longer identify the (entire) geometry corresponding to that county
 
 The challenge here is that spatial information (ignoring time for
 simplicity) belongs to different phenomena types [e.g. @scheider2016],
-including
+including:
 
-* **fields**: where over _continuous_ space, every location corresponds to a single value, e.g. elevation, air quality, or land use,
-* **objects**: found at a _discrete_ set of locations, e.g. houses or persons,
-* **aggregates**: e.g. sums, totals, averages of fields, counts or densities of objects, associated with lines or regions,
+* **fields**: where over _continuous_ space, every location corresponds to a single value, e.g. elevation, air quality, or land use
+* **objects**: found at a _discrete_ set of locations, e.g. houses or persons
+* **aggregates**: e.g. sums, totals, averages of fields, counts or densities of objects, associated with lines or regions
 
 but that different spatial geometry types (points, lines, polygons,
 raster cells) have no simple mapping to these phenomena types:
 
-* points may refer to sample locations of observations on fields (air quality) or to locations of objects,
-* lines may be used for objects (roads, rivers), contours of a field, or administrative borders,
+* points may refer to sample locations of observations on fields (air quality) or to locations of objects
+* lines may be used for objects (roads, rivers), contours of a field, or administrative borders
 * raster pixels and polygons may reflect fields of a categorical
 variable such as land use (_coverage_), but also aggregates such
-as population density.
+as population density
 
 Properly specifying attribute-geometry relationships, and warning
 against their absence or cases when change in geometry (change
@@ -153,9 +153,9 @@ of support) implies a change of information can help avoiding a
 large class of common spatial data analysis mistakes [@stasch2014]
 associated with the _support_ of spatial data.
 
-## Aggregating and Summarising
+## Aggregating and summarising
 
-Aggregating records in a table (or `data.frame`) involves two steps
+Aggregating records in a table (or `data.frame`) involves two steps:
 
 * grouping records based on a grouping predicate, and
 * applying an aggregation function to the attribute values of a
@@ -186,10 +186,8 @@ formed by just putting all the county geometries together would
 have many duplicate boundaries, and hence not be _valid_ (section
 \@ref(valid)).
 
-```{r ncaggregation, fig.cap="top: SID74 counts by county quadrant, with county polygons unioned by county quadrant", echo=!knitr::is_latex_output()}
-nc <- read_sf(system.file("gpkg/nc.gpkg", package="sf"))
-#plot(nc["SID74"], axes = TRUE)
-sf_use_s2(TRUE)
+```{r ncaggregation, out.width = '70%', fig.cap="SID74 counts by county quadrant, with county polygons unioned by county quadrant", echo=!knitr::is_latex_output()}
+nc <- read_sf(system.file("gpkg/nc.gpkg", package = "sf"))
 # encode quadrant by two logicals:
 nc$lng = st_coordinates(st_centroid(st_geometry(nc)))[,1] > -79
 nc$lat = st_coordinates(st_centroid(st_geometry(nc)))[,2] > 35.5
@@ -208,7 +206,7 @@ for variables that reflect _amount_, nothing gets lost and nothing
 is added. The newly formed geometry is the result of unioning the
 geometries of the records.
 
-```{r ncblocks, fig.cap="Example target blocks layed out over North Carolina counties", echo=!knitr::is_latex_output()}
+```{r ncblocks, out.width = '70%', fig.cap="example target blocks layed out over North Carolina counties", echo=!knitr::is_latex_output()}
 nc <- st_transform(nc, 2264)
 gr = st_sf(
    label = apply(expand.grid(1:10, LETTERS[10:1])[,2:1], 1, paste0, collapse = " "),
@@ -245,7 +243,7 @@ coverage)
 * when aggregating many very small polygons or raster pixels over
 larger areas, e.g. averaging altitude from 30 m resolution raster
 over North Carolina counties, the error made by multiple matches
-may be insignificant.
+may be insignificant
 
 A more comprehensive approach to aggregating spatial data associated
 to areas to larger, arbitrary shaped areas is by using area-weighted
@@ -259,11 +257,11 @@ the geometries of a target, where source and target geometries are
 unrelated, area-weighted interpolation may be a simple approach. In
 effect, it considers the area of overlap of the source and target
 geometries, and uses that to weight the source attribute values into
-the target value [@goodchild; @thomas; @do]. Here, we follow the
-notation of [@do].
+the target value [@goodchild; @thomas; @do; @Do2021]. Here, we follow the
+notation of @do.
 
-Area-weighted interpolation computes for each of $q$ spatial target
-areas $T_j$ a weighted average from the values $Y_i$ corresponding
+Area-weighted interpolation computes, for each of $q$ spatial target
+areas $T_j$, a weighted average from the values $Y_i$ corresponding
 to the $p$ spatial source areas $S_i$,
 
 \begin{equation}
@@ -272,33 +270,34 @@ to the $p$ spatial source areas $S_i$,
 \end{equation}
 
 where the $w_{ij}$ depend on the amount of overlap of $T_j$ and
-$S_i$, $A_{ij} = T_j \cap S_i$.
+$S_i$, and the amount of overlap is $A_{ij} = T_j \cap S_i$. How
+$w_{ij}$ depends on $A_{ij}$ is discussed below.
 
 Different options exist for choosing weights, including methods
-using external variables (e.g. dasymetric mapping, [@mennis]).
+using external variables (e.g. dasymetric mapping, @mennis).
 Two simple approaches for computing weights that do not use external
-variables arise, depending on whether the variable $Z$ is _intensive_
+variables arise, depending on whether the variable $Y$ is _intensive_
 or _extensive_.
 
 ### Spatially extensive and intensive variables {#extensiveintensive}
 
-An example of an extensive variable is _population count_. It
+An example of a extensive variable is _population count_. It
 is associated with an area, and if that area is cut into smaller
 areas, the population count is split accordingly: not necessary
 proportional to area, because population is rarely uniform, but split
 in such a way that the sum of the population count for the smaller
-areas equals that of the total.  An example of a related variable
-that is _intensive_ is population density. If an an area is split
+areas equals that of the total. An example of a related variable
+that is _intensive_ is population density. If an area is split
 into smaller areas, population density is not split similarly:
 the sum of the population densities for the smaller areas is a
 meaningless measure, as opposed to the average of the population
 densities which will be similar to the density of the total area.
 
 Extensive variables correspond to amounts, associated with a physical
-size (length, area, volume); for spatially extensive variables,
+size (length, area, volume); for _spatially_ extensive variables,
 if the area a value corresponds to is cut in parts, the values
 associated with the sub-area are split accordingly. In other words:
-the value is proportional to the support.  Intensive variables are
+the value is proportional to the support. Intensive variables are
 variables that do not have values proportional to support: if the
 area is split, values may vary but _on average_ remain the same.
 The corresponding example of an intensive variable is _population
@@ -339,7 +338,7 @@ by an area-weighted average of the source values:
 ### Dasymetric mapping
 
 Dasymetric mapping distributes variables, such as population,
-known at a course spatial aggregation level over finer spatial
+known at a coarse spatial aggregation level over finer spatial
 units by using other variables that are associated with population
 distribution, such as land use, building density, or road density.
 The simplest approach to dasymetric mapping is obtained for
@@ -347,8 +346,21 @@ extensive variables, where the ratio $|A_{ij}| / |S_i|$ in
 \@ref(eq:awextensive) is replaced by the ratio of another extensive
 variable $X_{ij}(S_{ij})/X_i(S_i)$, which has to be known for both
 the intersecting regions $S_{ij}$ and the source regions $S_i$.
-[@do] discuss several alternatives for intensive $Y$ and/or $X$,
+@do discuss several alternatives for intensive $Y$ and/or $X$,
 and cases where $X$ is known for other areas.
+
+### Support in file formats
+
+GDAL's vector API supports reading and writing so-called field
+domains, which can have a "split policy" and a "merge policy"
+indicating what should be done with attribute variables when
+geometries are split or merged. The values of these can be
+"duplicate" for split and "geometry weighted" for merge, in
+case of spatially intensive variables, or they can be "geometry
+ratio" for split and "sum" for merge, in case of spatially
+extensive variables.  At the time of writing this, the [file
+formats supporting this](https://github.com/OSGeo/gdal/pull/3638)
+are GeoPackage and FileGDB.
 
 ## Up- and Downscaling {#updownscaling}
 
@@ -395,30 +407,29 @@ In cases where values associated with areas are **aggregate** values
 over the area, the assumptions made by area-weighted interpolation
 or dasymetric mapping -- uniformity or constant values over the
 source areas -- are highly unrealistic. In such cases, these simple
-approaches still be reasonable approximations, for instance when
+approaches still be reasonable approximations, for instance when:
 
 * the source and target area are nearly identical
 * the variability inside source units is very small, and the variable
-is nearly uniform or constant.
+is nearly uniform or constant
 
 In other cases, results obtained using these methods are merely
 consequences of unjustified assumptions. Statistical aggregation
 methods that can estimate quantities for larger regions from points
-or smaller regions include
+or smaller regions include:
 
 * design-based methods, which require that a probability sample is
 available from the target region, with known inclusion probabilities
-([@brus2021], section \@ref(design)), and
+(@brus2021, section \@ref(design)), and
 * model-based methods, which assume a random field model with spatially
-correlated values (block kriging, section \@ref(blockkriging)).
+correlated values (block kriging, section \@ref(blockkriging))
 
-Alternative disaggregation methods include 
+Alternative disaggregation methods include:
 
 * deterministic, smoothing-based approaches such as kernel- or spline-based
 smoothing methods [@toblerpyc; @martin89]
 * statistical, model-based approaches: area-to-area and area-to-point
-kriging [@kyriakidis04], see section \@ref(atpk)
-
+kriging [@kyriakidis04; @stcos].
 
 ## Exercises
 
@@ -444,7 +455,7 @@ cells, first for the case where the four cells represent (i) an extensive
 variable, and (ii) an intensive variable. The red numbers are the
 data values of the source areas.
 
-```{r awiex, fig.cap = "example data for area-weighted interpolation", echo = !knitr::is_latex_output()}
+```{r awiex, out.width = '50%', fig.cap = "example data for area-weighted interpolation", echo = !knitr::is_latex_output()}
 g = st_make_grid(st_bbox(st_as_sfc("LINESTRING(0 0,1 1)")), n = c(2,2))
 par(mar = rep(0,4))
 plot(g)

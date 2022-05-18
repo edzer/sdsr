@@ -1,8 +1,8 @@
 # Geometries {#geometries}
 
-Having learned how we describe coordinates systems, we can define
+Having learned how we represent coordinates systems, we can define
 how geometries can be described using these coordinate systems. This
-chapter will explain 
+chapter will explain:
 
 * _simple features_, a standard that describes point, line and polygon 
 geometries along with operations on them, 
@@ -11,7 +11,7 @@ geometries along with operations on them,
 * networks
 
 Geometries on the sphere are discussed in chapter \@ref(spherical),
-Rasters and other rectangular subdivisions of space are discussed
+rasters and other rectangular subdivisions of space are discussed
 in chapter \@ref(datacube).
 
 ## Simple feature geometries {#simplefeatures}
@@ -27,7 +27,7 @@ geometries are represented by sequences of points connected with
 straight lines that do not self-intersect.
 
 _Simple features access_ is a standard [@sfa; @sfa2; @iso] for
-describing simple feature geometries that includes
+describing simple feature geometries that includes:
 
 * a class hierarchy
 * a set of operations
@@ -36,7 +36,7 @@ describing simple feature geometries that includes
 We will first discuss the seven most common simple feature geometry
 types.
 
-### The big seven
+### The big seven {#seven}
 
 The most commonly used simple features geometries, used to represent a _single_ feature are:
 
@@ -144,7 +144,7 @@ Individual points in a geometry contain at least two coordinates:
 x and y, in that order.  If these coordinates refer to ellipsoidal
 coordinates, x and y usually refer to longitude and latitude,
 respectively, although sometimes to latitude and longitude (see
-sections \@ref(proj) and \@ref(axisorder)).
+sections \@ref(projlib) and \@ref(axisorder)).
 
 ### Simple and valid geometries, ring direction {#valid}
 
@@ -177,7 +177,7 @@ traversing the polygon is considered the polygon's inside.
 ### Z and M coordinates
 
 In addition to X and Y coordinates, Single points (vertices) of
-simple feature geometries may have
+simple feature geometries may have:
 
 * a `Z` coordinate, denoting altitude, and/or
 * an `M` value, denoting some "measure"
@@ -236,7 +236,7 @@ There are 10 more geometry types which are more rare, but increasingly find impl
 | `TIN` | A TIN (triangulated irregular network) is a PolyhedralSurface consisting only of Triangle patches.|
 | `TRIANGLE` | A Triangle is a polygon with 3 distinct, non-collinear vertices and no interior boundary |
 
-`CIRCULASTRING`, `COMPOUNDCURVE` and `CURVEPOLYGON` are not
+`CIRCULARSTRING`, `COMPOUNDCURVE` and `CURVEPOLYGON` are not
 described in the SFA standard, but in the [SQL-MM part 3
 standard](https://www.iso.org/standard/38651.html). The
 descriptions above were copied from the [PostGIS
@@ -258,20 +258,20 @@ Simple feature geometries can be queried for properties,
 transformed into new geometries, and combinations of geometries can
 be queried for properties. This section gives an overview of the
 operations entirely focusing on _geometrical_ properties.  Chapter
-\@ref(featureattributes), focuses on the analysis of non-geometrical
+\@ref(featureattributes) focuses on the analysis of non-geometrical
 feature properties, in relationship to their geometries. Some of
-the material in this section appeared in [@rjsf].
+the material in this section appeared in @rjsf.
 
 We can categorize operations on geometries in terms of what they
 take as input, and what they return as output. In terms of output
-we have operations that return
+we have operations that return:
 
-* **predicates**: a logical asserting a certain property is `TRUE`,
-* **measures**: a quantity (e.g. a numeric value with measurement unit), or
+* **predicates**: a logical asserting a certain property is `TRUE`
+* **measures**: a quantity (e.g. a numeric value with measurement unit)
 * **transformations**: newly generated geometries
 
 and in terms of what they operate on, we distinguish operations
-that are
+that are:
 
 * **unary** when they work on a single geometry
 * **binary** when they work on pairs of geometries
@@ -288,21 +288,21 @@ checks whether a geometry belongs to a particular class.
 
 ### Binary predicates and DE-9IM {#de9im}
 
-The Dimensionally Extended nine-Intersection Model (DE-9IM,
-[@de9im1; @de9im2]) is a model that helps describing the qualitative
+The Dimensionally Extended Nine-Intersection Model (DE-9IM,
+@de9im1; @de9im2) is a model that helps describing the qualitative
 relation between any two geometries in two-dimensional space
-($R^2$). Any geometry has a _dimension_ value that is
+($R^2$). Any geometry has a _dimension_ value that is:
 
 * 0 for points, 
 * 1 for linear geometries, 
 * 2 for polygonal geometries, and 
-* F (false) for empty geometries.
+* F (false) for empty geometries
 
 Any geometry also has an inside (I), a boundary (B) and an exterior (E); these
-roles are obvious for polygons but e.g. for
+roles are obvious for polygons but, e.g. for:
 
 * **lines** the boundary is formed by the end points, and the interior
-by all non-end points on the line,
+by all non-end points on the line
 * **points** have a zero-dimensional inside but no boundary
 
 ```{r de9im, fig.cap = "DE-9IM: intersections between the interior, boundary and exterior of a polygon (rows) and of a linestring (columns) indicated by red", echo=!knitr::is_latex_output() }
@@ -358,39 +358,41 @@ plot(s, col = c(NA, 'darkgreen'), border = 'blue', add = TRUE)
 Figure \@ref(fig:de9im) shows the intersections between the I,
 B and E components of a polygon and a linestring indicated by red;
 the sub-plot title gives the dimension of these intersections (0,
-1, 2 or F). The relationship between the two geometries is the
+1, 2 or F). The relationship between the polygon and the line geometry is the
 concatenation of these dimensions:
 ```{r echo=!knitr::is_latex_output()}
 st_relate(polygon, line)
 ```
-Using the ability to express relationships, we can also query
+where the first three characters are associated with the inside
+of the _first_ geometry (the polygon): figure \@ref(fig:de9im) is
+summarised row-wise.
+Using this ability to express relationships, we can also query
 pairs of geometries about particular conditions expressed in a
 _mask string_; e.g. the string `"*0*******"` would evaluate `TRUE`
 when the second geometry has one or more boundary points in common
 with the interior of the first geometry; the symbol `*` standing for
 "any dimensionality" (0, 1, 2 or F). The mask string `"T********"`
-matches pairs of geometry with intersecting interiors. Here, the
-symbol `T` stands for any non-empty intersection (of dimensionality
-0, 1 or 2).
+matches pairs of geometry with intersecting interiors, where the
+symbol `T` stands for any non-empty intersection of dimensionality 0,
+1 or 2.
 
 Binary predicates are further described using normal-language verbs,
-using DE-9IM definitions.  For instance, the predicate `equals`
-corresponds to the relationship "T*F**FFF*". If any two geometries
+using DE-9IM definitions. For instance, the predicate `equals`
+corresponds to the relationship `"T*F**FFF*"`. If any two geometries
 obey this relationship, they are (topologically) equal, but may
 have a different ordering of nodes.
 
-A list of binary predicates is
+A list of binary predicates is:
 
 |predicate                   |meaning                                                          |inverse of      |
 |----------------------------|-----------------------------------------------------------------|----------------|
-|`equals`                    |Two geometries A and B are topologically identical|
 |`contains`                  |None of the points of A are outside B| `within`|
 |`contains_properly`         |A contains B and B has no points in common with the boundary of A| |
 |`covers`                    |No points of B lie in the exterior of A| `covered_by`|
-|`covered_by`                |inverse of `covers`| |
+|`covered_by`                |Inverse of `covers`| |
 |`crosses`                   |A and B have some but not all interior points in common| |
 |`disjoint`                  |A and B have no points in common| `intersects`|
-|`equals`                    |A and B are geometrically equal; node order number of nodes may differ; identical to A contains B AND A within B|
+|`equals`                    |A and B are topologically equal: node order or number of nodes may differ; identical to A contains B AND A within B|
 |`equals_exact`              |A and B are geometrically equal, and have identical node order| |
 |`intersects`                |A and B are not disjoint| `disjoint`|
 |`is_within_distance`        |A is closer to B than a given distance|
@@ -427,7 +429,6 @@ The qualitative measure `relate` (without mask) gives the relation
 pattern, a description of the geometrical relationship between two
 geometries explained in section \@ref(de9im).
 
-
 ### Unary Transformers
 
 Unary transformations work on a per-geometry basis, and for each geometry return a new geometry.
@@ -449,7 +450,7 @@ Unary transformations work on a per-geometry basis, and for each geometry return
 |`simplify`|simplified by removing vertices/nodes (lines or polygons)|
 |`split`|that has been split with a splitting linestring|
 |`transform`|transformed or convert to a new coordinate reference system (chapter \@ref(cs))|
-|`triangulate`|with triangulated polygon(s)|
+|`triangulate`|with Delauney triangulated polygon(s) (figure \@ref(fig:vor))|
 |`voronoi`|with the Voronoi tessellation of an input geometry (figure \@ref(fig:vor))|
 |`zm`|with removed or added `Z` and/or `M` coordinates|
 |`collection_extract`|with subgeometries from a `GEOMETRYCOLLECTION` of a particular type|
@@ -457,30 +458,32 @@ Unary transformations work on a per-geometry basis, and for each geometry return
 |`+`|that is shifted over a given vector|
 |`*`|that is multiplied by a scalar or matrix|
 
-```{r vor, out.width='60%', fig.cap="left: convex hull (red) around a polygon (black); right: Voronoi diagram (red) from a `MULTIPOINT` (black)", echo=!knitr::is_latex_output()}
-par(mar = rep(0,4), mfrow = c(1, 2))
-plot(st_geometry(nc)[1], col = NA, border = 'black')
-plot(st_convex_hull(st_geometry(nc)[1]), add = TRUE, col = NA, border = 'red')
-box()
-set.seed(131)
+```{r vor, out.width='60%', fig.cap="for a set of points, left: convex hull (red); middle: Voronoi polygons; right: Delauney triangulation", echo=!knitr::is_latex_output()}
+par(mar = rep(0,4), mfrow = c(1, 3))
+set.seed(133331)
 mp = st_multipoint(matrix(runif(20), 10))
-plot(mp)
+plot(mp, cex = 2)
+plot(st_convex_hull(mp), add = TRUE, col = NA, border = 'red')
+box()
+plot(mp, cex = 2)
 plot(st_voronoi(mp), add = TRUE, col = NA, border = 'red')
+box()
+plot(mp, cex = 2)
+plot(st_triangulate(mp), add = TRUE, col = NA, border = 'darkgreen')
 box()
 ```
 
 ### Binary Transformers {#bintrans}
 
 Binary transformers are functions that return a geometry based on
-operating on a pair of geometries.  They include
+operating on a pair of geometries.  They include:
 
 |function           |returns                                                    |infix operator|
 |-------------------|-----------------------------------------------------------|:------------:|
 |`intersection`     |the overlapping geometries for pair of geometries          |`&`|
 |`union`            |the combination of the geometries; removes internal boundaries and duplicate points, nodes or line pieces|`|`|
 |`difference`       |the geometries of the first after removing the overlap with the second geometry|`/`|
-|`sym_difference`   |the combinations of the geometries after removing where they overlap|`%/%`|
-
+|`sym_difference`   |the combinations of the geometries after removing where they intersect; the negation (opposite) of `intersection`|`%/%`|
 
 ### N-ary Transformers {#nary}
 
@@ -493,7 +496,7 @@ lead to a geometry that is not valid, e.g. because two polygon
 rings have a boundary line in common.
 
 N-ary `intersection` and `difference` take a single argument,
-but operate (sequentially) on all pairs, triples, quadruples etc.
+but operate (sequentially) on all pairs, triples, quadruples, etc.
 Consider the plot in figure \@ref(fig:boxes): how do we identify
 the area where all three boxes overlap?  Using binary intersections
 gives us intersections for all pairs: 1-1, 1-2, 1-3, 2-1, 2-2, 2-3,
@@ -508,7 +511,7 @@ par(mar = rep(.1, 4), mfrow = c(1, 2))
 sq = function(pt, sz = 1) st_polygon(list(rbind(c(pt - sz), 
   c(pt[1] + sz, pt[2] - sz), c(pt + sz), c(pt[1] - sz, pt[2] + sz), c(pt - sz))))
 x = st_sf(box = 1:3, st_sfc(sq(c(0,0)), sq(c(1.7, -0.5)), sq(c(0.5, 1))))
-plot(st_geometry(x), col = NA, border = sf.colors(3, categorical=TRUE), lwd = 3)
+plot(st_geometry(x), col = NA, border = sf.colors(3, categorical = TRUE), lwd = 3)
 plot(st_intersection(st_geometry(x)), col = sf.colors(7, categorical=TRUE, alpha = .5))
 ```
 
@@ -546,9 +549,9 @@ often a matter of common sense combined with trial and error.
 
 ## Coverages: tessellations and rasters {#coverages}
 
-The Open Geospatial Consortium defines a _coverage_ as a ``feature
+The Open Geospatial Consortium defines a _coverage_ as a "feature
 that acts as a function to return values from its range for any
-direct position within its spatiotemporal domain'' [@ogccov]. Having
+direct position within its spatiotemporal domain" [@ogccov]. Having
 a _function_ implies that for every "point", i.e. every combination
 of spatial point and a moment in time of the spatiotemporal domain,
 we have _single_ value for the range. This is a very common situation
@@ -577,8 +580,8 @@ as country boundaries. Although this can be done (and is often done)
 by a set of simple feature geometries (polygons or multipolygons),
 but this brings along some challenges:
 
-* it is hard to guarantee for such a set of simple feature polygons that they do not overlap, or that there are no gaps between them,
-* simple features have no way of assigning points _on_ the boundary of two adjacent polygons uniquely to a single polygon, which introduces ambiguity in terms the interpretation as coverage.
+* it is hard to guarantee for such a set of simple feature polygons that they do not overlap, or that there are no gaps between them
+* simple features have no way of assigning points _on_ the boundary of two adjacent polygons uniquely to a single polygon, which introduces ambiguity in terms the interpretation as coverage
 
 ### Topological models
 
@@ -622,7 +625,7 @@ positive for the $x$-coordinate, only the top-left corner point
 is part of each raster cell. An artifact resulting from this is
 shown in figure \@ref(fig:rasterizeline).
 
-```{r rasterizeline, fig.cap = "rasterization artifact: as only top-left corners are part of the raster cell, only cells below the diagonal line are rasterized", echo=!knitr::is_latex_output()}
+```{r rasterizeline, out.width = '60%', fig.cap = "rasterization artifact: as only top-left corners are part of the raster cell, only cells below the diagonal line are rasterized", echo=!knitr::is_latex_output()}
 library(stars)
 ls = st_sf(a = 2, st_sfc(st_linestring(rbind(c(0.1, 0), c(1, .9)))))
 grd = st_as_stars(st_bbox(ls), nx = 10, ny = 10, xlim = c(0, 1.0), ylim = c(0, 1),
@@ -630,8 +633,8 @@ grd = st_as_stars(st_bbox(ls), nx = 10, ny = 10, xlim = c(0, 1.0), ylim = c(0, 1
 r = st_rasterize(ls, grd, options = "ALL_TOUCHED=TRUE")
 r[r == -1] = NA
 plot(st_geometry(st_as_sf(grd)), border = 'orange', col = NA, 
-	 reset = FALSE, key.pos=NULL)
-plot(r, axes = TRUE, add = TRUE, breaks = "equal") # ALL_TOUCHED=FALSE;
+	 reset = FALSE, key.pos = NULL)
+plot(r, axes = TRUE, add = TRUE, breaks = "equal", main = NA) # ALL_TOUCHED=FALSE;
 plot(ls, add = TRUE, col = "red", lwd = 2)
 ```
 
@@ -662,12 +665,14 @@ the network coherence:
 * start and endpoints of a linestring may be connected to other linestring
 start or end points, forming a set of nodes and edges
 * edges may be directed, to only allow for connection (flow,
-transport) in one way.
+transport) in one way
 
-Several R packages (`osmar`, `stplanr`, `sfnetworks`) have functionality
-available for constructing network objects, and working with them,
-e.g. computing shortest or fastest routes through a network.
-
+R packages including `osmar` [@R-osmar], `stplanr` [@R-stplanr] and
+`sfnetworks` [@R-sfnetworks] provide functionality for constructing
+network objects, and working with them, e.g. computing shortest or
+fastest routes through a network. Package `spatstat` [@R-spatstat;
+@baddeley2015spatial] has infrastructure for analysing point patterns
+on linear networks (chapter \@ref(pointpatterns)).
 
 ## Exercises 
 
