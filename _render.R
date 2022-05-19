@@ -14,7 +14,7 @@ if (length(formats) == 0) formats = c(
 )
 
 bookdown::render_book('index.Rmd', bookdown::pdf_book(pandoc_args = '--syntax-definition=r.xml'), quiet = TRUE)
-bookdown::pdf_book('index.Rmd', quiet = TRUE, pandoc_args = '--syntax-definition=r.xml')
+#bookdown::pdf_book('index.Rmd', quiet = TRUE, pandoc_args = '--syntax-definition=r.xml')
 q(FALSE)
 
 # render the book to all formats unless they are specified via command-line args
