@@ -170,6 +170,7 @@ boston_93$HGLM_re <- unname(HGLM_iid$ranef)
 The same package has been extended to spatially structured SAR and CAR random effects, for which a sparse spatial weights matrix is required [@alam-ronnegard-shen:2015]; we choose binary spatial weights:
 
 ```{r}
+library(spatialreg)
 W <- as(spdep::nb2listw(nb_q_93, style = "B"), "CsparseMatrix")
 ```
 
@@ -181,28 +182,6 @@ suppressWarnings(HGLM_car <- hglm(fixed = form, random = ~ 1 | NOX_ID, data = bo
 boston_93$HGLM_ss <- HGLM_car$ranef[,1]
 ```
 
-### SAR random effects with HSAR
-
-The **HSAR** package [@R-HSAR] is restricted to the Gaussian response case [@dong15; @dongetal15], and requires the specification of a sparse design matrix mapping the upper level entities onto lower level entities:
-
-```{r}
-library(HSAR)
-library(MatrixModels, warn.conflicts = FALSE)
-Z <- as(model.Matrix(~ -1 + as.factor(NOX_ID), data = boston_487, sparse = TRUE),
-    "dgCMatrix")
-```
-
-`hsar()` fits an upper level SAR random effect using MCMC; if `W=` is a lower level weights matrix rather than `NULL`, it will also fit a lower level spatial econometrics-style spatial lag model, adding the lower level spatially lagged response to the model:
-
-```{r, cache=TRUE}
-set.seed(123)
-suppressWarnings(HSAR_ss <- hsar(form, data=boston_487, W = NULL, M = W, Delta = Z, 
-                              burnin = 2000, Nsim = 12000, thinning = 2))
-```
-
-```{r}
-boston_93$HSAR_ss <- HSAR_ss$Mus[1,]
-```
 
 ### IID and ICAR random effects with R2BayesX
 
@@ -348,9 +327,9 @@ Figure \@ref(fig:multi-levelmaps2) shows that the spatially structured random ef
 
 (ref:multi-levelmaps2) Air pollution model output zone level spatially structured random effects estimated using **hglm**, **HSAR**, **INLA**, **R2BayesX** and **mgcv**.
 ```{r multi-levelmaps2, out.width='100%', fig.cap='(ref:multi-levelmaps2)', fig=TRUE}
-tm_shape(boston_93) + tm_fill(c("HGLM_ss", "HSAR_ss", "INLA_lr", "INLA_ss", "BX_ss",
+tm_shape(boston_93) + tm_fill(c("HGLM_ss", "INLA_lr", "INLA_ss", "BX_ss",
     "GAM_ss"), midpoint = 0, title = "SSRE")  + tm_facets(free.scales = FALSE) + 
-    tm_borders(lwd = 0.3, alpha = 0.4) + tm_layout(panel.labels = c("hglm CAR", "hsar SAR",
+    tm_borders(lwd = 0.3, alpha = 0.4) + tm_layout(panel.labels = c("hglm CAR",
         "inla Leroux", "inla ICAR", "bayesx ICAR", "gam ICAR"))
 ```
 
@@ -454,7 +433,6 @@ Where larger data sets are used, a numerical Hessian approach is used to calcula
 The examples use the objects read and created in chapter \@ref(spatglmm), based on @bivand17.
 
 ```{r, message=FALSE}
-library(spatialreg)
 eigs_489 <- eigenw(lw_q_489)
 SDEM_489 <- errorsarlm(form, data = boston_489, listw = lw_q_489, Durbin = TRUE, 
                        zero.policy = TRUE, control = list(pre_eig = eigs_489))
@@ -492,22 +470,30 @@ cbind(data.frame(model=c("SEM", "SDEM")), rbind(broom::tidy(LR1.Sarlm(SEM_94)),
 We can use `spatialreg::LR.Sarlm()` to apply a likelihood ratio test between nested models, but here choose `lmtest::lrtest()`, which gives the same results, preferring models including spatially lagged covariates both for tracts and model output zones:
 
 ```{r, warning=FALSE}
-broom::tidy(lmtest::lrtest(SEM_489, SDEM_489))
+o <- lmtest::lrtest(SEM_489, SDEM_489)
+attr(o, "heading")[2] <- "Model 1: SEM_489\nModel 2: SDEM_489"
+o
 ```
 ```{r, warning=FALSE}
-broom::tidy(lmtest::lrtest(SEM_94, SDEM_94))
+o <- lmtest::lrtest(SEM_94, SDEM_94)
+attr(o, "heading")[2] <- "Model 1: SEM_94\nModel 2: SDEM_94"
+o
 ```
 The SLX model is fitted using least squares, and also returns a log likelihood value, letting us test whether we need a spatial process in the residuals. In the tract data set we obviously do:
 
 ```{r, warning=FALSE}
 SLX_489 <- lmSLX(form, data = boston_489, listw = lw_q_489, zero.policy = TRUE)
-broom::tidy(lmtest::lrtest(SLX_489, SDEM_489))
+o <- lmtest::lrtest(SLX_489, SDEM_489)
+attr(o, "heading")[2] <- "Model 1: SLX_489\nModel 2: SDEM_489"
+o
 ```
 but in the output zone case we do not.
 
 ```{r, warning=FALSE}
 SLX_94 <- lmSLX(form, data = boston_94, listw = lw_q_94)
-broom::tidy(lmtest::lrtest(SLX_94, SDEM_94))
+o <- lmtest::lrtest(SLX_94, SDEM_94)
+attr(o, "heading")[2] <- "Model 1: SLX_94\nModel 2: SDEM_94"
+o
 ```
 These outcomes are sustained also when we use the counts of house units by tract and output zones as case weights:
 
@@ -515,14 +501,18 @@ These outcomes are sustained also when we use the counts of house units by tract
 SLX_489w <- lmSLX(form, data = boston_489, listw = lw_q_489, weights = units, zero.policy = TRUE)
 SDEM_489w <- errorsarlm(form, data = boston_489, listw = lw_q_489, Durbin  =TRUE,
     weights = units, zero.policy = TRUE, control = list(pre_eig = eigs_489))
-broom::tidy(lmtest::lrtest(SLX_489w, SDEM_489w))
+o <- lmtest::lrtest(SLX_489w, SDEM_489w)
+attr(o, "heading")[2] <- "Model 1: SLX_489w\nModel 2: SDEM_489w"
+o
 ```
 
 ```{r, warning=FALSE}
 SLX_94w <- lmSLX(form, data = boston_94, listw = lw_q_94, weights = units)
 SDEM_94w <- errorsarlm(form, data = boston_94, listw = lw_q_94, Durbin = TRUE, weights = units,
                        control = list(pre_eig = eigs_94))
-broom::tidy(lmtest::lrtest(SLX_94w, SDEM_94w))
+o <- lmtest::lrtest(SLX_94w, SDEM_94w)
+attr(o, "heading")[2] <- "Model 1: SLX_94w\nModel 2: SDEM_94w"
+o
 ```
 
 In this case and based on arguments advanced in @bivand17, the use of weights is justified because tract counts of reported housing units underlying the weighted median values vary from 5 to 3,031, and air pollution model output zone counts vary from 25 to 12,411. Because of this, and because a weighted general nested model has not been developed, we cannot take the GNM as the starting point for general-to-simpler testing, but start rather from the SDEM model, and use the Hausman test to guide the choice of units of observation.
@@ -594,16 +584,14 @@ WX <- create_WX(model.matrix(update(form, CMEDV ~ .), data=boston_506), lw_q)
 SDEM_506_slm <- inla(update(form, . ~ . + WX + f(idx, model = "slm", args.slm = args.slm,
     hyper = hyper.slm)), data = boston_506, family = "gaussian", control.family = 
         list(hyper = zero.variance), control.compute = list(dic = TRUE, cpo = TRUE))
-mvs <- SDEM_506_slm$marginals.fitted.values[which(is.na(boston_506$median))]
-mv_mean <- sapply(mvs, function(x) mean(exp(x[, 1]), ))
-mv_sd <- sapply(mvs, function(x) sd(exp(x[, 1])))
+mv_mean <- exp(SDEM_506_slm$summary.fitted.values$mean[which(is.na(boston_506$median))])
 ```
 
 INLA also provide gridded estimates of the marginal distributions of the predictions, offering a way to assess the uncertainty associated with the predicted values:
 
 ```{r}
-data.frame(fit_TS = t0[,1], fit_KP2 = c(t1), fit_KP5 = c(t2), INLA_slm = mv_mean,
-    INLA_slm_sd = mv_sd, censored = boston_506$censored[as.integer(attr(t0, "region.id"))])
+data.frame(fit_TS = t0[,1], fit_KP2 = c(t1), fit_KP5 = c(t2), INLA_slm = mv_mean, 
+    censored = boston_506$censored[as.integer(attr(t0, "region.id"))])
 ```
 
 The spatial regression toolbox remains incomplete, and it will take time to fill in blanks. It remains unfortunate that the several traditions in spatial regression seldom seem to draw on each others' understandings and advances.
