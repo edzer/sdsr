@@ -1126,14 +1126,14 @@ a target CRS.  Given multiple options to go from source to target,
 `st_transform` chooses the one with highest accuracy. We can query
 the options available by
 ```{r}
-(p = sf_proj_pipelines("EPSG:4326", "EPSG:22525"))
+(p = sf_proj_pipelines("OGC:CRS84", "EPSG:22525"))
 ```
 and see that pipeline with the highest accuracy is summarised; we
 can see that it specifies use of a datum grid.  Had we not switched
 on the network search, we would have obtained a different result:
 ```{r}
 sf_proj_network(FALSE)
-sf_proj_pipelines("EPSG:4326", "EPSG:22525")
+sf_proj_pipelines("OGC:CRS84", "EPSG:22525")
 ```
 and a report that a datum grid is missing. 
 The object returned by `sf_proj_pipelines` is a sub-classed `data.frame`, with columns
@@ -1187,7 +1187,7 @@ When using `st_transform` on a raster data set, as e.g. in
 ```{r}
 tif = system.file("tif/L7_ETMs.tif", package = "stars")
 read_stars(tif) |>
-	st_transform(4326)
+	st_transform('OGC:CRS84')
 ```
 we see that a _curvilinear_ is created, which means that for every
 grid cell the coordinates are computed in the new CRS, which no
@@ -1210,7 +1210,7 @@ for the problem at hand. An example workflow that uses only a
 target CRS is
 ```{r}
 read_stars(tif) |>
-	st_warp(crs = st_crs(4326)) |>
+	st_warp(crs = st_crs('OGC:CRS84')) |>
 	st_dimensions()
 ```
 which creates a pretty close raster, but then the transformation
@@ -1221,7 +1221,7 @@ as the original raster one could use:
 r = read_stars(tif)
 grd = st_bbox(r) |>
 		st_as_sfc() |>
-		st_transform(4326) |>
+		st_transform('OGC:CRS84') |>
 		st_bbox() |>
 		st_as_stars(nx = dim(r)["x"], ny = dim(r)["y"])
 st_warp(r, grd)
@@ -1236,8 +1236,8 @@ Use R to solve the following exercises.
 1. Plot the two different lines in a single plot; note that R will plot a straight line always straight in the projection currently used; `st_segmentize` can be used to add points on straight line, or on a great circle for ellipsoidal coordinates.
 1. NDVI, normalized differenced vegetation index, is computed as `(NIR-R)/(NIR+R)`, with NIR the near infrared and R the red band.  Read the `L7_ETMs.tif` file into object `x`, and distribute the band dimensions over attributes by `split(x, "band")`. Then, add attribute NDVI to this object by using an expression that uses the NIR (band 4) and R (band 3) attributes directly.
 1. Compute NDVI for the `L7_ETMs.tif` image by reducing the band dimension, using `st_apply` and an a function `ndvi = function(x) { (x[4]-x[3])/(x[4]+x[3]) }`. Plot the result, and write the result to a GeoTIFF. 
-1. Use `st_transform` to transform the `stars` object read from `L7_ETMs.tif` to `EPSG:4326`. Print the object. Is this a regular grid? Plot the first band using arguments `axes=TRUE` and `border=NA`, and explain why this takes such a long time.
-1. Use `st_warp` to warp the `L7_ETMs.tif` object to `EPSG:4326`, and plot the resulting object with `axes=TRUE`. Why is the plot created much faster than after `st_transform`?
+1. Use `st_transform` to transform the `stars` object read from `L7_ETMs.tif` to `OGC:CRS84`. Print the object. Is this a regular grid? Plot the first band using arguments `axes=TRUE` and `border=NA`, and explain why this takes such a long time.
+1. Use `st_warp` to warp the `L7_ETMs.tif` object to `OGC:CRS84`, and plot the resulting object with `axes=TRUE`. Why is the plot created much faster than after `st_transform`?
 1. Using a vector representation of the raster `L7_ETMs`, plot the
 intersection with a circular area around `POINT(293716 9113692)` with
 radius 75 m,  and compute the area-weighted mean pixel values for

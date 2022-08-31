@@ -1,4 +1,4 @@
-# Large data sets {#large}
+# Large data sets and cloud native {#large}
 
 This chapter describes how large spatial and spatiotemporal datasets
 can be handled with R, with a focus on packages `sf` and `stars`.
@@ -10,11 +10,38 @@ For practical use, we classify large data sets as either:
 infrastructure (such as network attached storage)
 
 These three categories correspond very roughly to Gigabyte-,
-Terabyte- and Petabyte-sized data sets.
+Terabyte- and Petabyte-sized data sets.  Besides size considerations,
+considerations of access and processing speed also play a role,
+in particular by larger datasets or interactive applications.
+Cloud native geospatial formats are formats optimised with processing
+on cloud infrastructure in mind, where costs of computing and
+storage need to be considered and optimised. Such costs can be
+reduced by
+
+* using better compression, such as the LERC (Limited Error Raster
+  Compression) algorithm used for cloud-optimized GeoTIFF, or the 
+  BLOSC compressor used for ZARR array data
+* fast access to spatial sub-regions, e.g. by ways of http range
+  request enabled for cloud-optimised geotiffs, or column-oriented
+  data access in the GeoParquet and GeoArrow formats
+* accessing/viewing data at incremental resolution (low resolution images are
+  available before or without the full resolution being read), implemented natively
+  by progressive JPEG formats or by using image pyramids (or overviews)
+  in other raster formats
+* optimizing data access with particular cloud storage or object
+  storage protocols in mind.
+
+It should be noted that there are no silver bullets in this area:
+optimizing storage for one particular access way will lead to slow
+access for other ways: for instance if raster data is stored for
+optimal access of spatial regions at different spatial resolutions,
+reading the data as pixel time series may be very slow. Compression
+leads to low storage costs but to higher processing costs when
+reading, because of the decompression involved.
 
 ## Vector data: `sf` {#largesf}
 
-### Reading from disk
+### Reading from local disk
 
 Function `st_read` reads vector data from disk, using GDAL, and
 then keeps the data read in working memory. In case the file is
@@ -114,24 +141,18 @@ area as the `AREA` field in `nc`, which is the meaningless value
 obtained by assuming the coordinates are projected, although they
 are ellipsoidal.
 
-### Reading from online resources or web services
+### Reading from online resources or web services {#vsi}
 
 GDAL drivers support reading from online resources, by prepending
 `/vsicurl/` before the URL starting with e.g. `https://`. A number of
-similar drivers specialized for particular clouds include `/vsis3`
-for Amazon S3, `/vsigs`  for Google Cloud Storage, `/vsiaz` for
-Azure, `/vsioss` for Alibaba Cloud, or `/vsiswift` for OpenStack
+similar drivers specialized for particular clouds include `/vsis3/`
+for Amazon S3, `/vsigs/`  for Google Cloud Storage, `/vsiaz/` for
+Azure, `/vsioss/` for Alibaba Cloud, or `/vsiswift/` for OpenStack
 Swift Object Storage. These prepositions can be combined e.g. with
 `/vsizip/` to read a zipped online resource. Depending on the
 file format used, reading information this way may always involve
 reading the entire file, or reading it multiple times, and may not
-always be the most efficient way of handling resources. A format
-like "cloud-optimized GeoTIFF" (COG) has been specially designed
-to be efficient and resource-friendly in many cases, e.g. for only
-reading the metadata, or for only reading overviews (low-resolutions
-versions of the full imagery) or spatial segments. COGs can also
-be created using the GeoTIFF driver of GDAL, and setting the right
-dataset creation options in a `write_stars` call.
+always be the most efficient way of handling resources. 
 
 ### API's, OpenStreetMap
 
@@ -171,7 +192,7 @@ first attribute by
 o = read_sf("data/ms.osm", "lines")
 p = read_sf("data/ms.osm", "multipolygons")
 bb = st_bbox(c(xmin=7.595, ymin = 51.969, xmax = 7.598, ymax = 51.970),
-	crs = 4326)
+	crs = 'OGC:CRS84')
 plot(st_as_sfc(bb), axes = TRUE, lwd = 2, lty = 2, cex.axis = .5)
 plot(o[,1], lwd = 2, add = TRUE)
 plot(st_geometry(p), border = NA, col = '#88888888', add = TRUE)
@@ -179,6 +200,27 @@ plot(st_geometry(p), border = NA, col = '#88888888', add = TRUE)
 the result of which is shown in figure \@ref(fig:overpass).
 The overpass API provides a more generic and powerful query
 functionality to OpenStreetMap data.
+
+### Cloud native: GeoParquet and GeoArrow
+
+Two formats dedicated to cloud native analysis are derived from
+the Apache projects Parquet and Arrow. Both provide column oriented
+storage of tabular data, meaning that the reading of a single fields
+for many records is fast, compared to record oriented storage of
+most other databases.  The Geo- extensions of both involve 
+
+* a way of storing a geometry column, either in a well-known binary
+  or text form, or in a more efficient form where sub-geometries
+  are indexed up front
+* storage of a coordinate reference system.
+
+At the time of writing this book, both formats are under active
+development but drivers for reading or creating them are available in
+GDAL starting from version 3.5. Both formats allow for compressed
+storage; the difference seems to be that (Geo)Parquet is more
+oriented towards persistent storage, where (Geo)Arrow is more
+oriented to fast access and fast computation; Arrow can for instance
+be both an in-memory and an on-disk format.
 
 ## Raster data: `stars`
 
@@ -330,6 +372,17 @@ order.
 argument `chunk_size` that lets users control the size of spatial
 chunks.
 
+
+### Remote raster resources
+
+A format like "cloud-optimized GeoTIFF" (COG) has been specially
+designed to be efficient and resource-friendly in many cases,
+e.g. for only reading the metadata, or for only reading overviews
+(low-resolutions versions of the full imagery) or spatial regions
+using the `/vsixxx/` mechanisms (section \@ref(vsi)). COGs can also
+be created using the GeoTIFF driver of GDAL, and setting the right
+dataset creation options in a `write_stars` call.
+
 ## Very large data cubes
 
 At some stage, data sets need to be analysed that are so large that
@@ -371,7 +424,23 @@ zones). An R package that can do that is gdalcubes [@R-gdalcubes;
 @appel2019demand], which can also directly use STAC output
 [@appelblog].
 
-### Processing data: GEE, openEO
+### Cloud native storage: Zarr
+
+Where COG provides cloud native storage for raster imagery, Zarr is a
+format for cloud native storage of large multidimensional arrays. It
+can be seen as a successor of NetCDF and seems to follow similar
+conventions, being used by the climate and forecast communities.
+Zarr "files" are really directories with subdirectories containing
+compressed chunks of the data. The compression algorithm and
+the chunking strategy will have an effect on how fast particular
+sub-cubes can be read. Function `stars::read_mdim` has options
+for reading sub-cubes by specifying offset and size of the index
+in each dimension, and a step size to read one or more dimensions
+at a lower resolution. Similarly, `stars::write_mdim` can write
+multidimensional arrays to Zarr (or NetCDF) files. Both use the
+GDAL C++ multidimensional array API for this.
+
+### APIs for data: GEE, openEO
 
 Platforms that do not require the management and programming of
 virtual machines _in_ the cloud but provide direct access to the
