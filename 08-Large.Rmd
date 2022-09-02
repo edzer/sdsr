@@ -1,4 +1,4 @@
-# Large data sets and cloud native {#large}
+# Large data and cloud native {#large}
 
 This chapter describes how large spatial and spatiotemporal datasets
 can be handled with R, with a focus on packages `sf` and `stars`.
@@ -53,9 +53,10 @@ An example is
 
 ```{r}
 library(sf)
-(file = system.file("gpkg/nc.gpkg", package = "sf"))
-bb = "POLYGON ((-81.7 36.2, -80.4 36.2, -80.4 36.5, -81.7 36.5, -81.7 36.2))"
-nc.1 = st_read(file, wkt_filter = bb)
+(file <- system.file("gpkg/nc.gpkg", package = "sf"))
+(st_bbox(c(xmin = -81.7,ymin = 36.2, xmax = -80.4, ymax = 36.5)) |>
+    st_as_sfc() |> st_as_text() -> bb)
+nc.1 <- st_read(file, wkt_filter = bb)
 ```
 
 The second option is to use the `query` argument to `st_read`,
@@ -63,14 +64,14 @@ which can be any query in "OGR SQL" dialect, which can be used to
 select features from a layer, and limit fields. An example is:
 
 ```{r}
-q = paste("select BIR74,SID74,geom from 'nc.gpkg' where BIR74 > 1500")
-nc.2 = st_read(file, query = q)
+q <- paste("select BIR74,SID74,geom from 'nc.gpkg' where BIR74 > 1500")
+nc.2 <- st_read(file, query = q)
 ```
 Note that `nc.gpkg` is the _layer name_, which can be obtained from `file` using `st_layers`.
 Sequences of records can be read using `LIMIT` and `OFFSET`, to read records 51-60 use
 ```{r}
-q = paste("select BIR74,SID74,geom from 'nc.gpkg' LIMIT 10 OFFSET 50")
-nc.2 = st_read(file, query = q)
+q <- paste("select BIR74,SID74,geom from 'nc.gpkg' LIMIT 10 OFFSET 50")
+nc.2 <- st_read(file, query = q)
 ```
 
 Further query options include selection on geometry type, polygon
@@ -97,7 +98,7 @@ has_PG <- any("PostgreSQL" %in% st_drivers()$name) &&
 ```
 
 ```{r echo=FALSE, eval=has_PG}
-nc = read_sf(file)
+nc <- read_sf(file)
 write_sf(nc, "PG:dbname=postgis", "nc")
 ```
 
@@ -115,8 +116,8 @@ st_read(pg, query = "select BIR74,wkb_geometry from nc limit 3")
 ```
 A spatial query might look like
 ```{r, eval=has_PG}
-q = "SELECT BIR74,wkb_geometry FROM nc WHERE \
-  ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.49826 36.4314)');"
+q <- "SELECT BIR74,wkb_geometry FROM nc WHERE \
+  ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.50 36.43)');"
 st_read(pg, query = q)
 ```
 Here, the intersection is done in the database, and uses the spatial
@@ -125,13 +126,14 @@ index typically present.
 The same mechanism works when using `dplyr` with a database backend:
 ```{r, eval=has_PG}
 library(dplyr, warn.conflicts = FALSE)
-nc_db = tbl(pg, "nc")
+nc_db <- tbl(pg, "nc")
 ```
 
 Spatial queries can be formulated and are passed on to the database:
 ```{r, eval=has_PG}
 nc_db |> 
-	 filter(ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.49826 36.4314)')) |>
+	 filter(ST_Intersects(wkb_geometry, 
+						  'SRID=4267;POINT (-81.50 36.43)')) |>
 	 collect()
 nc_db |> filter(ST_Area(wkb_geometry) > 0.1) |> head(3)
 ```
@@ -183,16 +185,16 @@ bounding box query to OpenStreetMap could look like
 
 ```{r,eval=FALSE}
 download.file(
-  "https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970",
-  "data/ms.osm", method = "auto")
+"https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970",
+"data/ms.osm", method = "auto")
 ```
 and from this file we can read the layer `lines`, and plot its
 first attribute by
 ```{r overpass, fig.cap = "OpenStreetMap vector data"}
-o = read_sf("data/ms.osm", "lines")
-p = read_sf("data/ms.osm", "multipolygons")
-bb = st_bbox(c(xmin=7.595, ymin = 51.969, xmax = 7.598, ymax = 51.970),
-	crs = 'OGC:CRS84')
+o <- read_sf("data/ms.osm", "lines")
+p <- read_sf("data/ms.osm", "multipolygons")
+bb <- st_bbox(c(xmin = 7.595, ymin = 51.969, 
+			   xmax = 7.598, ymax = 51.970), crs = 'OGC:CRS84')
 plot(st_as_sfc(bb), axes = TRUE, lwd = 2, lty = 2, cex.axis = .5)
 plot(o[,1], lwd = 2, add = TRUE)
 plot(st_geometry(p), border = NA, col = '#88888888', add = TRUE)
@@ -289,13 +291,14 @@ install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de",
 ```
 We can "load" a Sentinel-2 image from it by
 ```{r}
-f = "sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip"
-granule = system.file(file = f, package = "starsdata")
+f <- paste0("sentinel/S2A_MSIL1C_20180220T105051_N0206",
+		   "_R051_T32ULE_20180221T134037.zip")
+granule <- system.file(file = f, package = "starsdata")
 file.size(granule)
-base_name = strsplit(basename(granule), ".zip")[[1]]
-s2 = paste0("SENTINEL2_L1C:/vsizip/", granule, "/", base_name, 
+base_name <- strsplit(basename(granule), ".zip")[[1]]
+s2 <- paste0("SENTINEL2_L1C:/vsizip/", granule, "/", base_name, 
 	".SAFE/MTD_MSIL1C.xml:10m:EPSG_32632")
-(p = read_stars(s2, proxy = TRUE))
+(p <- read_stars(s2, proxy = TRUE))
 object.size(p)
 ```
 and we see that this does not actually load _any_ of the pixel
@@ -306,7 +309,7 @@ in total).
 
 The idea of a proxy object is that we can build expressions like
 ```{r}
-p2 = p * 2
+p2 <- p * 2
 ```
 but that the computations for this are postponed. Only when we
 really need the data, e.g. because we want to plot it, is `p *
@@ -334,7 +337,7 @@ only fetches the pixels that can be seen on the plot device, rather
 than the 10980 x 10980 pixels available in each band. The downsampling
 ratio taken is
 ```{r}
-(ds = floor(sqrt(prod(dim(p)) / prod(dev.size("px")))))
+(ds <- floor(sqrt(prod(dim(p)) / prod(dev.size("px")))))
 ```
 meaning that for every `r ds` $\times$ `r ds` sub-image in the
 original image, only one pixel is read, and plotted. This value is

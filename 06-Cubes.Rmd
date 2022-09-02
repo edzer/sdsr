@@ -51,40 +51,40 @@ three dimensions at a particular value.
 set.seed(1331)
 suppressPackageStartupMessages(library(stars))
 library(colorspace)
-tif = system.file("tif/L7_ETMs.tif", package = "stars")
-r = read_stars(tif)
+tif <- system.file("tif/L7_ETMs.tif", package = "stars")
+r <- read_stars(tif)
 
-nrow = 5
-ncol = 8
-m = r[[1]][1:nrow,1:ncol,1]
-dim(m) = c(x = nrow, y = ncol) # named dim
-s = st_as_stars(m)
+nrow <- 5
+ncol <- 8
+m <- r[[1]][1:nrow,1:ncol,1]
+dim(m) <- c(x = nrow, y = ncol) # named dim
+s <- st_as_stars(m)
 # s
 attr(s, "dimensions")[[1]]$delta = 3
 attr(s, "dimensions")[[2]]$delta = -.5
 attr(attr(s, "dimensions"), "raster")$affine = c(-1.2, 0.0)
 
-plt = function(x, yoffset = 0, add, li = TRUE) {
+plt <- function(x, yoffset = 0, add, li = TRUE) {
 	attr(x, "dimensions")[[2]]$offset = attr(x, "dimensions")[[2]]$offset + yoffset
-	l = st_as_sf(x, as_points = FALSE)
-	pal = sf.colors(10)
+	l <- st_as_sf(x, as_points = FALSE)
+	pal <- sf.colors(10)
 	if (li)
-		pal = lighten(pal, 0.3 + rnorm(1, 0, 0.1))
+		pal <- lighten(pal, 0.3 + rnorm(1, 0, 0.1))
 	if (! add)
 		plot(l, axes = FALSE, breaks = "equal", pal = pal, reset = FALSE, border = grey(.75), key.pos = NULL, main = NULL, xlab = "time")
 	else
 		plot(l, axes = TRUE, breaks = "equal", pal = pal, add = TRUE, border = grey(.75))
-	u = st_union(l)
+	u <- st_union(l)
 	# print(u)
 	plot(st_geometry(u), add = TRUE, col = NA, border = 'black', lwd = 2.5)
 }
 
-pl = function(s, x, y, add = TRUE, randomize = FALSE) {
+pl <- function(s, x, y, add = TRUE, randomize = FALSE) {
   attr(s, "dimensions")[[1]]$offset = x
   attr(s, "dimensions")[[2]]$offset = y
-  m = r[[1]][y + 1:nrow,x + 1:ncol,1]
+  m <- r[[1]][y + 1:nrow,x + 1:ncol,1]
   if (randomize)
-  	m = m[sample(y + 1:nrow),x + 1:ncol]
+  	m <- m[sample(y + 1:nrow),x + 1:ncol]
   dim(m) = c(x = nrow, y = ncol) # named dim
   s[[1]] = m
   plt(s, 0, add)
@@ -190,17 +190,17 @@ n2 <- make_matrix(warped, 4, t = t1)
 n3 <- make_matrix(warped, 4, t = t2)
 
 # plot functions ----
-plt = function(x, yoffset = 0, add, li = TRUE, pal, print_geom = TRUE, border = .75, breaks = "equal") {
+plt <- function(x, yoffset = 0, add, li = TRUE, pal, print_geom = TRUE, border = .75, breaks = "equal") {
   # pal is color palette
   attr(x, "dimensions")[[2]]$offset = attr(x, "dimensions")[[2]]$offset + yoffset 
   l = st_as_sf(x, as_points = FALSE)
   if (li)
-    pal = lighten(pal, 0.2) # + rnorm(1, 0, 0.1))
+    pal <- lighten(pal, 0.2) # + rnorm(1, 0, 0.1))
   if (! add)
     plot(l, axes = FALSE, breaks = breaks, pal = pal, reset = FALSE, border = grey(border), key.pos = NULL, main = NULL, xlab = "time")
   else
     plot(l, axes = TRUE, breaks = breaks, pal = pal, add = TRUE, border = grey(border))
-  u = st_union(l)
+  u <- st_union(l)
   # print(u)
   if(print_geom) {
     plot(st_geometry(u), add = TRUE, col = NA, border = 'black', lwd = 2.5)
@@ -209,41 +209,41 @@ plt = function(x, yoffset = 0, add, li = TRUE, pal, print_geom = TRUE, border = 
   }
 }
 
-pl_stack = function(s, x, y, add = TRUE, nrM, imgY = 7, inner = 1) {
+pl_stack <- function(s, x, y, add = TRUE, nrM, imgY = 7, inner = 1) {
   # nrM is the timestep {1, 2, 3}, cause this function
   # prints all 4 bands at once
   attr(s, "dimensions")[[1]]$offset = x
   attr(s, "dimensions")[[2]]$offset = y
-  # m = r[[1]][y + 1:nrow,x + 1:ncol,1]
+  # m <- r[[1]][y + 1:nrow,x + 1:ncol,1]
   m <- eval(parse(text=paste0("n", nrM)))
-  s[[1]] = m[,c(imgY:1)] # turn around to have same orientation as flat plot
+  s[[1]] <- m[,c(imgY:1)] # turn around to have same orientation as flat plot
   plt(s, 0, TRUE,  pal = purples)
   m <- eval(parse(text=paste0("r", nrM)))
-  s[[1]] = m[,c(imgY:1)]
+  s[[1]] <- m[,c(imgY:1)]
   plt(s, 1*inner, TRUE,  pal = reds)
   m <- eval(parse(text=paste0("g", nrM)))
-  s[[1]] = m[,c(imgY:1)]
+  s[[1]] <- m[,c(imgY:1)]
   plt(s, 2*inner, TRUE,  pal = greens)
   m <- eval(parse(text=paste0("b", nrM)))
-  s[[1]] = m[,c(imgY:1)]
+  s[[1]] <- m[,c(imgY:1)]
   plt(s, 3*inner, TRUE, pal = blues) # li FALSE deleted
 }
 
 # flat plot function
 # prints any dummy stars with any single matrix to position
-pl = function(s, x, y, add = TRUE, randomize = FALSE, pal, m, print_geom = TRUE, border = .75, breaks = "equal") {
+pl <- function(s, x, y, add = TRUE, randomize = FALSE, pal, m, print_geom = TRUE, border = .75, breaks = "equal") {
   # m is matrix to replace image with
   # m <- t(m)
   attr(s, "dimensions")[[1]]$offset = x
   attr(s, "dimensions")[[2]]$offset = y
   # print(m)
-  s[[1]] = m
+  s[[1]] <- m
   plt(s, 0, add = TRUE, pal = pal, print_geom = print_geom, border = border, breaks = breaks)
   #plot(s, text_values = TRUE)
 }
 
 print_segments <- function(x, y, seg, by = 1, lwd = 4, col = "black") {
-  seg = seg * by
+  seg <- seg * by
   seg[,1] <- seg[,1] + x
   seg[,3] <- seg[,3] + x
   seg[,2] <- seg[,2] + y
@@ -273,7 +273,7 @@ arrows(-13, 14, 72, 14, angle = 20, lwd = 2)  # timeline
 text(7.5, 3.8, "x", col = "black")
 text(-10, -2.5, "bands", srt = 90, col = "black")
 text(-4.5, 1.8, "y", srt = 27.5, col = "black")
-y = 15.8
+y <- 15.8
 text(69, y, "time", col = "black")
 text(3.5, y, "2020-10-01", col = "black")
 text(3.5 + offset, y, "2020-10-13", col = "black")
@@ -546,9 +546,9 @@ print_grid_bands_filter <- function(x, y, pal = greys) { # 1x3 6x27
 # build exactly like reduce
 plot.new()
 par(mar = c(3,3,3,3))
-x = 120
-y = 100
-down = 0
+x <- 120
+y <- 100
+down <- 0
 plot.window(xlim = c(0, x), ylim = c(0, y), asp = 1)
 print_grid(x/2-28/2,y-27)
 print_alpha_grid((x/3-28)/2, 0-down) # alpha grid
@@ -683,8 +683,8 @@ b12 <- b1 - t2 + t1
 # png("exp_apply_ts.png", width = 2400, height = 1000, pointsize = 24)
 plot.new()
 par(mar = c(2,2,2,2))
-x = 30
-y = 10 # 7.5
+x <- 30
+y <- 10 # 7.5
 plot.window(xlim = c(0, x), ylim = c(0, y), asp = 1)
 pl(f, 4.8, 3.8, pal = blues, m = b3, breaks = brks)
 print_text(s, 4.8, 3.8, m = b3)
@@ -706,7 +706,7 @@ print_text(s, 21.2, .2, m = floor((b1 + b2 + b12) / 3))
 pl(f, 20, -1, pal = alpha(greys, 0.1), m = matrix(rep("NA", 42), ncol = 7))
 print_segments(5.7, 1.7, seg = time_arrow_seg, col = "forestgreen")
 arrows(12.5, 9, 20, 9, lwd = 2)
-cex = .9
+cex <- .9
 text(16.3, 8.3, "apply_dimension(dimension = 't')", cex = cex)
 print_segments(9.7, 1.7, time_arrow_seg, col = "forestgreen") # draw ma explanation
 text(-0.5 + 10, -0.5 + 2, "496", cex = cex)
@@ -868,7 +868,7 @@ mask_agg <- matrix(c(NA,NA,NA,NA,NA,NA,
                   1,NA,NA,NA, 1,NA,
                  NA,NA,NA,NA,NA,NA), ncol = 7)
 
-pl_stack_agg = function(s, x, y, add = TRUE, nrM, imgY = 7, inner = 1) {
+pl_stack_agg <- function(s, x, y, add = TRUE, nrM, imgY = 7, inner = 1) {
   # pl_stack that masks the added matrices
   # nrM is the timestep {1, 2, 3}, cause this function
   # prints all 4 bands at once
@@ -929,16 +929,16 @@ print_ts <- function(off2, yoff2) {
   text(3.5 + 2*off + off2, 15.5+yoff2, "2020-10-25", col = "black")
 }
 
-secText = 0.8 # secondary text size (dimension naming)
-off = 26 # image stacks are always 26 apart
-x = 72 # png X
-y = 48 # png Y
-yoff = 30
+secText <- 0.8 # secondary text size (dimension naming)
+off <- 26 # image stacks are always 26 apart
+x <- 72 # png X
+y <- 48 # png Y
+yoff <- 30
 plot.new()
 par(mar = c(5,3,3,3))
 plot.window(xlim = c(-1, x), ylim = c(0, y), asp = 1)
 print_ts(5, yoff)
-col = '#ff5555'
+col <- '#ff5555'
 print_segments(10.57, yoff-.43, seg = polygon_1, col = col)
 x = 3
 segments(c(2, 0, -1.3)+x, c(-.2, 0, 1)+yoff, c(0, -1.3, 1)+x, c(0, 1, 2)+yoff, lwd = 4, col = col)
@@ -1040,21 +1040,21 @@ be meaningful.
 set.seed(1331)
 library(stars)
 library(colorspace)
-tif = system.file("tif/L7_ETMs.tif", package = "stars")
-r = read_stars(tif)
+tif <- system.file("tif/L7_ETMs.tif", package = "stars")
+r <- read_stars(tif)
 
-nrow = 5
-ncol = 8
+nrow <- 5
+ncol <- 8
 #m = matrix(runif(nrow * ncol), nrow = nrow, ncol = ncol)
-m = r[[1]][1:nrow,1:ncol,1]
-dim(m) = c(x = nrow, y = ncol) # named dim
-s = st_as_stars(m)
+m <- r[[1]][1:nrow,1:ncol,1]
+dim(m) <- c(x = nrow, y = ncol) # named dim
+s <- st_as_stars(m)
 # s
 attr(s, "dimensions")[[1]]$delta = 3 
 attr(s, "dimensions")[[2]]$delta = -.5
 attr(attr(s, "dimensions"), "raster")$affine = c(-1.2, 0.0)
 
-plt = function(x, yoffset = 0, add, li = TRUE) {
+plt <- function(x, yoffset = 0, add, li = TRUE) {
 	attr(x, "dimensions")[[2]]$offset = attr(x, "dimensions")[[2]]$offset + yoffset 
 	l = st_as_sf(x, as_points = FALSE)
 	pal = sf.colors(10)
@@ -1068,7 +1068,7 @@ plt = function(x, yoffset = 0, add, li = TRUE) {
 	plot(st_geometry(u), add = TRUE, col = NA, border = 'black', lwd = 2.5)
 }
 
-pl = function(s, x, y, add = TRUE, randomize = FALSE) {
+pl <- function(s, x, y, add = TRUE, randomize = FALSE) {
   attr(s, "dimensions")[[1]]$offset = x
   attr(s, "dimensions")[[2]]$offset = y
   m = r[[1]][y + 1:nrow,x + 1:ncol,1]
@@ -1107,16 +1107,16 @@ text( 8,  8.5, expression(SO[4]), col = 'black', cex = .75)
 text( 11,  8.5, expression(O[3]), col = 'black', cex = .75)
 text( 14,  8.5, expression(CO), col = 'black', cex = .75)
 # location points:
-p = st_coordinates(s[,1])
-p[,1] = p[,1]-1.4
-p[,2] = p[,2] + 8.2
+p <- st_coordinates(s[,1])
+p[,1] <- p[,1]-1.4
+p[,2] <- p[,2] + 8.2
 points(p, col = grey(.7), pch = 16)
 # centroids:
 set.seed(131)
-cent = st_coordinates(st_sample(de, 8))
+cent <- st_coordinates(st_sample(de, 8))
 points(cent, col = grey(.7), pch = 16)
-cent = cent[rev(order(cent[,1])),]
-seg = cbind(p, cent[1:8,])
+cent <- cent[rev(order(cent[,1])),]
+seg <- cbind(p, cent[1:8,])
 segments(seg[,1], seg[,2], seg[,3], seg[,4], col = 'grey')
 ```
 

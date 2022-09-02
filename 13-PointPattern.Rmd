@@ -56,9 +56,10 @@ Point patterns have an observation window. Consider the points generated randoml
 
 ```{r}
 library(sf)
-n = 30
+n <- 30
 set.seed(13531) # remove this to create another random sequence
-xy = data.frame(x = runif(n), y = runif(n)) |> st_as_sf(coords = c("x", "y"))
+xy <- data.frame(x = runif(n), y = runif(n)) |> 
+    st_as_sf(coords = c("x", "y"))
 ```
 
 then these points are (by construction) uniformly distributed,
@@ -66,9 +67,9 @@ or completely spatially random, over the domain $[0,1] \times [0,1]$. For
 a larger domain, they are not uniform, for the two square windows
 `w1` and `w2` created by 
 ```{r}
-w1 = st_bbox(c(xmin = 0, ymin = 0, xmax = 1, ymax = 1)) |> 
+w1 <- st_bbox(c(xmin = 0, ymin = 0, xmax = 1, ymax = 1)) |> 
 		st_as_sfc() 
-w2 = st_sfc(st_point(c(1, 0.5))) |> st_buffer(1.2)
+w2 <- st_sfc(st_point(c(1, 0.5))) |> st_buffer(1.2)
 ```
 this is shown in figure \@ref(fig:pp1).
 
@@ -91,9 +92,9 @@ where we see that the bounding box of the points is used as observation
 window when no window is specified. If we add a polygonal geometry as the
 first feature of the dataset, then this is used as observation window:
 ```{r}
-(pp1 = c(w1, st_geometry(xy)) |> as.ppp())
-c1 = st_buffer(st_centroid(w2), 1.2)
-(pp2 = c(c1, st_geometry(xy)) |> as.ppp())
+(pp1 <- c(w1, st_geometry(xy)) |> as.ppp())
+c1 <- st_buffer(st_centroid(w2), 1.2)
+(pp2 <- c(c1, st_geometry(xy)) |> as.ppp())
 ```
 
 To test for homogeneity, one could carry out a quadrat count, using
@@ -101,8 +102,8 @@ an appropriate quadrat layout (a 3 x 3 layout is shown in figure
 \@ref(fig:quadrat))
 ```{r quadrat, fig.height=3.5, fig.cap = "3 x 3 quadrat counts for the two point patterns", echo = !knitr::is_latex_output()}
 par(mfrow = c(1, 2), mar = rep(0, 4))
-q1 = quadratcount(pp1, nx=3, ny=3)
-q2 = quadratcount(pp2, nx=3, ny=3)
+q1 <- quadratcount(pp1, nx=3, ny=3)
+q2 <- quadratcount(pp2, nx=3, ny=3)
 plot(q1, main = "")
 plot(xy, add = TRUE)
 plot(q2, main = "")
@@ -139,8 +140,8 @@ convert them into stars object, e.g. by
 
 ```{r}
 library(stars)
-s1 = st_as_stars(den1)
-(s2 = st_as_stars(den2))
+s1 <- st_as_stars(den1)
+(s2 <- st_as_stars(den2))
 ```
 
 and we can verify that the area under the density surface is similar
@@ -157,13 +158,13 @@ that points do not interact with each other), where
 the intensity is a function of distance to the center of the 
 "cluster", and these distance are available in a `stars` object:
 ```{r}
-pt = st_sfc(st_point(c(0.5, 0.5)))
-s2$dist = st_distance(st_as_sf(s2, as_points = TRUE, na.rm = FALSE), pt)
+pt <- st_sfc(st_point(c(0.5, 0.5)))
+s2$dist <- st_distance(st_as_sf(s2, as_points = TRUE, na.rm = FALSE), pt)
 ```
 we can then model the densities using `ppm`, where the _name_ of the
 point pattern object is used as the left-hand-side of the `formula`:
 ```{r}
-(m = ppm(pp2 ~ dist, data = list(dist = as.im(s2["dist"]))))
+(m <- ppm(pp2 ~ dist, data = list(dist = as.im(s2["dist"]))))
 ```
 
 The returned object is of class `ppm`, and can be plotted: figure \@ref(fig:ppm)
@@ -206,7 +207,7 @@ A dataset available in `spatstat` with marks is the `longleaf` pines
 dataset, containing diameter at breast height as numeric mark:
 ```{r}
 longleaf
-ll = st_as_sf(longleaf)
+ll <- st_as_sf(longleaf)
 print(ll, n = 5)
 ```
 Values can be converted back to `ppp` with
@@ -252,8 +253,8 @@ the number of requested points, for other types this is approximate.
 the `spatstat` function `rThomas` is invoked when setting `type = Thomas`
 (figure \@ref(fig:rThomas)):
 ```{r}
-kappa = 30 / st_area(w2) # intensity
-th = st_sample(w2, kappa = kappa, mu = 3, scale = 0.05, type = "Thomas")
+kappa <- 30 / st_area(w2) # intensity
+th <- st_sample(w2, kappa = kappa, mu = 3, scale = 0.05, type = "Thomas")
 nrow(th)
 ```
 ```{r rThomas, fig.height = 4, fig.cap = "Thomas process with mu = 3 and scale = 0.05", echo=!knitr::is_latex_output()}
@@ -278,24 +279,24 @@ were constrained to those in oceans.
 # example from plotting chapter:
 par(mar = rep(0, 4))
 library(s2)
-g = as_s2_geography(TRUE) # Earth
-co = s2_data_countries()
-oc = s2_difference(g, s2_union_agg(co)) # oceans
-b = s2_buffer_cells(as_s2_geography("POINT(-30 -10)"), 9800000) # visible half
-i = s2_intersection(b, oc) # visible ocean
-co = s2_intersection(b, co)
+g <- as_s2_geography(TRUE) # Earth
+co <- s2_data_countries()
+oc <- s2_difference(g, s2_union_agg(co)) # oceans
+b <- s2_buffer_cells(as_s2_geography("POINT(-30 -10)"), 9800000) # visible half
+i <- s2_intersection(b, oc) # visible ocean
+co <- s2_intersection(b, co)
 plot(st_transform(st_as_sfc(i), "+proj=ortho +lat_0=-10 +lon_0=-30"), 
 	 col = 'lightblue')
 plot(st_transform(st_as_sfc(co), "+proj=ortho +lat_0=-10 +lon_0=-30"), 
 	 col = NA, add = TRUE, border = 'grey')
 # sampling from globe:
-#sf_use_s2(FALSE)
+sf_use_s2(FALSE)
 assign(".sf.use_s2", FALSE, envir=sf:::.sf_cache) # cheat!
-pts = suppressMessages( # cheat!
+pts <- suppressMessages( # cheat!
    st_sample(st_as_sfc(st_bbox(st_as_stars())), 1000, exact = FALSE))
-#sf_use_s2(TRUE)
+sf_use_s2(TRUE)
 assign(".sf.use_s2", TRUE, envir = sf:::.sf_cache) # cheat!
-pts = s2_intersection(i, pts) |> st_as_sfc()
+pts <- s2_intersection(i, pts) |> st_as_sfc()
 plot(st_transform(pts, "+proj=ortho +lat_0=-10 +lon_0=-30"), 
 	 add = TRUE, pch = 3, cex = .7)
 ```
@@ -312,7 +313,7 @@ by using `ggplot2` and `geom_sf()`, and by `sf::plot()`.
 ```{r echo=FALSE}
 # we need to detach, to avoid name clashes of using idw() and diagnose() later on
 library(spatstat)
-w = function(x) which(x == search())
+w <- function(x) which(x == search())
 detach(pos = w("package:spatstat"))
 detach(pos = w("package:spatstat.linnet"))
 detach(pos = w("package:spatstat.core"))

@@ -22,10 +22,7 @@ The EEA's [air quality
 e-reporting](https://www.eea.europa.eu/data-and-maps/data/aqereporting-8)
 website gives access to the data reported by European member states.
 We decided to download hourly (time series) data, which is the data primarily measured.
-A web form helps convert simple selection criteria into an http GET request. The following URL
-```
-https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&CityName=&Pollutant=8&Year_from=2017&Year_to=2017&Station=&Samplingpoint=&Source=E1a&Output=TEXT&UpdateDate=
-```
+A web form helps convert simple selection criteria into an http GET request. The URL\footnote{{\url{https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&CityName=&Pollutant=8&Year_from=2017&Year_to=2017&Station=&Samplingpoint=&Source=E1a&Output=TEXT&UpdateDate=}}
 was created to select all validated (`Source=E1a`) $NO_2$
 (`Pollutant=8`) data for 2017 (`Year_from`, `Year_to`) from Germany
 (`CountryCode=DE`).  It returns a text file with a set of URLs to CSV
@@ -35,13 +32,13 @@ to the right encoding using the `dos2unix` command line utility.
 
 In the following, we will read all the files into a list,
 ```{r readallcsvfiles}
-files = list.files("aq", pattern = "*.csv", full.names = TRUE)
-r = lapply(files[-1], function(f) read.csv(f))
+files <- list.files("aq", pattern = "*.csv", full.names = TRUE)
+r <- lapply(files[-1], function(f) read.csv(f))
 ```
 then convert the time variable into a `POSIXct` variable, and put them in time order by
 ```{r fixtimes}
-Sys.setenv(TZ = "UTC") # make sure times are not interpreted in local time zone
-r = lapply(r, function(f) {
+Sys.setenv(TZ = "UTC") # don't use local time zone
+r <- lapply(r, function(f) {
 		f$t = as.POSIXct(f$DatetimeBegin) 
 		f[order(f$t), ] 
 	}
@@ -49,15 +46,16 @@ r = lapply(r, function(f) {
 ```
 We remove smaller subdatasets, which for this dataset have no hourly data:
 ```{r deselect_smaller_datasets, results='hide'}
-r = r[sapply(r, nrow) > 1000]
-names(r) =  sapply(r, function(f) unique(f$AirQualityStationEoICode))
+r <- r[sapply(r, nrow) > 1000]
+names(r) <- sapply(r,
+			   function(f) unique(f$AirQualityStationEoICode))
 length(r) == length(unique(names(r)))
 ```
 and then combine all files using `xts::cbind`, so that they are matched based on matching times:
 ```{r converttoxts}
 library(xts)
-r = lapply(r, function(f) xts(f$Concentration, f$t))
-aq = do.call(cbind, r)
+r <- lapply(r, function(f) xts(f$Concentration, f$t))
+aq <- do.call(cbind, r)
 ```
 A usual further selection for this dataset is to select stations
 for which 75\% of the hourly values measured are valid, i.e. drop
@@ -65,8 +63,8 @@ those with more than 25\% hourly values missing.
 Knowing that `mean(is.na(x))` gives the _fraction_ of missing values
 in a vector `x`, we can apply this function to the columns (stations):
 ```{r removestationswithmissingvalues}
-sel = apply(aq, 2, function(x) mean(is.na(x)) < 0.25)
-aqsel = aq[, sel]
+sel <- apply(aq, 2, function(x) mean(is.na(x)) < 0.25)
+aqsel <- aq[, sel]
 ```
 
 Next, the [station metadata](http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_stations.zip) was read 
@@ -75,30 +73,35 @@ and filtered for rural background stations in Germany (`"DE"`) by
 library(tidyverse)
 read.csv("aq/AirBase_v8_stations.csv", sep = "\t") |>
 	as_tibble() |> 
-	filter(country_iso_code == "DE", station_type_of_area == "rural", 
-				 type_of_station == "Background") -> a2
+	filter(country_iso_code == "DE",
+		   station_type_of_area == "rural",
+		   type_of_station == "Background") -> a2
 ```
 These stations contain coordinates, and an `sf` object with (static) station metadata is created by
 ```{r importstationcoords}
 library(sf)
-a2.sf = st_as_sf(a2, coords = c("station_longitude_deg", "station_latitude_deg"), crs = 'OGC:CRS84')
+a2.sf <- st_as_sf(a2, coords = 
+				 c("station_longitude_deg",
+				   "station_latitude_deg"), crs = 'OGC:CRS84')
 ```
 
 We now subset the air quality measurements to include only stations that are of type rural background:
 ```{r subseteuropean}
-sel =  colnames(aqsel) %in% a2$station_european_code
-aqsel = aqsel[, sel]
+sel <-  colnames(aqsel) %in% a2$station_european_code
+aqsel <- aqsel[, sel]
 ```
 
 We can compute station means, and join these to stations locations by
 ```{r computestationmeans, message=FALSE}
-tb = tibble(NO2 = apply(aqsel, 2, mean, na.rm = TRUE), station_european_code = colnames(aqsel))
-crs = 'EPSG:32632'
+tb <- tibble(NO2 = apply(aqsel, 2, mean, na.rm = TRUE), 
+			station_european_code = colnames(aqsel))
+crs <- 'EPSG:32632'
 right_join(a2.sf, tb) |> st_transform(crs) -> no2.sf 
 # load German boundaries
 data(air, package = "spacetime")
 de <- st_transform(st_as_sf(DE_NUTS1), crs)
-ggplot() + geom_sf(data = de) +  geom_sf(data = no2.sf, mapping = aes(col = NO2))
+ggplot() + geom_sf(data = de) +
+		geom_sf(data = no2.sf, mapping = aes(col = NO2))
 ```
 
 Station mean NO$_2$ concentrations, along with country borders, are shown in in figure \@ref(fig:plotDE).
@@ -180,11 +183,12 @@ constructed at the beginning of this chapter, we will first select
 the measurements taken at rural background stations:
 
 ```{r}
-aqx = aq[ , colnames(aq) %in% a2$station_european_code]
+aqx <- aq[ , colnames(aq) %in% a2$station_european_code]
 ```
 Then we will select the spatial locations for these stations by
 ```{r}
-sfc = st_geometry(a2.sf)[match(colnames(aqx), a2.sf$station_european_code)]
+sfc <- st_geometry(a2.sf)[match(colnames(aqx),
+							   a2.sf$station_european_code)]
 ```
 and finally build a `stars` object with time and station as dimensions:
 ```{r}
@@ -196,16 +200,16 @@ st_as_stars(NO2 = as.matrix(aqx)) |>
 ```
 From this, we can compute the spatiotemporal variogram using
 ```{r computespacetimesamplevariogram, eval = !exists("v.st")}
-v.st = variogramST(NO2~1, no2.st[,1:(24*31)], tlags = 0:48, 
+v.st <- variogramST(NO2~1, no2.st[,1:(24*31)], tlags = 0:48, 
 	cores = getOption("mc.cores", 2))
 ```
 
-(ref:samplevariogram) Spatiotemporal sample variogram for hourly NO$_2$ concentrations at rural background stations in Germany over 2027
+(ref:samplevariogram) Spatiotemporal sample variogram for hourly NO$_2$ concentrations at rural background stations in Germany over 2027; in the right-hand side plot color corresponds to time lag.
 
 which is shown in figure \@ref(fig:plotvariograms).
-```{r plotvariograms,fig.cap = '(ref:samplevariogram)', echo=!knitr::is_latex_output()}
-v1 = plot(v.st)
-v2 = plot(v.st, map = FALSE)
+```{r plotvariograms,fig.cap = '(ref:samplevariogram)', echo=!knitr::is_latex_output(), out.height = '160%'}
+v1 <- plot(v.st)
+v2 <- plot(v.st, map = FALSE, legend = list())
 print(v1, split = c(1,1,2,1), more = TRUE)
 print(v2, split = c(2,1,2,1), more = FALSE)
 ```
@@ -218,9 +222,9 @@ prodSumModel <- vgmST("productSum",
 	space = vgm(150, "Exp", 200, 0),
 	time = vgm(20, "Sph", 40, 0),
 	k = 2)
-StAni = estiStAni(v.st, c(0,200000))
-(fitProdSumModel <- fit.StVariogram(v.st, prodSumModel, fit.method = 7,
-	stAni = StAni, method = "L-BFGS-B",
+StAni <- estiStAni(v.st, c(0,200000))
+(fitProdSumModel <- fit.StVariogram(v.st, prodSumModel,
+	fit.method = 7, stAni = StAni, method = "L-BFGS-B",
 	control = list(parscale = c(1,10,1,1,0.1,1,10)),
 	lower = rep(0.0001, 7)))
 ```
@@ -253,8 +257,8 @@ particular locations, and and predicting spatial slices [@RJ-2016-014].
 We can create a `stars` object for two randomly picked spatial points 
 and all time instances by 
 ```{r createstarsobject}
-pt = st_sample(de, 2)
-t = st_get_dimension_values(no2.st, 1)
+pt <- st_sample(de, 2)
+t <- st_get_dimension_values(no2.st, 1)
 st_as_stars(list(pts = matrix(1, length(t), length(pt)))) |>
 	st_set_dimensions(names = c("time", "station")) |>
 	st_set_dimensions("time", t) |>
@@ -276,8 +280,8 @@ plot(as.xts(new_ts[2]))
 Alternatively, we can create spatiotemporal predictions for a set of time-stamped
 raster maps, evenly spaced over the year 2017, created by
 ```{r spatiotemporalpredictionsgrid}
-t4 = t[(1:4 - 0.5) * (3*24*30)]
-d = dim(grd)
+t4 <- t[(1:4 - 0.5) * (3*24*30)]
+d <- dim(grd)
 st_as_stars(pts = array(1, c(d[1], d[2], time = length(t4)))) |>
 	st_set_dimensions("time", t4) |>
 	st_set_dimensions("x", st_get_dimension_values(grd, "x")) |>
