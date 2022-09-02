@@ -322,7 +322,8 @@ GAM_MRF <- gam(update(form, . ~ . + s(NOX_ID, bs = "mrf",
 The upper level random effects may be extracted by predicting terms; as we can see, the values in all lower-level tracts belonging to the same upper-level air pollution model output zones are identical:
 
 ```{r}
-ssre <- predict(GAM_MRF, type = "terms", se = FALSE)[, "s(NOX_ID)"]
+ssre <- predict(GAM_MRF, type = "terms", 
+				se = FALSE)[, "s(NOX_ID)"]
 all(sapply(tapply(ssre, list(boston_487$NOX_ID), c),
 		   function(x) length(unique(x)) == 1))
 ```
@@ -624,8 +625,8 @@ W <- as(lw_q, "CsparseMatrix")
 n <- nrow(W)
 e <- eigenw(lw_q)
 re.idx <- which(abs(Im(e)) < 1e-6)
-rho.max <- 1/max(Re(e[re.idx]))
-rho.min <- 1/min(Re(e[re.idx]))
+rho.max <- 1 / max(Re(e[re.idx]))
+rho.min <- 1 / min(Re(e[re.idx]))
 rho <- mean(c(rho.min, rho.max))
 boston_506$idx <- 1:n
 zero.variance = list(prec = list(initial = 25, fixed = TRUE))
@@ -635,14 +636,15 @@ hyper.slm <- list(prec = list(prior = "loggamma",
 							  param = c(0.01, 0.01)),
 				  rho = list(initial = 0, prior = "logitbeta",
 							 param = c(1,1)))
-WX <- create_WX(model.matrix(update(form, CMEDV ~ .), data=boston_506),
-				lw_q)
-SDEM_506_slm <- inla(update(form, . ~ . + WX + f(idx, model = "slm",
-												 args.slm = args.slm,
-												 hyper = hyper.slm)),
-					 data = boston_506, family = "gaussian",
-					 control.family = list(hyper = zero.variance),
-					 control.compute = list(dic = TRUE, cpo = TRUE))
+WX <- create_WX(model.matrix(update(form, CMEDV ~ .), 
+							 data = boston_506), lw_q)
+SDEM_506_slm <- inla(update(form, 
+							. ~ . + WX + f(idx, model = "slm",
+										 args.slm = args.slm,
+										 hyper = hyper.slm)),
+				 data = boston_506, family = "gaussian",
+				 control.family = list(hyper = zero.variance),
+				 control.compute = list(dic = TRUE, cpo = TRUE))
 mv_mean <- exp(SDEM_506_slm$summary.fitted.values$mean[
 			   which(is.na(boston_506$median))])
 ```
@@ -652,7 +654,8 @@ INLA also provide gridded estimates of the marginal distributions of the predict
 ```{r}
 data.frame(fit_TS = t0[,1], fit_KP2 = c(t1), fit_KP5 = c(t2),
     INLA_slm = mv_mean,
-	censored = boston_506$censored[as.integer(attr(t0, "region.id"))])
+	censored = boston_506$censored[as.integer(attr(t0, 
+												   "region.id"))])
 ```
 
 The spatial regression toolbox remains incomplete, and it will take time to fill in blanks. It remains unfortunate that the several traditions in spatial regression seldom seem to draw on each others' understandings and advances.
