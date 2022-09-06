@@ -21,6 +21,20 @@ pdf:
 	Rscript --quiet _render.R "bookdown::pdf_book"
 	# evince _book/sds.pdf
 
+small:
+	mv 0[5-9]*Rmd 1*Rmd tmp
+
+quarto_book:
+	#./to_quarto_fold 0[0-5]*Rmd
+	#./to_quarto 0[7-9]*Rmd [1-9]*Rmd
+	cat book.bib packages.bib > quarto/book.bib
+	cp -rp images quarto
+	(cd quarto; quarto render)
+	# echo '\@ref(fig:foo)' | sed 's/fig:/fig-/g' | sed 's/\\@ref//g'
+	# mv quarto/SpatialDataScience.tex xx.tex 
+	#sed 's/\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}/\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},fontsize=\small}/ xx.tex > quarto/SpatialDataScience.tex
+
+
 push:
 	# make
 	git add _book/*html _book/sds_files/figure-html/* _book/libs _book/search_index.json _book/style.css _book/images/*png
