@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.0.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Spatial Data Science - 15&nbsp; Spatial Regression</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./30-sp-raster.html" rel="next">
+<link href="./17-Areal.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+</head>
+
+<body class="nav-sidebar floating">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+    <div class="container-fluid d-flex justify-content-between">
+      <h1 class="quarto-secondary-nav-title"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Spatial Regression</span></h1>
+      <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Spatial Data Science</a> 
+    </div>
+      </div>
+      <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+      </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">Preface</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="./00-part-1.html" class="sidebar-item-text sidebar-link">Spatial Data</a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-hello.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Getting Started</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-Spaces.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Coordinates</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-Geometries.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Geometries</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-Spherical.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Spherical Geometries</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-Attributes.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Attributes and Support</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="./06-part-2.html" class="sidebar-item-text sidebar-link">R for Spatial Data Science</a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-Cubes.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Data Cubes</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-Introsf.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Introduction to sf and stars</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-Large.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Large data and cloud native</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-Plotting.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Plotting spatial data</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="./10-part-3.html" class="sidebar-item-text sidebar-link">Models for Spatial Data</a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="true">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10-Models.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Statistical modelling of spatial data</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13-PointPattern.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Point Pattern Analysis</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14-Interpolation.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Spatial Interpolation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16-Geostatistics.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Multivariate and Spatiotemporal Geostatistics</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17-Areal.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Proximity and Areal Data</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18-SpatialRegression.html" class="sidebar-item-text sidebar-link active"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Spatial Regression</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./30-sp-raster.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Older R Spatial Packages</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./97-allcode.html" class="sidebar-item-text sidebar-link">All R code in this book</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./98-rbascis.html" class="sidebar-item-text sidebar-link">R basics</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./references.html" class="sidebar-item-text sidebar-link">Index</a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#markov-random-field-and-multilevel-models" id="toc-markov-random-field-and-multilevel-models" class="nav-link active" data-scroll-target="#markov-random-field-and-multilevel-models"> <span class="header-section-number">15.1</span> Markov random field and multilevel models</a>
+  <ul class="collapse">
+  <li><a href="#boston-house-value-data-set" id="toc-boston-house-value-data-set" class="nav-link" data-scroll-target="#boston-house-value-data-set">Boston house value data set</a></li>
+  </ul></li>
+  <li><a href="#multilevel-models-of-the-boston-data-set" id="toc-multilevel-models-of-the-boston-data-set" class="nav-link" data-scroll-target="#multilevel-models-of-the-boston-data-set"> <span class="header-section-number">15.2</span> Multilevel models of the Boston data set</a>
+  <ul class="collapse">
+  <li><a href="#iid-random-effects-with-lme4" id="toc-iid-random-effects-with-lme4" class="nav-link" data-scroll-target="#iid-random-effects-with-lme4">IID random effects with lme4</a></li>
+  <li><a href="#iid-and-car-random-effects-with-hglm" id="toc-iid-and-car-random-effects-with-hglm" class="nav-link" data-scroll-target="#iid-and-car-random-effects-with-hglm">IID and CAR random effects with hglm</a></li>
+  <li><a href="#iid-and-icar-random-effects-with-r2bayesx" id="toc-iid-and-icar-random-effects-with-r2bayesx" class="nav-link" data-scroll-target="#iid-and-icar-random-effects-with-r2bayesx">IID and ICAR random effects with R2BayesX</a></li>
+  <li><a href="#iid-icar-and-leroux-random-effects-with-inla" id="toc-iid-icar-and-leroux-random-effects-with-inla" class="nav-link" data-scroll-target="#iid-icar-and-leroux-random-effects-with-inla">IID, ICAR and Leroux random effects with INLA</a></li>
+  <li><a href="#icar-random-effects-with-mgcvgam" id="toc-icar-random-effects-with-mgcvgam" class="nav-link" data-scroll-target="#icar-random-effects-with-mgcvgam">ICAR random effects with mgcv::gam()</a></li>
+  <li><a href="#upper-level-random-effects-summary" id="toc-upper-level-random-effects-summary" class="nav-link" data-scroll-target="#upper-level-random-effects-summary">Upper level random effects: summary</a></li>
+  </ul></li>
+  <li><a href="#exercises" id="toc-exercises" class="nav-link" data-scroll-target="#exercises"> <span class="header-section-number">15.3</span> Exercises</a></li>
+  <li><a href="#sec-spatecon" id="toc-sec-spatecon" class="nav-link" data-scroll-target="#sec-spatecon"> <span class="header-section-number">16</span> Spatial econometrics models</a>
+  <ul class="collapse">
+  <li><a href="#spatial-econometric-models-definitions" id="toc-spatial-econometric-models-definitions" class="nav-link" data-scroll-target="#spatial-econometric-models-definitions"> <span class="header-section-number">16.1</span> Spatial econometric models: definitions</a></li>
+  <li><a href="#maximum-likelihood-estimation-in-spatialreg" id="toc-maximum-likelihood-estimation-in-spatialreg" class="nav-link" data-scroll-target="#maximum-likelihood-estimation-in-spatialreg"> <span class="header-section-number">16.2</span> Maximum likelihood estimation in <strong>spatialreg</strong></a>
+  <ul class="collapse">
+  <li><a href="#boston-house-value-data-set-examples" id="toc-boston-house-value-data-set-examples" class="nav-link" data-scroll-target="#boston-house-value-data-set-examples">Boston house value data set examples</a></li>
+  </ul></li>
+  <li><a href="#impacts" id="toc-impacts" class="nav-link" data-scroll-target="#impacts"> <span class="header-section-number">16.3</span> Impacts</a></li>
+  <li><a href="#sec-spateconpred" id="toc-sec-spateconpred" class="nav-link" data-scroll-target="#sec-spateconpred"> <span class="header-section-number">16.4</span> Predictions</a></li>
+  <li><a href="#exercises-1" id="toc-exercises-1" class="nav-link" data-scroll-target="#exercises-1"> <span class="header-section-number">16.5</span> Exercises</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span id="sec-spatglmm" class="quarto-section-identifier d-none d-lg-block"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Spatial Regression</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    
+  </div>
+  
+
+</header>
+
+<p>Even though it may be tempting to focus on interpreting the map pattern of an areal support response variable of interest, the pattern may largely derive from covariates (and their functional forms), as well as the respective spatial footprints of the variables in play. Spatial autoregressive models in two dimensions began without covariates and with clear links to time series <span class="citation" data-cites="whittle:54">(<a href="references.html#ref-whittle:54" role="doc-biblioref">Whittle 1954</a>)</span>. Extensions included tests for spatial autocorrelation in linear model residuals, and models applying the autoregressive component to the response or the residuals, where the latter matched the tests for residuals <span class="citation" data-cites="CliffOrd:72 cliff+ord:73">(<a href="references.html#ref-CliffOrd:72" role="doc-biblioref">A. Cliff and Ord 1972</a>; <a href="references.html#ref-cliff+ord:73" role="doc-biblioref">A. D. Cliff and Ord 1973</a>)</span>. These “lattice” models of areal data typically express the dependence between observations using a graph of neighbours in the form of a contiguity matrix.</p>
+<p>Of course, handling a spatial correlation structure in a generalised least squares model or a (generalized) linear or nonlinear mixed effects model such as those provided in the <strong>nlme</strong> and many other packages does not have to use a graph of neighbours <span class="citation" data-cites="R:Pinheiro+Bates:2000">(<a href="references.html#ref-R:Pinheiro+Bates:2000" role="doc-biblioref">Pinheiro and Bates 2000</a>)</span>. These models are also spatial regression models, using functions of the distance between observations, and fitted variograms to model the spatial autocorrelation present; such models have been held to yield a clearer picture of the underlying processes <span class="citation" data-cites="wall:04">(<a href="references.html#ref-wall:04" role="doc-biblioref">Wall 2004</a>)</span>, building on geostatistics. For example, the <strong>glmmTMB</strong> package successfully uses this approach to spatial regression <span class="citation" data-cites="brookesetal:17">(<a href="references.html#ref-brookesetal:17" role="doc-biblioref">Brooks et al. 2017</a>)</span>. Here we will only consider spatial regression using spatial weights matrices.</p>
+<section id="markov-random-field-and-multilevel-models" class="level2" data-number="15.1">
+<h2 data-number="15.1" class="anchored" data-anchor-id="markov-random-field-and-multilevel-models"><span class="header-section-number">15.1</span> Markov random field and multilevel models</h2>
+<p>There is a large literature in disease mapping using conditional autoregressive (CAR) and intrinsic CAR (ICAR) models in spatially structured random effects. These extend to multilevel models, in which the spatially structured random effects may apply at different levels of the model <span class="citation" data-cites="bivandetal17a">(<a href="references.html#ref-bivandetal17a" role="doc-biblioref">Roger S. Bivand et al. 2017</a>)</span>. In order to try out some of the variants, we need to remove the no-neighbour observations from the tract level, and from the model output zone aggregated level, in two steps as reducing the tract level induces a no-neighbour outcome at the model output zone level. Many of the model estimating functions take <code>family=</code> arguments, and fit generalized linear mixed effects models with per-observation spatial random effects structured using a Markov random field representation of relationships between neighbours. In the multilevel case, the random effects may be modelled at the group level, which is the case presented in the following examples.</p>
+<p>We follow <span class="citation" data-cites="vgr_clubuc3m:19">V. Gómez-Rubio (<a href="references.html#ref-vgr_clubuc3m:19" role="doc-biblioref">2019</a>)</span> in summarizing <span class="citation" data-cites="R:Pinheiro+Bates:2000">Pinheiro and Bates (<a href="references.html#ref-R:Pinheiro+Bates:2000" role="doc-biblioref">2000</a>)</span> and <span class="citation" data-cites="mcculloch+searle:2001">McCulloch and Searle (<a href="references.html#ref-mcculloch+searle:2001" role="doc-biblioref">2001</a>)</span> to describe the mixed-effects model representation of spatial regression models. In a Gaussian linear mixed model setting, a random effect <span class="math inline">\(u\)</span> is added to the model, with response <span class="math inline">\(Y\)</span>, fixed covariates <span class="math inline">\(X\)</span>, their coefficients <span class="math inline">\(\beta\)</span> and error term <span class="math inline">\(\varepsilon_i \sim N(0, \sigma^2), i=1,\dots, n\)</span>:</p>
+<p><span class="math display">\[
+Y = X \beta + Z u + \varepsilon
+\]</span></p>
+<p><span class="math inline">\(Z\)</span> is a fixed design matrix for the random effects. If there are <span class="math inline">\(n\)</span> random effects, it will be an <span class="math inline">\(n \times n\)</span> identity matrix, if instead the observations are aggregated into <span class="math inline">\(m\)</span> groups, so with <span class="math inline">\(m &lt; n\)</span> random effects, it will be an <span class="math inline">\(n \times m\)</span> matrix showing which group each observation belongs to. The random effects are modelled as a multivariate Normal distribution <span class="math inline">\(u \sim N(0, \sigma^2_u \Sigma)\)</span>, and <span class="math inline">\(\Sigma\)</span> is the square variance-covariance matrix of the random effects.</p>
+<p>A division has grown up, possibly unhelpfully, between scientific fields using CAR models <span class="citation" data-cites="besag:74">(<a href="references.html#ref-besag:74" role="doc-biblioref">Besag 1974</a>)</span>, and simultaneous autoregressive models (SAR) <span class="citation" data-cites="ord:75 hepple:76">(<a href="references.html#ref-ord:75" role="doc-biblioref">Ord 1975</a>; <a href="references.html#ref-hepple:76" role="doc-biblioref">Hepple 1976</a>)</span>. Although CAR and SAR models are closely related, these fields have found it difficult to share experience of applying similar models, often despite referring to key work summarising the models <span class="citation" data-cites="ripley:81 ripley:88 Cressie:1993">(<a href="references.html#ref-ripley:81" role="doc-biblioref">Ripley 1981</a>, <a href="references.html#ref-ripley:88" role="doc-biblioref">1988</a>; <a href="references.html#ref-Cressie:1993" role="doc-biblioref">Cressie 1993</a>)</span>. Ripley gives the SAR variance as <span class="citation" data-cites="ripley:81">(<a href="references.html#ref-ripley:81" role="doc-biblioref">1981, 89</a>)</span>, here shown as the inverse <span class="math inline">\(\Sigma^{-1}\)</span> (also known as the precision matrix):</p>
+<p><span class="math display">\[
+\Sigma^{-1} = [(I - \rho W)'(I - \rho W)]
+\]</span></p>
+<p>where <span class="math inline">\(\rho\)</span> is a spatial autocorrelation parameter and <span class="math inline">\(W\)</span> is a nonsingular spatial weights matrix that represents spatial dependence. The CAR variance is:</p>
+<p><span class="math display">\[
+\Sigma^{-1} = (I - \rho W)
+\]</span></p>
+<p>where <span class="math inline">\(W\)</span> is a symmetric and strictly positive definite spatial weights matrix. In the case of the intrinsic CAR model, avoiding the estimation of a spatial autocorrelation parameter, we have:</p>
+<p><span class="math display">\[
+\Sigma^{-1} = M = \mathrm{diag}(n_i) - W
+\]</span></p>
+<p>where <span class="math inline">\(W\)</span> is a symmetric and strictly positive definite spatial weights matrix as before and <span class="math inline">\(n_i\)</span> are the row sums of <span class="math inline">\(W\)</span>. The Besag-York-Mollié model includes intrinsic CAR spatially structured random effects and an unstructured random effects. The Leroux model combines matrix components for unstructured and spatially structured random effects, where the spatially structured random effects are taken as following an intrinsic CAR specification:</p>
+<p><span class="math display">\[
+\Sigma^{-1} = [(1 - \rho) I_n + \rho M]
+\]</span></p>
+<p>References to the definitions of these models may be found in <span class="citation" data-cites="gómez2020bayesian">V. Gómez-Rubio (<a href="references.html#ref-gómez2020bayesian" role="doc-biblioref">2020</a>)</span>, and estimation issues affecting the Besag-York-Mollié and Leroux models are reviewed by <span class="citation" data-cites="JSSv063c01">Gerber and Furrer (<a href="references.html#ref-JSSv063c01" role="doc-biblioref">2015</a>)</span>.</p>
+<p>More recent books expounding the theoretical bases for modelling with areal data simply point out the similarities between SAR and CAR models in relevant chapters <span class="citation" data-cites="gaetan+guyon:10 vanlieshout:19">(<a href="references.html#ref-gaetan+guyon:10" role="doc-biblioref">Gaetan and Guyon 2010</a>; <a href="references.html#ref-vanlieshout:19" role="doc-biblioref">Lieshout 2019</a>)</span>; the interested reader is invited to consult these sources for background information.</p>
+<section id="boston-house-value-data-set" class="level3">
+<h3 class="anchored" data-anchor-id="boston-house-value-data-set">Boston house value data set</h3>
+<p>Here we shall use the Boston housing data set, which has been restructured and furnished with census tract boundaries <span class="citation" data-cites="bivand17">(<a href="references.html#ref-bivand17" role="doc-biblioref">R. Bivand 2017</a>)</span>. The original data set used 506 census tracts and a hedonic model to try to estimate willingness to pay for clean air. The response was constructed from counts of ordinal answers to a 1970 census question about house value. The response is left and right censored in the census source and has been treated as Gaussian. The key covariate was created from a calibrated meteorological model showing the annual nitrogen oxides (NOX) level for a smaller number of model output zones. The numbers of houses responding also varies by tract and model output zone. There are several other covariates, some measured at the tract level, some by town only, where towns broadly correspond to the air pollution model output zones.</p>
+<p>We can start by reading in the 506 tract data set from <strong>spData</strong> <span class="citation" data-cites="R-spData">(<a href="references.html#ref-R-spData" role="doc-biblioref">R. Bivand, Nowosad, and Lovelace 2021</a>)</span>, and creating a contiguity neighbour object and from that again a row standardized spatial weights object.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(spData)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>boston_506 <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="fu">system.file</span>(<span class="st">"shapes/boston_tracts.shp"</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">package =</span> <span class="st">"spData"</span>)[<span class="dv">1</span>])</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Reading layer `boston_tracts' from data source </span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">#   `/home/edzer/R/x86_64-pc-linux-gnu-library/4.0/spData/shapes/boston_tracts.shp' </span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">#   using driver `ESRI Shapefile'</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Simple feature collection with 506 features and 36 fields</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Geometry type: POLYGON</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Dimension:     XY</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Bounding box:  xmin: -71.5 ymin: 42 xmax: -70.6 ymax: 42.7</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Geodetic CRS:  NAD27</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>nb_q <span class="ot">&lt;-</span> spdep<span class="sc">::</span><span class="fu">poly2nb</span>(boston_506)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>lw_q <span class="ot">&lt;-</span> spdep<span class="sc">::</span><span class="fu">nb2listw</span>(nb_q, <span class="at">style =</span> <span class="st">"W"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>If we examine the median house values, we find that those for censored values have been assigned as missing, and that 17 tracts are affected.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(boston_506<span class="sc">$</span>censored)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">#  left    no right </span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">#     2   489    15</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(boston_506<span class="sc">$</span>median)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co">#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's </span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co">#    5600   16800   21000   21749   24700   50000      17</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Next, we can subset to the remaining 489 tracts with non-censored house values, and the neighbour object to match. The neighbour object now has one observation with no neighbours.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>boston_506<span class="sc">$</span>CHAS <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(boston_506<span class="sc">$</span>CHAS)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>boston_489 <span class="ot">&lt;-</span> boston_506[<span class="sc">!</span><span class="fu">is.na</span>(boston_506<span class="sc">$</span>median),]</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>nb_q_489 <span class="ot">&lt;-</span> spdep<span class="sc">::</span><span class="fu">poly2nb</span>(boston_489)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>lw_q_489 <span class="ot">&lt;-</span> spdep<span class="sc">::</span><span class="fu">nb2listw</span>(nb_q_489, <span class="at">style =</span> <span class="st">"W"</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>                            <span class="at">zero.policy =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The <code>NOX_ID</code> variable specifies the upper level aggregation, letting us aggregate the tracts to air pollution model output zones. We can create aggregate neighbour and row standardized spatial weights objects, and aggregate the <code>NOX</code> variable taking means, and the <code>CHAS</code> Charles River dummy variable for observations on the river. Here we follow the principles outlined in <a href="05-Attributes.html#sec-extensiveintensive"><span>Section&nbsp;5.3.1</span></a> for spatially extensive and intensive variables; neither <code>NOX</code> nor <code>CHAS</code> can be summed as they are not count variables.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>agg_96 <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="fu">as.character</span>(boston_506<span class="sc">$</span>NOX_ID))</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>boston_96 <span class="ot">&lt;-</span> <span class="fu">aggregate</span>(boston_506[, <span class="st">"NOX_ID"</span>], <span class="at">by =</span> agg_96,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                       unique)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>nb_q_96 <span class="ot">&lt;-</span> spdep<span class="sc">::</span><span class="fu">poly2nb</span>(boston_96)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>lw_q_96 <span class="ot">&lt;-</span> spdep<span class="sc">::</span><span class="fu">nb2listw</span>(nb_q_96)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>boston_96<span class="sc">$</span>NOX <span class="ot">&lt;-</span> <span class="fu">aggregate</span>(boston_506<span class="sc">$</span>NOX, agg_96, mean)<span class="sc">$</span>x</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>boston_96<span class="sc">$</span>CHAS <span class="ot">&lt;-</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">aggregate</span>(<span class="fu">as.integer</span>(boston_506<span class="sc">$</span>CHAS)<span class="sc">-</span><span class="dv">1</span>, agg_96, max)<span class="sc">$</span>x</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The response is aggregated using the <code>weightedMedian()</code> function in <strong>matrixStats</strong>, and midpoint values for the house value classes. Counts of houses by value class were punched to check the published census values, which can be replicated using <code>weightedMedian()</code> at the tract level. Here we find two output zones with calculated weighted medians over the upper census question limit of USD 50,000, and remove them subsequently as they also are affected by not knowing the appropriate value to insert for the top class by value. This is a case of spatially extensive aggregation, for which the summation of counts is appropriate:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>nms <span class="ot">&lt;-</span> <span class="fu">names</span>(boston_506)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>ccounts <span class="ot">&lt;-</span> <span class="dv">23</span><span class="sc">:</span><span class="dv">31</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (nm <span class="cf">in</span> nms[<span class="fu">c</span>(<span class="dv">22</span>, ccounts, <span class="dv">36</span>)]) {</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  boston_96[[nm]] <span class="ot">&lt;-</span> <span class="fu">aggregate</span>(boston_506[[nm]], agg_96, sum)<span class="sc">$</span>x</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>br2 <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">3.50</span>, <span class="fl">6.25</span>, <span class="fl">8.75</span>, <span class="fl">12.5</span>, <span class="fl">17.5</span>, <span class="fl">22.5</span>, <span class="dv">30</span>, <span class="fl">42.5</span>, <span class="dv">60</span>) <span class="sc">*</span> <span class="dv">1000</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>counts <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(boston_96)[, nms[ccounts]]</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>f <span class="ot">&lt;-</span> <span class="cf">function</span>(x) matrixStats<span class="sc">::</span><span class="fu">weightedMedian</span>(<span class="at">x =</span> br2, <span class="at">w =</span> x,</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>                                             <span class="at">interpolate =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>boston_96<span class="sc">$</span>median <span class="ot">&lt;-</span> <span class="fu">apply</span>(counts, <span class="dv">1</span>, f)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="fu">is.na</span>(boston_96<span class="sc">$</span>median) <span class="ot">&lt;-</span> boston_96<span class="sc">$</span>median <span class="sc">&gt;</span> <span class="dv">50000</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(boston_96<span class="sc">$</span>median)</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="co">#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's </span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="co">#    9009   20417   23523   25263   30073   49496       2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Before subsetting, we aggregate the remaining covariates by weighted mean using the tract population counts punched from the census <span class="citation" data-cites="bivand17">(<a href="references.html#ref-bivand17" role="doc-biblioref">R. Bivand 2017</a>)</span>; these are spatially intensive variables, not count data.</p>
+<div class="cell">
+
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>boston_94 <span class="ot">&lt;-</span> boston_96[<span class="sc">!</span><span class="fu">is.na</span>(boston_96<span class="sc">$</span>median),]</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>nb_q_94 <span class="ot">&lt;-</span> spdep<span class="sc">::</span><span class="fu">subset.nb</span>(nb_q_96, <span class="sc">!</span><span class="fu">is.na</span>(boston_96<span class="sc">$</span>median))</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>lw_q_94 <span class="ot">&lt;-</span> spdep<span class="sc">::</span><span class="fu">nb2listw</span>(nb_q_94, <span class="at">style=</span><span class="st">"W"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We now have two data sets at each level, at the lower, census tract level, and at the upper, air pollution model output zone level, one including the censored observations, the other excluding them.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>boston_94a <span class="ot">&lt;-</span> <span class="fu">aggregate</span>(boston_489[,<span class="st">"NOX_ID"</span>], </span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>                        <span class="fu">list</span>(boston_489<span class="sc">$</span>NOX_ID), unique)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>nb_q_94a <span class="ot">&lt;-</span> spdep<span class="sc">::</span><span class="fu">poly2nb</span>(boston_94a)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>NOX_ID_no_neighs <span class="ot">&lt;-</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>        boston_94a<span class="sc">$</span>NOX_ID[<span class="fu">which</span>(spdep<span class="sc">::</span><span class="fu">card</span>(nb_q_94a) <span class="sc">==</span> <span class="dv">0</span>)]</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>boston_487 <span class="ot">&lt;-</span> boston_489[<span class="fu">is.na</span>(<span class="fu">match</span>(boston_489<span class="sc">$</span>NOX_ID,</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>                                     NOX_ID_no_neighs)),]</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>boston_93 <span class="ot">&lt;-</span> <span class="fu">aggregate</span>(boston_487[, <span class="st">"NOX_ID"</span>],</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>                       <span class="fu">list</span>(<span class="at">ids =</span> boston_487<span class="sc">$</span>NOX_ID), unique)</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(boston_93) <span class="ot">&lt;-</span> <span class="fu">as.character</span>(boston_93<span class="sc">$</span>NOX_ID)</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>nb_q_93 <span class="ot">&lt;-</span> spdep<span class="sc">::</span><span class="fu">poly2nb</span>(boston_93,</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>        <span class="at">row.names =</span> <span class="fu">unique</span>(<span class="fu">as.character</span>(boston_93<span class="sc">$</span>NOX_ID)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The original model related the log of median house values by tract to the square of NOX values, including other covariates usually related to house value by tract, such as aggregate room counts, aggregate age, ethnicity, social status, distance to downtown and to the nearest radial road, a crime rate, and town-level variables reflecting land use (zoning, industry), taxation and education <span class="citation" data-cites="bivand17">(<a href="references.html#ref-bivand17" role="doc-biblioref">R. Bivand 2017</a>)</span>. This structure will be used here to exercise issues raised in fitting spatial regression models, including the presence of multiple levels.</p>
+</section>
+</section>
+<section id="multilevel-models-of-the-boston-data-set" class="level2" data-number="15.2">
+<h2 data-number="15.2" class="anchored" data-anchor-id="multilevel-models-of-the-boston-data-set"><span class="header-section-number">15.2</span> Multilevel models of the Boston data set</h2>
+<p>The ZN, INDUS, NOX, RAD, TAX and PTRATIO variables show effectively no variability within the TASSIM zones, so in a multilevel model the random effect may absorb their influence.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>form <span class="ot">&lt;-</span> <span class="fu">formula</span>(<span class="fu">log</span>(median) <span class="sc">~</span> CRIM <span class="sc">+</span> ZN <span class="sc">+</span> INDUS <span class="sc">+</span> CHAS <span class="sc">+</span> </span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>                <span class="fu">I</span>((NOX<span class="sc">*</span><span class="dv">10</span>)<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> <span class="fu">I</span>(RM<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> AGE <span class="sc">+</span> <span class="fu">log</span>(DIS) <span class="sc">+</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>                <span class="fu">log</span>(RAD) <span class="sc">+</span> TAX <span class="sc">+</span> PTRATIO <span class="sc">+</span> <span class="fu">I</span>(BB<span class="sc">/</span><span class="dv">100</span>) <span class="sc">+</span> </span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>                <span class="fu">log</span>(<span class="fu">I</span>(LSTAT<span class="sc">/</span><span class="dv">100</span>)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="iid-random-effects-with-lme4" class="level3">
+<h3 class="anchored" data-anchor-id="iid-random-effects-with-lme4">IID random effects with lme4</h3>
+<p>The <strong>lme4</strong> package <span class="citation" data-cites="R-lme4">(<a href="references.html#ref-R-lme4" role="doc-biblioref">Bates et al. 2022</a>)</span> lets us add an independent and identically distributed (IID) unstructured random effect at the model output zone level by updating the model formula with a random effects term:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(Matrix)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lme4)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>MLM <span class="ot">&lt;-</span> <span class="fu">lmer</span>(<span class="fu">update</span>(form, . <span class="sc">~</span> . <span class="sc">+</span> (<span class="dv">1</span> <span class="sc">|</span> NOX_ID)), <span class="at">data =</span> boston_487,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">REML =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Copying the random effect into the <code>"sf"</code> object for mapping is performed below.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>boston_93<span class="sc">$</span>MLM_re <span class="ot">&lt;-</span> <span class="fu">ranef</span>(MLM)[[<span class="dv">1</span>]][,<span class="dv">1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="iid-and-car-random-effects-with-hglm" class="level3">
+<h3 class="anchored" data-anchor-id="iid-and-car-random-effects-with-hglm">IID and CAR random effects with hglm</h3>
+<p>The same model may be estimated using the <strong>hglm</strong> package <span class="citation" data-cites="R-hglm">(<a href="references.html#ref-R-hglm" role="doc-biblioref">Alam, Ronnegard, and Shen 2019</a>)</span>, which also permits the modelling of discrete responses, this time using an extra one-sided formula to express the random effects term:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">suppressPackageStartupMessages</span>(<span class="fu">library</span>(hglm))</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">suppressWarnings</span>(HGLM_iid <span class="ot">&lt;-</span> <span class="fu">hglm</span>(<span class="at">fixed =</span> form,</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">random =</span> <span class="sc">~</span><span class="dv">1</span> <span class="sc">|</span> NOX_ID,</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">data =</span> boston_487,</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">family =</span> <span class="fu">gaussian</span>()))</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>boston_93<span class="sc">$</span>HGLM_re <span class="ot">&lt;-</span> <span class="fu">unname</span>(HGLM_iid<span class="sc">$</span>ranef)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The same package has been extended to spatially structured SAR and CAR random effects, for which a sparse spatial weights matrix is required <span class="citation" data-cites="alam-ronnegard-shen:2015">(<a href="references.html#ref-alam-ronnegard-shen:2015" role="doc-biblioref">Alam, Rönnegård, and Shen 2015</a>)</span>; we choose binary spatial weights:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(spatialreg)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>W <span class="ot">&lt;-</span> <span class="fu">as</span>(spdep<span class="sc">::</span><span class="fu">nb2listw</span>(nb_q_93, <span class="at">style =</span> <span class="st">"B"</span>), <span class="st">"CsparseMatrix"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We fit a CAR model at the upper level, using the <code>rand.family=</code> argument, where the values of the indexing variable <code>NOX_ID</code> match the row names of <span class="math inline">\(W\)</span>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">suppressWarnings</span>(HGLM_car <span class="ot">&lt;-</span> <span class="fu">hglm</span>(<span class="at">fixed =</span> form,</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">random =</span> <span class="sc">~</span> <span class="dv">1</span> <span class="sc">|</span> NOX_ID,</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">data =</span> boston_487,</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">family =</span> <span class="fu">gaussian</span>(),</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">rand.family =</span> <span class="fu">CAR</span>(<span class="at">D=</span>W)))</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>boston_93<span class="sc">$</span>HGLM_ss <span class="ot">&lt;-</span> HGLM_car<span class="sc">$</span>ranef[,<span class="dv">1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="iid-and-icar-random-effects-with-r2bayesx" class="level3">
+<h3 class="anchored" data-anchor-id="iid-and-icar-random-effects-with-r2bayesx">IID and ICAR random effects with R2BayesX</h3>
+<p>The <strong>R2BayesX</strong> package <span class="citation" data-cites="R-R2BayesX">(<a href="references.html#ref-R-R2BayesX" role="doc-biblioref">Umlauf et al. 2022</a>)</span> provides flexible support for structured additive regression models, including spatial multilevel models. The models include an IID unstructured random effect at the upper level using the <code>"re"</code> specification in the <code>sx()</code> model term <span class="citation" data-cites="umlaufetal:15">(<a href="references.html#ref-umlaufetal:15" role="doc-biblioref">Umlauf et al. 2015</a>)</span>; we choose the <code>"MCMC"</code> method:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">suppressPackageStartupMessages</span>(<span class="fu">library</span>(R2BayesX))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-hash="18-SpatialRegression_cache/html/unnamed-chunk-18_8a7ed2a0eb757903f9ef5571ff3083f2">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>BX_iid <span class="ot">&lt;-</span> <span class="fu">bayesx</span>(<span class="fu">update</span>(form, . <span class="sc">~</span> . <span class="sc">+</span> <span class="fu">sx</span>(NOX_ID, <span class="at">bs =</span> <span class="st">"re"</span>)),</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">family =</span> <span class="st">"gaussian"</span>, <span class="at">data =</span> boston_487,</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>                 <span class="at">method =</span> <span class="st">"MCMC"</span>, <span class="at">iterations =</span> <span class="dv">12000</span>,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">burnin =</span> <span class="dv">2000</span>, <span class="at">step =</span> <span class="dv">2</span>, <span class="at">seed =</span> <span class="dv">123</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>boston_93<span class="sc">$</span>BX_re <span class="ot">&lt;-</span> BX_iid<span class="sc">$</span>effects[<span class="st">"sx(NOX_ID):re"</span>][[<span class="dv">1</span>]]<span class="sc">$</span>Mean</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>and the <code>"mrf"</code> (Markov Random Field) spatially structured intrinsic CAR random effect specification based on a graph derived from converting a suitable <code>"nb"</code> object for the upper level. The <code>"region.id"</code> attribute of the <code>"nb"</code> object needs to contain values corresponding to the indexing variable in the <code>sx()</code> effects term, to facilitate the internal construction of design matrix <span class="math inline">\(Z\)</span>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>RBX_gra <span class="ot">&lt;-</span> <span class="fu">nb2gra</span>(nb_q_93)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">all.equal</span>(<span class="fu">row.names</span>(RBX_gra), <span class="fu">attr</span>(nb_q_93, <span class="st">"region.id"</span>))</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] TRUE</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>As we saw above in the intrinsic CAR model definition, the counts of neighbours are entered on the diagonal, but the current implementation uses a dense, not sparse, matrix:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">all.equal</span>(<span class="fu">unname</span>(<span class="fu">diag</span>(RBX_gra)), spdep<span class="sc">::</span><span class="fu">card</span>(nb_q_93))</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] TRUE</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The <code>sx()</code> model term continues to include the indexing variable, and now passes through the intrinsic CAR precision matrix:</p>
+<div class="cell" data-hash="18-SpatialRegression_cache/html/unnamed-chunk-22_f5f48cb3c6a403152c01fb55b18046c7">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>BX_mrf <span class="ot">&lt;-</span> <span class="fu">bayesx</span>(<span class="fu">update</span>(form, . <span class="sc">~</span> . <span class="sc">+</span> <span class="fu">sx</span>(NOX_ID, <span class="at">bs =</span> <span class="st">"mrf"</span>,</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>                                         <span class="at">map =</span> RBX_gra)), </span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>                 <span class="at">family =</span> <span class="st">"gaussian"</span>, <span class="at">data =</span> boston_487,</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">method =</span> <span class="st">"MCMC"</span>, <span class="at">iterations =</span> <span class="dv">12000</span>,</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">burnin =</span> <span class="dv">2000</span>, <span class="at">step =</span> <span class="dv">2</span>, <span class="at">seed =</span> <span class="dv">123</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>boston_93<span class="sc">$</span>BX_ss <span class="ot">&lt;-</span> BX_mrf<span class="sc">$</span>effects[<span class="st">"sx(NOX_ID):mrf"</span>][[<span class="dv">1</span>]]<span class="sc">$</span>Mean</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="iid-icar-and-leroux-random-effects-with-inla" class="level3">
+<h3 class="anchored" data-anchor-id="iid-icar-and-leroux-random-effects-with-inla">IID, ICAR and Leroux random effects with INLA</h3>
+<p><span class="citation" data-cites="JSSv063i20">R. Bivand, Gómez-Rubio, and Rue (<a href="references.html#ref-JSSv063i20" role="doc-biblioref">2015</a>)</span> and <span class="citation" data-cites="gómez2020bayesian">V. Gómez-Rubio (<a href="references.html#ref-gómez2020bayesian" role="doc-biblioref">2020</a>)</span> present the use of the <strong>INLA</strong> package <span class="citation" data-cites="R-INLA">(<a href="references.html#ref-R-INLA" role="doc-biblioref">Rue, Lindgren, and Teixeira Krainski 2022</a>)</span> and the <code>inla()</code> model fitting function with spatial regression models:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">suppressPackageStartupMessages</span>(<span class="fu">library</span>(INLA))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Although differing in details, the approach by updating the fixed model formula with an unstructured random effects term is very similar to that seen above:</p>
+<div class="cell" data-hash="18-SpatialRegression_cache/html/unnamed-chunk-25_22075433b3af7878e1c832342245292e">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>INLA_iid <span class="ot">&lt;-</span> <span class="fu">inla</span>(<span class="fu">update</span>(form, . <span class="sc">~</span> . <span class="sc">+</span> <span class="fu">f</span>(NOX_ID, <span class="at">model =</span> <span class="st">"iid"</span>)),</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">family =</span> <span class="st">"gaussian"</span>, <span class="at">data =</span> boston_487)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>boston_93<span class="sc">$</span>INLA_re <span class="ot">&lt;-</span> INLA_iid<span class="sc">$</span>summary.random<span class="sc">$</span>NOX_ID<span class="sc">$</span>mean</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>As with most implementations, care is needed to match the indexing variable with the spatial weights; in this case using indices <span class="math inline">\(1, \dots, 93\)</span> rather than the <code>NOX_ID</code> variable directly:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>ID2 <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(<span class="fu">as.factor</span>(boston_487<span class="sc">$</span>NOX_ID))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The same sparse binary spatial weights matrix is used, and the intrinsic CAR representation is constructed internally:</p>
+<div class="cell" data-hash="18-SpatialRegression_cache/html/unnamed-chunk-28_8ae36711d1c78a74cd8f75e7b498d7fc">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>INLA_ss <span class="ot">&lt;-</span> <span class="fu">inla</span>(<span class="fu">update</span>(form, . <span class="sc">~</span> . <span class="sc">+</span> <span class="fu">f</span>(ID2, <span class="at">model =</span> <span class="st">"besag"</span>,</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">graph =</span> W)),</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">family =</span> <span class="st">"gaussian"</span>, <span class="at">data =</span> boston_487)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>boston_93<span class="sc">$</span>INLA_ss <span class="ot">&lt;-</span> INLA_ss<span class="sc">$</span>summary.random<span class="sc">$</span>ID2<span class="sc">$</span>mean</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The sparse Leroux representation as given by <span class="citation" data-cites="gómez2020bayesian">V. Gómez-Rubio (<a href="references.html#ref-gómez2020bayesian" role="doc-biblioref">2020</a>)</span> can be constructed in the following way:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>M <span class="ot">&lt;-</span> <span class="fu">Diagonal</span>(<span class="fu">nrow</span>(W), <span class="fu">rowSums</span>(W)) <span class="sc">-</span> W</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>Cmatrix <span class="ot">&lt;-</span> <span class="fu">Diagonal</span>(<span class="fu">nrow</span>(M), <span class="dv">1</span>) <span class="sc">-</span>  M</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>This model can be estimated using the <code>"generic1"</code> model with the specified precision matrix:</p>
+<div class="cell" data-hash="18-SpatialRegression_cache/html/unnamed-chunk-31_a0b40caf262b44a3399bbca300425264">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>INLA_lr <span class="ot">&lt;-</span> <span class="fu">inla</span>(<span class="fu">update</span>(form, . <span class="sc">~</span> . <span class="sc">+</span> <span class="fu">f</span>(ID2, <span class="at">model =</span> <span class="st">"generic1"</span>,</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">Cmatrix =</span> Cmatrix)),</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">family =</span> <span class="st">"gaussian"</span>, <span class="at">data =</span> boston_487)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>boston_93<span class="sc">$</span>INLA_lr <span class="ot">&lt;-</span> INLA_lr<span class="sc">$</span>summary.random<span class="sc">$</span>ID2<span class="sc">$</span>mean</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="icar-random-effects-with-mgcvgam" class="level3">
+<h3 class="anchored" data-anchor-id="icar-random-effects-with-mgcvgam">ICAR random effects with mgcv::gam()</h3>
+<p>In a very similar way, the <code>gam()</code> function in the <strong>mgcv</strong> package <span class="citation" data-cites="R-mgcv">(<a href="references.html#ref-R-mgcv" role="doc-biblioref">S. Wood 2022</a>)</span> can take an <code>"mrf"</code> term using a suitable <code>"nb"</code> object for the upper level. In this case the <code>"nb"</code> object needs to have the contents of the <code>"region.id"</code> attribute copied as the names of the neighbour list components, and the indexing variable needs to be a factor <span class="citation" data-cites="wood:17">(<a href="references.html#ref-wood:17" role="doc-biblioref">S. N. Wood 2017</a>)</span>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mgcv)</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(nb_q_93) <span class="ot">&lt;-</span> <span class="fu">attr</span>(nb_q_93, <span class="st">"region.id"</span>)</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>boston_487<span class="sc">$</span>NOX_ID <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(boston_487<span class="sc">$</span>NOX_ID)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The specification of the spatially structured term again differs in details from those above, but achieves the same purpose. The <code>"REML"</code> method of <code>bayesx()</code> gives the same results as <code>gam()</code> using <code>"REML"</code> in this case:</p>
+<div class="cell" data-hash="18-SpatialRegression_cache/html/unnamed-chunk-34_a2cb5a926b6bde3b21db05b8be9ea128">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>GAM_MRF <span class="ot">&lt;-</span> <span class="fu">gam</span>(<span class="fu">update</span>(form, . <span class="sc">~</span> . <span class="sc">+</span> <span class="fu">s</span>(NOX_ID, <span class="at">bs =</span> <span class="st">"mrf"</span>,</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">xt =</span> <span class="fu">list</span>(<span class="at">nb =</span> nb_q_93))),</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">data =</span> boston_487, <span class="at">method =</span> <span class="st">"REML"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The upper level random effects may be extracted by predicting terms; as we can see, the values in all lower-level tracts belonging to the same upper-level air pollution model output zones are identical:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>ssre <span class="ot">&lt;-</span> <span class="fu">predict</span>(GAM_MRF, <span class="at">type =</span> <span class="st">"terms"</span>, </span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">se =</span> <span class="cn">FALSE</span>)[, <span class="st">"s(NOX_ID)"</span>]</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a><span class="fu">all</span>(<span class="fu">sapply</span>(<span class="fu">tapply</span>(ssre, <span class="fu">list</span>(boston_487<span class="sc">$</span>NOX_ID), c),</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>           <span class="cf">function</span>(x) <span class="fu">length</span>(<span class="fu">unique</span>(x)) <span class="sc">==</span> <span class="dv">1</span>))</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] FALSE</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>so we can return the first value for each upper-level unit:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>boston_93<span class="sc">$</span>GAM_ss <span class="ot">&lt;-</span> <span class="fu">aggregate</span>(ssre, <span class="fu">list</span>(boston_487<span class="sc">$</span>NOX_ID), </span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>                              head, <span class="at">n=</span><span class="dv">1</span>)<span class="sc">$</span>x</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="upper-level-random-effects-summary" class="level3">
+<h3 class="anchored" data-anchor-id="upper-level-random-effects-summary">Upper level random effects: summary</h3>
+<p>In the cases of <code>hglm()</code>, <code>bayesx()</code>, <code>inla()</code> and <code>gam()</code>, we could also model discrete responses without further major difficulty, and <code>bayesx()</code>, <code>inla()</code> and <code>gam()</code> also facilitate the generalization of functional form fitting for included covariates.</p>
+<p>Unfortunately, the coefficient estimates for the air pollution variable for these multilevel models are not helpful. All are negative as expected, but the inclusion of the model output zone level effects, IID or spatially structured, makes it is hard to disentangle the influence of the scale of observation from that of covariates observed at that scale rather than at the tract level.</p>
+<p><a href="#fig-multi-levelmaps1">Figure&nbsp;<span>15.1</span></a> shows that the air pollution model output zone level IID random effects are very similar across the four model fitting functions reported. In all the maps, the central downtown zones have stronger negative random effect values, but strong positive values are also found in close proximity; suburban areas take values closer to zero.</p>
+<div class="cell" data-fig="true">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tmap, <span class="at">warn.conflicts=</span><span class="cn">FALSE</span>)</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(boston_93) <span class="sc">+</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_fill</span>(<span class="fu">c</span>(<span class="st">"MLM_re"</span>, <span class="st">"HGLM_re"</span>, <span class="st">"INLA_re"</span>, <span class="st">"BX_re"</span>),</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">title =</span> <span class="st">"IID"</span>) <span class="sc">+</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_facets</span>(<span class="at">free.scales =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_borders</span>(<span class="at">lwd =</span> <span class="fl">0.3</span>, <span class="at">alpha =</span> <span class="fl">0.4</span>) <span class="sc">+</span> </span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">panel.labels =</span> <span class="fu">c</span>(<span class="st">"lmer"</span>, <span class="st">"hglm"</span>, <span class="st">"inla"</span>, <span class="st">"bayesx"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-multi-levelmaps1" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="18-SpatialRegression_files/figure-html/fig-multi-levelmaps1-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
+<p></p><figcaption class="figure-caption">Figure 15.1: Air pollution model output zone level IID random effects estimated using <strong>lme4</strong>, <strong>hglm</strong>, <strong>INLA</strong> and <strong>R2BayesX</strong>; the range of the response, <code>log(median)</code> is 2.1893</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+<p><a href="#fig-multi-levelmaps2">Figure&nbsp;<span>15.2</span></a> shows that the spatially structured random effects are also very similar to each other, with the <code>"SAR"</code> spatial smooth being perhaps a little smoother than the <code>"CAR"</code> smooths when considering the range of values taken by the random effect term.</p>
+<div class="cell" data-fig="true">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(boston_93) <span class="sc">+</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_fill</span>(<span class="fu">c</span>(<span class="st">"HGLM_ss"</span>, <span class="st">"INLA_lr"</span>, <span class="st">"INLA_ss"</span>, <span class="st">"BX_ss"</span>, <span class="st">"GAM_ss"</span>),</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>            <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">title =</span> <span class="st">"SSRE"</span>) <span class="sc">+</span></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_facets</span>(<span class="at">free.scales =</span> <span class="cn">FALSE</span>) <span class="sc">+</span> </span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_borders</span>(<span class="at">lwd =</span> <span class="fl">0.3</span>, <span class="at">alpha =</span> <span class="fl">0.4</span>) <span class="sc">+</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">panel.labels =</span> <span class="fu">c</span>(<span class="st">"hglm CAR"</span>, <span class="st">"inla Leroux"</span>,</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"inla ICAR"</span>, <span class="st">"bayesx ICAR"</span>,</span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"gam ICAR"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-multi-levelmaps2" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="18-SpatialRegression_files/figure-html/fig-multi-levelmaps2-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
+<p></p><figcaption class="figure-caption">Figure 15.2: Air pollution model output zone level spatially structured random effects estimated using <strong>hglm</strong>, <strong>HSAR</strong>, <strong>INLA</strong>, <strong>R2BayesX</strong> and <strong>mgcv</strong></figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Although there is still a great need for more thorough comparative studies of model fitting functions for spatial regression including multilevel capabilities, there has been much progress over recent years. <span class="citation" data-cites="VRANCKX2019100302">Vranckx, Neyens, and Faes (<a href="references.html#ref-VRANCKX2019100302" role="doc-biblioref">2019</a>)</span> offer a recent comparative survey of disease mapping spatial regression, typically set in a Poisson regression framework offset by an expected count. In <span class="citation" data-cites="doi:10.1177/1471082X20967158">Roger S. Bivand and Gómez-Rubio (<a href="references.html#ref-doi:10.1177/1471082X20967158" role="doc-biblioref">2021</a>)</span>, methods for estimating spatial survival models using spatial weights matrices are compared with spatial probit models.</p>
+</section>
+</section>
+<section id="exercises" class="level2" data-number="15.3">
+<h2 data-number="15.3" class="anchored" data-anchor-id="exercises"><span class="header-section-number">15.3</span> Exercises</h2>
+<ol type="1">
+<li>Construct a multilevel dataset using the Athens housing data in <strong>HSAR</strong>, as in the vignette: https://cran.r-project.org/web/packages/HSAR/vignettes/PropertiesAthens.html. At which point do the municipality department attribute values get copied out to all the point observations within each municipality department?</li>
+<li>Create neighbour objects at both levels. Test <code>greensp</code> for spatial autocorrelation at the upper level, and then at the lower level. What has been the chief consequence of copying out the area of green spaces in square meters for the municipality departments to the point support property level?</li>
+<li>Using the formula object from the vignette, assess whether adding the copied out upper level variables seems sensible. Use <code>mgcv::gam()</code> to fit a linear mixed effects model (IID of <code>num_dep</code> identifying the municipality departments) using just the lower level variables and the lower and upper level variables. Do your conclusions differ?</li>
+<li>Complete the analysis by replacing the IID random effects with an <code>"mrf"</code> Markov random field and the contiguity neighbour object created above. Do you think that it is reasonable to for example draw any conclusions based on the municipality department level variables such as <code>greensp</code>?</li>
+</ol>
+</section>
+<section id="sec-spatecon" class="level1" data-number="16">
+<h1 data-number="16"><span class="header-section-number">16</span> Spatial econometrics models</h1>
+<p>Spatial autoregression models using spatial weights matrices were described in some detail using maximum likelihood estimation some time ago <span class="citation" data-cites="cliff+ord:73 cliff+ord:81">(<a href="references.html#ref-cliff+ord:73" role="doc-biblioref">A. D. Cliff and Ord 1973</a>, <a href="references.html#ref-cliff+ord:81" role="doc-biblioref">1981</a>)</span>. A family of models was elaborated in spatial econometric terms extending earlier work, and in many cases using the simultaneous autoregressive framework and row standardization of spatial weights <span class="citation" data-cites="a88">(<a href="references.html#ref-a88" role="doc-biblioref">Anselin 1988</a>)</span>. The simultaneous and conditional autoregressive frameworks can be compared, and both can be supplemented using case weights to reflect the relative importance of different observations <span class="citation" data-cites="WallerGotway:2004">(<a href="references.html#ref-WallerGotway:2004" role="doc-biblioref">Waller and Gotway 2004</a>)</span>.</p>
+<p>Before moving to presentations of issues raised in fitting spatial regression models, it is worth making a few further points. A recent review of spatial regression in a spatial econometrics setting is given by Kelejian and Piras <span class="citation" data-cites="kelejian+piras:17">(<a href="references.html#ref-kelejian+piras:17" role="doc-biblioref">2017</a>)</span>; note that their usage is to call the spatial coefficient of the lagged response <span class="math inline">\(\lambda\)</span> and that of the lagged residuals <span class="math inline">\(\rho\)</span>, the reverse of other usage <span class="citation" data-cites="a88 lesage+pace:09">(<a href="references.html#ref-a88" role="doc-biblioref">Anselin 1988</a>; <a href="references.html#ref-lesage+pace:09" role="doc-biblioref">James P. LeSage and Pace 2009</a>)</span>; here we use <span class="math inline">\(\rho_{\mathrm{Lag}}\)</span> for the spatial coefficient in the spatial lag model, and <span class="math inline">\(\rho_{\mathrm{Err}}\)</span> for the spatial error model. One interesting finding is that relatively dense spatial weights matrices may downweight model estimates, suggesting that sparser weights are preferable <span class="citation" data-cites="smith:09">(<a href="references.html#ref-smith:09" role="doc-biblioref">Tony E. Smith 2009</a>)</span>. Another useful finding is that the presence of residual spatial autocorrelation need not bias the estimates of variance of regression coefficients, provided that the covariates themselves do not exhibit spatial autocorrelation <span class="citation" data-cites="smith+lee12">(<a href="references.html#ref-smith+lee12" role="doc-biblioref">T. E. Smith and Lee 2012</a>)</span>. In general, however, the footprints of the spatial processes of the response and covariates may not be aligned, and if covariates and the residual are autocorrelated, it is likely that the estimates of variance of regression coefficients will be biassed downwards if attempts are not made to model the spatial processes.</p>
+<section id="spatial-econometric-models-definitions" class="level2" data-number="16.1">
+<h2 data-number="16.1" class="anchored" data-anchor-id="spatial-econometric-models-definitions"><span class="header-section-number">16.1</span> Spatial econometric models: definitions</h2>
+<p>In trying to model spatial processes, one of the earliiest spatial econometric representations is to model the spatial autocorrelation in the residual (spatial error model, SEM):</p>
+<p><span class="math display">\[
+{\mathbf y} = {\mathbf X}{\mathbf \beta} + {\mathbf u},
+\qquad {\mathbf u} = \rho_{\mathrm{Err}} {\mathbf W} {\mathbf u} + {\mathbf \varepsilon},
+\]</span></p>
+<p>where <span class="math inline">\({\mathbf y}\)</span> is an <span class="math inline">\((N \times 1)\)</span> vector of observations on a response variable taken at each of <span class="math inline">\(N\)</span> locations, <span class="math inline">\({\mathbf X}\)</span> is an <span class="math inline">\((N \times k)\)</span> matrix of covariates, <span class="math inline">\({\mathbf \beta}\)</span> is a <span class="math inline">\((k \times 1)\)</span> vector of parameters, <span class="math inline">\({\mathbf u}\)</span> is an <span class="math inline">\((N \times 1)\)</span> spatially autocorrelated disturbance vector, <span class="math inline">\({\mathbf \varepsilon}\)</span> is an <span class="math inline">\((N \times 1)\)</span> vector of independent and identically distributed disturbances and <span class="math inline">\(\rho_{\mathrm{Err}}\)</span> is a scalar spatial parameter.</p>
+<p>This model, and other spatial econometric models, do not fit into the mixed models framework. Here the modelled spatial process interacts directly with the response, covariates, and their coefficients. This modelling framework appears to draw on an older tradition extending time series to two dimensions:</p>
+<p><span class="math display">\[
+{\mathbf u} = ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})^{-1} {\mathbf \varepsilon},
+\ \ {\mathbf y} = {\mathbf X}{\mathbf \beta} + ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})^{-1} {\mathbf \varepsilon},
+\ \ ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W}) {\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W}) {\mathbf X}{\mathbf \beta} + {\mathbf \varepsilon}.
+\]</span></p>
+<p>If the processes in the covariates and the response match, we should find little difference between the coefficients of a least squares and a SEM, but very often they diverge, suggesting that a Hausman test for this condition should be employed <span class="citation" data-cites="pace+lesage:08">(<a href="references.html#ref-pace+lesage:08" role="doc-biblioref">Pace and LeSage 2008</a>)</span>. This may be related to earlier discussions of a spatial equivalent to the unit root and cointegration where spatial processes match <span class="citation" data-cites="fingleton:99">(<a href="references.html#ref-fingleton:99" role="doc-biblioref">Fingleton 1999</a>)</span>.</p>
+<p>A model with a spatial process in the response only is termed a spatial lag model (SLM, often SAR - spatial autoregressive) <span class="citation" data-cites="lesage+pace:09">(<a href="references.html#ref-lesage+pace:09" role="doc-biblioref">James P. LeSage and Pace 2009</a>)</span>. Durbin models add the spatially lagged covariates to the covariates included in the spatial model; spatial Durbin models are reviewed by Mur and Angulo <span class="citation" data-cites="mur+angulo:06">(<a href="references.html#ref-mur+angulo:06" role="doc-biblioref">2006</a>)</span>. If it is chosen to admit a spatial process in the residuals in addition to a spatial process in the response, again two models are formed, a general nested model (GNM) nesting all the others, and a model without spatially lagged covariates (SAC, also known as SARAR - Spatial AutoRegressive-AutoRegressive model). If neither the residuals nor the response are modelled with spatial processes, spatially lagged covariates may be added to a linear model, as a spatially lagged X model (SLX) <span class="citation" data-cites="elhorst:10 bivand:12 lesage:14 halleck-vega+elhorst:15">(<a href="references.html#ref-elhorst:10" role="doc-biblioref">Elhorst 2010</a>; <a href="references.html#ref-bivand:12" role="doc-biblioref">Roger S. Bivand 2012</a>; <a href="references.html#ref-lesage:14" role="doc-biblioref">J. P. LeSage 2014</a>; <a href="references.html#ref-halleck-vega+elhorst:15" role="doc-biblioref">Halleck Vega and Elhorst 2015</a>)</span>. We can write the general nested model (GNM) as:</p>
+<p><span class="math display">\[
+{\mathbf y} = \rho_{\mathrm{Lag}} {\mathbf W}{\mathbf y} + {\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma} + {\mathbf u},
+\qquad {\mathbf u} = \rho_{\mathrm{Err}} {\mathbf W} {\mathbf u} + {\mathbf \varepsilon},
+\]</span></p>
+<p>where <span class="math inline">\({\mathbf \gamma}\)</span> is a <span class="math inline">\((k' \times 1)\)</span> vector of parameters. <span class="math inline">\(k'\)</span> defines the subset of the intercept and covariates, often <span class="math inline">\(k' = k-1\)</span> when using row standardised spatial weights and omitting the spatially lagged intercept.</p>
+<p>This may be constrained to the double spatial coefficient model SAC/SARAR by setting <span class="math inline">\({\mathbf \gamma} = 0\)</span>, to the spatial Durbin (SDM) by setting <span class="math inline">\(\rho_{\mathrm{Err}} = 0\)</span>, and to the error Durbin model (SDEM) by setting <span class="math inline">\(\rho_{\mathrm{Lag}} = 0\)</span>. Imposing more conditions gives the spatial lag model (SLM) with <span class="math inline">\({\mathbf \gamma} = 0\)</span> and <span class="math inline">\(\rho_{\mathrm{Err}} = 0\)</span>, the spatial error model (SEM) with <span class="math inline">\({\mathbf \gamma} = 0\)</span> and <span class="math inline">\(\rho_{\mathrm{Lag}} = 0\)</span>, and the spatially lagged X model (SLX) with <span class="math inline">\(\rho_{\mathrm{Lag}} = 0\)</span> and <span class="math inline">\(\rho_{\mathrm{Err}} = 0\)</span>.</p>
+<p>Although making predictions for new locations for which covariates are observed was raised as an issue some time ago, it has taken many years to make progress in reviewing the possibilities <span class="citation" data-cites="bivand:02 goulardetal:17 Laurent2021">(<a href="references.html#ref-bivand:02" role="doc-biblioref">R. S. Bivand 2002</a>; <a href="references.html#ref-goulardetal:17" role="doc-biblioref">Goulard, Laurent, and Thomas-Agnan 2017</a>; <a href="references.html#ref-Laurent2021" role="doc-biblioref">Laurent and Margaretic 2021</a>)</span>. The prediction methods for SLM, SDM, SEM, SDEM, SAC and GNM models fitted with maximum likelihood were contributed as a Google Summer of Coding project by Martin Gubri. This work, and work on similar models with missing data <span class="citation" data-cites="suesse:18">(<a href="references.html#ref-suesse:18" role="doc-biblioref">Suesse 2018</a>)</span> is also relevant for exploring censored median house values in the Boston data set. Work on prediction also exposed the importance of the reduced form of these models, in which the spatial process in the response interacts with the regression coefficients in the SLM, SDM, SAC and GNM models.</p>
+<p>The consequence of these interactions is that a unit change in a covariate will only impact the response as the value of the regression coefficient if the spatial coefficient of the lagged response is zero. Where it is non-zero, global spillovers, impacts, come into play, and these impacts should be reported rather than the regression coefficients <span class="citation" data-cites="lesage+pace:09 elhorst:10 bivand:12 lesage:14 halleck-vega+elhorst:15">(<a href="references.html#ref-lesage+pace:09" role="doc-biblioref">James P. LeSage and Pace 2009</a>; <a href="references.html#ref-elhorst:10" role="doc-biblioref">Elhorst 2010</a>; <a href="references.html#ref-bivand:12" role="doc-biblioref">Roger S. Bivand 2012</a>; <a href="references.html#ref-lesage:14" role="doc-biblioref">J. P. LeSage 2014</a>; <a href="references.html#ref-halleck-vega+elhorst:15" role="doc-biblioref">Halleck Vega and Elhorst 2015</a>)</span>. Local impacts may be reported for SDEM and SLX models, using linear combination to calculate standard errors for the total impacts of each covariate (sums of coefficients on the covariates and their spatial lags).</p>
+<p>This can be seen from the GNM data generation process:</p>
+<p><span class="math display">\[
+({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W}){\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})({\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma}) + {\mathbf \varepsilon},
+\]</span></p>
+<p>re-writing:</p>
+<p><span class="math display">\[
+{\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1}({\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma}) + ({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1}({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})^{-1}{\mathbf \varepsilon}.
+\]</span></p>
+<p>There is interaction between the <span class="math inline">\(\rho_{\mathrm{Lag}}\)</span> and <span class="math inline">\({\mathbf \beta}\)</span> (and <span class="math inline">\({\mathbf \gamma}\)</span> if present) coefficients. This can be seen from the partial derivatives: <span class="math inline">\(\partial y_i / \partial x_{jr} = (({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1} ({\mathbf I} \beta_r + {\mathbf W} \gamma_r))_{ij}\)</span>. This dense matrix <span class="math inline">\(S_r({\mathbf W}) = (({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1} ({\mathbf I} \beta_r + {\mathbf W} \gamma_r))\)</span> expresses the direct impacts (effects) on its principal diagonal, and indirect impacts in off-diagonal elements.</p>
+<p><span class="citation" data-cites="PIRAS2014103">Piras and Prucha (<a href="references.html#ref-PIRAS2014103" role="doc-biblioref">2014</a>)</span> revisit and correct <span class="citation" data-cites="FLORAX2003557">Raymond J. G. M. Florax, Folmer, and Rey (<a href="references.html#ref-FLORAX2003557" role="doc-biblioref">2003</a>)</span> (see also comments by <span class="citation" data-cites="HENDRY2006309">Hendry (<a href="references.html#ref-HENDRY2006309" role="doc-biblioref">2006</a>)</span> and <span class="citation" data-cites="FLORAX2006300">Raymond J. G. M. Florax, Folmer, and Rey (<a href="references.html#ref-FLORAX2006300" role="doc-biblioref">2006</a>)</span>), finding that the common use of pre-test strategies for model selection probably ought to be replaced by the estimation of the most general model appropriate for the relationships being modelled. In the light of this finding, pre-test model selection will not be used here.</p>
+<p>Current work in the <strong>spatialreg</strong> package is focused on refining the handling of spatially lagged covariates using a consistent <code>Durbin=</code> argument taking either a logical value or a formula giving the subset of covariates to add in spatially lagged form. There is a speculation that some covariates, for example some dummy variables, should not be added in spatially lagged form. This then extends to handling these included spatially lagged covariates appropriately in calculating impacts. This work applies to cross-sectional models fitted using MCMC or maximum likelihood, and will offer facilities to spatial panel models.</p>
+<p>It is worth mentioning the almost unexplored issues of functional form assumptions, for which flexible structures are useful, including spatial quantile regression presented in the <strong>McSpatial</strong> package <span class="citation" data-cites="mcmillen:13">(<a href="references.html#ref-mcmillen:13" role="doc-biblioref">McMillen 2013</a>)</span>. There are further issues with discrete response variables, covered by some functions in <strong>McSpatial</strong>, and in the <strong>spatialprobit</strong> and <strong>ProbitSpatial</strong> packages <span class="citation" data-cites="RJ-2013-013 MARTINETTI201730">(<a href="references.html#ref-RJ-2013-013" role="doc-biblioref">Wilhelm and Matos 2013</a>; <a href="references.html#ref-MARTINETTI201730" role="doc-biblioref">Martinetti and Geniaux 2017</a>)</span>; the MCMC implementations of the former are based on LeSage and Pace <span class="citation" data-cites="lesage+pace:09">(<a href="references.html#ref-lesage+pace:09" role="doc-biblioref">2009</a>)</span>. Finally, Wagner and Zeileis <span class="citation" data-cites="wagner+zeileis:19">(<a href="references.html#ref-wagner+zeileis:19" role="doc-biblioref">2019</a>)</span> show how an SLM model may be used in the setting of recursive partitioning, with an implementation using <code>spatialreg::lagsarlm()</code> in the <strong>lagsarlmtree</strong> package.</p>
+<p>The review of cross-sectional maximum likelihood and generalized method of moments (GMM) estimators in <strong>spatialreg</strong> <span class="citation" data-cites="R-spatialreg">(<a href="references.html#ref-R-spatialreg" role="doc-biblioref">R. Bivand and Piras 2022</a>)</span> and <strong>sphet</strong> for spatial econometrics style spatial regression models by Bivand and Piras <span class="citation" data-cites="bivand+piras:15">(<a href="references.html#ref-bivand+piras:15" role="doc-biblioref">2015</a>)</span> is still largely valid. In the review, estimators in these R packages were compared with alternative implementations available in other programming languages elsewhere. The review did not cover Bayesian spatial econometrics style spatial regression. More has changed with respect to spatial panel estimators described in Millo and Piras <span class="citation" data-cites="millo+piras:12">(<a href="references.html#ref-millo+piras:12" role="doc-biblioref">2012</a>)</span>, but will not be covered here.</p>
+<p>Because <span class="citation" data-cites="math9111276">R. Bivand, Millo, and Piras (<a href="references.html#ref-math9111276" role="doc-biblioref">2021</a>)</span> covers many of the features of R packages for spatial econometrics, updating <span class="citation" data-cites="bivand+piras:15">Roger S. Bivand and Piras (<a href="references.html#ref-bivand+piras:15" role="doc-biblioref">2015</a>)</span>, and including recent advances in General Method of Moments and spatial panel modelling, this chapter will be restricted to a small number of examples drawing on <span class="citation" data-cites="bivand17">R. Bivand (<a href="references.html#ref-bivand17" role="doc-biblioref">2017</a>)</span> using the Boston house value data set.</p>
+</section>
+<section id="maximum-likelihood-estimation-in-spatialreg" class="level2" data-number="16.2">
+<h2 data-number="16.2" class="anchored" data-anchor-id="maximum-likelihood-estimation-in-spatialreg"><span class="header-section-number">16.2</span> Maximum likelihood estimation in <strong>spatialreg</strong></h2>
+<p>For models with single spatial coefficients (SEM and SDEM using <code>errorsarlm()</code>, SLM and SDM using <code>lagsarlm()</code>), the methods initially described by Ord <span class="citation" data-cites="ord:75">(<a href="references.html#ref-ord:75" role="doc-biblioref">1975</a>)</span> are used. The following table shows the functions that can be used to estimate the models described above using maximum likelihood.</p>
+<table class="table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 41%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>model</th>
+<th>model name</th>
+<th>maximum likelihood estimation function</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>SEM</td>
+<td>spatial error</td>
+<td><code>errorsarlm(..., Durbin=FALSE)</code></td>
+</tr>
+<tr class="even">
+<td>SEM</td>
+<td>spatial error</td>
+<td><code>spautolm(..., family="SAR")</code></td>
+</tr>
+<tr class="odd">
+<td>SDEM</td>
+<td>spatial Durbin error</td>
+<td><code>errorsarlm(..., Durbin=TRUE)</code></td>
+</tr>
+<tr class="even">
+<td>SLM</td>
+<td>spatial lag</td>
+<td><code>lagsarlm(..., Durbin=FALSE)</code></td>
+</tr>
+<tr class="odd">
+<td>SDM</td>
+<td>spatial Durbin</td>
+<td><code>lagsarlm(..., Durbin=TRUE)</code></td>
+</tr>
+<tr class="even">
+<td>SAC</td>
+<td>spatial autoregressive combined</td>
+<td><code>sacsarlm(..., Durbin=FALSE)</code></td>
+</tr>
+<tr class="odd">
+<td>GNM</td>
+<td>general nested</td>
+<td><code>sacsarlm(..., Durbin=TRUE)</code></td>
+</tr>
+</tbody>
+</table>
+<p>The estimating functions <code>errorsarlm()</code> and <code>lagsarlm()</code> take similar arguments, where the first two, <code>formula=</code> and <code>data=</code> are shared by most model estimating functions. The third argument is a <code>listw</code> spatial weights object, while <code>na.action=</code> behaves as in other model estimating functions if the spatial weights can reasonably be subsetted to avoid observations with missing values. The <code>weights=</code> argument may be used to provide weights indicating the known degree of per-observation variability in the variance term - this is not available for <code>lagsarlm()</code>.</p>
+<p>The <code>Durbin=</code> argument replaces the earlier <code>type=</code> and <code>etype=</code> arguments, and if not given is taken as <code>FALSE</code>. If given, it may be <code>FALSE</code>, <code>TRUE</code> in which case all spatially lagged covariates are included, or a one-sided formula specifying which spatially lagged covariates should be included. The <code>method=</code> argument gives the method for calculating the log determinant term in the log likelihood function, and defaults to <code>"eigen"</code>, suitable for moderately sized data sets. The <code>interval=</code> argument gives the bounds of the domain for the line search using <code>stats::optimize()</code> used for finding the spatial coefficient. The <code>tol.solve()</code> argument, passed through to <code>base::solve()</code>, was needed to handle data sets with differing numerical scales among the coefficients which hindered inversion of the variance-covariance matrix; the default value in <code>base::solve()</code> used to be much larger. The <code>control=</code> argument takes a list of control values to permit more careful adjustment of the running of the estimation function.</p>
+<p>The <code>sacsarlm()</code> function may take second spatial weights and interval arguments if the spatial weights used to model the two spatial processes in the SAC and GNM specifications differ. By default, the same spatial weights are used. By default, <code>stats::nlminb()</code> is used for numerical optimization, using a heuristic to choose starting values. Like <code>lagsarlm()</code>, this function does not take a <code>weights=</code> argument.</p>
+<p>Where larger data sets are used, a numerical Hessian approach is used to calculate the variance-covariance matrix of coefficients, rather than an analytical asymptotic approach.</p>
+<section id="boston-house-value-data-set-examples" class="level3">
+<h3 class="anchored" data-anchor-id="boston-house-value-data-set-examples">Boston house value data set examples</h3>
+<p>The examples use the objects read and created in <a href="#sec-spatglmm"><span>Chapter&nbsp;15</span></a>, based on <span class="citation" data-cites="bivand17">R. Bivand (<a href="references.html#ref-bivand17" role="doc-biblioref">2017</a>)</span>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>eigs_489 <span class="ot">&lt;-</span> <span class="fu">eigenw</span>(lw_q_489)</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>SDEM_489 <span class="ot">&lt;-</span> <span class="fu">errorsarlm</span>(form, <span class="at">data =</span> boston_489, <span class="at">listw =</span> lw_q_489,</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>                       <span class="at">Durbin =</span> <span class="cn">TRUE</span>, <span class="at">zero.policy =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>                       <span class="at">control =</span> <span class="fu">list</span>(<span class="at">pre_eig =</span> eigs_489))</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>SEM_489 <span class="ot">&lt;-</span> <span class="fu">errorsarlm</span>(form, <span class="at">data =</span> boston_489, <span class="at">listw =</span> lw_q_489, </span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>                      <span class="at">zero.policy =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a>                      <span class="at">control =</span> <span class="fu">list</span>(<span class="at">pre_eig =</span> eigs_489))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Here we are using the <code>control=</code> list argument to pass through pre-computed eigenvalues for the default <code>"eigen"</code> method.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cbind</span>(<span class="fu">data.frame</span>(<span class="at">model=</span><span class="fu">c</span>(<span class="st">"SEM"</span>, <span class="st">"SDEM"</span>)), </span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>      <span class="fu">rbind</span>(broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">Hausman.test</span>(SEM_489)), </span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>            broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">Hausman.test</span>(SDEM_489))))[,<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>]</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a><span class="co">#   model statistic  p.value parameter</span></span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 1   SEM      52.0 2.83e-06        14</span></span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 2  SDEM      48.7 6.48e-03        27</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Both Hausman test results for the 489 tract data set suggest that the regression coefficients do differ from their non-spatial counterparts, perhaps indicating that the footprints of the spatial processes do not match.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>eigs_94 <span class="ot">&lt;-</span> <span class="fu">eigenw</span>(lw_q_94)</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>SDEM_94 <span class="ot">&lt;-</span> <span class="fu">errorsarlm</span>(form, <span class="at">data=</span>boston_94, <span class="at">listw=</span>lw_q_94,</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>                      <span class="at">Durbin =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>                      <span class="at">control =</span> <span class="fu">list</span>(<span class="at">pre_eig=</span>eigs_94))</span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>SEM_94 <span class="ot">&lt;-</span> <span class="fu">errorsarlm</span>(form, <span class="at">data =</span> boston_94, <span class="at">listw =</span> lw_q_94,</span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>                     <span class="at">control =</span> <span class="fu">list</span>(<span class="at">pre_eig =</span> eigs_94))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>For the 94 air pollution model output zones, the Hausman tests find little difference between coefficients:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cbind</span>(<span class="fu">data.frame</span>(<span class="at">model=</span><span class="fu">c</span>(<span class="st">"SEM"</span>, <span class="st">"SDEM"</span>)), </span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>      <span class="fu">rbind</span>(broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">Hausman.test</span>(SEM_94)), </span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>            broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">Hausman.test</span>(SDEM_94))))[, <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>]</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a><span class="co">#   model statistic p.value parameter</span></span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 1   SEM     15.66   0.335        14</span></span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 2  SDEM      9.21   0.999        27</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>This is related to the fact that the SEM and SDEM models add little to least squares or SLX at the air pollution model output zone level, using likelihood ratio tests:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cbind</span>(<span class="fu">data.frame</span>(<span class="at">model=</span><span class="fu">c</span>(<span class="st">"SEM"</span>, <span class="st">"SDEM"</span>)),</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>      <span class="fu">rbind</span>(broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">LR1.Sarlm</span>(SEM_94)),</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>            broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">LR1.Sarlm</span>(SDEM_94))))[,<span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">4</span><span class="sc">:</span><span class="dv">6</span>)]</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a><span class="co">#   model statistic p.value parameter</span></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 1   SEM     2.593   0.107         1</span></span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 2  SDEM     0.216   0.642         1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We can use <code>spatialreg::LR.Sarlm()</code> to apply a likelihood ratio test between nested models, but here choose <code>lmtest::lrtest()</code>, which gives the same results, preferring models including spatially lagged covariates both for tracts and model output zones:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>o <span class="ot">&lt;-</span> lmtest<span class="sc">::</span><span class="fu">lrtest</span>(SEM_489, SDEM_489)</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a><span class="fu">attr</span>(o, <span class="st">"heading"</span>)[<span class="dv">2</span>] <span class="ot">&lt;-</span> <span class="st">"Model 1: SEM_489</span><span class="sc">\n</span><span class="st">Model 2: SDEM_489"</span></span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>o</span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Likelihood ratio test</span></span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1: SEM_489</span></span>
+<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 2: SDEM_489</span></span>
+<span id="cb43-8"><a href="#cb43-8" aria-hidden="true" tabindex="-1"></a><span class="co">#   #Df LogLik Df Chisq Pr(&gt;Chisq)    </span></span>
+<span id="cb43-9"><a href="#cb43-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 1  16    274                        </span></span>
+<span id="cb43-10"><a href="#cb43-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 2  29    311 13  74.4    1.2e-10 ***</span></span>
+<span id="cb43-11"><a href="#cb43-11" aria-hidden="true" tabindex="-1"></a><span class="co"># ---</span></span>
+<span id="cb43-12"><a href="#cb43-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>o <span class="ot">&lt;-</span> lmtest<span class="sc">::</span><span class="fu">lrtest</span>(SEM_94, SDEM_94)</span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="fu">attr</span>(o, <span class="st">"heading"</span>)[<span class="dv">2</span>] <span class="ot">&lt;-</span> <span class="st">"Model 1: SEM_94</span><span class="sc">\n</span><span class="st">Model 2: SDEM_94"</span></span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>o</span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Likelihood ratio test</span></span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1: SEM_94</span></span>
+<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 2: SDEM_94</span></span>
+<span id="cb44-8"><a href="#cb44-8" aria-hidden="true" tabindex="-1"></a><span class="co">#   #Df LogLik Df Chisq Pr(&gt;Chisq)    </span></span>
+<span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 1  16   59.7                        </span></span>
+<span id="cb44-10"><a href="#cb44-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 2  29   81.3 13  43.2    4.2e-05 ***</span></span>
+<span id="cb44-11"><a href="#cb44-11" aria-hidden="true" tabindex="-1"></a><span class="co"># ---</span></span>
+<span id="cb44-12"><a href="#cb44-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The SLX model is fitted using least squares, and also returns a log likelihood value, letting us test whether we need a spatial process in the residuals. In the tract data set we obviously do:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>SLX_489 <span class="ot">&lt;-</span> <span class="fu">lmSLX</span>(form, <span class="at">data =</span> boston_489, <span class="at">listw =</span> lw_q_489,</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">zero.policy =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>o <span class="ot">&lt;-</span> lmtest<span class="sc">::</span><span class="fu">lrtest</span>(SLX_489, SDEM_489)</span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a><span class="fu">attr</span>(o, <span class="st">"heading"</span>)[<span class="dv">2</span>] <span class="ot">&lt;-</span> <span class="st">"Model 1: SLX_489</span><span class="sc">\n</span><span class="st">Model 2: SDEM_489"</span></span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>o</span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Likelihood ratio test</span></span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb45-8"><a href="#cb45-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1: SLX_489</span></span>
+<span id="cb45-9"><a href="#cb45-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 2: SDEM_489</span></span>
+<span id="cb45-10"><a href="#cb45-10" aria-hidden="true" tabindex="-1"></a><span class="co">#   #Df LogLik Df Chisq Pr(&gt;Chisq)    </span></span>
+<span id="cb45-11"><a href="#cb45-11" aria-hidden="true" tabindex="-1"></a><span class="co"># 1  28    231                        </span></span>
+<span id="cb45-12"><a href="#cb45-12" aria-hidden="true" tabindex="-1"></a><span class="co"># 2  29    311  1   159     &lt;2e-16 ***</span></span>
+<span id="cb45-13"><a href="#cb45-13" aria-hidden="true" tabindex="-1"></a><span class="co"># ---</span></span>
+<span id="cb45-14"><a href="#cb45-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>but in the output zone case we do not.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>SLX_94 <span class="ot">&lt;-</span> <span class="fu">lmSLX</span>(form, <span class="at">data =</span> boston_94, <span class="at">listw =</span> lw_q_94)</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>o <span class="ot">&lt;-</span> lmtest<span class="sc">::</span><span class="fu">lrtest</span>(SLX_94, SDEM_94)</span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a><span class="fu">attr</span>(o, <span class="st">"heading"</span>)[<span class="dv">2</span>] <span class="ot">&lt;-</span> <span class="st">"Model 1: SLX_94</span><span class="sc">\n</span><span class="st">Model 2: SDEM_94"</span></span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>o</span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Likelihood ratio test</span></span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb46-7"><a href="#cb46-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1: SLX_94</span></span>
+<span id="cb46-8"><a href="#cb46-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 2: SDEM_94</span></span>
+<span id="cb46-9"><a href="#cb46-9" aria-hidden="true" tabindex="-1"></a><span class="co">#   #Df LogLik Df Chisq Pr(&gt;Chisq)</span></span>
+<span id="cb46-10"><a href="#cb46-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 1  28   81.2                    </span></span>
+<span id="cb46-11"><a href="#cb46-11" aria-hidden="true" tabindex="-1"></a><span class="co"># 2  29   81.3  1  0.22       0.64</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>These outcomes are sustained also when we use the counts of house units by tract and output zones as case weights:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>SLX_489w <span class="ot">&lt;-</span> <span class="fu">lmSLX</span>(form, <span class="at">data =</span> boston_489, <span class="at">listw =</span> lw_q_489,</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>                  <span class="at">weights =</span> units, <span class="at">zero.policy =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>SDEM_489w <span class="ot">&lt;-</span> <span class="fu">errorsarlm</span>(form, <span class="at">data =</span> boston_489,</span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>                        <span class="at">listw =</span> lw_q_489, <span class="at">Durbin =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>                        <span class="at">weights =</span> units, <span class="at">zero.policy =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>                        <span class="at">control =</span> <span class="fu">list</span>(<span class="at">pre_eig =</span> eigs_489))</span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a>o <span class="ot">&lt;-</span> lmtest<span class="sc">::</span><span class="fu">lrtest</span>(SLX_489w, SDEM_489w)</span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a><span class="fu">attr</span>(o, <span class="st">"heading"</span>)[<span class="dv">2</span>] <span class="ot">&lt;-</span> <span class="st">"Model 1: SLX_489w</span><span class="sc">\n</span><span class="st">Model 2: SDEM_489w"</span></span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a>o</span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Likelihood ratio test</span></span>
+<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb47-12"><a href="#cb47-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1: SLX_489w</span></span>
+<span id="cb47-13"><a href="#cb47-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 2: SDEM_489w</span></span>
+<span id="cb47-14"><a href="#cb47-14" aria-hidden="true" tabindex="-1"></a><span class="co">#   #Df LogLik Df Chisq Pr(&gt;Chisq)    </span></span>
+<span id="cb47-15"><a href="#cb47-15" aria-hidden="true" tabindex="-1"></a><span class="co"># 1  28    311                        </span></span>
+<span id="cb47-16"><a href="#cb47-16" aria-hidden="true" tabindex="-1"></a><span class="co"># 2  29    379  1   136     &lt;2e-16 ***</span></span>
+<span id="cb47-17"><a href="#cb47-17" aria-hidden="true" tabindex="-1"></a><span class="co"># ---</span></span>
+<span id="cb47-18"><a href="#cb47-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>SLX_94w <span class="ot">&lt;-</span> <span class="fu">lmSLX</span>(form, <span class="at">data =</span> boston_94, <span class="at">listw =</span> lw_q_94,</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">weights =</span> units)</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>SDEM_94w <span class="ot">&lt;-</span> <span class="fu">errorsarlm</span>(form, <span class="at">data =</span> boston_94, <span class="at">listw =</span> lw_q_94,</span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>                       <span class="at">Durbin =</span> <span class="cn">TRUE</span>, <span class="at">weights =</span> units,</span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>                       <span class="at">control =</span> <span class="fu">list</span>(<span class="at">pre_eig =</span> eigs_94))</span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>o <span class="ot">&lt;-</span> lmtest<span class="sc">::</span><span class="fu">lrtest</span>(SLX_94w, SDEM_94w)</span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a><span class="fu">attr</span>(o, <span class="st">"heading"</span>)[<span class="dv">2</span>] <span class="ot">&lt;-</span> <span class="st">"Model 1: SLX_94w</span><span class="sc">\n</span><span class="st">Model 2: SDEM_94w"</span></span>
+<span id="cb48-8"><a href="#cb48-8" aria-hidden="true" tabindex="-1"></a>o</span>
+<span id="cb48-9"><a href="#cb48-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Likelihood ratio test</span></span>
+<span id="cb48-10"><a href="#cb48-10" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb48-11"><a href="#cb48-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1: SLX_94w</span></span>
+<span id="cb48-12"><a href="#cb48-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 2: SDEM_94w</span></span>
+<span id="cb48-13"><a href="#cb48-13" aria-hidden="true" tabindex="-1"></a><span class="co">#   #Df LogLik Df Chisq Pr(&gt;Chisq)</span></span>
+<span id="cb48-14"><a href="#cb48-14" aria-hidden="true" tabindex="-1"></a><span class="co"># 1  28   97.5                    </span></span>
+<span id="cb48-15"><a href="#cb48-15" aria-hidden="true" tabindex="-1"></a><span class="co"># 2  29   98.0  1  0.92       0.34</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>In this case and based on arguments advanced in <span class="citation" data-cites="bivand17">R. Bivand (<a href="references.html#ref-bivand17" role="doc-biblioref">2017</a>)</span>, the use of weights is justified because tract counts of reported housing units underlying the weighted median values vary from 5 to 3,031, and air pollution model output zone counts vary from 25 to 12,411. Because of this, and because a weighted general nested model has not been developed, we cannot take the GNM as the starting point for general-to-simpler testing, but start rather from the SDEM model, and use the Hausman test to guide the choice of units of observation.</p>
+</section>
+</section>
+<section id="impacts" class="level2" data-number="16.3">
+<h2 data-number="16.3" class="anchored" data-anchor-id="impacts"><span class="header-section-number">16.3</span> Impacts</h2>
+<p>Global impacts have been seen as crucial for reporting results from fitting models including the spatially lagged response (SLM, SDM, SAC, GNM) for over ten years <span class="citation" data-cites="lesage+pace:09">(<a href="references.html#ref-lesage+pace:09" role="doc-biblioref">James P. LeSage and Pace 2009</a>)</span>. Extension to other models including spatially lagged covariates (SLX, SDEM) has followed <span class="citation" data-cites="elhorst:10 bivand:12 halleck-vega+elhorst:15">(<a href="references.html#ref-elhorst:10" role="doc-biblioref">Elhorst 2010</a>; <a href="references.html#ref-bivand:12" role="doc-biblioref">Roger S. Bivand 2012</a>; <a href="references.html#ref-halleck-vega+elhorst:15" role="doc-biblioref">Halleck Vega and Elhorst 2015</a>)</span>. For SLM, SDM, SAC and GNM models fitted with maximum likelihood or GMM, the variance-covariance matrix of the coefficients is available, and can be used to make random draws from a multivariate Normal distribution with mean set to coefficient values and variance to the estimated variance-covariance matrix. For these models fitted using Bayesian methods, draws are already available. In the SDEM case, the draws on the regression coefficients of the unlagged covariates represent direct impacts, and draws on the coefficients of the spatially lagged covariates represent indirect impacts, and their by-draw sums the total impacts.</p>
+<p>Since sampling is not required for inference for SLX and SDEM models, linear combination is used for models fitted using maximum likelihood; results are shown here for the air pollution variable only. The literature has not yet resolved the question of how to report model output, as each covariate is now represented by three impacts. Where spatially lagged covariates are included, two coefficients are replaced by three impacts, here for the air pollution variable of interest.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>sum_imp_94_SDEM <span class="ot">&lt;-</span> <span class="fu">summary</span>(<span class="fu">impacts</span>(SDEM_94))</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a><span class="fu">rbind</span>(<span class="at">Impacts =</span> sum_imp_94_SDEM<span class="sc">$</span>mat[<span class="dv">5</span>,], </span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>      <span class="at">SE =</span> sum_imp_94_SDEM<span class="sc">$</span>semat[<span class="dv">5</span>,])</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a><span class="co">#           Direct Indirect   Total</span></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Impacts -0.01276 -0.01845 -0.0312</span></span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a><span class="co"># SE       0.00235  0.00472  0.0053</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>In the SLX and SDEM models, the direct impacts are the consequences for the response of changes in air pollution in the same observational entity, and the indirect (local) impacts are the consequences for the response of changes in air pollution in neighbouring observational entities.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>sum_imp_94_SLX <span class="ot">&lt;-</span> <span class="fu">summary</span>(<span class="fu">impacts</span>(SLX_94))</span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a><span class="fu">rbind</span>(<span class="at">Impacts =</span> sum_imp_94_SLX<span class="sc">$</span>mat[<span class="dv">5</span>,], </span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>      <span class="at">SE =</span> sum_imp_94_SLX<span class="sc">$</span>semat[<span class="dv">5</span>,])</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a><span class="co">#          Direct Indirect    Total</span></span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Impacts -0.0128 -0.01874 -0.03151</span></span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a><span class="co"># SE       0.0028  0.00556  0.00611</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Applying the same approaches to the weighted spatial regressions, the total impacts of air pollution on house values are reduced, but remain significant:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>sum_imp_94_SDEMw <span class="ot">&lt;-</span> <span class="fu">summary</span>(<span class="fu">impacts</span>(SDEM_94w))</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a><span class="fu">rbind</span>(<span class="at">Impacts =</span> sum_imp_94_SDEMw<span class="sc">$</span>mat[<span class="dv">5</span>,], </span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>      <span class="at">SE =</span> sum_imp_94_SDEMw<span class="sc">$</span>semat[<span class="dv">5</span>,])</span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a><span class="co">#           Direct Indirect    Total</span></span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Impacts -0.00592 -0.01076 -0.01668</span></span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a><span class="co"># SE       0.00269  0.00531  0.00559</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>On balance, using a weighted spatial regression representation including only the spatially lagged covariates aggregated to the air pollution model output zone level seems to clear most of the mis-specification issues, and as <span class="citation" data-cites="bivand17">R. Bivand (<a href="references.html#ref-bivand17" role="doc-biblioref">2017</a>)</span> discusses in more detail, gives a willingness to pay for pollution abatement that is much larger than mis-specified alternative models:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>sum_imp_94_SLXw <span class="ot">&lt;-</span> <span class="fu">summary</span>(<span class="fu">impacts</span>(SLX_94w))</span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a><span class="fu">rbind</span>(<span class="at">Impacts =</span> sum_imp_94_SLXw<span class="sc">$</span>mat[<span class="dv">5</span>,], </span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>      <span class="at">SE =</span> sum_imp_94_SLXw<span class="sc">$</span>semat[<span class="dv">5</span>,])</span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a><span class="co">#           Direct Indirect    Total</span></span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Impacts -0.00620 -0.01221 -0.01842</span></span>
+<span id="cb52-6"><a href="#cb52-6" aria-hidden="true" tabindex="-1"></a><span class="co"># SE       0.00326  0.00628  0.00629</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="sec-spateconpred" class="level2" data-number="16.4">
+<h2 data-number="16.4" class="anchored" data-anchor-id="sec-spateconpred"><span class="header-section-number">16.4</span> Predictions</h2>
+<p>In the Boston tracts data set, 17 observations of median house values, the response, are censored. We will use the <code>predict()</code> method for <code>"Sarlm"</code> objects to fill in these values; the method was re-written by Martin Gubri based on <span class="citation" data-cites="goulardetal:17 Laurent2021">Goulard, Laurent, and Thomas-Agnan (<a href="references.html#ref-goulardetal:17" role="doc-biblioref">2017</a>; see also <a href="references.html#ref-Laurent2021" role="doc-biblioref">Laurent and Margaretic 2021</a>)</span>. The <code>pred.type=</code> argument specifies the prediction strategy among those presented in the article.</p>
+<p>Using these as an example and comparing some <code>pred.type=</code> variants for the SDEM model and predicting out-of-sample, we can see that there are differences, suggesting that this is a fruitful area for study. There have been a number of alternative proposals for handling missing variables <span class="citation" data-cites="GOMEZRUBIO2015116 suesse:18">(<a href="references.html#ref-GOMEZRUBIO2015116" role="doc-biblioref">Virgilio Gómez-Rubio, Bivand, and Rue 2015</a>; <a href="references.html#ref-suesse:18" role="doc-biblioref">Suesse 2018</a>)</span>. Another reason for increasing attention on prediction is that it is fundamental for machine learning approaches, in which prediction for validation and test data sets drives model specification choice. The choice of training and other data sets with dependent spatial data remains an open question, and is certainly not as simple as with independent data.</p>
+<p>Here, we’ll list the predictions for the censored tract observations using three different prediction types, taking the exponent to get back to the USD median house values. Note that the <code>row.names()</code> of the <code>newdata=</code> object are matched with the whole-data spatial weights matrix <code>"region.id"</code> attribute to make out-of-sample prediction possible:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>nd <span class="ot">&lt;-</span> boston_506[<span class="fu">is.na</span>(boston_506<span class="sc">$</span>median),]</span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a>t0 <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="fu">predict</span>(SDEM_489, <span class="at">newdata =</span> nd, <span class="at">listw =</span> lw_q, </span>
+<span id="cb53-3"><a href="#cb53-3" aria-hidden="true" tabindex="-1"></a>                  <span class="at">pred.type =</span> <span class="st">"TS"</span>, <span class="at">zero.policy  =</span><span class="cn">TRUE</span>))</span>
+<span id="cb53-4"><a href="#cb53-4" aria-hidden="true" tabindex="-1"></a><span class="fu">suppressWarnings</span>(t1  <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="fu">predict</span>(SDEM_489, <span class="at">newdata =</span> nd,</span>
+<span id="cb53-5"><a href="#cb53-5" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">listw =</span> lw_q,</span>
+<span id="cb53-6"><a href="#cb53-6" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">pred.type =</span> <span class="st">"KP2"</span>,</span>
+<span id="cb53-7"><a href="#cb53-7" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">zero.policy =</span> <span class="cn">TRUE</span>)))</span>
+<span id="cb53-8"><a href="#cb53-8" aria-hidden="true" tabindex="-1"></a><span class="fu">suppressWarnings</span>(t2  <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="fu">predict</span>(SDEM_489, <span class="at">newdata =</span> nd,</span>
+<span id="cb53-9"><a href="#cb53-9" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">listw =</span> lw_q,</span>
+<span id="cb53-10"><a href="#cb53-10" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">pred.type =</span> <span class="st">"KP5"</span>,</span>
+<span id="cb53-11"><a href="#cb53-11" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">zero.policy =</span> <span class="cn">TRUE</span>)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We can also use the <code>"slm"</code> model in INLA to predict missing response values as part of the model fitting function call. A certain amount of set-up code is required as the <code>"slm"</code> model is still experimental:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(INLA)</span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>W <span class="ot">&lt;-</span> <span class="fu">as</span>(lw_q, <span class="st">"CsparseMatrix"</span>)</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="fu">nrow</span>(W)</span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>e <span class="ot">&lt;-</span> <span class="fu">eigenw</span>(lw_q)</span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>re.idx <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="fu">abs</span>(<span class="fu">Im</span>(e)) <span class="sc">&lt;</span> <span class="fl">1e-6</span>)</span>
+<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>rho.max <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">/</span> <span class="fu">max</span>(<span class="fu">Re</span>(e[re.idx]))</span>
+<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>rho.min <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">/</span> <span class="fu">min</span>(<span class="fu">Re</span>(e[re.idx]))</span>
+<span id="cb54-8"><a href="#cb54-8" aria-hidden="true" tabindex="-1"></a>rho <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">c</span>(rho.min, rho.max))</span>
+<span id="cb54-9"><a href="#cb54-9" aria-hidden="true" tabindex="-1"></a>boston_506<span class="sc">$</span>idx <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span>n</span>
+<span id="cb54-10"><a href="#cb54-10" aria-hidden="true" tabindex="-1"></a>zero.variance <span class="ot">=</span> <span class="fu">list</span>(<span class="at">prec =</span> <span class="fu">list</span>(<span class="at">initial =</span> <span class="dv">25</span>, <span class="at">fixed =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb54-11"><a href="#cb54-11" aria-hidden="true" tabindex="-1"></a>args.slm <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">rho.min =</span> rho.min, <span class="at">rho.max =</span> rho.max, <span class="at">W =</span> W,</span>
+<span id="cb54-12"><a href="#cb54-12" aria-hidden="true" tabindex="-1"></a>                 <span class="at">X =</span> <span class="fu">matrix</span>(<span class="dv">0</span>, n, <span class="dv">0</span>), <span class="at">Q.beta =</span> <span class="fu">matrix</span>(<span class="dv">1</span>,<span class="dv">0</span>,<span class="dv">0</span>))</span>
+<span id="cb54-13"><a href="#cb54-13" aria-hidden="true" tabindex="-1"></a>hyper.slm <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">prec =</span> <span class="fu">list</span>(<span class="at">prior =</span> <span class="st">"loggamma"</span>, </span>
+<span id="cb54-14"><a href="#cb54-14" aria-hidden="true" tabindex="-1"></a>                              <span class="at">param =</span> <span class="fu">c</span>(<span class="fl">0.01</span>, <span class="fl">0.01</span>)),</span>
+<span id="cb54-15"><a href="#cb54-15" aria-hidden="true" tabindex="-1"></a>                  <span class="at">rho =</span> <span class="fu">list</span>(<span class="at">initial =</span> <span class="dv">0</span>, <span class="at">prior =</span> <span class="st">"logitbeta"</span>,</span>
+<span id="cb54-16"><a href="#cb54-16" aria-hidden="true" tabindex="-1"></a>                             <span class="at">param =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)))</span>
+<span id="cb54-17"><a href="#cb54-17" aria-hidden="true" tabindex="-1"></a>WX <span class="ot">&lt;-</span> <span class="fu">create_WX</span>(<span class="fu">model.matrix</span>(<span class="fu">update</span>(form, CMEDV <span class="sc">~</span> .), </span>
+<span id="cb54-18"><a href="#cb54-18" aria-hidden="true" tabindex="-1"></a>                             <span class="at">data =</span> boston_506), lw_q)</span>
+<span id="cb54-19"><a href="#cb54-19" aria-hidden="true" tabindex="-1"></a>SDEM_506_slm <span class="ot">&lt;-</span> <span class="fu">inla</span>(<span class="fu">update</span>(form, </span>
+<span id="cb54-20"><a href="#cb54-20" aria-hidden="true" tabindex="-1"></a>                            . <span class="sc">~</span> . <span class="sc">+</span> WX <span class="sc">+</span> <span class="fu">f</span>(idx, <span class="at">model =</span> <span class="st">"slm"</span>,</span>
+<span id="cb54-21"><a href="#cb54-21" aria-hidden="true" tabindex="-1"></a>                                         <span class="at">args.slm =</span> args.slm,</span>
+<span id="cb54-22"><a href="#cb54-22" aria-hidden="true" tabindex="-1"></a>                                         <span class="at">hyper =</span> hyper.slm)),</span>
+<span id="cb54-23"><a href="#cb54-23" aria-hidden="true" tabindex="-1"></a>                 <span class="at">data =</span> boston_506, <span class="at">family =</span> <span class="st">"gaussian"</span>,</span>
+<span id="cb54-24"><a href="#cb54-24" aria-hidden="true" tabindex="-1"></a>                 <span class="at">control.family =</span> <span class="fu">list</span>(<span class="at">hyper =</span> zero.variance),</span>
+<span id="cb54-25"><a href="#cb54-25" aria-hidden="true" tabindex="-1"></a>                 <span class="at">control.compute =</span> <span class="fu">list</span>(<span class="at">dic =</span> <span class="cn">TRUE</span>, <span class="at">cpo =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb54-26"><a href="#cb54-26" aria-hidden="true" tabindex="-1"></a>mv_mean <span class="ot">&lt;-</span> <span class="fu">exp</span>(SDEM_506_slm<span class="sc">$</span>summary.fitted.values<span class="sc">$</span>mean[</span>
+<span id="cb54-27"><a href="#cb54-27" aria-hidden="true" tabindex="-1"></a>               <span class="fu">which</span>(<span class="fu">is.na</span>(boston_506<span class="sc">$</span>median))])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>INLA also provide gridded estimates of the marginal distributions of the predictions, offering a way to assess the uncertainty associated with the predicted values:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">fit_TS =</span> t0[,<span class="dv">1</span>], <span class="at">fit_KP2 =</span> <span class="fu">c</span>(t1), <span class="at">fit_KP5 =</span> <span class="fu">c</span>(t2),</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">INLA_slm =</span> mv_mean,</span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">censored =</span> boston_506<span class="sc">$</span>censored[<span class="fu">as.integer</span>(<span class="fu">attr</span>(t0, </span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a>                                                   <span class="st">"region.id"</span>))])</span>
+<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a><span class="co">#     fit_TS fit_KP2 fit_KP5 INLA_slm censored</span></span>
+<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 13   23912   29477   28147    31117    right</span></span>
+<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 14   28126   27001   28516    31376    right</span></span>
+<span id="cb55-8"><a href="#cb55-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 15   30553   36184   32476    41142    right</span></span>
+<span id="cb55-9"><a href="#cb55-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 17   18518   19621   18878    21113    right</span></span>
+<span id="cb55-10"><a href="#cb55-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 43    9564    6817    7561     6855     left</span></span>
+<span id="cb55-11"><a href="#cb55-11" aria-hidden="true" tabindex="-1"></a><span class="co"># 50    8371    7196    7383     6888     left</span></span>
+<span id="cb55-12"><a href="#cb55-12" aria-hidden="true" tabindex="-1"></a><span class="co"># 312  51477   53301   54173    56296    right</span></span>
+<span id="cb55-13"><a href="#cb55-13" aria-hidden="true" tabindex="-1"></a><span class="co"># 313  45921   45823   47095    46509    right</span></span>
+<span id="cb55-14"><a href="#cb55-14" aria-hidden="true" tabindex="-1"></a><span class="co"># 314  44196   44586   45361    42834    right</span></span>
+<span id="cb55-15"><a href="#cb55-15" aria-hidden="true" tabindex="-1"></a><span class="co"># 317  43427   45707   45442    48004    right</span></span>
+<span id="cb55-16"><a href="#cb55-16" aria-hidden="true" tabindex="-1"></a><span class="co"># 337  39879   42072   41127    41437    right</span></span>
+<span id="cb55-17"><a href="#cb55-17" aria-hidden="true" tabindex="-1"></a><span class="co"># 346  44708   46694   46108    45831    right</span></span>
+<span id="cb55-18"><a href="#cb55-18" aria-hidden="true" tabindex="-1"></a><span class="co"># 355  48188   49068   48911    49129    right</span></span>
+<span id="cb55-19"><a href="#cb55-19" aria-hidden="true" tabindex="-1"></a><span class="co"># 376  42881   45883   44966    47705    right</span></span>
+<span id="cb55-20"><a href="#cb55-20" aria-hidden="true" tabindex="-1"></a><span class="co"># 408  44294   44615   45670    46259    right</span></span>
+<span id="cb55-21"><a href="#cb55-21" aria-hidden="true" tabindex="-1"></a><span class="co"># 418  38211   43375   41914    43860    right</span></span>
+<span id="cb55-22"><a href="#cb55-22" aria-hidden="true" tabindex="-1"></a><span class="co"># 434  41647   41690   42398    41546    right</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The spatial regression toolbox remains incomplete, and it will take time to fill in blanks. It remains unfortunate that the several traditions in spatial regression seldom seem to draw on each others’ understandings and advances.</p>
+</section>
+<section id="exercises-1" class="level2" data-number="16.5">
+<h2 data-number="16.5" class="anchored" data-anchor-id="exercises-1"><span class="header-section-number">16.5</span> Exercises</h2>
+<ol type="1">
+<li>Referring to <span class="citation" data-cites="PIRAS2014103">Piras and Prucha (<a href="references.html#ref-PIRAS2014103" role="doc-biblioref">2014</a>)</span> and <span class="citation" data-cites="FLORAX2003557">Raymond J. G. M. Florax, Folmer, and Rey (<a href="references.html#ref-FLORAX2003557" role="doc-biblioref">2003</a>)</span>, if we choose to use a pre-test strategy, do linear models of the properties-only data set and the properties with added municipality department variables show residual spatial dependence? Which model specifications might the pre-tests indicate?</li>
+<li>Could the inclusion of municipality department dummies, or a municipality department regimes model assist in reducing residual spatial dependence?</li>
+<li>Attempt to fit a SEM specification by maximum likelihood (see <span class="citation" data-cites="math9111276">R. Bivand, Millo, and Piras (<a href="references.html#ref-math9111276" role="doc-biblioref">2021</a>)</span> for GMM code examples) to the properties-only and the properties with added municipality department variables models; extend to an SDEM model. Repeat with SLX models; how might the changes in the tests of residual autocorrelation in the SLX models be interpreted? How might you interpret the highly significant outcomes of Hausman tests on the SEM and SDEM models?</li>
+<li>Fit GNM specifications to the properties-only and the properties with added municipality department variables models; can these models be simplified to say SDM or SDEM representations?</li>
+<li>Do the model estimates reached in the chapter 16 exercises provide more clarity than those in this chapter?</li>
+</ol>
+
+
+<div id="refs" class="references csl-bib-body hanging-indent" role="doc-bibliography" style="display: none">
+<div id="ref-R-hglm" class="csl-entry" role="doc-biblioentry">
+Alam, Moudud, Lars Ronnegard, and Xia Shen. 2019. <em>Hglm: Hierarchical Generalized Linear Models</em>. <a href="https://CRAN.R-project.org/package=hglm">https://CRAN.R-project.org/package=hglm</a>.
+</div>
+<div id="ref-alam-ronnegard-shen:2015" class="csl-entry" role="doc-biblioentry">
+Alam, Moudud, Lars Rönnegård, and Xia Shen. 2015. <span>“Fitting Conditional and Simultaneous Autoregressive Spatial Models in Hglm.”</span> <em>The <span>R</span> Journal</em> 7 (2): 5–18. <a href="https://doi.org/10.32614/RJ-2015-017">https://doi.org/10.32614/RJ-2015-017</a>.
+</div>
+<div id="ref-a88" class="csl-entry" role="doc-biblioentry">
+Anselin, L. 1988. <em>Spatial Econometrics: Methods and Models</em>. Kluwer Academic Publishers.
+</div>
+<div id="ref-R-lme4" class="csl-entry" role="doc-biblioentry">
+Bates, Douglas, Martin Maechler, Ben Bolker, and Steven Walker. 2022. <em>Lme4: Linear Mixed-Effects Models Using Eigen and S4</em>. <a href="https://github.com/lme4/lme4/">https://github.com/lme4/lme4/</a>.
+</div>
+<div id="ref-besag:74" class="csl-entry" role="doc-biblioentry">
+Besag, Julian. 1974. <span>“Spatial Interaction and the Statistical Analysis of Lattice Systems.”</span> <em>Journal of the Royal Statistical Society. Series B (Methodological)</em> 36: pp. 192–236.
+</div>
+<div id="ref-bivand:02" class="csl-entry" role="doc-biblioentry">
+Bivand, R. S. 2002. <span>“Spatial Econometrics Functions in <span>R</span>: Classes and Methods.”</span> <em>Journal of Geographical Systems</em> 4: 405–21.
+</div>
+<div id="ref-bivand17" class="csl-entry" role="doc-biblioentry">
+Bivand, Roger. 2017. <span>“Revisiting the <span>B</span>oston Data Set — Changing the Units of Observation Affects Estimated Willingness to Pay for Clean Air.”</span> <em>REGION</em> 4 (1): 109–27. <a href="https://doi.org/10.18335/region.v4i1.107">https://doi.org/10.18335/region.v4i1.107</a>.
+</div>
+<div id="ref-bivand:12" class="csl-entry" role="doc-biblioentry">
+Bivand, Roger S. 2012. <span>“<span class="nocase">After ’Raising the Bar’: Applied Maximum Likelihood Estimation of Families of Models in Spatial Econometrics</span>.”</span> <em>Estadística Española</em> 54: 71–88.
+</div>
+<div id="ref-doi:10.1177/1471082X20967158" class="csl-entry" role="doc-biblioentry">
+Bivand, Roger S, and Virgilio Gómez-Rubio. 2021. <span>“Spatial Survival Modelling of Business Re-Opening After Katrina: Survival Modelling Compared to Spatial Probit Modelling of Re-Opening Within 3, 6 or 12 Months.”</span> <em>Statistical Modelling</em> 21 (1-2): 137–60. <a href="https://doi.org/10.1177/1471082X20967158">https://doi.org/10.1177/1471082X20967158</a>.
+</div>
+<div id="ref-bivand+piras:15" class="csl-entry" role="doc-biblioentry">
+Bivand, Roger S., and Gianfranco Piras. 2015. <span>“Comparing Implementations of Estimation Methods for Spatial Econometrics.”</span> <em>Journal of Statistical Software</em> 63 (1): 1–36. <a href="https://doi.org/10.18637/jss.v063.i18">https://doi.org/10.18637/jss.v063.i18</a>.
+</div>
+<div id="ref-bivandetal17a" class="csl-entry" role="doc-biblioentry">
+Bivand, Roger S., Zhe Sha, Liv Osland, and Ingrid Sandvig Thorsen. 2017. <span>“A Comparison of Estimation Methods for Multilevel Models of Spatially Structured Data.”</span> <em>Spatial Statistics</em>. <a href="https://doi.org/10.1016/j.spasta.2017.01.002">https://doi.org/10.1016/j.spasta.2017.01.002</a>.
+</div>
+<div id="ref-JSSv063i20" class="csl-entry" role="doc-biblioentry">
+Bivand, Roger, Virgilio Gómez-Rubio, and Håvard Rue. 2015. <span>“Spatial Data Analysis with r-INLA with Some Extensions.”</span> <em>Journal of Statistical Software, Articles</em> 63 (20): 1–31. <a href="https://doi.org/10.18637/jss.v063.i20">https://doi.org/10.18637/jss.v063.i20</a>.
+</div>
+<div id="ref-math9111276" class="csl-entry" role="doc-biblioentry">
+Bivand, Roger, Giovanni Millo, and Gianfranco Piras. 2021. <span>“A Review of Software for Spatial Econometrics in <span>R</span>.”</span> <em>Mathematics</em> 9 (11). <a href="https://doi.org/10.3390/math9111276">https://doi.org/10.3390/math9111276</a>.
+</div>
+<div id="ref-R-spData" class="csl-entry" role="doc-biblioentry">
+Bivand, Roger, Jakub Nowosad, and Robin Lovelace. 2021. <em>spData: Datasets for Spatial Analysis</em>. <a href="https://nowosad.github.io/spData/">https://nowosad.github.io/spData/</a>.
+</div>
+<div id="ref-R-spatialreg" class="csl-entry" role="doc-biblioentry">
+Bivand, Roger, and Gianfranco Piras. 2022. <em>Spatialreg: Spatial Regression Analysis</em>. <a href="https://CRAN.R-project.org/package=spatialreg">https://CRAN.R-project.org/package=spatialreg</a>.
+</div>
+<div id="ref-brookesetal:17" class="csl-entry" role="doc-biblioentry">
+Brooks, Mollie E., Kasper Kristensen, Koen J. van Benthem, Arni Magnusson, Casper W. Berg, Anders Nielsen, Hans J. Skaug, Martin Maechler, and Benjamin M. Bolker. 2017. <span>“<span class="nocase">glmmTMB</span> Balances Speed and Flexibility Among Packages for Zero-Inflated Generalized Linear Mixed Modeling.”</span> <em>The R Journal</em> 9 (2): 378–400. <a href="https://journal.r-project.org/archive/2017/RJ-2017-066/index.html">https://journal.r-project.org/archive/2017/RJ-2017-066/index.html</a>.
+</div>
+<div id="ref-cliff+ord:73" class="csl-entry" role="doc-biblioentry">
+Cliff, A. D., and J. K. Ord. 1973. <em>Spatial Autocorrelation</em>. London: Pion.
+</div>
+<div id="ref-cliff+ord:81" class="csl-entry" role="doc-biblioentry">
+———. 1981. <em>Spatial Processes</em>. London: Pion.
+</div>
+<div id="ref-CliffOrd:72" class="csl-entry" role="doc-biblioentry">
+Cliff, A., and J. K. Ord. 1972. <span>“Testing for Spatial Autocorrelation Among Regression Residuals.”</span> <em>Geographical Analysis</em> 4: 267–84.
+</div>
+<div id="ref-Cressie:1993" class="csl-entry" role="doc-biblioentry">
+Cressie, N. A. C. 1993. <em>Statistics for Spatial Data</em>. New York:Wiley.
+</div>
+<div id="ref-elhorst:10" class="csl-entry" role="doc-biblioentry">
+Elhorst, J. Paul. 2010. <span>“Applied Spatial Econometrics: Raising the Bar.”</span> <em>Spatial Economic Analysis</em> 5: 9–28.
+</div>
+<div id="ref-fingleton:99" class="csl-entry" role="doc-biblioentry">
+Fingleton, B. 1999. <span>“<span class="nocase">Spurious spatial regression: Some Monte Carlo results with a spatial unit root and spatial cointegration</span>.”</span> <em><span>Journal of Regional Science</span></em> 9: 1–19.
+</div>
+<div id="ref-FLORAX2006300" class="csl-entry" role="doc-biblioentry">
+Florax, Raymond J. G. M., Hendrik Folmer, and Sergio J. Rey. 2006. <span>“A Comment on Specification Searches in Spatial Econometrics: The Relevance of Hendry’s Methodology: A Reply.”</span> <em>Regional Science and Urban Economics</em> 36 (2): 300–308. <a href="https://doi.org/10.1016/j.regsciurbeco.2005.10.002">https://doi.org/10.1016/j.regsciurbeco.2005.10.002</a>.
+</div>
+<div id="ref-FLORAX2003557" class="csl-entry" role="doc-biblioentry">
+Florax, Raymond J. G. M, Hendrik Folmer, and Sergio J Rey. 2003. <span>“Specification Searches in Spatial Econometrics: The Relevance of Hendry’s Methodology.”</span> <em>Regional Science and Urban Economics</em> 33 (5): 557–79. <a href="https://doi.org/10.1016/S0166-0462(03)00002-4">https://doi.org/10.1016/S0166-0462(03)00002-4</a>.
+</div>
+<div id="ref-gaetan+guyon:10" class="csl-entry" role="doc-biblioentry">
+Gaetan, Carlo, and Xavier Guyon. 2010. <em>Spatial Statistics and Modeling</em>. New York: Springer.
+</div>
+<div id="ref-JSSv063c01" class="csl-entry" role="doc-biblioentry">
+Gerber, Florian, and Reinhard Furrer. 2015. <span>“Pitfalls in the Implementation of Bayesian Hierarchical Modeling of Areal Count Data: An Illustration Using BYM and Leroux Models.”</span> <em>Journal of Statistical Software, Code Snippets</em> 63 (1): 1–32. <a href="https://doi.org/10.18637/jss.v063.c01">https://doi.org/10.18637/jss.v063.c01</a>.
+</div>
+<div id="ref-vgr_clubuc3m:19" class="csl-entry" role="doc-biblioentry">
+Gómez-Rubio, V. 2019. <span>“Spatial Data Analysis with INLA. Coding Club Uc3m Tutorial Series. Universidad Carlos III de Madrid.”</span> <a href="https://codingclubuc3m.rbind.io/talk/2019-11-05/">https://codingclubuc3m.rbind.io/talk/2019-11-05/</a>.
+</div>
+<div id="ref-gómez2020bayesian" class="csl-entry" role="doc-biblioentry">
+———. 2020. <em>Bayesian Inference with INLA</em>. Boca Raton, FL: CRC Press.
+</div>
+<div id="ref-GOMEZRUBIO2015116" class="csl-entry" role="doc-biblioentry">
+Gómez-Rubio, Virgilio, Roger Bivand, and Håvard Rue. 2015. <span>“A New Latent Class to Fit Spatial Econometrics Models with Integrated Nested Laplace Approximations.”</span> <em>Procedia Environmental Sciences</em> 27: 116–18. https://doi.org/<a href="https://doi.org/10.1016/j.proenv.2015.07.119">https://doi.org/10.1016/j.proenv.2015.07.119</a>.
+</div>
+<div id="ref-goulardetal:17" class="csl-entry" role="doc-biblioentry">
+Goulard, Michel, Thibault Laurent, and Christine Thomas-Agnan. 2017. <span>“About Predictions in Spatial Autoregressive Models: Optimal and Almost Optimal Strategies.”</span> <em>Spatial Economic Analysis</em> 12 (2-3): 304–25. <a href="https://doi.org/10.1080/17421772.2017.1300679">https://doi.org/10.1080/17421772.2017.1300679</a>.
+</div>
+<div id="ref-halleck-vega+elhorst:15" class="csl-entry" role="doc-biblioentry">
+Halleck Vega, Solmaria, and J. Paul Elhorst. 2015. <span>“The <span>SLX</span> Model.”</span> <em>Journal of Regional Science</em> 55 (3): 339–63. <a href="https://doi.org/10.1111/jors.12188">https://doi.org/10.1111/jors.12188</a>.
+</div>
+<div id="ref-HENDRY2006309" class="csl-entry" role="doc-biblioentry">
+Hendry, David F. 2006. <span>“A Comment on <span>‘Specification Searches in Spatial Econometrics: The Relevance of Hendry’s Methodology’</span>.”</span> <em>Regional Science and Urban Economics</em> 36 (2): 309–12. <a href="https://doi.org/10.1016/j.regsciurbeco.2005.10.001">https://doi.org/10.1016/j.regsciurbeco.2005.10.001</a>.
+</div>
+<div id="ref-hepple:76" class="csl-entry" role="doc-biblioentry">
+Hepple, Leslie W. 1976. <span>“A Maximum Likelihood Model for Econometric Estimation with Spatial Series.”</span> In <em>Theory and Practice in Regional Science</em>, edited by I. Masser, 90–104. London Papers in Regional Science. London: Pion.
+</div>
+<div id="ref-kelejian+piras:17" class="csl-entry" role="doc-biblioentry">
+Kelejian, Harry, and Gianfranco Piras. 2017. <em>Spatial Econometrics</em>. London: Academic Press.
+</div>
+<div id="ref-Laurent2021" class="csl-entry" role="doc-biblioentry">
+Laurent, Thibault, and Paula Margaretic. 2021. <span>“Predictions in Spatial Econometric Models: Application to Unemployment Data.”</span> In <em>Advances in Contemporary Statistics and Econometrics: Festschrift in Honor of Christine Thomas-Agnan</em>, edited by Abdelaati Daouia and Anne Ruiz-Gazen, 409–26. Cham: Springer International Publishing. <a href="https://doi.org/10.1007/978-3-030-73249-3_21">https://doi.org/10.1007/978-3-030-73249-3_21</a>.
+</div>
+<div id="ref-lesage:14" class="csl-entry" role="doc-biblioentry">
+LeSage, J. P. 2014. <span>“What Regional Scientists Need to Know about Spatial Econometrics.”</span> <em>Review of Regional Studies</em> 44: 13–32. <a href="https://journal.srsa.org/ojs/index.php/RRS/article/view/44.1.2">https://journal.srsa.org/ojs/index.php/RRS/article/view/44.1.2</a>.
+</div>
+<div id="ref-lesage+pace:09" class="csl-entry" role="doc-biblioentry">
+LeSage, James P., and Kelley R. Pace. 2009. <em>Introduction to Spatial Econometrics</em>. Boca Raton, FL: CRC Press.
+</div>
+<div id="ref-vanlieshout:19" class="csl-entry" role="doc-biblioentry">
+Lieshout, M. N. M. van. 2019. <em>Theory of Spatial Statistics</em>. Boca Raton, FL: Chapman; Hall/CRC.
+</div>
+<div id="ref-MARTINETTI201730" class="csl-entry" role="doc-biblioentry">
+Martinetti, Davide, and Ghislain Geniaux. 2017. <span>“Approximate Likelihood Estimation of Spatial Probit Models.”</span> <em>Regional Science and Urban Economics</em> 64: 30–45. https://doi.org/<a href="https://doi.org/10.1016/j.regsciurbeco.2017.02.002">https://doi.org/10.1016/j.regsciurbeco.2017.02.002</a>.
+</div>
+<div id="ref-mcculloch+searle:2001" class="csl-entry" role="doc-biblioentry">
+McCulloch, Charles E., and Shayle R. Searle. 2001. <em>Generalized, Linear, and Mixed Models</em>. New York: Wiley.
+</div>
+<div id="ref-mcmillen:13" class="csl-entry" role="doc-biblioentry">
+McMillen, D. P. 2013. <em>Quantile Regression for Spatial Data</em>. Heidelberg: Springer-Verlag.
+</div>
+<div id="ref-millo+piras:12" class="csl-entry" role="doc-biblioentry">
+Millo, Giovanni, and Gianfranco Piras. 2012. <span>“<span class="nocase">splm</span>: Spatial Panel Data Models in <span>R</span>.”</span> <em>Journal of Statistical Software</em> 47 (1): 1–38.
+</div>
+<div id="ref-mur+angulo:06" class="csl-entry" role="doc-biblioentry">
+Mur, Jesús, and Ana Angulo. 2006. <span>“The Spatial Durbin Model and the Common Factor Tests.”</span> <em>Spatial Economic Analysis</em> 1 (2): 207–26. <a href="https://doi.org/10.1080/17421770601009841">https://doi.org/10.1080/17421770601009841</a>.
+</div>
+<div id="ref-ord:75" class="csl-entry" role="doc-biblioentry">
+Ord, J. K. 1975. <span>“<span class="nocase">Estimation Methods for Models of Spatial Interaction</span>.”</span> <em>Journal of the American Statistical Association</em> 70 (349): 120–26.
+</div>
+<div id="ref-pace+lesage:08" class="csl-entry" role="doc-biblioentry">
+Pace, RK, and JP LeSage. 2008. <span>“A Spatial <span>H</span>ausman Test.”</span> <em>Economics Letters</em> 101: 282–84.
+</div>
+<div id="ref-R:Pinheiro+Bates:2000" class="csl-entry" role="doc-biblioentry">
+Pinheiro, Jose C., and Douglas M. Bates. 2000. <em>Mixed-Effects Models in <span>S</span> and <span>S-Plus</span></em>. New York: Springer.
+</div>
+<div id="ref-PIRAS2014103" class="csl-entry" role="doc-biblioentry">
+Piras, Gianfranco, and Ingmar R. Prucha. 2014. <span>“On the Finite Sample Properties of Pre-Test Estimators of Spatial Models.”</span> <em>Regional Science and Urban Economics</em> 46: 103–15. <a href="https://doi.org/10.1016/j.regsciurbeco.2014.03.002">https://doi.org/10.1016/j.regsciurbeco.2014.03.002</a>.
+</div>
+<div id="ref-ripley:81" class="csl-entry" role="doc-biblioentry">
+Ripley, B. D. 1981. <em>Spatial Statistics</em>. New York: Wiley.
+</div>
+<div id="ref-ripley:88" class="csl-entry" role="doc-biblioentry">
+———. 1988. <em>Statistical Inference for Spatial Processes</em>. Cambridge: Cambridge University Press.
+</div>
+<div id="ref-R-INLA" class="csl-entry" role="doc-biblioentry">
+Rue, Havard, Finn Lindgren, and Elias Teixeira Krainski. 2022. <em>INLA: Full Bayesian Analysis of Latent Gaussian Models Using Integrated Nested Laplace Approximations</em>.
+</div>
+<div id="ref-smith+lee12" class="csl-entry" role="doc-biblioentry">
+Smith, T. E., and K. L. Lee. 2012. <span>“<span class="nocase">The effects of spatial autoregressive dependencies on inference in ordinary least squares: a geometric approach</span>.”</span> <em>Journal of Geographical Systems</em> 14 (January): 91–124. <a href="https://doi.org/10.1007/s10109-011-0152-x">https://doi.org/10.1007/s10109-011-0152-x</a>.
+</div>
+<div id="ref-smith:09" class="csl-entry" role="doc-biblioentry">
+Smith, Tony E. 2009. <span>“Estimation Bias in Spatial Models with Strongly Connected Weight Matrices.”</span> <em>Geographical Analysis</em> 41 (3): 307–32. <a href="https://doi.org/10.1111/j.1538-4632.2009.00758.x">https://doi.org/10.1111/j.1538-4632.2009.00758.x</a>.
+</div>
+<div id="ref-suesse:18" class="csl-entry" role="doc-biblioentry">
+Suesse, Thomas. 2018. <span>“Marginal Maximum Likelihood Estimation of SAR Models with Missing Data.”</span> <em>Computational Statistics &amp; Data Analysis</em> 120: 98–110. https://doi.org/<a href="https://doi.org/10.1016/j.csda.2017.11.004">https://doi.org/10.1016/j.csda.2017.11.004</a>.
+</div>
+<div id="ref-umlaufetal:15" class="csl-entry" role="doc-biblioentry">
+Umlauf, Nikolaus, Daniel Adler, Thomas Kneib, Stefan Lang, and Achim Zeileis. 2015. <span>“Structured Additive Regression Models: An <span>R</span> Interface to <span>BayesX</span>.”</span> <em>Journal of Statistical Software</em> 63 (21): 1–46. <a href="http://www.jstatsoft.org/v63/i21/">http://www.jstatsoft.org/v63/i21/</a>.
+</div>
+<div id="ref-R-R2BayesX" class="csl-entry" role="doc-biblioentry">
+Umlauf, Nikolaus, Thomas Kneib, Stefan Lang, and Achim Zeileis. 2022. <em>R2BayesX: Estimate Structured Additive Regression Models with BayesX</em>. <a href="https://CRAN.R-project.org/package=R2BayesX">https://CRAN.R-project.org/package=R2BayesX</a>.
+</div>
+<div id="ref-VRANCKX2019100302" class="csl-entry" role="doc-biblioentry">
+Vranckx, M., T. Neyens, and C. Faes. 2019. <span>“Comparison of Different Software Implementations for Spatial Disease Mapping.”</span> <em>Spatial and Spatio-Temporal Epidemiology</em> 31: 100302. <a href="https://doi.org/10.1016/j.sste.2019.100302">https://doi.org/10.1016/j.sste.2019.100302</a>.
+</div>
+<div id="ref-wagner+zeileis:19" class="csl-entry" role="doc-biblioentry">
+Wagner, Martin, and Achim Zeileis. 2019. <span>“Heterogeneity and Spatial Dependence of Regional Growth in the <span>EU</span>: A Recursive Partitioning Approach.”</span> <em>German Economic Review</em> 20 (1): 67–82. <a href="https://doi.org/10.1111/geer.12146">https://doi.org/10.1111/geer.12146</a>.
+</div>
+<div id="ref-wall:04" class="csl-entry" role="doc-biblioentry">
+Wall, M. M. 2004. <span>“A Close Look at the Spatial Structure Implied by the <span>CAR</span> and <span>SAR</span> Models.”</span> <em>Journal of Statistical Planning and Inference</em> 121: 311–24.
+</div>
+<div id="ref-WallerGotway:2004" class="csl-entry" role="doc-biblioentry">
+Waller, Lance A., and Carol A. Gotway. 2004. <em>Applied Spatial Statistics for Public Health Data</em>. Hoboken, NJ: John Wiley &amp; Sons.
+</div>
+<div id="ref-whittle:54" class="csl-entry" role="doc-biblioentry">
+Whittle, P. 1954. <span>“<span class="nocase">On Stationary Processes in the Plane</span>.”</span> <em>Biometrika</em> 41 (3-4): 434–49. <a href="https://doi.org/10.1093/biomet/41.3-4.434">https://doi.org/10.1093/biomet/41.3-4.434</a>.
+</div>
+<div id="ref-RJ-2013-013" class="csl-entry" role="doc-biblioentry">
+Wilhelm, Stefan, and Miguel Godinho de Matos. 2013. <span>“<span class="nocase">Estimating Spatial Probit Models in R</span>.”</span> <em><span>The R Journal</span></em> 5 (1): 130–43. <a href="https://doi.org/10.32614/RJ-2013-013">https://doi.org/10.32614/RJ-2013-013</a>.
+</div>
+<div id="ref-wood:17" class="csl-entry" role="doc-biblioentry">
+Wood, S. N. 2017. <em>Generalized Additive Models: An Introduction with r</em>. 2nd ed. Chapman; Hall/CRC.
+</div>
+<div id="ref-R-mgcv" class="csl-entry" role="doc-biblioentry">
+Wood, Simon. 2022. <em>Mgcv: Mixed GAM Computation Vehicle with Automatic Smoothness Estimation</em>. <a href="https://CRAN.R-project.org/package=mgcv">https://CRAN.R-project.org/package=mgcv</a>.
+</div>
+</div>
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    setTimeout(function() {
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./17-Areal.html" class="pagination-link">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Proximity and Areal Data</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./30-sp-raster.html" class="pagination-link">
+        <span class="nav-page-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Older R Spatial Packages</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+</body></html>
