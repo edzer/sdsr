@@ -2,15 +2,7 @@
  
 This chapter introduces a number of concepts associated with
 handling spatial data, and points forward to later sections where
-they are discussed in more detail.  
-
-```{asis asis1, echo=!knitr::is_latex_output()}
-The code sections in this chapter are not explained, but can be
-unfolded by clicking on the "code" button. They should be easy
-to follow when understanding R at the level of, say, [R for Data
-Science](http://r4ds.had.co.nz/) [@r4ds]. Detailed explanation
-of R code starts in Part II of this book.
-```
+these concepts are discussed in more detail.
 
 \index{data science}
 
@@ -18,8 +10,10 @@ of R code starts in Part II of this book.
 
 The typical way to graph spatial data is by creating a map. Let us consider
 a simple map, shown in @fig-first-map .
-```{r fig-first-map, out.width = '80%', fig.cap="a first map", eval=TRUE, fig=TRUE, cache=FALSE, message=FALSE, echo=!knitr::is_latex_output()}
+```{r fig-first-map, cache = FALSE, message = FALSE, echo=!knitr::is_latex_output()}
+#| fig.cap: "a first map"
 #| code-fold: true
+#| fig.height: 4
 library(tidyverse)
 library(sf)
 system.file("gpkg/nc.gpkg", package="sf") |>
@@ -30,6 +24,8 @@ nc.32119 |>
 	plot(graticule = TRUE, axes = TRUE)
 ```
 A number of graphical elements are present here, in this case:
+
+\index{map}
 
 * polygons are drawn with a black outline and filled with colors chosen according to a variable `BIR74`, whose name is in the title
 * a legend key explains the meaning of the colors, and has a certain _color palette_ and _color
@@ -47,6 +43,8 @@ and longitude do not form straight lines, indicating that some
 form of projection took place before plotting; projections are also
 discussed in @sec-cs and section @sec-transform. 
 
+\index{polygons}
+
 The color values in @fig-first-map  are derived
 from numeric values of a variable, `BIR74`, which has a
 single value associated with each geometry or _feature_. 
@@ -57,15 +55,36 @@ implies that the count does not refer to a value associated with
 every point inside the polygon, which the continuous color might
 suggest, but rather measures an integral (sum) over the polygon.
 
-Before plotting @fig-first-map  we had to read the data,
-in this case from a file (@sec-sfintro). Printing a data
-summary for the first three records of three attribute variables
-shows:
+\index{feature!attributes}
+
+Before plotting @fig-first-map  we had to read the data, in this
+case from a file (@sec-sfintro). Printing a data summary for the
+first three records of three attribute variables shows:
 
 ```{r first_ten, echo=!knitr::is_latex_output()}
 #| code-fold: true
+#| collapse:: false
 nc |> select(AREA, BIR74, SID74) |> print(n = 3)
 ```
+
+::: {.content-visible when-format="html"}
+
+```
+Simple feature collection with 100 features and 3 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: -84.32 ymin: 33.88 xmax: -75.46 ymax: 36.59
+Geodetic CRS:  NAD27
+# A tibble: 100 × 4
+   AREA BIR74 SID74                                         geom
+  <dbl> <dbl> <dbl>                           <MULTIPOLYGON [°]>
+1 0.114  1091     1 (((-81.47 36.23,-81.54 36.27,-81.56 36.27, …
+2 0.061   487     0 (((-81.24 36.37,-81.24 36.38,-81.26 36.41, …
+3 0.143  3188     5 (((-80.46 36.24,-80.48 36.25,-80.54 36.26, …
+# … with 97 more rows
+```
+
+:::
 
 The printed output shows:
 
@@ -101,6 +120,9 @@ nc.32119 |> mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
 
 ## Coordinate reference systems
 
+\index{coordinate reference systems}
+\index{projections}
+
 In @fig-first-map , the grey lines denote the
 _graticule_, a grid with lines along constant latitude
 or longitude. Clearly, these lines are not straight, which
@@ -120,6 +142,8 @@ it would typically report coordinates associated with the WGS84
 datum, which can be around 30 m different from the identical
 coordinate values when associated with NAD27.
 
+\index{datum}
+
 Projections describe how we go back and forth between
 
 * **ellipsoidal coordinates** which are expressed as degrees
@@ -129,9 +153,14 @@ approximating the Earth's shape (an ellipsoid or spheroid), and
 * **projected coordinates** which are coordinates on a flat,
 two-dimensional coordinate system, used when plotting maps.
 
+\index{coordinates!ellipsoidal}
+\index{coordinates!projected}
+
 Datums transformations are associated with moving from one datum
 to another.  Both topics are covered by _spatial reference systems_
 are described in more detail in @sec-cs.
+
+\index{datum!transformation}
 
 ## Raster and vector data {#sec-rasterize}
 
@@ -141,8 +170,15 @@ anywhere. Raster data on the other hand describe data where values
 are aligned on a _raster_, meaning on a regularly laid out lattice of
 usually square pixels. An example is shown in @fig-ras .
 
-```{r fig-ras, out.width = '80%', fig.cap="raster maps: Landsat-7 blue band, with color values derived from data values (a), the top-left 10x10 sub-image from (a) with numeric values shown (b), and overlayed by two different types of vector data: three sample points (c), and a 500m radius around the points represented as polygons (d)", message=FALSE,echo=!knitr::is_latex_output()}
+\index{vector data}
+\index{raster data}
+\index{aggregation!spatial}
+\index{`aggregate`}
+
+```{r fig-ras, out.width = '80%', message=FALSE, echo=!knitr::is_latex_output()}
 #| code-fold: true
+#| fig.cap: "raster maps: Landsat-7 blue band, with color values derived from data values (a), the top-left 10 $\times$ 10 sub-image from (a) with numeric values shown (b), and overlayed by two different types of vector data: three sample points (c), and a 500m radius around the points represented as polygons (d)"
+#| fig.height: 5
 library(stars)
 par(mfrow = c(2, 2))
 par(mar = rep(1, 4))
@@ -159,15 +195,11 @@ plot(st_buffer(pts, 500), add = TRUE, pch = 3, border = 'blue', col = NA, lwd = 
 ```
 
 Vector and raster data can be combined in different ways; for instance we can query the raster at the three points of @fig-ras(c)
-```{r fig-raspts,echo=!knitr::is_latex_output()}
+or compute an aggregate, such as the average, over arbitrary regions such as the circles shown in @fig-ras(d).
+```{r fig-raspts,echo=!knitr::is_latex_output(),output=FALSE}
 #| code-fold: true
-st_extract(x, pts)
-```
-
-or compute an aggregate, such as the average, over arbitrary regions such as the circles shown in @fig-ras(d):
-```{r fig-rasbuffers, echo=!knitr::is_latex_output()}
-#| code-fold: true
-aggregate(x, st_buffer(pts, 500), FUN = mean) |> st_as_sf()
+st_extract(x, pts) # query at points
+aggregate(x, st_buffer(pts, 500), FUN = mean) |> st_as_sf() # aggregate over circles
 ```
 
 Other raster-to-vector conversions are discussed in @sec-raster-to-vector and include:
@@ -176,6 +208,10 @@ Other raster-to-vector conversions are discussed in @sec-raster-to-vector and in
 * converting raster pixels into small polygons, possibly merging polygons with identical values ("polygonize")
 * generating lines or polygons that delineate continuous pixel areas with a certain value _range_ ("contour")
 
+\index{raster-to-vector}
+\index{vector-to-raster}
+\index{rasterize}
+\index{vectorize}
 
 ```{r fig-vectoras, out.width = '80%', fig.cap="map obtained by rasterizing county total number of births for the period 1974-1979 shown in figure 1.1", echo=!knitr::is_latex_output()}
 #| code-fold: true
@@ -191,6 +227,11 @@ modelling include:
 * estimating densities of points over a regular grid (@sec-pointpatterns)
 * area-weighted interpolation of polygon values to grid cells (@sec-area-weighted)
 * direct rasterization of points, lines or polygons (@sec-raster-to-vector)
+
+\section{interpolation}
+\section{interpolation!area-weighted}
+\section{area weighed interpolation}
+\section{point patterns}
 
 ## Raster types
 
@@ -233,6 +274,16 @@ plot(st_geometry(st_as_sf(r4, as_points = FALSE)), main = "rectilinear")
 plot(st_geometry((r5)), main = "curvilinear")
 ```
 
+\index{rectilinear raster}
+\index{curvilinear raster}
+\index{sheared raster}
+\index{raster!rectilinear}
+\index{raster!curvilinear}
+\index{raster!sheared}
+\index{raster!regular}
+\index{raster!rotated}
+\index{raster!regular}
+
 Regular rasters like shown in @fig-rastertypes01  have a constant,
 not necessarily square cell size and axes aligned with the x and y
 (Easting and Northing) axes. Other raster types include those
@@ -262,7 +313,15 @@ nearest neighbours should be used; see also @sec-support.
 
 A lot of spatial data is not _just_ spatial, but in addition temporal. Just like any observation is associated with an observation location, it is associated with an observation time or period. The dataset on the North Carolina counties shown above contains disease cases counted over two time periods, shown in @fig-firstgather). Although the original dataset has these variables in two different columns, for plotting them these columns had to be stacked first, while repeating the associated geometries - a form called _tidy_ by [@tidy]. When we have longer time series associated with geometries, neither option - distributing time over multiple columns, or stacking columns while repeating geometries - works well, and a more effective way of storing such data would be a matrix or array, where one dimension refers to time, and the other(s) to space. The natural way for image or raster data is already to store them in matrices; time series of rasters then lead to a three-dimensional array. The general term for such data is a (spatiotemporal) **data cube**, where cube refers to arrays with any number of dimensions.  Data cubes can refer to both raster and vector data, examples are given in @sec-datacube. 
 
+\index{time series}
+\index{data cubes}
+
 ## Support {#sec-support}
+
+\index{support}
+\index{support!point}
+\index{support!block}
+\index{support!area}
 
 When we have spatial data with geometries that are not points but
 collections of points (multi-points, lines, polygons, pixels),
@@ -298,7 +357,12 @@ color value averaged over (an area similar to the) pixel. Most file
 formats do not provide this information, yet it may be important
 to know when aggregating, regridding or warping rasters (@sec-warp).
 
+\index{support!raster cells}
+
 ## Spatial data science software
+
+\index{data science!software}
+\index{spatial data science!software}
 
 Although this book largely uses R and R packages for spatial data
 science, a number of these packages use software libraries that were
@@ -324,6 +388,8 @@ which is relevant to spatial data science in general.
 
 ### GDAL
 
+\index{GDAL}
+
 GDAL ("Geospatial Data Abstraction Library") can be seen as the
 Swiss army knife of spatial data; besides for R it is being
 used in Python, QGIS, PostGIS, [and more than 100 other software
@@ -343,6 +409,8 @@ their dependencies, which may amount to 100 Mb.
 
 ### PROJ
 
+\index{PROJ}
+
 PROJ (or PR$\phi$J) is a library for cartographic projections
 and datum transformations: it converts spatial coordinates
 from one coordinate reference system to another. It comes with
@@ -353,6 +421,9 @@ systems [@lott2015].  @sec-cs deals with coordinate
 systems, and PROJ.
 
 ### GEOS and s2geometry
+
+\index{GEOS}
+\index{s2geometry}
 
 GEOS ("Geometry Engine Open Source") and s2geometry are two libraries
 for geometric operations. They are used to find measures (length,
@@ -365,6 +436,12 @@ coordinate reference systems, and @sec-spherical discusses
 more about the differences between working with these two spaces.
 
 ### NetCDF, udunits2, liblwgeom
+
+\index{NetCDF}
+\index{udunits2}
+\index{liblwgeom}
+\index{GeographicLib}
+\index{PostGIS}
 
 NetCDF [@netcdf] refers to a file format as well as a C library
 for reading and writing NetCDF files. It allows the definition of

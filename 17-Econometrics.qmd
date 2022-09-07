@@ -1,0 +1,295 @@
+# Spatial econometrics models {#sec-spatecon}
+
+```{r echo=FALSE}
+load("ch16.RData")
+```
+
+Spatial autoregression models using spatial weights matrices were described in some detail using maximum likelihood estimation some time ago [@cliff+ord:73; @cliff+ord:81]. A family of models was elaborated in spatial econometric terms extending earlier work, and in many cases using the simultaneous autoregressive framework and row standardization of spatial weights [@a88]. The simultaneous and conditional autoregressive frameworks can be compared, and both can be supplemented using case weights to reflect the relative importance of different observations [@WallerGotway:2004].
+
+Before moving to presentations of issues raised in fitting spatial regression models, it is worth making a few further points. A recent review of spatial regression in a spatial econometrics setting is given by Kelejian and Piras [-@kelejian+piras:17]; note that their usage is to call the spatial coefficient of the lagged response $\lambda$ and that of the lagged residuals $\rho$, the reverse of other usage [@a88; @lesage+pace:09]; here we use $\rho_{\mathrm{Lag}}$ for the spatial coefficient in the spatial lag model, and $\rho_{\mathrm{Err}}$ for the spatial error model. One interesting finding is that relatively dense spatial weights matrices may downweight model estimates, suggesting that sparser weights are preferable [@smith:09]. Another useful finding is that the presence of residual spatial autocorrelation need not bias the estimates of variance of regression coefficients, provided that the covariates themselves do not exhibit spatial autocorrelation [@smith+lee12]. In general, however, the footprints of the spatial processes of the response and covariates may not be aligned, and if covariates and the residual are autocorrelated, it is likely that the estimates of variance of regression coefficients will be biassed downwards if attempts are not made to model the spatial processes.
+
+## Spatial econometric models: definitions
+
+In trying to model spatial processes, one of the earliiest spatial econometric representations is to model the spatial autocorrelation in the residual (spatial error model, SEM): 
+
+$$
+{\mathbf y} = {\mathbf X}{\mathbf \beta} + {\mathbf u},
+\qquad {\mathbf u} = \rho_{\mathrm{Err}} {\mathbf W} {\mathbf u} + {\mathbf \varepsilon},
+$$
+where ${\mathbf y}$ is an $(N \times 1)$ vector of observations on a response variable taken  at each of $N$ locations, ${\mathbf X}$ is an $(N \times k)$ matrix of covariates, ${\mathbf \beta}$ is a $(k \times 1)$ vector of parameters, ${\mathbf u}$ is an $(N \times 1)$ spatially autocorrelated disturbance vector, ${\mathbf \varepsilon}$ is an $(N \times 1)$ vector of independent and identically distributed disturbances and $\rho_{\mathrm{Err}}$ is a scalar spatial parameter.
+
+This model, and other spatial econometric models, do not fit into the mixed models framework. Here the modelled spatial process interacts directly with the response, covariates, and their coefficients. This modelling framework appears to draw on an older tradition extending time series to two dimensions:
+
+$$
+{\mathbf u} = ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})^{-1} {\mathbf \varepsilon},
+\ \ {\mathbf y} = {\mathbf X}{\mathbf \beta} + ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})^{-1} {\mathbf \varepsilon},
+\ \ ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W}) {\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W}) {\mathbf X}{\mathbf \beta} + {\mathbf \varepsilon}.
+$$
+
+If the processes in the covariates and the response match, we should find little difference between the coefficients of a least squares and a SEM, but very often they diverge, suggesting that a Hausman test for this condition should be employed [@pace+lesage:08]. This may be related to earlier discussions of a spatial equivalent to the unit root and cointegration where spatial processes match [@fingleton:99].
+
+A model with a spatial process in the response only is termed a spatial lag model (SLM, often SAR - spatial autoregressive) [@lesage+pace:09]. Durbin models add the spatially lagged covariates to the covariates included in the spatial model; spatial Durbin models are reviewed by Mur and Angulo [-@mur+angulo:06]. If it is chosen to admit a spatial process in the residuals in addition to a spatial process in the response, again two models are formed, a general nested model (GNM) nesting all the others, and a model without spatially lagged covariates (SAC, also known as SARAR - Spatial AutoRegressive-AutoRegressive model). If neither the residuals nor the response are modelled with spatial processes, spatially lagged covariates may be added to a linear model, as a spatially lagged X model (SLX) [@elhorst:10; @bivand:12; @lesage:14; @halleck-vega+elhorst:15]. We can write the general nested model (GNM) as:
+
+$$
+{\mathbf y} = \rho_{\mathrm{Lag}} {\mathbf W}{\mathbf y} + {\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma} + {\mathbf u},
+\qquad {\mathbf u} = \rho_{\mathrm{Err}} {\mathbf W} {\mathbf u} + {\mathbf \varepsilon},
+$$
+where ${\mathbf \gamma}$ is a $(k' \times 1)$ vector of parameters. $k'$ defines the subset of the intercept and covariates, often $k' = k-1$ when using row standardised spatial weights and omitting the spatially lagged intercept.
+
+This may be constrained to the double spatial coefficient model SAC/SARAR by setting ${\mathbf \gamma} = 0$, to the spatial Durbin (SDM) by setting $\rho_{\mathrm{Err}} = 0$, and to the error Durbin model (SDEM) by setting $\rho_{\mathrm{Lag}} = 0$. Imposing more conditions gives the spatial lag model (SLM) with ${\mathbf \gamma} = 0$ and $\rho_{\mathrm{Err}} = 0$, the spatial error model (SEM) with ${\mathbf \gamma} = 0$ and $\rho_{\mathrm{Lag}} = 0$, and the spatially lagged X model (SLX) with $\rho_{\mathrm{Lag}} = 0$ and $\rho_{\mathrm{Err}} = 0$.
+
+Although making predictions for new locations for which covariates are observed was raised as an issue some time ago, it has taken many years to make progress in reviewing the possibilities [@bivand:02; @goulardetal:17; @Laurent2021]. The prediction methods for SLM, SDM, SEM, SDEM, SAC and GNM models fitted with maximum likelihood were contributed as a Google Summer of Coding project by Martin Gubri. This work, and work on similar models with missing data [@suesse:18] is also relevant for exploring censored median house values in the Boston data set. Work on prediction also exposed the importance of the reduced form of these models, in which the spatial process in the response interacts with the regression coefficients in the SLM, SDM, SAC and GNM models. 
+
+The consequence of these interactions is that a unit change in a covariate will only impact the response as the value of the regression coefficient if the spatial coefficient of the lagged response is zero. Where it is non-zero, global spillovers, impacts, come into play, and these impacts should be reported rather than the regression coefficients [@lesage+pace:09; @elhorst:10; @bivand:12; @lesage:14; @halleck-vega+elhorst:15]. Local impacts may be reported for SDEM and SLX models, using linear combination to calculate standard errors for the total impacts of each covariate (sums of coefficients on the covariates and their spatial lags).
+
+This can be seen from the GNM data generation process:
+
+$$
+({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W}){\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})({\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma}) + {\mathbf \varepsilon},
+$$
+re-writing:
+
+$$
+{\mathbf y} = ({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1}({\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma}) + ({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1}({\mathbf I} - \rho_{\mathrm{Err}} {\mathbf W})^{-1}{\mathbf \varepsilon}.
+$$
+There is interaction between the $\rho_{\mathrm{Lag}}$ and ${\mathbf \beta}$ (and ${\mathbf \gamma}$ if present) coefficients. This can be seen from the partial derivatives: $\partial y_i / \partial x_{jr} = (({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1} ({\mathbf I} \beta_r + {\mathbf W} \gamma_r))_{ij}$. This dense matrix $S_r({\mathbf W}) = (({\mathbf I} - \rho_{\mathrm{Lag}} {\mathbf W})^{-1} ({\mathbf I} \beta_r + {\mathbf W} \gamma_r))$ expresses the direct impacts (effects) on its principal diagonal, and indirect impacts in off-diagonal elements.
+
+@PIRAS2014103 revisit and correct @FLORAX2003557 (see also comments by @HENDRY2006309 and @FLORAX2006300), finding that the common use of pre-test strategies for model selection probably ought to be replaced by the estimation of the most general model appropriate for the relationships being modelled. In the light of this finding, pre-test model selection will not be used here.
+
+Current work in the **spatialreg** package is focused on refining the handling of spatially lagged covariates using a consistent `Durbin=` argument taking either a logical value or a formula giving the subset of covariates to add in spatially lagged form. There is a speculation that some covariates, for example some dummy variables, should not be added in spatially lagged form. This then extends to handling these included spatially lagged covariates appropriately in calculating impacts. This work applies to cross-sectional models fitted using MCMC or maximum likelihood, and will offer facilities to spatial panel models.
+
+It is worth mentioning the almost unexplored issues of functional form assumptions, for which flexible structures are useful, including spatial quantile regression presented in the **McSpatial** package [@mcmillen:13]. There are further issues with discrete response variables, covered by some functions in **McSpatial**, and in the **spatialprobit** and **ProbitSpatial** packages [@RJ-2013-013; @MARTINETTI201730]; the MCMC implementations of the former are based on LeSage and Pace [-@lesage+pace:09]. Finally, Wagner and Zeileis [-@wagner+zeileis:19] show how an SLM model may be used in the setting of recursive partitioning, with an implementation using `spatialreg::lagsarlm()` in the **lagsarlmtree** package.
+
+The review of cross-sectional maximum likelihood and generalized method of moments (GMM) estimators in **spatialreg** [@R-spatialreg] and **sphet** for spatial econometrics style spatial regression models by Bivand and Piras [-@bivand+piras:15] is still largely valid. In the review, estimators in these R packages were compared with alternative implementations available in other programming languages elsewhere. The review did not cover Bayesian spatial econometrics style spatial regression. More has changed with respect to spatial panel estimators described in Millo and Piras [-@millo+piras:12], but will not be covered here.
+
+Because @math9111276 covers many of the features of R packages for spatial econometrics, updating @bivand+piras:15, and including recent advances in General Method of Moments and spatial panel modelling, this chapter will be restricted to a small number of examples drawing on @bivand17 using the Boston house value data set.
+
+## Maximum likelihood estimation in **spatialreg**
+
+For models with single spatial coefficients (SEM and SDEM using `errorsarlm()`, SLM and SDM using `lagsarlm()`), the methods initially described by Ord [-@ord:75] are used. The following table shows the functions that can be used to estimate the models described above using maximum likelihood.
+
+| model | model name                      | maximum likelihood estimation function |
+|-------|---------------------------------|----------------------------------------|
+| SEM   | spatial error                   | `errorsarlm(..., Durbin=FALSE)`   |
+| SEM   | spatial error                   | `spautolm(..., family="SAR")`     |
+| SDEM  | spatial Durbin error            | `errorsarlm(..., Durbin=TRUE)`    |
+| SLM   | spatial lag                     | `lagsarlm(..., Durbin=FALSE)`     |
+| SDM   | spatial Durbin                  | `lagsarlm(..., Durbin=TRUE)`      |
+| SAC   | spatial autoregressive combined | `sacsarlm(..., Durbin=FALSE)`     |
+| GNM   | general nested                  | `sacsarlm(..., Durbin=TRUE)`      |
+
+The estimating functions `errorsarlm()` and `lagsarlm()` take similar arguments, where the first two, `formula=` and `data=` are shared by most model estimating functions. The third argument is a `listw` spatial weights object, while `na.action=` behaves as in other model estimating functions if the spatial weights can reasonably be subsetted to avoid observations with missing values. The `weights=` argument may be used to provide weights indicating the known degree of per-observation variability in the variance term - this is not available for `lagsarlm()`.
+
+The `Durbin=` argument replaces the earlier `type=` and `etype=` arguments, and if not given is taken as `FALSE`. If given, it may be `FALSE`, `TRUE` in which case all spatially lagged covariates are included, or a one-sided formula specifying which spatially lagged covariates should be included. The `method=` argument gives the method for calculating the log determinant term in the log likelihood function, and defaults to `"eigen"`, suitable for moderately sized data sets. The `interval=` argument gives the bounds of the domain for the line search using `stats::optimize()` used for finding the spatial coefficient. The `tol.solve()` argument, passed through to `base::solve()`, was needed to handle data sets with differing numerical scales among the coefficients which hindered inversion of the variance-covariance matrix; the default value in `base::solve()` used to be much larger. The `control=` argument takes a list of control values to permit more careful adjustment of the running of the estimation function. 
+
+The `sacsarlm()` function may take second spatial weights and interval arguments if the spatial weights used to model the two spatial processes in the SAC and GNM specifications differ. By default, the same spatial weights are used. By default, `stats::nlminb()` is used for numerical optimization, using a heuristic to choose starting values. Like `lagsarlm()`, this function does not take a `weights=` argument.
+
+Where larger data sets are used, a numerical Hessian approach is used to calculate the variance-covariance matrix of coefficients, rather than an analytical asymptotic approach. 
+
+### Boston house value data set examples
+
+The examples use the objects read and created in @sec-spatglmm, based on @bivand17.
+
+```{r, message=FALSE}
+library(spatialreg)
+eigs_489 <- eigenw(lw_q_489)
+SDEM_489 <- errorsarlm(form, data = boston_489, listw = lw_q_489,
+					   Durbin = TRUE, zero.policy = TRUE,
+					   control = list(pre_eig = eigs_489))
+SEM_489 <- errorsarlm(form, data = boston_489, listw = lw_q_489, 
+                      zero.policy = TRUE,
+					  control = list(pre_eig = eigs_489))
+```
+Here we are using the `control=` list argument to pass through pre-computed eigenvalues for the default `"eigen"` method. 
+
+```{r}
+cbind(data.frame(model=c("SEM", "SDEM")), 
+      rbind(broom::tidy(Hausman.test(SEM_489)), 
+            broom::tidy(Hausman.test(SDEM_489))))[,1:4]
+```
+Both Hausman test results for the 489 tract data set suggest that the regression coefficients do differ from their non-spatial counterparts, perhaps indicating that the footprints of the spatial processes do not match. 
+
+```{r}
+eigs_94 <- eigenw(lw_q_94)
+SDEM_94 <- errorsarlm(form, data=boston_94, listw=lw_q_94,
+					  Durbin = TRUE,
+					  control = list(pre_eig=eigs_94))
+SEM_94 <- errorsarlm(form, data = boston_94, listw = lw_q_94,
+					 control = list(pre_eig = eigs_94))
+```
+For the 94 air pollution model output zones, the Hausman tests find little difference between coefficients:
+
+```{r}
+cbind(data.frame(model=c("SEM", "SDEM")), 
+      rbind(broom::tidy(Hausman.test(SEM_94)), 
+            broom::tidy(Hausman.test(SDEM_94))))[, 1:4]
+```
+This is related to the fact that the SEM and SDEM models add little to least squares or SLX at the air pollution model output zone level, using likelihood ratio tests:
+
+```{r}
+cbind(data.frame(model=c("SEM", "SDEM")),
+	  rbind(broom::tidy(LR1.Sarlm(SEM_94)),
+			broom::tidy(LR1.Sarlm(SDEM_94))))[,c(1, 4:6)]
+```
+We can use `spatialreg::LR.Sarlm()` to apply a likelihood ratio test between nested models, but here choose `lmtest::lrtest()`, which gives the same results, preferring models including spatially lagged covariates both for tracts and model output zones:
+
+```{r, warning=FALSE}
+o <- lmtest::lrtest(SEM_489, SDEM_489)
+attr(o, "heading")[2] <- "Model 1: SEM_489\nModel 2: SDEM_489"
+o
+```
+```{r, warning=FALSE}
+o <- lmtest::lrtest(SEM_94, SDEM_94)
+attr(o, "heading")[2] <- "Model 1: SEM_94\nModel 2: SDEM_94"
+o
+```
+The SLX model is fitted using least squares, and also returns a log likelihood value, letting us test whether we need a spatial process in the residuals. In the tract data set we obviously do:
+
+```{r, warning=FALSE}
+SLX_489 <- lmSLX(form, data = boston_489, listw = lw_q_489,
+				 zero.policy = TRUE)
+o <- lmtest::lrtest(SLX_489, SDEM_489)
+attr(o, "heading")[2] <- "Model 1: SLX_489\nModel 2: SDEM_489"
+o
+```
+but in the output zone case we do not.
+
+```{r, warning=FALSE}
+SLX_94 <- lmSLX(form, data = boston_94, listw = lw_q_94)
+o <- lmtest::lrtest(SLX_94, SDEM_94)
+attr(o, "heading")[2] <- "Model 1: SLX_94\nModel 2: SDEM_94"
+o
+```
+These outcomes are sustained also when we use the counts of house units by tract and output zones as case weights:
+
+```{r, warning=FALSE}
+SLX_489w <- lmSLX(form, data = boston_489, listw = lw_q_489,
+				  weights = units, zero.policy = TRUE)
+SDEM_489w <- errorsarlm(form, data = boston_489,
+						listw = lw_q_489, Durbin = TRUE,
+						weights = units, zero.policy = TRUE,
+						control = list(pre_eig = eigs_489))
+o <- lmtest::lrtest(SLX_489w, SDEM_489w)
+attr(o, "heading")[2] <- "Model 1: SLX_489w\nModel 2: SDEM_489w"
+o
+```
+
+```{r, warning=FALSE}
+SLX_94w <- lmSLX(form, data = boston_94, listw = lw_q_94,
+				 weights = units)
+SDEM_94w <- errorsarlm(form, data = boston_94, listw = lw_q_94,
+					   Durbin = TRUE, weights = units,
+                       control = list(pre_eig = eigs_94))
+o <- lmtest::lrtest(SLX_94w, SDEM_94w)
+attr(o, "heading")[2] <- "Model 1: SLX_94w\nModel 2: SDEM_94w"
+o
+```
+
+In this case and based on arguments advanced in @bivand17, the use of weights is justified because tract counts of reported housing units underlying the weighted median values vary from 5 to 3,031, and air pollution model output zone counts vary from 25 to 12,411. Because of this, and because a weighted general nested model has not been developed, we cannot take the GNM as the starting point for general-to-simpler testing, but start rather from the SDEM model, and use the Hausman test to guide the choice of units of observation.
+
+## Impacts
+
+Global impacts have been seen as crucial for reporting results from fitting models including the spatially lagged response (SLM, SDM, SAC, GNM) for over ten years [@lesage+pace:09]. Extension to other models including spatially lagged covariates (SLX, SDEM) has followed [@elhorst:10; @bivand:12; @halleck-vega+elhorst:15]. For SLM, SDM, SAC and GNM models fitted with maximum likelihood or GMM, the variance-covariance matrix of the coefficients is available, and can be used to make random draws from a multivariate Normal distribution with mean set to coefficient values and variance to the estimated variance-covariance matrix. For these models fitted using Bayesian methods, draws are already available. In the SDEM case, the draws on the regression coefficients of the unlagged covariates represent direct impacts, and draws on the coefficients of the spatially lagged covariates represent indirect impacts, and their by-draw sums the total impacts.
+
+Since sampling is not required for inference for SLX and SDEM models, linear combination is used for models fitted using maximum likelihood; results are shown here for the air pollution variable only. The literature has not yet resolved the question of how to report model output, as each covariate is now represented by three impacts. Where spatially lagged covariates are included, two coefficients are replaced by three impacts, here for the air pollution variable of interest.
+
+```{r}
+sum_imp_94_SDEM <- summary(impacts(SDEM_94))
+rbind(Impacts = sum_imp_94_SDEM$mat[5,], 
+	  SE = sum_imp_94_SDEM$semat[5,])
+```
+In the SLX and SDEM models, the direct impacts are the consequences for the response of changes in air pollution in the same observational entity, and the indirect (local) impacts are the consequences for the response of changes in air pollution in neighbouring observational entities.
+
+```{r}
+sum_imp_94_SLX <- summary(impacts(SLX_94))
+rbind(Impacts = sum_imp_94_SLX$mat[5,], 
+	  SE = sum_imp_94_SLX$semat[5,])
+```
+Applying the same approaches to the weighted spatial regressions, the total impacts of air pollution on house values are reduced, but remain significant:
+
+```{r}
+sum_imp_94_SDEMw <- summary(impacts(SDEM_94w))
+rbind(Impacts = sum_imp_94_SDEMw$mat[5,], 
+	  SE = sum_imp_94_SDEMw$semat[5,])
+```
+On balance, using a weighted spatial regression representation including only the spatially lagged covariates aggregated to the air pollution model output zone level seems to clear most of the mis-specification issues, and as @bivand17 discusses in more detail, gives a willingness to pay for pollution abatement that is much larger than mis-specified alternative models:
+
+```{r}
+sum_imp_94_SLXw <- summary(impacts(SLX_94w))
+rbind(Impacts = sum_imp_94_SLXw$mat[5,], 
+	  SE = sum_imp_94_SLXw$semat[5,])
+```
+
+## Predictions {#sec-spateconpred}
+
+In the Boston tracts data set, 17 observations of median house values, the response, are censored. We will use the `predict()` method for `"Sarlm"` objects to fill in these values; the method was re-written by Martin Gubri based on @goulardetal:17 [see also @Laurent2021]. The `pred.type=` argument specifies the prediction strategy among those presented in the article.
+
+Using these as an example and comparing some `pred.type=` variants for the SDEM model and predicting out-of-sample, we can see that there are differences, suggesting that this is a fruitful area for study. There have been a number of alternative proposals for handling missing variables [@GOMEZRUBIO2015116; @suesse:18]. Another reason for increasing attention on prediction is that it is fundamental for machine learning approaches, in which prediction for validation and test data sets drives model specification choice. The choice of training and other data sets with dependent spatial data remains an open question, and is certainly not as simple as with independent data.
+
+Here, we'll list the predictions for the censored tract observations using three different prediction types, taking the exponent to get back to the USD median house values. Note that the `row.names()` of the `newdata=` object are matched with the whole-data spatial weights matrix `"region.id"` attribute to make out-of-sample prediction possible:
+
+```{r}
+nd <- boston_506[is.na(boston_506$median),]
+t0 <- exp(predict(SDEM_489, newdata = nd, listw = lw_q, 
+				  pred.type = "TS", zero.policy  =TRUE))
+suppressWarnings(t1  <- exp(predict(SDEM_489, newdata = nd,
+									listw = lw_q,
+									pred.type = "KP2",
+                                    zero.policy = TRUE)))
+suppressWarnings(t2  <- exp(predict(SDEM_489, newdata = nd,
+									listw = lw_q,
+									pred.type = "KP5",
+                                    zero.policy = TRUE)))
+```
+
+We can also use the `"slm"` model in INLA to predict missing response values as part of the model fitting function call. A certain amount of set-up code is required as the `"slm"` model is still experimental:
+
+```{r, warning=FALSE}
+library(INLA)
+W <- as(lw_q, "CsparseMatrix")
+n <- nrow(W)
+e <- eigenw(lw_q)
+re.idx <- which(abs(Im(e)) < 1e-6)
+rho.max <- 1 / max(Re(e[re.idx]))
+rho.min <- 1 / min(Re(e[re.idx]))
+rho <- mean(c(rho.min, rho.max))
+boston_506$idx <- 1:n
+zero.variance = list(prec = list(initial = 25, fixed = TRUE))
+args.slm <- list(rho.min = rho.min, rho.max = rho.max, W = W,
+				 X = matrix(0, n, 0), Q.beta = matrix(1,0,0))
+hyper.slm <- list(prec = list(prior = "loggamma", 
+							  param = c(0.01, 0.01)),
+				  rho = list(initial = 0, prior = "logitbeta",
+							 param = c(1,1)))
+WX <- create_WX(model.matrix(update(form, CMEDV ~ .), 
+							 data = boston_506), lw_q)
+SDEM_506_slm <- inla(update(form, 
+							. ~ . + WX + f(idx, model = "slm",
+										 args.slm = args.slm,
+										 hyper = hyper.slm)),
+				 data = boston_506, family = "gaussian",
+				 control.family = list(hyper = zero.variance),
+				 control.compute = list(dic = TRUE, cpo = TRUE))
+mv_mean <- exp(SDEM_506_slm$summary.fitted.values$mean[
+			   which(is.na(boston_506$median))])
+```
+
+INLA also provide gridded estimates of the marginal distributions of the predictions, offering a way to assess the uncertainty associated with the predicted values:
+
+```{r}
+data.frame(fit_TS = t0[,1], fit_KP2 = c(t1), fit_KP5 = c(t2),
+    INLA_slm = mv_mean,
+	censored = boston_506$censored[as.integer(attr(t0, 
+												   "region.id"))])
+```
+
+The spatial regression toolbox remains incomplete, and it will take time to fill in blanks. It remains unfortunate that the several traditions in spatial regression seldom seem to draw on each others' understandings and advances.
+
+
+## Exercises
+
+1. Referring to @PIRAS2014103 and @FLORAX2003557, if we choose to use a pre-test strategy, do linear models of the properties-only data set and the properties with added municipality department variables show residual spatial dependence? Which model specifications might the pre-tests indicate?
+2. Could the inclusion of municipality department dummies, or a municipality department regimes model assist in reducing residual spatial dependence?
+3. Attempt to fit a SEM specification by maximum likelihood (see @math9111276 for GMM code examples) to the properties-only and the properties with added municipality department variables models; extend to an SDEM model. Repeat with SLX models; how might the changes in the tests of residual autocorrelation in the SLX models be interpreted? How might you interpret the highly significant outcomes of Hausman tests on the SEM and SDEM models?
+4. Fit GNM specifications to the properties-only and the properties with added municipality department variables models; can these models be simplified to say SDM or SDEM representations?
+5. Do the model estimates reached in the chapter 16 exercises provide more clarity than those in this chapter?
