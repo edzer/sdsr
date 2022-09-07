@@ -1,5 +1,7 @@
 # Introduction to sf and stars {#sec-sf}
 
+\index{sf}
+
 This chapter introduces R packages `sf` and `stars`.  `sf` provides
 a table format for simple features, where feature geometries are
 carried in a list-column.  R package `stars` was written to support
@@ -15,6 +17,11 @@ command line completion.
 
 ## Package `sf` {#sec-sfintro}
 
+\index{sf!introduction}
+\index{sp}
+\index{rgeos}
+\index{rgdal}
+
 Intended to succeed and replace R packages `sp`, `rgeos` and the
 vector parts of `rgdal`, R package `sf` [@rjsf] was developed to
 move spatial data analysis in R closer to standards-based approaches
@@ -22,6 +29,8 @@ seen in the industry and open source projects, to build upon more
 modern versions of the open source geospatial software stack
 (@fig-gdal-fig-nodetails), and to allow for integration of R spatial
 software with the tidyverse if desired.
+
+\index{tidyverse}
 
 To do so, R package `sf` provides simple features access
 [@herring2011opengis], natively, to R. It provides an interface
@@ -31,6 +40,10 @@ geometrical operations using GEOS (for projected coordinates)
 or s2geometry (for ellipsoidal coordinates), and carry out
 coordinate transformations or conversions using PROJ. External C++
 libraries are interfaced using `Rcpp` [@eddelbuettel2013seamless].
+
+\index{tidyr}
+\index{dplyr}
+\index{Rcpp}
 
 Package `sf` represents sets of simple features in `sf` objects,
 a sub-class of a `data.frame` or tibble. `sf` objects contain at
@@ -42,25 +55,48 @@ character variables.  Following the convention of `PostGIS`, all
 operations (functions, method) that operate on `sf` objects or
 related start with `st_`.
 
+\index{sfc, class}
+\index{sfg, class}
+
 An `sf` object has the following meta-data:
 
 * the name of the (active) geometry column, held in attribute `sf_column`
 * for each non-geometry variable, the attribute-geometry
 relationship (@sec-agr), held in attribute `agr`
 
-An `sfc` geometry list-column has the following meta-data:
+\index{sf\_column}
+\index{agr, attribute-geometry relationship}
+
+\index{st\_geometry}
+
+An `sfc` geometry list-column is extracted from an `sf` object with
+`st_geometry` and has the following meta-data:
 
 * the coordinate reference system held in attribute `crs`
 * the bounding box held in attribute `bbox`
 * the precision held in attribute `precision`
 * the number of empty geometries held in attribute `n_empty`
 
+\index{crs!attribute}
+\index{bbox!attribute}
+\index{precision!attribute}
+\index{st\_bbox}
+\index{st\_precision}
+\index{st\_agr}
+\index{st\_set\_bbox}
+\index{st\_set\_precision}
+\index{st\_set\_agr}
+
 These attributes may best be accessed or set by using
 functions like `st_bbox`, `st_crs`, `st_set_crs`, `st_agr`,
 `st_set_agr`, `st_precision`, and `st_set_precision`.
 
+Geometry columns in `sf` objects can be set or replaced using
+`st_geometry<-` or `st_set_geometry`.
+
 ### Creation
 
+\index{sf!create from scratch}
 One could create an `sf` object from scratch e.g. by
 ```{r echo=TRUE}
 library(sf)
@@ -81,6 +117,8 @@ knitr::include_graphics("images/sf_obj.png")
 printed.  Rather than creating objects from scratch, spatial data
 in R are typically read from an external source, which can be:
 
+\index{sf!components figure}
+
 * an external file
 * a request to a web service
 * a dataset held in some form in another R package
@@ -94,6 +132,8 @@ working memory.
 Reading datasets from an external "data source" (file, web service,
 or even string) is done using `st_read`:
 
+\index{sf!read from file}
+
 ```{r stread}
 library(sf)
 (file <- system.file("gpkg/nc.gpkg", package = "sf"))
@@ -103,7 +143,9 @@ Here, the file name and path `file` is read from the `sf` package,
 which has a different path on every machine, and hence is guaranteed
 to be present on every `sf` installation.
 
-Command `st_read` has two arguments: the _data set name_ (`dsn`)
+\index{geopackage}
+
+Command `st_read` has two arguments: the _data source name_ (`dsn`)
 and the _layer_.  In the example above, the _geopackage_  (GPKG) file
 contains only a single layer that is being read. If it had contained
 multiple layers, then the first layer would have been read and a 
@@ -121,6 +163,9 @@ st_write(nc, file, layer = "layer_nc")
 where the file format (GPKG) is derived from the file name extension.
 
 ### Subsetting
+
+\index{sf!subsetting}
+\index{sf!filter}
 
 A very common operation is to subset objects; base R can use `[`
 for this. The rules that apply to `data.frame` objects also apply to
@@ -141,6 +186,8 @@ but with a few additional features, in particular:
   binary predicate function listed in @sec-de9im
 
 ### Binary predicates
+
+\index{sf!select using predicates}
 
 Binary predicates like `st_intersects`, `st_covers` etc (@sec-de9im)
 take two sets of features or feature geometries and return for
@@ -188,6 +235,28 @@ where the only `Ops` method available is `!`, the negation operation.
 
 ### tidyverse 
 
+\index{sf!filter}
+\index{sf!select}
+\index{sf!group\_by}
+\index{sf!ungroup}
+\index{sf!mutate}
+\index{sf!transmute}
+\index{sf!rowwise}
+\index{sf!rename}
+\index{sf!slice}
+\index{sf!summarise}
+\index{sf!distinct}
+\index{sf!gather}
+\index{sf!pivot\_longer}
+\index{sf!spread}
+\index{sf!nest}
+\index{sf!unnest}
+\index{sf!unite}
+\index{sf!separate}
+\index{sf!separate\_rows}
+\index{sf!sample\_n}
+\index{sf!sample\_frac}
+
 The tidyverse is a collection of data science packages that work
 together, described e.g. in [@r4ds; @welcome]. Package `sf` has
 tidyverse-style read and write functions, `read_sf` and `write_sf`,
@@ -207,6 +276,8 @@ use `st_drop_geometry()` or simply coerce to a `tibble` or
 library(tidyverse)
 nc |> as_tibble() |> select(BIR74) |> head(3)
 ```
+
+\index{sf!summarise}
 
 The `summarise` method for `sf` objects has two special arguments:
 
@@ -241,6 +312,9 @@ plot(st_geometry(nc), add = TRUE, border = 'grey')
 ```
 
 ## Spatial joins
+
+\index{sf!spatial join}
+\index{st\_join}
 
 In regular (left, right or inner) joins, _joined_ records from a
 pair of tables are reported when one or more selected attributes
@@ -282,6 +356,9 @@ plot(st_geometry(gr), border = 'green', add = TRUE)
 par(opar)
 ```
 
+\index{aggregate!sf}
+\index{sf!aggregate}
+
 Another way to reduce the result set is to use `aggregate` after a
 join, all matching records, and union their geometries; see 
 @sec-updownscaling.
@@ -301,11 +378,21 @@ Function `st_make_grid` creates a square, rectangular or hexagonal
 grid over a region, or points with the grid centers or corners. It
 was used to create the rectangular grid in @fig-largest .
 
+\index{st\_make\_grid}
+
 Function `st_interpolate_aw` "interpolates" area values to new areas,
 as explained in @sec-area-weighted, both for intensive
 and extensive variables.
 
+\index{st\_interpolate\_aw}
+\index{interpolation!area weighted}
+\index{area-weighted interpolation}
+
 ## Package `stars`
+
+\index{stars}
+\index{raster}
+\index{terra}
 
 Although package `sp` has always had limited support for raster data,
 over the last decade R package `raster` [@R-raster] has clearly been
@@ -329,6 +416,9 @@ weather forecasting data, often no longer fit in local storage
 addresses the analysis of time series of vector geometries or raster
 grid cells, but does not extend to higher-dimensional arrays.
 
+\index{spacetime}
+\index{stars!data cube}
+
 Here, we introduce package `stars` for analysing raster and vector
 data cubes.  The package:
 
@@ -347,6 +437,10 @@ origin-destination matrices.  The concept of spatial vector and
 raster data cubes was explained in @sec-datacube.
 
 ### Reading and writing raster data
+
+\index{stars!reading data cube}
+\index{data cube!read with stars}
+\index{read\_stars}
 
 Raster data typically are read from a file. We use a dataset
 containing a section of Landsat 7 scene, with the 6 30m-resolution
@@ -412,6 +506,9 @@ st_drivers("raster")
 
 ### Subsetting `stars` data cubes
 
+\index{stars!subset}
+\index{stars!filter}
+
 Data cubes can be subsetted using `[`, or using tidyverse verbs. The
 first options, `[` uses for the arguments: attributes first,
 followed by dimension. This means that `r[1:2, 101:200, , 5:10]`
@@ -443,6 +540,10 @@ objects to add new arrays as functions of existing ones, `transmute`
 drops existing ones.
 
 ### Cropping 
+
+\index{crop raster dimensions}
+\index{stars!crop}
+\index{st\_crop}
 
 Further subsetting can be done using spatial objects of class `sf`, `sfc`
 or `bbox`, e.g. when using the sample raster,
@@ -478,6 +579,10 @@ st_crop(r, b)
 
 ### Redimensioning `stars` objects
 
+\index{stars!redimension}
+\index{dimension!change order}
+\index{dimension!permutation}
+
 Package `stars` uses package `abind` [@R-abind] for a number of
 array manipulations. One of them is `aperm` which transposes an
 array by permuting it. A method for `stars` objects is provided, and
@@ -500,6 +605,10 @@ st_redimension(r, c(349, 352, 3, 2))
 ```
 
 ### Extracting point samples, aggregating
+
+\index{extract}
+\index{data cube!extract}
+\index{data cube!aggregate}
 
 A very common use case for raster data cube analysis is the extraction
 of values at certain locations, or computing aggregations over certain 
@@ -537,6 +646,9 @@ second argument to `aggregate`, as
 * a time period like `"weeks"`, `"5 days"` or `"years"`
 
 ### Predictive models
+
+\index{data cube!predictive models}
+\index{data cube!machine learning with}
 
 The typical model prediction workflow in R is as follows:
 
@@ -584,6 +696,9 @@ We also see that the layer plotted in @fig-lda is a `factor` variable, with clas
 
 ### Plotting raster data
 
+\index{stars!plot}
+\index{plot!star}
+
 We can use the base `plot` method for `stars` objects, where the plot created with
 `plot(r)` is shown in @fig-firststars .
 ```{r fig-firststars,fig.cap="six 30m Landsat bands downsampled to 90m for Olinda, Br.", echo=!knitr::is_latex_output(), message=FALSE}
@@ -603,6 +718,10 @@ Further details and options are given in @sec-plotting.
 
 ### Analysing raster data
 
+\index{map algebra}
+\index{stars!map algebra}
+\index{stars!arithmetic ops}
+
 Element-wise mathematical functions (@sec-applydimension)
 on `stars` objects are just passed on to the arrays. This means
 that we can call functions and create expressions:
@@ -621,6 +740,9 @@ or un-mask areas:
 r2[is.na(r2)] <- 0
 r2
 ```
+
+\index{stars!apply}
+\index{st\_apply}
 
 Dimension-wise, we can apply functions to selected array dimensions
 (@sec-reducedimension))
@@ -663,6 +785,8 @@ st_apply(r, c("x", "y"), quantile, c(.25, .5, .75))
 
 ### Curvilinear rasters
 
+\index{curvilinear raster}
+
 There are several reasons why non-regular rasters occur
 (@fig-rastertypes01).  For one, when the data is Earth-bound,
 a regular raster does not fit the Earth's surface, which is
@@ -678,6 +802,9 @@ aligned with $x$ or $y$), and rectilinear in the direction perpendicular to that
 (e.g. if the sensor discretizes the viewing _angle_ in equal sections)
 
 ### GDAL utils
+
+\index{GDAL!utils C API}
+\index{gdal\_utils}
 
 The GDAL library is typically shipped with a number of executable
 binaries, the GDAL command line utilities for data translation and
@@ -718,7 +845,12 @@ of these utilities are (always or optionally) used, e.g. by
 
 ## Vector data cube examples
 
+\index{data cube!vector}
+\index{vector data cube!examples}
+
 ### Example: aggregating air quality time series
+
+\index{air quality aggregation}
 
 Air quality data from package `spacetime` were
 obtained from the [airBase European air quality data
@@ -782,6 +914,9 @@ plot(as.xts(a)[,4], main = DE_NUTS1$NAME_1[4])
 ```
 
 ### Example: Bristol origin-destination datacube
+
+\index{origin-destination matrix}
+\index{data cube!origin-destination matrix}
 
 The data used for this example come from @geocomp, and concern
 origin-destination (OD) counts: the number of persons going from
@@ -922,6 +1057,8 @@ totals would be to divide them by population size.
 
 ### Tidy array data
 
+\index{data cube!tidy}
+
 The _tidy data_ paper [@tidy] may suggest that such array data
 should be processed not as an array, but in a long table where
 each row holds (region, class, year, value), and it is always good
@@ -958,6 +1095,9 @@ and vector-to-raster conversions, this section will add some code
 details and examples.
 
 ### vector-to-raster
+
+\index{vector to raster}
+\index{st\_as\_stars}
 
 `st_as_stars` is meant as a method to transform objects into `stars`
 objects. However, not all stars objects are `raster` objects,
@@ -1003,7 +1143,12 @@ read_sf(file) |>
 
 ## Coordinate transformations and conversions {#sec-projsf}
 
+\index{sf!projection}
+\index{stars!projection}
+
 ### `st_crs`
+
+\index{st\_crs}
 
 Spatial objects of class `sf` or `stars` contain a coordinate
 reference system that can be get or replaced with `st_crs`, or be
@@ -1037,6 +1182,9 @@ with the WGS84 datum.
 
 ### `st_transform`, `sf_project`
 
+\index{st\_transform}
+\index{sf\_project}
+
 Coordinate transformations or conversions (@sec-projlib)
 for `sf` or `stars` objects are carried out with `st_transform`,
 which takes as its first argument a spatial object of class `sf` or
@@ -1054,6 +1202,8 @@ or converted coordinates.
 
 ### `sf_proj_info`
 
+\index{sf\_proj\_info}
+
 Function `sf_proj_info` can be used to query available projections,
 ellipsoids, units and prime meridians available in the PROJ
 software. It takes a single parameter, `type`, which can have the
@@ -1069,6 +1219,10 @@ constant to meters
 position with respect to the Greenwich meridian
 
 ### proj.db, datum grids, cdn.proj.org, local cache
+
+\index{proj.db}
+\index{datum!grids}
+\index{cdn.proj.org}
 
 Datum grids (@sec-projlib) can be installed locally, or
 be read from the PROJ datum grid CDN at https://cdn.proj.org/. If
@@ -1115,6 +1269,8 @@ that will be searched first in subsequent datum grid queries.
 
 ### Transformation pipelines {#sec-pipelines}
 
+\index{PROJ!pipelines}
+
 Internally, PROJ uses a so-called _coordinate operation pipeline_,
 to represent the sequence of operations to get from a source CRS to
 a target CRS.  Given multiple options to go from source to target,
@@ -1150,6 +1306,9 @@ the set of options in `p$definition`.
 
 ### Axis order {#sec-axisorder}
 
+\index{axis order}
+\index{coordinates!axis order}
+
 As mentioned in @sec-wkt2, `EPSG:4326`
 defines the first axis to be associated with latitude and the
 second with longitude; this is also the case for a number of other
@@ -1174,6 +1333,12 @@ the axis order ambiguity of `EPSG:4326` is resolved by replacing
 it with `OGC:CRS84`.
 
 ## Transforming and warping rasters {#sec-warp}
+
+\index{projection!rasters}
+\index{warp!rasters}
+\index{rasters!warp}
+\index{stars!warp}
+\index{st\_warp}
 
 When using `st_transform` on a raster data set, as e.g. in
 ```{r}
