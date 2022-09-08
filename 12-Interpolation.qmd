@@ -1,5 +1,8 @@
 # Spatial Interpolation {#sec-interpolation}
 
+\index{spatial interpolation}
+\index{interpolation}
+
 Spatial interpolation is the activity of estimating values spatially
 continuous variables for spatial locations where they have not
 been observed, based on observations.  The statistical methodology
@@ -35,13 +38,13 @@ write_csv(right_join(a2, tb), "no2.csv")
 
 ## A first dataset
 
-We can read NO$_2$ data, which is prepared in @sec-stgeostatistics, from
-package `gstat` using
+We can read station mean NO$_2$ values, a dataset that is prepared 
+in @sec-stgeostatistics, by loading it from package `gstat` using
 ```{r, message=FALSE}
 library(tidyverse)
 no2 <- read_csv(system.file("external/no2.csv", package = "gstat"))
 ```
-and convert it into an `sf` object using
+and convert it into an `sf` object with an appropriate UTM projection using
 ```{r}
 library(sf)
 crs <- st_crs("EPSG:32632")
@@ -54,13 +57,16 @@ Next, we can load country boundaries and plot these data using `ggplot`, shown
 in @fig-plotDE .
 ```{r plot}
 data(air, package = "spacetime") # loads boundaries into DE_NUTS1
-de <- st_transform(st_as_sf(DE_NUTS1), crs)
+st_as_sf(DE_NUTS1) |> st_transform(crs) -> de
 ```
 
 ```{r fig-plotDE, echo = !knitr::is_latex_output()}
 #| fig.cap = "Mean NO$_2$ concentrations in air for rural background stations in Germany over 2017"
 ggplot() + geom_sf(data = de) +  geom_sf(data = no2.sf, mapping = aes(col = NO2))
 ```
+
+\index{interpolation!target grid}
+\index{st\_as\_stars!for generating a grid}
 
 If we want to interpolate, we first need to decide where. This
 is typically done on a regular grid covering the area of
@@ -81,6 +87,9 @@ them in plots.
 Perhaps the simplest interpolation method is inverse distance weighted
 interpolation, which is a weighted average, using weights inverse
 proportional to distances from the interpolation location:
+
+\index{interpolation!inverse distance weighted}
+\index{inverse distance weighted interpolation}
 
 $$
 \hat{z}(s_0) = \frac{\sum_{i=1}^{n} w_i z(s_i)}{\sum_{i=1}^n w_i}
@@ -104,6 +113,9 @@ ggplot() + geom_stars(data = i, aes(fill = var1.pred, x = x, y = y)) +
 ```
 
 ## Sample variogram 
+
+\index{variogram!sample}
+\index{sample variogram}
 
 In order to make spatial predictions using geostatistical methods, we first need to identify a model for the mean and for the spatial correlation. In the simplest model, $Z(s) = m + e(s)$, the mean is an unknown constant $m$, and in this case the spatial correlation can be modelled using the variogram, $\gamma(h) = 0.5 E (Z(s)-Z(s+h))^2$. For processes with a finite variance $C(0)$, the variogram is related to the covariogram or covariance function through $\gamma(h) = C(0)-C(h)$.
 
@@ -134,6 +146,8 @@ Note that the formula `NO2~1` is used to select the variable of interest from th
 
 ## Fitting variogram models
 
+\index{variogram!model}
+
 In order to progress toward spatial predictions, we need a variogram _model_ $\gamma(h)$ for (potentially) all distances $h$, rather than the set of estimates derived above: in case we would for instance connect these estimates with straight lines, or assume they reflect constant values over their respective distance intervals, this would lead to statistical models with non-positive covariance matrices, which is a complicated way of expressing that you are in a lot of trouble.
 
 To avoid these troubles we fit parametric models $\gamma(h)$ to the estimates $\hat{\gamma}(h_i)$, where we take $h_i$ as the mean value of all the $h'$ values involved in estimating $\hat{\gamma}(h_i)$. For this, when we fit a model like the exponential variogram, fitted by
@@ -151,6 +165,10 @@ through argument `fit.method`.
 
 ## Kriging interpolation {#sec-kriging}
 
+\index{interpolation!kriging}
+\index{kriging!ordinary}
+\index{ordinary kriging}
+
 Typically, when we interpolate a variable, we do that on
 points on a regular grid covering the target area. We first create
 a `stars` object with a raster covering the target area, and NA's
@@ -159,10 +177,12 @@ outside it.
 Kriging involves the prediction of $Z(s_0)$ at arbitrary locations
 $s_0$.  We can krige NO$_2$ by using `gstat::krige`, with the model for the 
 trend, the data, the prediction grid, and the variogram model (@fig-krigeovergermany) :
+
+\index{krige}
+
 ```{r}
 k <- krige(NO2~1, no2.sf, grd, v.m)
 ```
-
 ```{r fig-krigeovergermany, echo = !knitr::is_latex_output()}
 #| fig.cap = "Kriged NO$_2$ concentrations over Germany"
 ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) + 
@@ -172,6 +192,8 @@ ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) +
 ```
 
 ## Areal means: block kriging {#sec-blockkriging}
+
+\index{kriging!block}
 
 Computing areal means can be done in several ways. The simples is to take
 the average of point samples falling inside the target polygons:
