@@ -1,5 +1,8 @@
 # Large data and cloud native {#sec-large}
 
+\index{cloud native}
+\index{large datasets}
+
 This chapter describes how large spatial and spatiotemporal datasets
 can be handled with R, with a focus on packages `sf` and `stars`.
 For practical use, we classify large data sets as either:
@@ -9,16 +12,18 @@ For practical use, we classify large data sets as either:
 * also too large to download it to locally managed compute
 infrastructure (such as network attached storage)
 
+\index{out-of-core}
+
 These three categories correspond very roughly to Gigabyte-,
 Terabyte- and Petabyte-sized data sets.  Besides size considerations,
 considerations of access and processing speed also play a role,
-in particular by larger datasets or interactive applications.
+in particular for larger datasets or interactive applications.
 Cloud native geospatial formats are formats optimised with processing
 on cloud infrastructure in mind, where costs of computing and
 storage need to be considered and optimised. Such costs can be
 reduced by
 
-* using better compression, such as the LERC (Limited Error Raster
+* using compression, such as the LERC (Limited Error Raster
   Compression) algorithm used for cloud-optimized GeoTIFF, or the 
   BLOSC compressor used for ZARR array data
 * fast access to spatial sub-regions, e.g. by ways of http range
@@ -41,6 +46,9 @@ reading, because of the decompression involved.
 
 ## Vector data: `sf` {#sec-largesf}
 
+\index{sf!large datasets}
+\index{sf\_read!inside bounding box}
+
 ### Reading from local disk
 
 Function `st_read` reads vector data from disk, using GDAL, and
@@ -58,6 +66,8 @@ library(sf)
     st_as_sfc() |> st_as_text() -> bb)
 nc.1 <- st_read(file, wkt_filter = bb)
 ```
+
+\index{sf\_read!query argument}
 
 The second option is to use the `query` argument to `st_read`,
 which can be any query in "OGR SQL" dialect, which can be used to
@@ -80,6 +90,8 @@ is passed on to the database and not interpreted by GDAL; this means
 that more powerful features will be available.  Further information
 is found in the GDAL documentation under "OGR SQL dialect".
 
+\index{sf\_read!vsizip}
+
 Very large files or directories that are zipped can be read
 without the need to unzip them, using the `/vsizip` (for zip),
 `/vsigzip` (for gzip) or `/vsitar` (for tar files) prefix to files;
@@ -88,6 +100,8 @@ the file inside this zip file. Reading files this way may come at
 some computational cost.
 
 ### Reading from databases, dbplyr
+
+\index{sf\_read!from database connection}
 
 ```{r, echo=FALSE}
 has_PG <- any("PostgreSQL" %in% st_drivers()$name) &&
@@ -123,6 +137,8 @@ st_read(pg, query = q)
 Here, the intersection is done in the database, and uses the spatial
 index typically present.
 
+\index{sf!dbplyr proxy}
+
 The same mechanism works when using `dplyr` with a database backend:
 ```{r, eval=has_PG}
 library(dplyr, warn.conflicts = FALSE)
@@ -140,10 +156,12 @@ nc_db |> filter(ST_Area(wkb_geometry) > 0.1) |> head(3)
 
 It should be noted that PostGIS' `ST_Area` computes the same
 area as the `AREA` field in `nc`, which is the meaningless value
-obtained by assuming the coordinates are projected, although they
+obtained by assuming the coordinates are projected, where they
 are ellipsoidal.
 
 ### Reading from online resources or web services {#sec-vsi}
+
+\index{st\_read!online resources}
 
 GDAL drivers support reading from online resources, by prepending
 `/vsicurl/` before the URL starting with e.g. `https://`. A number of
@@ -157,6 +175,9 @@ reading the entire file, or reading it multiple times, and may not
 always be the most efficient way of handling resources. 
 
 ### API's, OpenStreetMap
+
+\index{st\_read!OpenStreetMap}
+\index{OpenStreetMap, reading}
 
 Although online resource do not have to be stored files but could be
 created server-side on the fly, typical web services for geospatial
@@ -205,6 +226,13 @@ functionality to OpenStreetMap data.
 
 ### Cloud native: GeoParquet and GeoArrow
 
+\index{geoparquet}
+\index{parquet}
+\index{geoarrow}
+\index{arrow}
+\index{st\_read!geoparquet}
+\index{st\_read~geoarrow}
+
 Two formats dedicated to cloud native analysis are derived from
 the Apache projects Parquet and Arrow. Both provide column oriented
 storage of tabular data, meaning that the reading of a single fields
@@ -240,8 +268,13 @@ consisting of:
 
 is not going to work.
 
+\index{Google Earth Engine}
+\index{Sentinel Hub}
+\index{openEO cloud}
+
 Cloud-based Earth Observation processing platforms like Google Earth
-Engine [@gorelick] or [Sentinel Hub](https://www.sentinel-hub.com/)
+Engine [@gorelick], [Sentinel Hub](https://www.sentinel-hub.com/) or
+[openEO.cloud](https://openeo.cloud)
 recognize this and let users work with datasets up to the petabyte
 range rather easily and with a great deal of interactivity. They
 share the following properties:
@@ -258,11 +291,14 @@ of a `dbplyr` table, we want a quick _overview_ of the results,
 in the form of a map covering the whole area, or part of it, but
 at screen resolution rather than native (observation) resolution.
 
+\index{raster!resolution}
+\index{resolution!low resolution computation}
+
 If for instance we want to "see" results for the United States on
 screen with 1000 x 1000 pixels, we only need to compute results
 for this many pixels, which corresponds roughly to data
 on a grid with 3000 m x 3000 m grid cells.  For Sentinel-2
-data with 10 m resolution, this means we can subsample with
+data with 10 m resolution, this means we can downsample with
 a factor 300, giving 3 km x 3 km resolution.  Processing,
 storage and network requirements then drop a factor $300^2 \approx 10^5$, compared
 to working on the native 10 m x 10 m resolution. On the platforms
@@ -270,15 +306,17 @@ mentioned, zooming in the map triggers further computations on a
 finer resolution and smaller extent.
 
 A simple optimisation that follows these lines is how stars' plot
-method works:  in the case of plotting large rasters, it subsamples
+method works:  in the case of plotting large rasters, it downsamples
 the array before it plots, drastically saving time.  The degree
-of subsampling is derived from the plotting region size and the
+of downsampling is derived from the plotting region size and the
 plotting resolution (pixel density). For vector devices, such as pdf,
 R sets plot resolution to 75 dpi, corresponding to 0.3 mm per pixel.
 Enlarging plots may reveal this, but replotting to an enlarged
 devices will create a plot at target density.
 
 ### `stars` proxy objects
+\index{stars!proxy objects}
+\index{read\_stars!proxy objects}
 
 To handle datasets that are too large to fit in memory, `stars`
 provides `stars_proxy` objects.  To demonstrate its use, we will
@@ -308,6 +346,8 @@ dimensions table. (The convoluted `s2` name is needed to point
 GDAL to the right file inside the `.zip` file containing 115 files
 in total).
 
+\index{stars!lazy evaluation}
+\index{lazy evaluation of computations}
 The idea of a proxy object is that we can build expressions like
 ```{r}
 p2 <- p * 2
@@ -347,12 +387,16 @@ the key on the plotting device.
 
 ### Operations on proxy objects
 
+\index{stars\_proxy!lazy operations}
 Several dedicated methods are available for `stars_proxy` objects:
 ```{r}
 methods(class = "stars_proxy")
 ```
 We have seen `plot` and `print` in action; `dim` reads out
 the dimension from the dimensions metadata table. 
+
+\index{stars\_proxy!st\_as\_stars}
+\index{st\_as\_stars}
 
 The three methods that actually fetch data are `st_as_stars`,
 `plot` and `write_stars`.  `st_as_stars` reads the actual data into a
@@ -367,6 +411,7 @@ attached to the object. Only when actual raster data are fetched,
 e.g. by calling `plot` or `st_as_stars`, the commands in this list
 are executed.
 
+\index{st\_crop!stars\_proxy}
 `st_crop` limits the extent (area) of the raster that will be
 read. `c` combines `stars_proxy` objects, but still doesn't read
 any data. `adrop` drops empty dimensions, `aperm` changes dimension
@@ -376,8 +421,10 @@ order.
 argument `chunk_size` that lets users control the size of spatial
 chunks.
 
-
 ### Remote raster resources
+
+\index{cloud-optimized GeoTIFF}
+\index{GeoTIFF!cloud-optimized}
 
 A format like "cloud-optimized GeoTIFF" (COG) has been specially
 designed to be efficient and resource-friendly in many cases,
@@ -388,6 +435,10 @@ be created using the GeoTIFF driver of GDAL, and setting the right
 dataset creation options in a `write_stars` call.
 
 ## Very large data cubes
+
+\index{ERA5}
+\index{Copernicus}
+\index{Landsat}
 
 At some stage, data sets need to be analysed that are so large that
 downloading them is no longer feasible; even when local storage would
@@ -430,6 +481,9 @@ zones). An R package that can do that is gdalcubes [@R-gdalcubes;
 
 ### Cloud native storage: Zarr
 
+\index{Zarr}
+\index{GDAL!multidimensional arrays}
+
 Where COG provides cloud native storage for raster imagery, Zarr is a
 format for cloud native storage of large multidimensional arrays. It
 can be seen as a successor of NetCDF and seems to follow similar
@@ -437,14 +491,23 @@ conventions, being used by the climate and forecast communities.
 Zarr "files" are really directories with subdirectories containing
 compressed chunks of the data. The compression algorithm and
 the chunking strategy will have an effect on how fast particular
-sub-cubes can be read. Function `stars::read_mdim` has options
-for reading sub-cubes by specifying offset and size of the index
-in each dimension, and a step size to read one or more dimensions
-at a lower resolution. Similarly, `stars::write_mdim` can write
-multidimensional arrays to Zarr (or NetCDF) files. Both use the
-GDAL C++ multidimensional array API for this.
+sub-cubes can be read or written. 
+
+Function `stars::read_mdim` has options for reading sub-cubes by
+specifying offset and size of the index in each dimension, and a step
+size to read one or more dimensions at a lower resolution. Similarly,
+`stars::write_mdim` can write multidimensional arrays to Zarr
+or NetCDF files, or other formats that support the GDAL C++
+multidimensional array API.
+
+\index{read\_mdim}
+\index{write\_mdim}
+\index{NetCDF}
 
 ### APIs for data: GEE, openEO
+
+\index{Google Earth Engine}
+\index{openEO}
 
 Platforms that do not require the management and programming of
 virtual machines _in_ the cloud but provide direct access to the
@@ -473,6 +536,8 @@ Other platforms include the Copernicus climate data store [@cds]
 or atmosphere data store, which allow processing of atmospheric
 or climate data from ECMWF, including ERA5. An R package with an
 interface to both data stores is `ecmwfr` [@R-ecmwfr].
+
+\index{ERA5}
 
 ## Exercises 
 
