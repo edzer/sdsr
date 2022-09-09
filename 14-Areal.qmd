@@ -23,7 +23,7 @@ The **spdep** package provides an `nb` class for neighbours, a list of length eq
 
 We will be using election data from the 2015 Polish Presidential election in this chapter, with 2495 municipalities and Warsaw boroughs (see @fig-plotpolpres15) for a **tmap** map (@sec-tmap) of the municipality types , and complete count data from polling stations aggregated to these areal units. The data are an **sf** `sf` object:
 
-```{r setup_sa, include=FALSE}
+```{r setup_sa0, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, paged.print=FALSE)
 ```
 
@@ -50,7 +50,7 @@ if (!all(st_is_valid(pol_pres15)))
 		pol_pres15 <- st_make_valid(pol_pres15)
 ```
 
-Between early 2002 and April 2019, **spdep** contained functions for constructing and handling neighbour and spatial weights objects, tests for spatial autocorrelation, and model fitting functions. The latter have been split out into **spatialreg**, and will be discussed in the next chapter. **spdep** [@R-spdep] now accommodates objects represented using **sf** classes and **sp** classes directly.
+Between early 2002 and April 2019, **spdep** contained functions for constructing and handling neighbour and spatial weights objects, tests for spatial autocorrelation, and model fitting functions. The latter have been split out into **spatialreg**, and will be discussed in subsequent chapters. **spdep** [@R-spdep] now accommodates objects represented using **sf** classes and **sp** classes directly.
 
 ```{r, message=FALSE}
 library(spdep)
@@ -63,12 +63,13 @@ The `poly2nb()` function in **spdep** takes the boundary points making up the po
 ```{r}
 args(poly2nb)
 ```
-From **spdep** 1.1-7, the GEOS interface of the **sf** package is used within `poly2nb()` if `foundInBox=NULL` to find the candidate neighbours and populate `foundInBox` internally. In this case, this use of spatial indexing (STRtree queries) in GEOS through **sf** is the default:
+From **spdep** 1.1-7, the **sf** package GEOS interface is used within `poly2nb()` to find the candidate neighbours and populate `foundInBox` internally. In this case, the use of spatial indexing (STRtree queries) in GEOS through **sf** is the default:
 
 ```{r}
 system.time(pol_pres15 |> poly2nb(queen = TRUE) -> nb_q)
 ```
-The `foundInBox=` argument originally accepted the output of the  **rgeos** `gUnarySTRtreeQuery()` function to list candidate neighbours, that is polygons whose bounding boxes intersect the bounding boxes of other polygons, but is only retained to support legacy code. The print method shows the summary structure of the neighbour object:
+
+The print method shows the summary structure of the neighbour object:
 
 ```{r}
 nb_q
@@ -189,9 +190,9 @@ par(opar)
 
 ## Distance-based neighbours
 
-Distance-based neighbours can be constructed using `dnearneigh()`, with a distance band with lower `d1=` and upper `d2=` bounds controlled by the `bounds=` argument. If spherical coordinates are used and either specified in the coordinates object `x` or with `x` as a two column matrix and `longlat=TRUE`, great circle distances in km will be calculated assuming the WGS84 reference ellipsoid, or if `use_s2=TRUE`, the default value if the version of **s2** is greater than `1.0.7`, using the spheroid (see @sec-spherical) If `dwithin=` is `FALSE` and the version of **s2** is greater than `1.0.7`, `s2_closest_edges()` may be used, if `TRUE` and `use_s2=TRUE`, `s2_dwithin_matrix()` is used; both of these methods use fast spherical spatial indexing, but because `s2_closest_edges()` takes minumum and maximum bounds, it only needs one pass in the R code of `dnearneigh()`. 
+Distance-based neighbours can be constructed using `dnearneigh()`, with a distance band with lower `d1=` and upper `d2=` bounds controlled by the `bounds=` argument. If spherical coordinates are used and either specified in the coordinates object `x` or with `x` as a two column matrix and `longlat=TRUE`, great circle distances in km will be calculated assuming the WGS84 reference ellipsoid, or if `use_s2=TRUE`, the default value if the version of **s2** is greater than `1.0.7`, using the spheroid (see @sec-spherical). If `dwithin=` is `FALSE` and the version of **s2** is greater than `1.0.7`, `s2_closest_edges()` may be used, if `TRUE` and `use_s2=TRUE`, `s2_dwithin_matrix()` is used; both of these methods use fast spherical spatial indexing, but because `s2_closest_edges()` takes minumum and maximum bounds, it only needs one pass in the R code of `dnearneigh()`. 
 
-Arguments have been added, to use functionality in the **dbscan** package [@R-dbscan] for finding neighbours using planar spatial indexing in two or three dimensions by default, and not to test the symmetry of the output neighbour object. In addition, three arguments relate to the use of spherical geometry distance measurements.
+Arguments have been added to use functionality in the **dbscan** package [@R-dbscan] for finding neighbours using planar spatial indexing in two or three dimensions by default, and not to test the symmetry of the output neighbour object. In addition, three arguments relate to the use of spherical geometry distance measurements.
 
 The `knearneigh()` function for $k$-nearest neighbours returns a `knn` object, converted to an `nb` object using `knn2nb()`. It can also use great circle distances, not least because nearest neighbours may differ when uprojected coordinates are treated as planar. `k=` should be a small number. For projected coordinates, the **dbscan** package is used to compute nearest neighbours more efficiently. Note that `nb` objects constructed in this way are most unlikely to be symmetric, hence `knn2nb()` has a `sym=` argument to permit the imposition of symmetry, which will mean that all units have at least `k=` neighbours, not that all units will have exactly `k=` neighbours. When `sf_use_s2()` is `TRUE`, `knearneigh()` will use fast spherical spatial indexing when the input object is of class `"sf"` or `"sfc"`.
 
