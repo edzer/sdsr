@@ -3,8 +3,8 @@
 \index{spatial interpolation}
 \index{interpolation}
 
-Spatial interpolation is the activity of estimating values spatially
-continuous variables for spatial locations where they have not
+Spatial interpolation is the activity of estimating values of spatially
+continuous variables (fields) for spatial locations where they have not
 been observed, based on observations.  The statistical methodology
 for spatial interpolation, called geostatistics, is concerned with
 the modelling, prediction and simulation of spatially continuous
@@ -30,6 +30,7 @@ R implementations are found in e.g. @DiggleTawnMoyeed:98,
 and comparisons of methods for large datasets is given in
 @Heaton2018.
 
+\index{spatial autocorrelation in fields}
 
 ```{r echo=FALSE, eval=FALSE}
 # after running the "Spatiotemporal Geostatistics" chapter, write NO2 means by
@@ -194,6 +195,7 @@ ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) +
 ## Areal means: block kriging {#sec-blockkriging}
 
 \index{kriging!block}
+\index{kriging!areal means}
 
 Computing areal means can be done in several ways. The simples is to take
 the average of point samples falling inside the target polygons:
@@ -213,7 +215,6 @@ b$sample <- a$NO2
 b$kriging <- b$var1.pred
 ```
 
-
 ```{r fig-aggregations, echo = !knitr::is_latex_output()}
 #| fig.cap = "Aggregated NO$_2$ values from simple averaging (left) and block kriging (right)"
 b |> select(sample, kriging) |> 
@@ -224,8 +225,10 @@ ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +
 ```
 We see that the signal is similar, but that the simple means are
 more variable than the block kriging values; this may be due to
-the smoothing effect of kriging: data points outside the target
-area are weighted, too.
+the smoothing effect of kriging: data points outside the aggregation
+area recieve weight, too.
+
+\index{kriging!standard errors}
 
 To compare the standard errors of means, for the sample mean we
 can get a rough guess of the standard error by $\sqrt{(\sigma^2/n)}$:
@@ -241,7 +244,6 @@ a by-product of kriging. We combine and rename the two:
 b$sample <- a$NO2
 b$kriging <- sqrt(b$var1.var)
 ```
-
 
 ```{r fig-aggrSE}
 #| fig.cap = "Standard errors for mean NO$_2$ values obtained by simple averaging (left) and block kriging (right)"
@@ -259,6 +261,9 @@ and mostly larger values for prediction errors of areal means,
 compared to block kriging.
 
 ## Conditional simulation
+
+\index{kriging!conditional simulation}
+\index{conditional simulation}
 
 In case one or more conditional realisation of the field $Z(s)$
 are needed rather than their conditional mean, we can obtain this
@@ -308,6 +313,8 @@ spatiotemporal data.
 
 ## Trend models
 
+\index{kriging!trend model}
+
 Kriging and conditional simulation, as used so far in this
 chapter, assume that all spatial variability is a random process,
 characterized by a spatial covariance model. In case we have other
@@ -323,6 +330,8 @@ and leads to more accurate predictions and more similar conditional
 simulations.
 
 ### A population grid
+
+\index{population density grid}
 
 As a potential predictor for NO2 in the air, we use population
 density. NO2 is mostly caused by traffic, and traffic is stronger
@@ -377,11 +386,15 @@ We need to divide the number of inhabitants by the number of 100
 m grid points contributing to it, in order to convert population
 counts into population density.
 
+\index{st\_extract}
 To obtain population density values at monitoring network stations,
-we can use
+we can use `st_extract`:
 ```{r}
-(a <- aggregate(grd["pop_dens"], no2.sf, mean))
-no2.sf$pop_dens <- st_as_sf(a)[[1]]
+grd |>
+  select("pop_dens") |>
+  st_extract(no2.sf) |>
+  pull("pop_dens") |> 
+  mutate(no2.sf, pop_dens = _) -> no2.sf
 summary(lm(NO2~sqrt(pop_dens), no2.sf))
 ```
 and the corresponding scatterplot is shown in @fig-no2scat.
@@ -391,6 +404,7 @@ plot(NO2 ~ sqrt(pop_dens), no2.sf)
 abline(lm(NO2 ~ sqrt(pop_dens), no2.sf))
 ```
 
+\index{variogram!residual}
 Prediction under this new model involves first modelling a residual
 variogram (@fig-predictusingpopulationdensity) :
 ```{r}

@@ -1,5 +1,5 @@
 # Spatial econometrics models {#sec-spatecon}
-
+\index{spatial econometrics models}
 ```{r setup_sr1, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, paged.print = FALSE)
 ```
@@ -14,7 +14,8 @@ Before moving to presentations of issues raised in fitting spatial regression mo
 ## Spatial econometric models: definitions
 
 In trying to model spatial processes, one of the earliiest spatial econometric representations is to model the spatial autocorrelation in the residual (spatial error model, SEM): 
-
+\index{spatial error model, SEM}
+\index{SEM}
 $$
 {\mathbf y} = {\mathbf X}{\mathbf \beta} + {\mathbf u},
 \qquad {\mathbf u} = \rho_{\mathrm{Err}} {\mathbf W} {\mathbf u} + {\mathbf \varepsilon},
@@ -32,12 +33,24 @@ $$
 If the processes in the covariates and the response match, we should find little difference between the coefficients of a least squares and a SEM, but very often they diverge, suggesting that a Hausman test for this condition should be employed [@pace+lesage:08]. This may be related to earlier discussions of a spatial equivalent to the unit root and cointegration where spatial processes match [@fingleton:99].
 
 A model with a spatial process in the response only is termed a spatial lag model (SLM, often SAR - spatial autoregressive) [@lesage+pace:09]. Durbin models add the spatially lagged covariates to the covariates included in the spatial model; spatial Durbin models are reviewed by Mur and Angulo [-@mur+angulo:06]. If it is chosen to admit a spatial process in the residuals in addition to a spatial process in the response, again two models are formed, a general nested model (GNM) nesting all the others, and a model without spatially lagged covariates (SAC, also known as SARAR - Spatial AutoRegressive-AutoRegressive model). If neither the residuals nor the response are modelled with spatial processes, spatially lagged covariates may be added to a linear model, as a spatially lagged X model (SLX) [@elhorst:10; @bivand:12; @lesage:14; @halleck-vega+elhorst:15]. We can write the general nested model (GNM) as:
-
+\index{general nested model}
+\index{GNM}
 $$
 {\mathbf y} = \rho_{\mathrm{Lag}} {\mathbf W}{\mathbf y} + {\mathbf X}{\mathbf \beta} + {\mathbf W}{\mathbf X}{\mathbf \gamma} + {\mathbf u},
 \qquad {\mathbf u} = \rho_{\mathrm{Err}} {\mathbf W} {\mathbf u} + {\mathbf \varepsilon},
 $$
 where ${\mathbf \gamma}$ is a $(k' \times 1)$ vector of parameters. $k'$ defines the subset of the intercept and covariates, often $k' = k-1$ when using row standardised spatial weights and omitting the spatially lagged intercept.
+
+\index{spatially lagged X model, SLX}
+\index{SLX}
+\index{spatially lagged covariates, SAC}
+\index{SAC}
+\index{spatial autoregressive-autoregressive model}
+\index{SARAR}
+\index{SDM}
+\index{spatial Durbin model}
+\index{SDEM}
+\index{spatial Durbin error model}
 
 This may be constrained to the double spatial coefficient model SAC/SARAR by setting ${\mathbf \gamma} = 0$, to the spatial Durbin (SDM) by setting $\rho_{\mathrm{Err}} = 0$, and to the error Durbin model (SDEM) by setting $\rho_{\mathrm{Lag}} = 0$. Imposing more conditions gives the spatial lag model (SLM) with ${\mathbf \gamma} = 0$ and $\rho_{\mathrm{Err}} = 0$, the spatial error model (SEM) with ${\mathbf \gamma} = 0$ and $\rho_{\mathrm{Lag}} = 0$, and the spatially lagged X model (SLX) with $\rho_{\mathrm{Lag}} = 0$ and $\rho_{\mathrm{Err}} = 0$.
 
@@ -80,6 +93,11 @@ For models with single spatial coefficients (SEM and SDEM using `errorsarlm()`, 
 | SDM   | spatial Durbin                  | `lagsarlm(..., Durbin=TRUE)`      |
 | SAC   | spatial autoregressive combined | `sacsarlm(..., Durbin=FALSE)`     |
 | GNM   | general nested                  | `sacsarlm(..., Durbin=TRUE)`      |
+
+\index[function]{errorsarlm}
+\index[function]{spautolm}
+\index[function]{lagsarlm}
+\index[function]{sacsarlm}
 
 The estimating functions `errorsarlm()` and `lagsarlm()` take similar arguments, where the first two, `formula=` and `data=` are shared by most model estimating functions. The third argument is a `listw` spatial weights object, while `na.action=` behaves as in other model estimating functions if the spatial weights can reasonably be subsetted to avoid observations with missing values. The `weights=` argument may be used to provide weights indicating the known degree of per-observation variability in the variance term - this is not available for `lagsarlm()`.
 
@@ -191,11 +209,13 @@ o
 In this case and based on arguments advanced in @bivand17, the use of weights is justified because tract counts of reported housing units underlying the weighted median values vary from 5 to 3,031, and air pollution model output zone counts vary from 25 to 12,411. Because of this, and because a weighted general nested model has not been developed, we cannot take the GNM as the starting point for general-to-simpler testing, but start rather from the SDEM model, and use the Hausman test to guide the choice of units of observation.
 
 ## Impacts
+\section{impacts}
 
 Global impacts have been seen as crucial for reporting results from fitting models including the spatially lagged response (SLM, SDM, SAC, GNM) for over ten years [@lesage+pace:09]. Extension to other models including spatially lagged covariates (SLX, SDEM) has followed [@elhorst:10; @bivand:12; @halleck-vega+elhorst:15]. For SLM, SDM, SAC and GNM models fitted with maximum likelihood or GMM, the variance-covariance matrix of the coefficients is available, and can be used to make random draws from a multivariate Normal distribution with mean set to coefficient values and variance to the estimated variance-covariance matrix. For these models fitted using Bayesian methods, draws are already available. In the SDEM case, the draws on the regression coefficients of the unlagged covariates represent direct impacts, and draws on the coefficients of the spatially lagged covariates represent indirect impacts, and their by-draw sums the total impacts.
 
 Since sampling is not required for inference for SLX and SDEM models, linear combination is used for models fitted using maximum likelihood; results are shown here for the air pollution variable only. The literature has not yet resolved the question of how to report model output, as each covariate is now represented by three impacts. Where spatially lagged covariates are included, two coefficients are replaced by three impacts, here for the air pollution variable of interest.
 
+\index[function]{impacts}
 ```{r}
 sum_imp_94_SDEM <- summary(impacts(SDEM_94))
 rbind(Impacts = sum_imp_94_SDEM$mat[5,], 
@@ -247,6 +267,8 @@ suppressWarnings(t2  <- exp(predict(SDEM_489, newdata = nd,
 
 We can also use the `"slm"` model in INLA to predict missing response values as part of the model fitting function call. A certain amount of set-up code is required as the `"slm"` model is still experimental:
 
+\index{INLA}
+
 ```{r, warning=FALSE}
 library(INLA)
 W <- as(lw_q, "CsparseMatrix")
@@ -287,7 +309,6 @@ data.frame(fit_TS = t0[,1], fit_KP2 = c(t1), fit_KP5 = c(t2),
 ```
 
 The spatial regression toolbox remains incomplete, and it will take time to fill in blanks. It remains unfortunate that the several traditions in spatial regression seldom seem to draw on each others' understandings and advances.
-
 
 ## Exercises
 

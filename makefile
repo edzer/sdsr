@@ -7,7 +7,12 @@ clean:
 	Rscript -e "bookdown::clean_book(TRUE)"
 
 pdf0:
-	Rscript -e 'bookdown::render_book("index.Rmd", "bookdown::pdf_book")'
+	# quarto render --to pdf
+	cp -rp images krantz.cls all.bib 15*_files 16*_files _book
+	vi +55 Spatial-Data-Science.tex # edit
+
+pdf1:
+	(cd _book; pdflatex ../Spatial-Data-Science.tex; pdflatex ../Spatial-Data-Science.tex; makeindex Spatial-Data-Science.idx; pdflatex ../Spatial-Data-Science.tex)
 
 # bookdown::gitbook
 

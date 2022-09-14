@@ -1,10 +1,23 @@
 # Spatial Regression {#sec-spatglmm}
 
+\index{spatial regression}
+\index{regression!spatial}
+
 Even though it may be tempting to focus on interpreting the map pattern of an areal support response variable of interest, the pattern may largely derive from covariates (and their functional forms), as well as the respective spatial footprints of the variables in play. Spatial autoregressive models in two dimensions began without covariates and with clear links to time series [@whittle:54]. Extensions included tests for spatial autocorrelation in linear model residuals, and models applying the autoregressive component to the response or the residuals, where the latter matched the tests for residuals [@CliffOrd:72; @cliff+ord:73]. These "lattice" models of areal data typically express the dependence between observations using a graph of neighbours in the form of a contiguity matrix. 
 
+\index{regression|generalised least squares}
+\index{linear model|mixed effects}
 Of course, handling a spatial correlation structure in a generalised least squares model or a (generalized) linear or nonlinear mixed effects model such as those provided in the **nlme** and many other packages does not have to use a graph of neighbours [@R:Pinheiro+Bates:2000]. These models are also spatial regression models, using functions of the distance between observations, and fitted variograms to model the spatial autocorrelation present; such models have been held to yield a clearer picture of the underlying processes [@wall:04], building on geostatistics. For example, the **glmmTMB** package successfully uses this approach to spatial regression [@brookesetal:17]. Here we will only consider spatial regression using spatial weights matrices.
 
 ## Markov random field and multilevel models
+
+\index{Markov random field}
+\index{multilevel model}
+\index{linear model!multilevel}
+\index{linear model!conditional autoregressive}
+\index{linear model!intrinsic CAR}
+\index{conditional autoregressive model}
+\index{intrinsic CAR model}
 
 There is a large literature in disease mapping using conditional autoregressive (CAR) and intrinsic CAR (ICAR) models in spatially structured random effects. These extend to multilevel models, in which the spatially structured random effects may apply at different levels of the model [@bivandetal17a]. In order to try out some of the variants, we need to remove the no-neighbour observations from the tract level, and from the model output zone aggregated level, in two steps as reducing the tract level induces a no-neighbour outcome at the model output zone level. Many of the model estimating functions take `family=` arguments, and fit generalized linear mixed effects models with per-observation spatial random effects structured using a Markov random field representation of relationships between neighbours. In the multilevel case, the random effects may be modelled at the group level, which is the case presented in the following examples.
 
@@ -15,6 +28,9 @@ Y = X \beta + Z u + \varepsilon
 $$
 $Z$ is a fixed design matrix for the random effects. If there are $n$ random effects, it will be an $n \times n$ identity matrix, if instead the observations are aggregated into $m$ groups, so with $m < n$ random effects, it will be an $n \times m$ matrix showing which group each observation belongs to. The random effects are modelled as a multivariate Normal distribution $u \sim N(0, \sigma^2_u \Sigma)$, and $\Sigma$ is the square variance-covariance matrix of the random effects.
 
+\index{SAR models}
+\index{CAR models}
+\index{linear model!SAR, CAR}
 A division has grown up, possibly unhelpfully, between scientific fields using CAR models [@besag:74], and simultaneous autoregressive models (SAR) [@ord:75; @hepple:76]. Although CAR and SAR models are closely related, these fields have found it difficult to share experience of applying similar models, often despite referring to key work summarising the models [@ripley:81; @ripley:88; @Cressie:1993]. Ripley gives the SAR variance as [-@ripley:81, page 89], here shown as the inverse $\Sigma^{-1}$ (also known as the precision matrix):
 
 $$
@@ -142,7 +158,7 @@ nb_q_93 <- spdep::poly2nb(boston_93,
 The original model related the log of median house values by tract to the square of NOX values, including other covariates usually related to house value by tract, such as aggregate room counts, aggregate age, ethnicity, social status, distance to downtown and to the nearest radial road, a crime rate, and town-level variables reflecting land use (zoning, industry), taxation and education [@bivand17]. This structure will be used here to exercise issues raised in fitting spatial regression models, including the presence of multiple levels.
 
 ## Multilevel models of the Boston data set
-
+\index{multilevel models}
 The ZN, INDUS, NOX, RAD, TAX and PTRATIO variables show effectively no variability within the TASSIM zones, so in a multilevel model the random effect may absorb their influence. 
 
 ```{r}
@@ -153,7 +169,7 @@ form <- formula(log(median) ~ CRIM + ZN + INDUS + CHAS +
 ```
 
 ### IID random effects with lme4
-
+\index{lme4}
 The **lme4** package [@R-lme4] lets us add an independent and identically distributed (IID) unstructured random effect at the model output zone level by updating the model formula with a random effects term:
 
 ```{r, message=FALSE}
@@ -169,7 +185,7 @@ boston_93$MLM_re <- ranef(MLM)[[1]][,1]
 ```
 
 ### IID and CAR random effects with hglm
-
+\index{hglm}
 The same model may be estimated using the **hglm** package [@R-hglm], which also permits the modelling of discrete responses, this time using an extra one-sided formula to express the random effects term:
 
 ```{r}
@@ -201,7 +217,7 @@ boston_93$HGLM_ss <- HGLM_car$ranef[,1]
 
 
 ### IID and ICAR random effects with R2BayesX
-
+\index{R2BayesX}
 The **R2BayesX** package [@R-R2BayesX] provides flexible support for structured additive regression models, including spatial multilevel models. The models include an IID unstructured random effect at the upper level using the `"re"` specification in the `sx()` model term [@umlaufetal:15]; we choose the `"MCMC"` method:
 
 ```{r}
@@ -246,7 +262,7 @@ boston_93$BX_ss <- BX_mrf$effects["sx(NOX_ID):mrf"][[1]]$Mean
 ```
 
 ### IID, ICAR and Leroux random effects with INLA
-
+\index{INLA}
 @JSSv063i20 and @gómez2020bayesian present the use of the **INLA** package [@R-INLA] and the `inla()` model fitting function with spatial regression models:
 
 ```{r}
@@ -302,7 +318,7 @@ boston_93$INLA_lr <- INLA_lr$summary.random$ID2$mean
 ```
 
 ### ICAR random effects with mgcv::gam()
-
+\index{mgcv gam!ICAR}
 In a very similar way, the `gam()` function in the **mgcv** package [@R-mgcv] can take an `"mrf"` term using a suitable `"nb"` object for the upper level. In this case the `"nb"` object needs to have the contents of the `"region.id"` attribute copied as the names of the neighbour list components, and the indexing variable needs to be a factor [@wood:17]:
 
 ```{r}

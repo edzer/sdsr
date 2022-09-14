@@ -1,5 +1,6 @@
 # Measures of spatial autocorrelation {#sec-spatautocorr}
 
+\index{spatial autocorrelation!measures of}
 
 ```{r setup_sa1, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, paged.print = FALSE)
@@ -12,7 +13,11 @@ When analysing areal data, it has long been recognised that, if present, spatial
 
 Cliff and Ord [-@cliff+ord:73] generalised and extended the expression of the spatial weights matrix representation as part of the framework for establishing the distribution theory for join count, Moran's $I$ and Geary's $C$ statistics. This development of what have become known as global measures, returning a single value of autocorrelation for the total study area, has been supplemented by local measures returning values for each areal unit [@getis+ord:92; @anselin:95].
 
+\index{spatial weights matrix}
+
 The measures offered by the **spdep** package have been written partly to provide implementations, but also to permit the comparative investigation of these measures and their implementation. For this reason, the implementations are written in R rather than compiled code, and are generally slower but more flexible than implementations in the newly released **rgeoda** package [@rgeoda-package; @https://doi.org/10.1111/gean.12311].
+
+\index{rgeoda}
 
 ## Measures and process mis-specification
 
@@ -25,6 +30,8 @@ It is not and has never been the case that Tobler's first law of geography: "Eve
 The status of the "first law" is very similar to the belief that John Snow induced the cause of cholera as water-borne from a map. It may be a good way of selling GIS, but it is inaccurate; Snow had a strong working hypothesis prior to visiting Soho, and the map was prepared after the Broad street pump was disabled as documentation that his hypothesis held [@BRODY200064].
 
 Measures of spatial autocorrelation unfortunately pick up other mis-specifications in the way that we model data [@schabenberger+gotway:2005; @McMillen:2003]. For reference, Moran's $I$ is given as [@cliff+ord:81, page 17]:
+
+\index{Moran's I}
 
 $$
 I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
@@ -60,6 +67,8 @@ coords |>
 ```
 If we test the residuals of a linear model including the trend, the apparent spatial autocorrelation disappears:
 
+\index{spatial autocorrelation!of residuals}
+
 ```{r}
 lm(x_t ~ t) |> 
     lm.morantest(lw_q_B, alternative = "two.sided") |> 
@@ -68,13 +77,20 @@ lm(x_t ~ t) |>
 
 A comparison of implementations of measures of spatial autocorrelation shows that a wide range of measures is available in R in a number of packages, chiefly in the **spdep** package [@R-spdep], and that differences from other implementations can be attributed to design decisions [@Bivand2018]. The **spdep** package also includes the only implementations of exact and saddlepoint approximations to global and local Moran's I for regression residuals [@tiefelsdorf:02; @bivandetal:09].
 
+\index{Moran's I!approximations}
+\index{Moran's I!global or local}
+
 ## Global measures
 
 Global measures consider the average level of spatial autocorrelation across all observations; they can of course be biassed (as most spatial statistics) by edge effects where important spatial process components fall outside the study area.
 
 ### Join-count tests for categorical data
 
+\index{joint-count test}
+
 We will begin by examining join count statistics, where `joincount.test()` takes a `"factor"` vector of values `fx=` and a `listw` object, and returns a list of `htest` (hypothesis test) objects defined in the **stats** package, one `htest` object for each level of the `fx=` argument. The observed counts are of neighbours with the same factor levels, known as same-colour joins.
+
+\index[function]{joincount.test}
 
 ```{r}
 args(joincount.test)
@@ -89,8 +105,9 @@ The function takes an `alternative=` argument for hypothesis testing, a `samplin
 ```
 Since there are four levels, we re-arrange the list of `htest` objects to give a matrix of estimated results. The observed same-colour join counts are tabulated with their expectations based on the counts of levels of the input factor, so that few joins would be expected between for example Warsaw boroughs, because there are very few of them. The variance calculation uses the underlying constants of the chosen `listw` object and the counts of levels of the input factor. The z-value is obtained in the usual way by dividing the difference between the observed and expected join counts by the square root of the variance.
 
-The join count test was subsequently adapted for multi-colour join counts [@upton+fingleton:85]. The implementation as `joincount.mult()` in **spdep** returns a table based on nonfree sampling, and does not report p-values.
+The join count test was subsequently adapted for multi-colour join counts [@upton+fingleton:85]. The implementation as `joincount.multi()` in **spdep** returns a table based on nonfree sampling, and does not report p-values.
 
+\index[function]{joincount.multi}
 ```{r}
 Types |> joincount.multi(listw = lw_q_B)
 ```
@@ -111,6 +128,8 @@ The implementation of Moran's $I$ in **spdep** in the `moran.test()` function ha
 args(moran.test)
 ```
 
+\index[function]{moran.test}
+
 The default for the `randomisation=` argument is `TRUE`, but here we will simply show that the test under normality is the same as a test of least squares residuals with only the intercept used in the mean model; the analysed variable is first round turnout proportion of registered voters in municipalities and Warsaw boroughs in the 2015 Polish presidential election. The spelling of randomisation is that of Cliff and Ord [-@cliff+ord:73].
 
 ```{r}
@@ -119,12 +138,12 @@ pol_pres15 |>
         subset(select = I_turnout, drop = TRUE) -> I_turnout
 ```
 
-
-
 ```{r}
 I_turnout |> moran.test(listw = lw_q_B, randomisation = FALSE) |> 
     glance_htest()
 ```
+
+\index[function]{lm.morantest}
 
 The `lm.morantest()` function also takes a `resfun=` argument to set the function used to extract the residuals used for testing, and clearly lets us model other salient features of the response variable [@cliff+ord:81, p. 203]. To compare with the standard test, we are only using the intercept here and, as can be seen, the results are the same.
 
@@ -141,8 +160,10 @@ The only difference between tests under normality and randomisation is that an e
     glance_htest()
 ```
 
+\index[function]{glance\_htest}
 From the very beginning in the early 1970s, interest was shown in Monte Carlo tests, also known as Hope-type tests and as permutation bootstrap. By default, `moran.mc()` returns a `"htest"` object, but may simply use `boot::boot()` internally and return a `"boot"` object when `return_boot=TRUE`. In addition the number of simulations needs to be given as `nsim=`; that is the number of times the values of the observations are shuffled at random.
 
+\index[function]{moran.mc}
 ```{r}
 set.seed(1)
 I_turnout |> 
@@ -152,6 +173,10 @@ The bootstrap permutation retains the outcomes of each of the random permutation
 
 If we compare the Monte Carlo and analytical variances of $I$ under randomisation, we typically see few differences, arguably rendering Monte Carlo testing unnecessary.
 
+\index{Geary's C}
+\index{Moran's I!empirical Bayes}
+\index{Getis-Org G}
+\index[function]{geary.test}
 ```{r}
 c("Permutation bootstrap" = var(mmc$t), 
   "Analytical randomisation" = unname(mtr$estimate[3]))
@@ -165,10 +190,12 @@ Global measures of spatial autocorrelation using spatial weights objects based o
 
 ## Local measures
 
+\index{spatial autocorrelation!local measures of}
 Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s [@anselin:95; @getis+ord:92; @getis+ord:96]. 
 
 In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable [@anselin:96]. The `moran.plot()` function also returns an influence measures object used to label observations exerting more than proportional influence on the slope of the line representing global Moran's $I$. In @fig-moranplot, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. In `moran.plot()`, the quadrants are split on the means of the variable and its spatial lag; alternative splits are on zero for the centred variable and the spatial lag of the centred variable.
 
+\index[function]{moran.plot}
 ```{r fig-moranplot, out.width='100%', fig=TRUE}
 #| fig.cap: "Moran plot of I round turnout, row standardised weights"
 I_turnout |> 
@@ -186,15 +213,16 @@ tm_shape(pol_pres15) + tm_fill("hat_value")
 ```
 
 ### Local Moran's $I_i$
+\index{Moran's I!local}
 
 Bivand and Wong [-@Bivand2018] discuss issues impacting the use of local indicators, such as local Moran's $I_i$ and local Getis-Ord $G_i$. Some issues affect the calculation of the local indicators, others inference from their values. Because $n$ statistics may be being calculated from the same number of observations, there are multiple comparison problems that need to be addressed. @https://doi.org/10.1111/j.0016-7363.2006.00682.x  conclude, based on a typical data set and a simulation exercise, that the false discovery rate (FDR) adjustment of probability values will certainly give a better picture of interesting clusters than no adjustment. Following this up, @https://doi.org/10.1111/gean.12164 explores the combination of FDR adjustments with the use of redefined "significance" cutoffs [@benjaminetal:18], for example $0.01$, $0.005$ and $0.001$ instead of $0.1$, $0.05$ and $0.01$; the use of the term *interesting* rather than *significant* is also preferred. This is discussed further in @bivand:22. As in the global case, miss-specification remains a source of confusion, and, further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging [@ord+getis:01; @tiefelsdorf:02; @bivandetal:09]. 
 
 ```{r}
 args(localmoran)
 ```
+\index[function]{localmoran}
 
 In an important clarification, @sauer_oshan_rey_wolf_2021 show that the comparison of standard deviates for local Moran's $I_i$ based on analytical formulae and conditional permutation in @Bivand2018 was based on a misunderstanding. @sokaletal:98 provide alternative analytical formulae for standard deviates of local Moran's $I_i$ based either on total or conditional permutation, but the analytical formulae used in @Bivand2018, based on earlier practice, only use total permutation, and consequently do not match the simulation conditional permutations. Thanks to a timely pull request, `localmoran()` now has a `conditional=` argument (default `TRUE`) using alternative formulae from the appendix of @sokaletal:98. The `mlvar=` and `adjust.x=` arguments to `localmoran()` are discussed in @Bivand2018, and permit matching with other implementations. Taking `"two.sided"` probability values (the default), we obtain:
-
 
 ```{r}
 I_turnout |> 
@@ -220,6 +248,8 @@ apply(pvsp, 2, f)
 ```
 
 In the global measure case, bootstrap permutations may be used as an alternative to analytical methods for possible inference, where both the theoretical development of the analytical variance of the measure, and the permutation scheme, shuffle all of the observed values. In the local case, conditional permutation should be used, fixing the value at observation $i$ and randomly sampling from the remaining $n-1$ values to find randomised values at neighbours, and is provided as `localmoran_perm()`, which may use multiple compute nodes to sample in parallel if provided, and permits the setting of a seed for the random number generator across the compute nodes. The number of simulations `nsim=` also controls the precision of the ranked estimates of the probability value based on the rank of observed $I_i$ among the simulated values:
+
+\index[function]{localmoran\_perm}
 
 ```{r, message=FALSE, cache=TRUE}
 library(parallel)
@@ -267,6 +297,8 @@ tm_shape(pol_pres15) +
 ```
 Proceeding using the FDR adjustment and an *interesting* location cutoff of $0.005$, we can see from @fig-localmoranPr that the adjusted probability values for the analytical conditional approach, the approach using the moments of the sampled values from permutation sampling, and the approach using the ranks of observed values among permutation samples all yield similar maps, as the input variable is quite close to normal.
 
+\index{hotspots}
+\index{Moran's I!hotspots}
 In presenting local Moran's $I$, use is often made of "hotspot" maps. Because $I_i$ takes high values both for strong positive autocorrelation of low and high values of the input variable, it is hard to show where "clusters" of similar neighbours with low or high values of the input variable occur. The quadrants of the Moran plot are used, by creating a categorical quadrant variable interacting the input variable and its spatial lag split at their means. The quadrant categories are then set to NA if, for the chosen probability value and adjustment, $I_i$ would not be considered *interesting*. Here, for the FDR adjusted conditional analytical probability values (@fig-localmoranPr, upper left panel), 53 observations belong to `"Low-Low"` cluster cores, and 96 to `"High-High"` cluster cores, similarly for the standard deviate-based permutation p-values (@fig-localmoranPr, upper right panel), but the rank-based permutation p-values reduce the `"High-High"` count and increase the `"Low-Low"` count @fig-localmoranPr lower left panel :
 
 ```{r}
@@ -305,6 +337,9 @@ tm_shape(pol_pres15) +
 @fig-Iihotspots  shows that there is very little difference between the FDR-adjusted *interesting* clusters with a choice of an $\alpha=0.005$ probability value cutoff for the three approaches of analytical conditional standard deviates, permutation-based standard deviates, and rank-based probability values; the `"High-High"` cluster cores are metropolitan areas.
 
 @tiefelsdorf:02 argues that standard approaches to the calculation of the standard deviates of local Moran's $I_i$ should be supplemented by numerical estimates, and shows that Saddlepoint approximations are a computationally efficient way of achieving this goal. The `localmoran.sad()` function takes a fitted linear model as its first argument, so we first fit a null (intercept only) model, but use case weights because the numbers entitled to vote vary greatly between observations:
+
+\index[function]{localmoran.sad}
+\index{Moran's I!saddlepoint approximation}
 
 ```{r}
 lm(I_turnout ~ 1) -> lm_null
@@ -411,6 +446,9 @@ table(Saddlepoint = addNA(pol_pres15$locm_sad2),
 
 ### Local Getis-Ord $G_i$
 
+\index{Getis-Ord G!local}
+\index[function]{localG}
+
 The local Getis-Ord $G_i$ measure [@getis+ord:92; @getis+ord:96] is reported as a standard deviate, and may also take the $G^*_i$ form where self-neighbours are inserted into the neighbour object using `include.self()`. The observed and expected values of local $G$ with their analytical variances may also be returned if `return_internals=TRUE`. 
 
 ```{r}
@@ -434,6 +472,9 @@ cor(cbind(localG=attr(locG, "internals")[, "Pr(z != E(Gi))"],
 ```
 
 ### Local Geary's $C_i$
+
+\index{Geary's C!local}
+\index[function]{localC\_perm}
 
 @https://doi.org/10.1111/gean.12164 extends @anselin:95, and has been recently added to **spdep** thanks to contributions by Josiah Parry (pull request https://github.com/r-spatial/spdep/pull/66 and subsequent). The conditional permutation framework used for $I_i$ and $G_i$ is also used for $C_i$:
 
@@ -566,8 +607,11 @@ For these permutation outcomes, 47 observations in the multivariate case are fou
 
 ### The **rgeoda** package
 
+\index{rgeoda}
+
 Geoda has been wrapped for R as **rgeoda** [@R-rgeoda], and provides very similar functionalities for the exploration of spatial autocorrelation in areal data as matching parts of **spdep**. The active objects are kept as pointers to a compiled code workspace; using compiled code for all operations (as in Geoda itself) makes **rgeoda** perform fast, but is less flexible when modifications or enhancements are desired.
 
+\index[function]{queen\_weights}
 ```{r, message=FALSE}
 library(rgeoda)
 system.time(Geoda_w <- queen_weights(pol_pres15))
@@ -575,6 +619,7 @@ summary(Geoda_w)
 ```
 For comparison, let us take the multivariate $C_i$ measure of turnout in the two rounds of the 2015 Polish presidential election as above:
 
+\index[function]{local\_multigeary}
 ```{r, message=FALSE}
 system.time(lisa <- local_multigeary(Geoda_w, 
     pol_pres15[c("I_turnout", "II_turnout")], 
@@ -584,12 +629,14 @@ system.time(lisa <- local_multigeary(Geoda_w,
 ```
 The contiguity neighbours are the same as those found by `poly2nb()`:
 
+\index[function]{lisa\_num\_nbrs}
 ```{r, message=FALSE}
 all.equal(card(nb_q), lisa_num_nbrs(lisa), 
 		  check.attributes = FALSE)
 ```
 as are the multivariate $C_i$ values the same as those found above:
 
+\index[function]{lisa\_values}
 ```{r, message=FALSE}
 all.equal(lisa_values(lisa), c(locMvC_p),
 		  check.attributes = FALSE)
