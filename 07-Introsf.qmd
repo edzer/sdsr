@@ -389,6 +389,60 @@ and extensive variables.
 \index{interpolation!area weighted}
 \index{area-weighted interpolation}
 
+## Ellipsoidal coordinates
+
+Unprojected data have ellipsoidal coordinates, expressed in degrees
+east and north. As explained in @sec-straight, "straight" lines
+between points are the curved shortest paths ("geodesic"). By
+default, `sf` uses geometrical operations from the `s2geometry`
+library, interfaced through the `s2` package [@R-s2], and we see
+for instance that the point
+
+```{r}
+"POINT(50 50.1)" |> st_as_sfc(crs = "OGC:CRS84") -> pt
+```
+falls _inside_ the polygon:
+```{r}
+"POLYGON((40 40, 60 40, 60 50, 40 50, 40 40))" |>
+  st_as_sfc(crs = "OGC:CRS84") -> pol
+st_intersects(pt, pol)
+```
+as illustrated by @fig-figs2 (left: straight lines on an orthographic projection centered at the plot area).
+
+```{r fig-figs2,echo=!knitr::is_latex_output()}
+#| fig.cap: "Intersection depends on whether we use geodesics/great circle arcs (left: s2) or Cartesian coordinates (right)"
+#| code-fold: true
+#| fig.height: 4
+par(mfrow = c(1, 2))
+par(mar = c(2.1, 2.1, 1.2, .5))
+ortho <- st_crs("+proj=ortho +lon_0=50 +lat_0=45")
+pol |> st_transform(ortho) |> plot(axes = TRUE, graticule = TRUE, 
+								   main = 's2geometry')
+pt |> st_transform(ortho) |> plot(add = TRUE, pch = 16, col = 'red')
+# second plot:
+plot(pol, axes = TRUE, graticule = TRUE, main = 'GEOS')
+plot(pt, add = TRUE, pch = 16, col = 'red')
+```
+
+If one wants `sf` to use ellipsoidal coordinates as if they are Cartesian coordinates, the use of `s2` can be switched off:
+```{r}
+old <- sf_use_s2(FALSE)
+st_intersects(pol, pt)
+sf_use_s2(old) # restore
+```
+and the intersection is empty, as illustrated by @fig-figs2 (right:
+straight lines on an equidistant cylindrical projection). The
+warning indicates the planar assumption for ellipsoidal coordinates.
+
+Use of `s2geometry` can be switched of for reasons of performance
+or compatibility with legacy implementations.  The underlying
+libraries, `GEOS` for Cartesian and `s2geometry` for spherical
+geometry (@fig-gdal-fig-nodetails) were developed with different
+motivations, and their use through `sf` differs in some respects:
+
+* certain operations may be much faster in one compared to the other, e.g. by using spatial indexes not available or not (yet) interfaced in the other
+* certain functions may be available in only one of them (like `st_relate` being only present in GEOS).
+
 ## Package `stars`
 
 \index{stars}
@@ -684,7 +738,7 @@ trn$cls[c(8, 14, 15, 18, 19)] = "water"
 model <- MASS::lda(cls ~ ., st_drop_geometry(trn))
 pr <- predict(rs, model)
 ```
-Here, we used the `MASS::` prefix to avoid loading `MASS`, as that
+Here, we use the `MASS::` prefix to avoid loading `MASS`, as that
 would mask `select` from `dplyr`. Another way would be to load
 `MASS` and unload it later on with `detach()`.
 
