@@ -47,7 +47,7 @@ reading, because of the decompression involved.
 ## Vector data: `sf` {#sec-largesf}
 
 \index{sf!large datasets}
-\index{sf\_read!inside bounding box}
+\index{st\_read!inside bounding box}
 
 ### Reading from local disk
 
@@ -61,26 +61,26 @@ An example is
 
 ```{r}
 library(sf)
-(file <- system.file("gpkg/nc.gpkg", package = "sf"))
+file <- system.file("gpkg/nc.gpkg", package = "sf")
 (st_bbox(c(xmin = -81.7,ymin = 36.2, xmax = -80.4, ymax = 36.5)) |>
     st_as_sfc() |> st_as_text() -> bb)
 nc.1 <- st_read(file, wkt_filter = bb)
 ```
 
-\index{sf\_read!query argument}
+\index{st\_read!query argument}
 
 The second option is to use the `query` argument to `st_read`,
 which can be any query in "OGR SQL" dialect, which can be used to
 select features from a layer, and limit fields. An example is:
 
 ```{r}
-q <- paste("select BIR74,SID74,geom from 'nc.gpkg' where BIR74 > 1500")
+q <- "select BIR74,SID74,geom from 'nc.gpkg' where BIR74 > 1500"
 nc.2 <- st_read(file, query = q)
 ```
 Note that `nc.gpkg` is the _layer name_, which can be obtained from `file` using `st_layers`.
 Sequences of records can be read using `LIMIT` and `OFFSET`, to read records 51-60 use
 ```{r}
-q <- paste("select BIR74,SID74,geom from 'nc.gpkg' LIMIT 10 OFFSET 50")
+q <- "select BIR74,SID74,geom from 'nc.gpkg' LIMIT 10 OFFSET 50"
 nc.2 <- st_read(file, query = q)
 ```
 
@@ -90,7 +90,7 @@ is passed on to the database and not interpreted by GDAL; this means
 that more powerful features will be available.  Further information
 is found in the GDAL documentation under "OGR SQL dialect".
 
-\index{sf\_read!vsizip}
+\index{st\_read!vsizip}
 
 Very large files or directories that are zipped can be read
 without the need to unzip them, using the `/vsizip` (for zip),
@@ -211,7 +211,10 @@ download.file(
 ```
 and from this file we can read the layer `lines`, and plot its
 first attribute by
-```{r fig-overpass, fig.cap = "OpenStreetMap vector data"}
+```{r fig-overpass}
+#| fig.cap: "OpenStreetMap vector data"
+#| out.width: 90%
+#| fig.height: 5
 o <- read_sf("data/ms.osm", "lines")
 p <- read_sf("data/ms.osm", "multipolygons")
 bb <- st_bbox(c(xmin = 7.595, ymin = 51.969, 
@@ -324,8 +327,8 @@ use the `starsdata` package, an R data package with larger datasets
 (around 1 GB total). It can be installed by
 ```{r eval=FALSE}
 options(timeout = 600) # or large in case of slow network
-install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", 
-	type = "source")
+install.packages("starsdata", 
+    repos = "http://pebesma.staff.ifgi.de", type = "source")
 ```
 We can "load" a Sentinel-2 image from it by
 ```{r}
@@ -487,11 +490,11 @@ zones). An R package that can do that is gdalcubes [@R-gdalcubes;
 Where COG provides cloud native storage for raster imagery, Zarr is a
 format for cloud native storage of large multidimensional arrays. It
 can be seen as a successor of NetCDF and seems to follow similar
-conventions, being used by the climate and forecast communities.
+conventions, being used by the climate and forecast communities [@cf].
 Zarr "files" are really directories with subdirectories containing
 compressed chunks of the data. The compression algorithm and
 the chunking strategy will have an effect on how fast particular
-sub-cubes can be read or written. 
+sub-cubes can be read or written.
 
 Function `stars::read_mdim` has options for reading sub-cubes by
 specifying offset and size of the index in each dimension, and a step
@@ -503,6 +506,27 @@ multidimensional array API.
 \index{read\_mdim}
 \index{write\_mdim}
 \index{NetCDF}
+
+To read parts of a remote (cloud-based) Zarr file, one needs to prepend the
+URL with indicators about the format and the access protocol:
+```{r}
+dsn = paste0('ZARR:"/vsicurl/https://ncsa.osn.xsede.org/"',
+	   '"Pangeo/pangeo-forge/gpcp-feedstock/gpcp.zarr"')
+```
+after which we can read the first 10 time steps using
+```{r}
+library(stars)
+bounds = c(longitude = "lon_bounds", latitude = "lat_bounds")
+(r = read_mdim(dsn, bounds = bounds, count = c(NA, NA, 10)))
+st_bbox(r)
+```
+In this example, 
+
+* `NA` count values lead to using all values available
+* `bounds` variables needed explicit specification because the data
+  source did not follow the most recent CF 1.10 conventions; and
+  ignoring bounds would lead to a raster with a bounding box having
+  latitude values outside $[-90,90]$.
 
 ### APIs for data: GEE, openEO
 
