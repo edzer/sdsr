@@ -62,10 +62,13 @@ An example is
 ```{r}
 library(sf)
 file <- system.file("gpkg/nc.gpkg", package = "sf")
-(st_bbox(c(xmin = -81.7,ymin = 36.2, xmax = -80.4, ymax = 36.5)) |>
-    st_as_sfc() |> st_as_text() -> bb)
-nc.1 <- st_read(file, wkt_filter = bb)
+c(xmin = -82,ymin = 36, xmax = -80, ymax = 37) |>
+    st_bbox() |> st_as_sfc() |> st_as_text() -> bb
+read_sf(file, wkt_filter = bb) |> nrow() # out of 100
 ```
+
+Here, `read_sf` is used as an alternative to `st_read` to suppress
+output.
 
 \index{st\_read!query argument}
 
@@ -75,13 +78,13 @@ select features from a layer, and limit fields. An example is:
 
 ```{r}
 q <- "select BIR74,SID74,geom from 'nc.gpkg' where BIR74 > 1500"
-nc.2 <- st_read(file, query = q)
+read_sf(file, query = q) |> nrow()
 ```
 Note that `nc.gpkg` is the _layer name_, which can be obtained from `file` using `st_layers`.
 Sequences of records can be read using `LIMIT` and `OFFSET`, to read records 51-60 use
 ```{r}
 q <- "select BIR74,SID74,geom from 'nc.gpkg' LIMIT 10 OFFSET 50"
-nc.2 <- st_read(file, query = q)
+read_sf(file, query = q) |> nrow()
 ```
 
 Further query options include selection on geometry type, polygon
@@ -119,20 +122,21 @@ write_sf(nc, "PG:dbname=postgis", "nc")
 Although GDAL has support for several spatial databases, and as
 mentioned above it passes on SQL in the `query` argument to the
 database, it is sometimes beneficial to directly read from and 
-write to a spatial database using the R database drivers for this. An
+write to a spatial database using the DBI R database drivers for this. An
 example of this is:
 ```{r, eval=has_PG}
 pg <- DBI::dbConnect(
     RPostgres::Postgres(),
     host = "localhost",
     dbname = "postgis")
-st_read(pg, query = "select BIR74,wkb_geometry from nc limit 3")
+read_sf(pg, query = "select BIR74,wkb_geometry from nc limit 3") |> 
+    nrow()
 ```
 A spatial query might look like
 ```{r, eval=has_PG}
 q <- "SELECT BIR74,wkb_geometry FROM nc WHERE \
   ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.50 36.43)');"
-st_read(pg, query = q)
+read_sf(pg, query = q) |> nrow()
 ```
 Here, the intersection is done in the database, and uses the spatial
 index typically present.
@@ -168,11 +172,17 @@ GDAL drivers support reading from online resources, by prepending
 similar drivers specialized for particular clouds include `/vsis3/`
 for Amazon S3, `/vsigs/`  for Google Cloud Storage, `/vsiaz/` for
 Azure, `/vsioss/` for Alibaba Cloud, or `/vsiswift/` for OpenStack
-Swift Object Storage. These prepositions can be combined e.g. with
-`/vsizip/` to read a zipped online resource. Depending on the
-file format used, reading information this way may always involve
-reading the entire file, or reading it multiple times, and may not
-always be the most efficient way of handling resources. 
+Swift Object Storage.  @sec-zarr has an example of using `/vsicurl/`.
+
+These prepositions can be combined e.g. with `/vsizip/` to read a
+zipped online resource. Depending on the file format used, reading
+information this way may require reading the entire file, or reading
+it multiple times, and may not always be the most efficient way of
+handling resources. Cloud native formats are optimized to work
+efficiently using `http` requests.
+
+\index{cloud native}
+\index{cloud optimized}
 
 ### API's, OpenStreetMap
 
@@ -213,7 +223,7 @@ and from this file we can read the layer `lines`, and plot its
 first attribute by
 ```{r fig-overpass}
 #| fig.cap: "OpenStreetMap vector data"
-#| out.width: 90%
+#| out.width: 80%
 #| fig.height: 5
 o <- read_sf("data/ms.osm", "lines")
 p <- read_sf("data/ms.osm", "multipolygons")
@@ -227,7 +237,7 @@ the result of which is shown in @fig-overpass .
 The overpass API provides a more generic and powerful query
 functionality to OpenStreetMap data.
 
-### Cloud native: GeoParquet and GeoArrow
+### GeoParquet and GeoArrow
 
 \index{geoparquet}
 \index{parquet}
@@ -482,7 +492,7 @@ zones). An R package that can do that is gdalcubes [@R-gdalcubes;
 @appel2019demand], which can also directly use STAC output
 [@appelblog].
 
-### Cloud native storage: Zarr
+### Cloud native storage: Zarr {#sec-zarr}
 
 \index{Zarr}
 \index{GDAL!multidimensional arrays}
@@ -510,8 +520,8 @@ multidimensional array API.
 To read parts of a remote (cloud-based) Zarr file, one needs to prepend the
 URL with indicators about the format and the access protocol:
 ```{r}
-dsn = paste0('ZARR:"/vsicurl/https://ncsa.osn.xsede.org/"',
-	   '"Pangeo/pangeo-forge/gpcp-feedstock/gpcp.zarr"')
+dsn = paste0('ZARR:"/vsicurl/https://ncsa.osn.xsede.org',
+	   '/Pangeo/pangeo-forge/gpcp-feedstock/gpcp.zarr"')
 ```
 after which we can read the first 10 time steps using
 ```{r}
@@ -522,9 +532,9 @@ st_bbox(r)
 ```
 In this example, 
 
-* `NA` count values lead to using all values available
-* `bounds` variables needed explicit specification because the data
-  source did not follow the most recent CF 1.10 conventions; and
+* `NA` values for `count` indicate to get all values available for that dimension
+* here, `bounds` variables needed explicit specification because the data
+  source did not follow the more recent CF (1.10) conventions; and
   ignoring bounds would lead to a raster with a bounding box having
   latitude values outside $[-90,90]$.
 

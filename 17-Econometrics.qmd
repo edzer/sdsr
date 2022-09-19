@@ -114,12 +114,12 @@ The examples use the objects read and created in @sec-spatglmm, based on @bivand
 ```{r, message=FALSE}
 library(spatialreg)
 eigs_489 <- eigenw(lw_q_489)
-SDEM_489 <- errorsarlm(form, data = boston_489, listw = lw_q_489,
-					   Durbin = TRUE, zero.policy = TRUE,
-					   control = list(pre_eig = eigs_489))
-SEM_489 <- errorsarlm(form, data = boston_489, listw = lw_q_489, 
-                      zero.policy = TRUE,
-					  control = list(pre_eig = eigs_489))
+SDEM_489 <- errorsarlm(form, data = boston_489, 
+      listw = lw_q_489, Durbin = TRUE, zero.policy = TRUE,
+      control = list(pre_eig = eigs_489))
+SEM_489 <- errorsarlm(form, data = boston_489, 
+      listw = lw_q_489, zero.policy = TRUE,
+      control = list(pre_eig = eigs_489))
 ```
 Here we are using the `control=` list argument to pass through pre-computed eigenvalues for the default `"eigen"` method. 
 
@@ -251,15 +251,15 @@ Using these as an example and comparing some `pred.type=` variants for the SDEM 
 
 Here, we'll list the predictions for the censored tract observations using three different prediction types, taking the exponent to get back to the USD median house values. Note that the `row.names()` of the `newdata=` object are matched with the whole-data spatial weights matrix `"region.id"` attribute to make out-of-sample prediction possible:
 
-```{r}
+```{r eval=FALSE}
 nd <- boston_506[is.na(boston_506$median),]
-t0 <- exp(predict(SDEM_489, newdata = nd, listw = lw_q, 
+t0 <- exp(predict(SDEM_489, newdata = nd, listw = lw_q,
 				  pred.type = "TS", zero.policy  =TRUE))
-suppressWarnings(t1  <- exp(predict(SDEM_489, newdata = nd,
+suppressWarnings(t1 <- exp(predict(SDEM_489, newdata = nd,
 									listw = lw_q,
 									pred.type = "KP2",
                                     zero.policy = TRUE)))
-suppressWarnings(t2  <- exp(predict(SDEM_489, newdata = nd,
+suppressWarnings(t2 <- exp(predict(SDEM_489, newdata = nd,
 									listw = lw_q,
 									pred.type = "KP5",
                                     zero.policy = TRUE)))
@@ -301,11 +301,10 @@ mv_mean <- exp(SDEM_506_slm$summary.fitted.values$mean[
 
 INLA also provide gridded estimates of the marginal distributions of the predictions, offering a way to assess the uncertainty associated with the predicted values:
 
-```{r}
+```{r eval=FALSE}
 data.frame(fit_TS = t0[,1], fit_KP2 = c(t1), fit_KP5 = c(t2),
-    INLA_slm = mv_mean,
-	censored = boston_506$censored[as.integer(attr(t0, 
-												   "region.id"))])
+    INLA_slm = mv_mean, censored = 
+      boston_506$censored[as.integer(attr(t0, "region.id"))])
 ```
 
 The spatial regression toolbox remains incomplete, and it will take time to fill in blanks. It remains unfortunate that the several traditions in spatial regression seldom seem to draw on each others' understandings and advances.

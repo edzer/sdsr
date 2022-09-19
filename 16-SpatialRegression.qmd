@@ -68,8 +68,9 @@ We can start by reading in the 506 tract data set from **spData** [@R-spData], a
 ```{r, message=FALSE}
 library(sf)
 library(spData)
-boston_506 <- st_read(system.file("shapes/boston_tracts.shp",
+boston_506 <- read_sf(system.file("shapes/boston_tracts.shp",
 								  package = "spData")[1])
+print(boston_506, n = 0)
 ```
 ```{r}
 nb_q <- spdep::poly2nb(boston_506)
@@ -113,10 +114,11 @@ ccounts <- 23:31
 for (nm in nms[c(22, ccounts, 36)]) {
   boston_96[[nm]] <- aggregate(boston_506[[nm]], agg_96, sum)$x
 }
-br2 <- c(3.50, 6.25, 8.75, 12.5, 17.5, 22.5, 30, 42.5, 60) * 1000
+br2 <- 
+  c(3.50, 6.25, 8.75, 12.5, 17.5, 22.5, 30, 42.5, 60) * 1000
 counts <- as.data.frame(boston_96)[, nms[ccounts]]
 f <- function(x) matrixStats::weightedMedian(x = br2, w = x,
-											 interpolate = TRUE)
+									 interpolate = TRUE)
 boston_96$median <- apply(counts, 1, f)
 is.na(boston_96$median) <- boston_96$median > 50000
 summary(boston_96$median)
@@ -175,8 +177,8 @@ The **lme4** package [@R-lme4] lets us add an independent and identically distri
 ```{r, message=FALSE}
 library(Matrix)
 library(lme4)
-MLM <- lmer(update(form, . ~ . + (1 | NOX_ID)), data = boston_487,
-			REML = FALSE)
+MLM <- lmer(update(form, . ~ . + (1 | NOX_ID)), 
+			data = boston_487, REML = FALSE)
 ```
 Copying the random effect into the `"sf"` object for mapping is performed below.
 
@@ -358,29 +360,30 @@ Unfortunately, the coefficient estimates for the air pollution variable for thes
 
 @fig-multi-levelmaps1 shows that the air pollution model output zone level IID random effects are very similar across the four model fitting functions reported. In all the maps, the central downtown zones have stronger negative random effect values, but strong positive values are also found in close proximity; suburban areas take values closer to zero.
 
-```{r fig-multi-levelmaps1, out.width='100%', fig=TRUE}
+```{r fig-multi-levelmaps1}
+#| out.width: 80%
 #| fig.cap: "Air pollution model output zone level IID random effects estimated using **lme4**, **hglm**, **INLA** and **R2BayesX**; the range of the response, `log(median)` is 2.1893"
 library(tmap, warn.conflicts=FALSE)
 tm_shape(boston_93) +
-	tm_fill(c("MLM_re", "HGLM_re", "INLA_re", "BX_re"),
-			midpoint = 0, title = "IID") +
-    tm_facets(free.scales = FALSE) +
-	tm_borders(lwd = 0.3, alpha = 0.4) + 
-    tm_layout(panel.labels = c("lmer", "hglm", "inla", "bayesx"))
+  tm_fill(c("MLM_re", "HGLM_re", "INLA_re", "BX_re"),
+          midpoint = 0, title = "IID") +
+  tm_facets(free.scales = FALSE) +
+  tm_borders(lwd = 0.3, alpha = 0.4) + 
+  tm_layout(panel.labels = c("lmer", "hglm", "inla", "bayesx"))
 ```
 
 @fig-multi-levelmaps2 shows that the spatially structured random effects are also very similar to each other, with the `"SAR"` spatial smooth being perhaps a little smoother than the `"CAR"` smooths when considering the range of values taken by the random effect term.
 
-```{r fig-multi-levelmaps2, out.width='100%', fig=TRUE}
+```{r fig-multi-levelmaps2}
+#| out.width: 80%
 #| fig.cap: "Air pollution model output zone level spatially structured random effects estimated using **hglm**, **HSAR**, **INLA**, **R2BayesX** and **mgcv**"
 tm_shape(boston_93) +
-    tm_fill(c("HGLM_ss", "INLA_lr", "INLA_ss", "BX_ss", "GAM_ss"),
-			midpoint = 0, title = "SSRE") +
-    tm_facets(free.scales = FALSE) + 
-    tm_borders(lwd = 0.3, alpha = 0.4) +
-	tm_layout(panel.labels = c("hglm CAR", "inla Leroux",
-							   "inla ICAR", "bayesx ICAR",
-							   "gam ICAR"))
+  tm_fill(c("HGLM_ss", "INLA_lr", "INLA_ss", "BX_ss", 
+            "GAM_ss"), midpoint = 0, title = "SSRE") +
+  tm_facets(free.scales = FALSE) + 
+  tm_borders(lwd = 0.3, alpha = 0.4) +
+  tm_layout(panel.labels = c("hglm CAR", "inla Leroux",
+             "inla ICAR", "bayesx ICAR", "gam ICAR"))
 ```
 
 Although there is still a great need for more thorough comparative studies of model fitting functions for spatial regression including multilevel capabilities, there has been much progress over recent years. @VRANCKX2019100302 offer a recent comparative survey of disease mapping spatial regression, typically set in a Poisson regression framework offset by an expected count. In @doi:10.1177/1471082X20967158, methods for estimating spatial survival models using spatial weights matrices are compared with spatial probit models. 

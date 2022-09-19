@@ -54,7 +54,7 @@ length(r) == length(unique(names(r)))
 \index{xts}
 and then merge all files using `xts::cbind`, so that records are combined based on matching times:
 ```{r converttoxts}
-library(xts)
+suppressPackageStartupMessages(library(xts))
 r <- lapply(r, function(f) xts(f$Concentration, f$t))
 aq <- do.call(cbind, r)
 ```
@@ -71,7 +71,7 @@ aqsel <- aq[, sel]
 Next, the [station metadata](http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_stations.zip) was read 
 and filtered for rural background stations in Germany (`"DE"`) by
 ```{r filterruralbackground}
-library(tidyverse)
+suppressPackageStartupMessages(library(tidyverse))
 read.csv("aq/AirBase_v8_stations.csv", sep = "\t") |>
 	as_tibble() |> 
 	filter(country_iso_code == "DE",
@@ -81,9 +81,8 @@ read.csv("aq/AirBase_v8_stations.csv", sep = "\t") |>
 These stations contain coordinates, and an `sf` object with (static) station metadata is created by
 ```{r importstationcoords}
 library(sf)
-a2.sf <- st_as_sf(a2, coords = 
-				 c("station_longitude_deg",
-				   "station_latitude_deg"), crs = 'OGC:CRS84')
+a2.sf <- st_as_sf(a2, crs = 'OGC:CRS84',
+  coords = c("station_longitude_deg", "station_latitude_deg"))
 ```
 
 We now subset the air quality measurements to include only stations that are of type rural background:
@@ -93,16 +92,13 @@ aqsel <- aqsel[, sel]
 ```
 
 We can compute station means, and join these to stations locations by
-```{r fig-computestationmeans, message=FALSE}
+```{r fig-computestationmeans, message = FALSE}
 tb <- tibble(NO2 = apply(aqsel, 2, mean, na.rm = TRUE), 
 			station_european_code = colnames(aqsel))
 crs <- 'EPSG:32632'
 right_join(a2.sf, tb) |> st_transform(crs) -> no2.sf 
-# load German boundaries
-data(air, package = "spacetime")
+data(air, package = "spacetime") # load German adm. boundaries
 de <- st_transform(st_as_sf(DE_NUTS1), crs)
-ggplot() + geom_sf(data = de) +
-		geom_sf(data = no2.sf, mapping = aes(col = NO2))
 ```
 
 Station mean NO$_2$ concentrations, along with country borders, are shown in in @fig-plotDE.
@@ -224,8 +220,9 @@ save(list = "v.st", file = "vst.RData")
 ```
 
 which is shown in @fig-plotvariograms.
-```{r fig-plotvariograms, echo=!knitr::is_latex_output(), out.height = '160%'}
-#| fig.cap: "Spatiotemporal sample variogram for hourly NO$_2$ concentrations at rural background stations in Germany over 2027; in the right-hand side plot color corresponds to time lag."
+```{r fig-plotvariograms, echo=!knitr::is_latex_output()}
+#| fig.cap: "Spatiotemporal sample variogram for hourly NO$_2$ concentrations at rural background stations in Germany over 2027; in the right-hand side plot color corresponds to time lag (yellow is later)."
+#| out.width: 80%
 v1 <- plot(v.st)
 v2 <- plot(v.st, map = FALSE, legend = list())
 print(v1, split = c(1,1,2,1), more = TRUE)
@@ -247,11 +244,15 @@ StAni <- estiStAni(v.st, c(0,200000))
 	lower = rep(0.0001, 7)))
 ```
 and shown in @fig-prodsummodelplot.
-```{r fig-prodsummodelplot, fig.cap = "Product-sum model, fitted to the spatiotemporal sample variogram", echo=!knitr::is_latex_output()}
+```{r fig-prodsummodelplot, echo=!knitr::is_latex_output()}
+#| fig.cap:  "Product-sum model, fitted to the spatiotemporal sample variogram"
+#| out.width: 80%
 plot(v.st, fitProdSumModel, wireframe = FALSE, all = TRUE, scales = list(arrows=FALSE), zlim = c(0,150))
 ```
 which can also be plotted as wireframes, shown in @fig-modelwire.
-```{r fig-modelwire, fig.cap = "Wireframe plot of the fitted spatiotemporal variogram model", echo = !knitr::is_latex_output()}
+```{r fig-modelwire, echo = !knitr::is_latex_output()}
+#| fig.cap: "Wireframe plot of the fitted spatiotemporal variogram model"
+#| out.width: 80%
 plot(v.st, model = fitProdSumModel, wireframe = TRUE, all = TRUE, 
 	 scales = list(arrows = FALSE), zlim = c(0, 185))
 ```
@@ -297,7 +298,9 @@ new_ts <- krigeST(NO2~1, data = no2.st["NO2"], newdata = new_pt,
 save(list = "new_ts", file = "new_ts.RData")
 ```
 where the results are shown in @fig-plotxts.
-```{r fig-plotxts, fig.cap = "Time series plot of spatiotemporal predictions for two points", echo=!knitr::is_latex_output()}
+```{r fig-plotxts, echo = !knitr::is_latex_output()}
+#| fig.cap: "Time series plot of spatiotemporal predictions for two points"
+#| out.width: 80%
 plot(as.xts(new_ts[2]))
 ```
 
@@ -331,8 +334,10 @@ names(new_int)[2] = "NO2"
 ```{r echo=FALSE}
 save(list = "new_int", file = "new_int.RData")
 ```
-```{r fig-plotspatiotemporalpredictions,fig.cap="Spatiotemporal predictions for four selected time slices", echo=!knitr::is_latex_output()}
+```{r fig-stpredictions, echo=!knitr::is_latex_output()}
+#| fig.cap: "Spatiotemporal predictions for four selected time slices"
 library(viridis)
+library(viridisLite)
 library(ggplot2)
 g <- ggplot() + coord_equal() +
 	scale_fill_viridis() +
@@ -345,7 +350,7 @@ g + geom_stars(data = new_int, aes(fill = NO2, x = x, y = y)) +
     geom_sf(data = no2.sf, col = 'grey', cex = .5) + 
 	coord_sf(lims_method = "geometry_bbox")
 ```
-and shown in @fig-plotspatiotemporalpredictions.
+and shown in @fig-stpredictions.
 
 A larger value for `nmax` was needed here to decrease the visible
 disturbance (sharp edges) caused by discrete neighbourhood

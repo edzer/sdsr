@@ -42,28 +42,30 @@ write_csv(right_join(a2, tb), "no2.csv")
 We can read station mean NO$_2$ values, a dataset that is prepared 
 in @sec-stgeostatistics, by loading it from package `gstat` using
 ```{r, message=FALSE}
-library(tidyverse)
-no2 <- read_csv(system.file("external/no2.csv", package = "gstat"))
+suppressPackageStartupMessages(library(tidyverse))
+no2 <- read_csv(system.file("external/no2.csv", 
+    package = "gstat"), show_col_types = FALSE)
 ```
 and convert it into an `sf` object with an appropriate UTM projection using
 ```{r}
 library(sf)
 crs <- st_crs("EPSG:32632")
-no2.sf <- st_as_sf(no2, coords = c("station_longitude_deg",
-					"station_latitude_deg"), crs = "OGC:CRS84") |>
-	st_transform(crs)
+st_as_sf(no2, crs = "OGC:CRS84",
+    coords = c("station_longitude_deg", "station_latitude_deg")) |>
+	st_transform(crs) -> no2.sf
 ```
 
 Next, we can load country boundaries and plot these data using `ggplot`, shown
 in @fig-plotDE .
 ```{r plot}
-data(air, package = "spacetime") # loads boundaries into DE_NUTS1
+data(air, package = "spacetime") # loads DE_NUTS1 boundaries
 st_as_sf(DE_NUTS1) |> st_transform(crs) -> de
 ```
 
 ```{r fig-plotDE, echo = !knitr::is_latex_output()}
-#| fig.cap = "Mean NO$_2$ concentrations in air for rural background stations in Germany over 2017"
-ggplot() + geom_sf(data = de) +  geom_sf(data = no2.sf, mapping = aes(col = NO2))
+#| fig.cap: "Mean NO$_2$ concentrations in air for rural background stations in Germany over 2017"
+ggplot() + geom_sf(data = de) + 
+		geom_sf(data = no2.sf, mapping = aes(col = NO2))
 ```
 
 \index{interpolation!target grid}
@@ -107,8 +109,10 @@ i <- idw(NO2~1, no2.sf, grd)
 and plot them in @fig-idw .
 
 ```{r fig-idw}
-#| fig.cap = "Inverse distance weighted interpolated values for NO$_2$ over Germany"
-ggplot() + geom_stars(data = i, aes(fill = var1.pred, x = x, y = y)) + 
+#| fig.cap: "Inverse distance weighted interpolated values for NO$_2$ over Germany"
+ggplot() + geom_stars(data = i, 
+					  aes(fill = var1.pred, x = x, y = y)) + 
+    xlab(NULL) + ylab(NULL) +
 	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
 	geom_sf(data = no2.sf)
 ```
@@ -131,7 +135,9 @@ Function `gstat::variogram` computes sample variograms,
 v <- variogram(NO2~1, no2.sf)
 ```
 and the result of plotting this is shown in @fig-vgm .
-```{r fig-vgm, fig.cap = "Sample variogram plot",echo=!knitr::is_latex_output()}
+```{r fig-vgm, echo=!knitr::is_latex_output()}
+#| out.width: 80%
+#| fig.cap: "Sample variogram plot"
 plot(v, plot.numbers = TRUE)
 ```
 Function `variogram` chooses default for maximum distance (`cutoff`: one third of the length of the bounding box diagonal) and (constant) interval widths (`width`: cutoff divided by 15). These defaults can be changed, e.g. by
@@ -140,7 +146,9 @@ library(gstat)
 v0 <- variogram(NO2~1, no2.sf, cutoff = 100000, width = 10000)
 ```
 shown in @fig-vgm2 .
-```{r fig-vgm2,fig.cap = "Sample variogram plot with adjusted cutoff and lag width"}
+```{r fig-vgm2}
+#| fig.cap: "Sample variogram plot with adjusted cutoff and lag width"
+#| out.width: 80%
 plot(v0, plot.numbers = TRUE)
 ```
 Note that the formula `NO2~1` is used to select the variable of interest from the data file (`NO2`), and to specify the mean model: `~1` refers to an intercept-only (unknown, constant mean) model.
@@ -156,7 +164,9 @@ To avoid these troubles we fit parametric models $\gamma(h)$ to the estimates $\
 v.m <- fit.variogram(v, vgm(1, "Exp", 50000, 1))
 ```
 and shown in @fig-fitvariogrammodel .
-```{r fig-fitvariogrammodel, fig.cap = "Sample variogram with fitted model", echo = !knitr::is_latex_output()}
+```{r fig-fitvariogrammodel, echo = !knitr::is_latex_output()}
+#| fig.cap: "Sample variogram with fitted model"
+#| out.width: 80%
 plot(v, v.m, plot.numbers = TRUE)
 ```
 The fitting is done by weighted least squares, minimizing
@@ -185,8 +195,9 @@ trend, the data, the prediction grid, and the variogram model (@fig-krigeoverger
 k <- krige(NO2~1, no2.sf, grd, v.m)
 ```
 ```{r fig-krigeovergermany, echo = !knitr::is_latex_output()}
-#| fig.cap = "Kriged NO$_2$ concentrations over Germany"
+#| fig.cap: "Kriged NO$_2$ concentrations over Germany"
 ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) + 
+    xlab(NULL) + ylab(NULL) +
 	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
 	geom_sf(data = no2.sf) +
 	coord_sf(lims_method = "geometry_bbox")
@@ -216,7 +227,8 @@ b$kriging <- b$var1.pred
 ```
 
 ```{r fig-aggregations, echo = !knitr::is_latex_output()}
-#| fig.cap = "Aggregated NO$_2$ values from simple averaging (left) and block kriging (right)"
+#| fig.cap: "Aggregated NO$_2$ values from simple averaging (left) and block kriging (right)"
+#| out.width: 80%
 b |> select(sample, kriging) |> 
 		pivot_longer(1:2, names_to = "var", values_to = "NO2") -> b2
 b2$var <- factor(b2$var, levels = c("sample", "kriging"))
@@ -246,7 +258,8 @@ b$kriging <- sqrt(b$var1.var)
 ```
 
 ```{r fig-aggrSE}
-#| fig.cap = "Standard errors for mean NO$_2$ values obtained by simple averaging (left) and block kriging (right)"
+#| fig.cap: "Standard errors for mean NO$_2$ values obtained by simple averaging (left) and block kriging (right)"
+#| out.width: 80%
 b |> select(sample, kriging) |> 
 		pivot_longer(1:2, names_to = "var", 
 					 values_to = "Standard_error") -> b2
@@ -294,7 +307,8 @@ s <- krige(NO2~1, no2.sf, grd, v.m, nmax = 30, nsim = 6)
 ```
 
 ```{r fig-plotkrigingvalues, echo=!knitr::is_latex_output(), message=FALSE}
-#| fig.cap = "Six conditional simulations for NO$_2$ values"
+#| fig.cap: "Six conditional simulations for NO$_2$ values"
+#| out.width: 80%
 library(viridis)
 g <- ggplot() + coord_equal() +
 	scale_fill_viridis() +
@@ -361,12 +375,13 @@ Now we have the population counts per grid cell in `a`. To get to
 population density, we need to find the area of each cell; for cells
 crossing the country border, this will be less than 10 x 10 km:
 ```{r, message=FALSE}
-grd$ID <- 1:prod(dim(grd)) # to find out which grid cell we have
+grd$ID <- 1:prod(dim(grd)) # to identify grid cells
 ii <- st_intersects(grd["ID"], 
 				   st_cast(st_union(de), "MULTILINESTRING"))
 grd_sf <- st_as_sf(grd["ID"], na.rm = FALSE)[lengths(ii) > 0,]
 iii <- st_intersection(grd_sf, st_union(de))
-grd$area <- st_area(grd)[[1]] + units::set_units(grd$values, m^2)
+grd$area <- st_area(grd)[[1]] + 
+    units::set_units(grd$values, m^2)
 grd$area[iii$ID] <- st_area(iii)
 ```
 Instead of doing the two-stage procedure above: first finding cells that
@@ -380,6 +395,7 @@ sum(b$Einwohner)
 ```
 ```{r fig-popdens, echo = !knitr::is_latex_output()}
 #| fig.cap: "Population density for 100 m $\times$ 100 m grid cells"
+#| out.width: 80%
 g + geom_stars(data = grd, aes(fill = sqrt(pop_dens), x = x, y = y))
 ```
 We need to divide the number of inhabitants by the number of 100
@@ -398,7 +414,8 @@ grd |>
 summary(lm(NO2~sqrt(pop_dens), no2.sf))
 ```
 and the corresponding scatterplot is shown in @fig-no2scat.
-```{r fig-no2scat, out.width = '70%', eval=TRUE, fig=TRUE, echo=!knitr::is_latex_output()}
+```{r fig-no2scat, echo=!knitr::is_latex_output()}
+#| out.width: 80%
 #| fig.cap: "Scatter plot of 2017 annual mean NO2 concentration against population density, for rural background air quality stations"
 plot(NO2 ~ sqrt(pop_dens), no2.sf)
 abline(lm(NO2 ~ sqrt(pop_dens), no2.sf))
@@ -414,11 +431,13 @@ vr.m <- fit.variogram(vr, vgm(1, "Exp", 50000, 1))
 ```
 ```{r fig-predictusingpopulationdensity,echo=!knitr::is_latex_output()}
 #| fig.cap: "Residual variogram after subtracting population density trend"
+#| out.width: 80%
 plot(vr, vr.m, plot.numbers = TRUE)
 ```
 and subsequently, kriging prediction is done by (@fig-residualkriging) 
 ```{r}
-kr <- krige(NO2 ~ sqrt(pop_dens), no2.sf, grd["pop_dens"], vr.m)
+kr <- krige(NO2 ~ sqrt(pop_dens), no2.sf, 
+			grd["pop_dens"], vr.m)
 k$kr1 <- k$var1.pred
 k$kr2 <- kr$var1.pred
 st_redimension(k[c("kr1", "kr2")], 
@@ -427,6 +446,7 @@ st_redimension(k[c("kr1", "kr2")],
 ```
 
 ```{r fig-residualkriging, echo=!knitr::is_latex_output()}
+#| out.width: 80%
 #| fig.cap: "Kriging NO$_2$ values using population density as a trend variable"
 g + geom_stars(data = km, aes(fill = NO2, x = x, y = y)) + 
 	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
