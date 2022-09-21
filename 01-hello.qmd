@@ -1,0 +1,451 @@
+# Getting Started {#sec-intro}
+ 
+This chapter introduces a number of concepts associated with
+handling spatial data, and points forward to later sections where
+these concepts are discussed in more detail.
+
+\index{data science}
+
+## A first map
+
+The typical way to graph spatial data is by creating a map. Let us consider
+a simple map, shown in @fig-first-map.
+```{r fig-first-map, cache = FALSE, message = FALSE, echo=!knitr::is_latex_output()}
+#| fig.cap: "A first map"
+#| code-fold: true
+#| fig.height: 4
+#| out.width: 80%
+library(tidyverse)
+library(sf)
+system.file("gpkg/nc.gpkg", package="sf") |>
+	read_sf() -> nc
+nc.32119 <- st_transform(nc, 'EPSG:32119')
+nc.32119 |>
+	select(BIR74) |>
+	plot(graticule = TRUE, axes = TRUE)
+```
+A number of graphical elements are present here, in this case:
+
+\index{map}
+
+* polygons are drawn with a black outline and filled with colors chosen according to a variable `BIR74`, whose name is in the title
+* a legend key explains the meaning of the colors, and has a certain _color palette_ and _color
+breaks_, values at which color changes
+* the background of the map shows curved lines with constant latitude or longitude (graticule)
+* the axis ticks show the latitude and longitude values 
+
+_Polygons_ are a particular form of _geometry_; spatial geometries
+(points, lines, polygons, pixels) are discussed in detail in
+@sec-geometries. Polygons consist of sequences of points,
+connected by straight lines. How point locations of spatial data are
+expressed, or measured, is discussed in @sec-cs. As can
+be seen from @fig-first-map, lines of equal latitude
+and longitude do not form straight lines, indicating that some
+form of projection took place before plotting; projections are also
+discussed in @sec-cs and @sec-transform. 
+
+\index{polygons}
+
+The color values in @fig-first-map  are derived
+from numeric values of a variable, `BIR74`, which has a
+single value associated with each geometry or _feature_. 
+@sec-featureattributes discusses such feature attributes, and 
+how they can relate to feature geometries. In this case, `BIR74`
+refers to birth counts, meaning counts _over the region_. This
+implies that the count does not refer to a value associated with
+every point inside the polygon, which the continuous color might
+suggest, but rather measures an integral (sum) over the polygon.
+
+\index{feature!attributes}
+
+Before plotting @fig-first-map  we had to read the data, in this
+case from a file (@sec-sfintro). Printing a data summary for the
+first three records of three attribute variables shows:
+
+```{r first_ten, echo=!knitr::is_latex_output()}
+#| code-fold: true
+#| collapse: false
+nc |> select(AREA, BIR74, SID74) |> print(n = 3)
+```
+
+The printed output shows:
+
+* the (selected) dataset has 100 features (records) and 3 fields (attributes)
+* the geometry type is `MULTIPOLYGON` (@sec-geometries)
+* it has dimension `XY`, indicating that each point will consist of 2 coordinate values
+* the range of $x$ and $y$ values of the geometry
+* the coordinate reference system (CRS) is geodetic, with coordinates in degrees longitude and latitude associated to the `NAD27` datum (@sec-cs)
+* the three selected attribute variables are followed by a variable `geom` of type `MULTIPOLYGON` with unit degrees that contains the polygon information
+
+More complicated plots can involve facet plots with a map in each
+facet, as shown in @fig-firstgather .
+
+```{r fig-firstgather, out.width = '80%', fig.cap="ggplot with facet maps", cache=FALSE, echo=!knitr::is_latex_output()}
+#| code-fold: true
+year_labels <- c("SID74" = "1974 - 1978", "SID79" = "1979 - 1984")
+nc.32119 |> select(SID74, SID79) |>
+	pivot_longer(starts_with("SID")) -> nc_longer
+ggplot() + geom_sf(data = nc_longer, aes(fill = value)) + 
+  facet_wrap(~ name, ncol = 1, labeller = labeller(name = year_labels)) +
+  scale_y_continuous(breaks = 34:36) +
+  scale_fill_gradientn(colors = sf.colors(20)) +
+  theme(panel.grid.major = element_line(color = "white"))
+```
+
+An interactive, leaflet-based map is obtained in @fig-mapviewfigure .
+```{r fig-mapviewfigure, cache = FALSE, fig.cap="Interactive map created with mapview.", echo=!knitr::is_latex_output()}
+#| code-fold: true
+suppressPackageStartupMessages(library(mapview))
+mapviewOptions(fgb = FALSE)
+nc.32119 |> mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
+```
+
+## Coordinate reference systems
+
+\index{coordinate reference systems}
+\index{projections}
+
+In @fig-first-map , the grey lines denote the
+_graticule_, a grid with lines along constant latitude
+or longitude. Clearly, these lines are not straight, which
+indicates that a _projection_ of the data was used for which the
+x and y axis do not align with longitude and latitude. In
+@fig-mapviewfigure we see that the north boundary of North
+Carolina is plotted as a straight line again, indicating that
+another projection was used.
+
+The ellipsoidal coordinates of the graticule of 
+@fig-first-map are associated with a particular _datum_
+(here: NAD27), which implicates a set of rules what the shape of the
+Earth is and how it is attached to the Earth (to which point of the
+Earth is the origin associated, and how is it directed). If one
+would measure coordinates with a GPS device (e.g. a mobile phone)
+it would typically report coordinates associated with the WGS84
+datum, which can be around 30 m different from the identical
+coordinate values when associated with NAD27.
+
+\index{datum}
+
+Projections describe how we go back and forth between
+
+* **ellipsoidal coordinates** which are expressed as degrees
+latitude and longitude, pointing to locations on a shape
+approximating the Earth's shape (an ellipsoid or spheroid), and
+
+* **projected coordinates** which are coordinates on a flat,
+two-dimensional coordinate system, used when plotting maps.
+
+\index{coordinates!ellipsoidal}
+\index{coordinates!projected}
+
+Datums transformations are associated with moving from one datum
+to another.  Both topics are covered by _spatial reference systems_
+are described in more detail in @sec-cs.
+
+\index{datum!transformation}
+
+## Raster and vector data {#sec-rasterize}
+
+Polygon, point and line geometries are examples of _vector_ data:
+point coordinates describe the "exact" locations that can be
+anywhere. Raster data on the other hand describe data where values
+are aligned on a _raster_, meaning on a regularly laid out lattice of
+usually square pixels. An example is shown in @fig-ras .
+
+\index{vector data}
+\index{raster data}
+\index{aggregation!spatial}
+\index[function]{aggregate}
+
+```{r fig-ras, out.width = '80%', message=FALSE, echo=!knitr::is_latex_output()}
+#| code-fold: true
+#| fig.cap: "Raster maps: Landsat-7 blue band, with color values derived from data values (a), the top-left $10 \\times 10$ sub-image from (a) with numeric values shown (b), and overlayed by two different types of vector data: three sample points (c), and a 500m radius around the points represented as polygons (d)"
+#| fig.height: 5
+library(stars)
+par(mfrow = c(2, 2))
+par(mar = rep(1, 4))
+tif <- system.file("tif/L7_ETMs.tif", package = "stars")
+x <- read_stars(tif)[,,,1]
+image(x, main = "(a)")
+image(x[,1:10,1:10], text_values = TRUE, border = 'grey', main = "(b)")
+image(x, main = "(c)")
+set.seed(131)
+pts <- st_sample(st_as_sfc(st_bbox(x)), 3)
+plot(pts, add = TRUE, pch = 3, col = 'blue')
+image(x, main = "(d)")
+plot(st_buffer(pts, 500), add = TRUE, pch = 3, border = 'blue', col = NA, lwd = 2)
+```
+
+Vector and raster data can be combined in different ways; for instance we can query the raster at the three points of @fig-ras(c)
+or compute an aggregate, such as the average, over arbitrary regions such as the circles shown in @fig-ras(d).
+```{r fig-raspts,echo=!knitr::is_latex_output(),output=FALSE}
+#| code-fold: true
+st_extract(x, pts) # query at points
+aggregate(x, st_buffer(pts, 500), FUN = mean) |> st_as_sf() # aggregate over circles
+```
+
+Other raster-to-vector conversions are discussed in @sec-raster-to-vector and include:
+
+* converting raster pixels into point values
+* converting raster pixels into small polygons, possibly merging polygons with identical values ("polygonize")
+* generating lines or polygons that delineate continuous pixel areas with a certain value _range_ ("contour")
+
+\index{raster-to-vector}
+\index{vector-to-raster}
+\index[function]{st\_rasterize}
+
+```{r fig-vectoras, out.width = '80%', fig.cap="map obtained by rasterizing county total number of births for the period 1974-1979 shown in figure 1.1", echo=!knitr::is_latex_output()}
+#| code-fold: true
+plot(st_rasterize(nc["BIR74"], dx = 0.1), col = sf.colors(), breaks = "equal")
+```
+
+Vector-to-raster conversions can be as simple as rasterizing
+polygons, as shown in @fig-vectoras . Other, more
+general vector-to-raster conversions that may involve statistical
+modelling include:
+
+* interpolation of point values to points on a regular grid (@sec-interpolation)
+* estimating densities of points over a regular grid (@sec-pointpatterns)
+* area-weighted interpolation of polygon values to grid cells (@sec-area-weighted)
+* direct rasterization of points, lines or polygons (@sec-raster-to-vector)
+
+\index{interpolation}
+\index{interpolation!area-weighted}
+\index{area weighed interpolation}
+\index{point patterns}
+
+## Raster types
+
+Raster dimensions describe how the rows and columns relate to
+spatial coordinates. @fig-rastertypes01  shows a number
+of different possibilities.
+
+```{r fig-rastertypes01, out.width = '80%', fig.cap="various raster types", echo=!knitr::is_latex_output()}
+#| code-fold: true
+x <- 1:5
+y <- 1:4
+d <- st_dimensions(x = x, y = y, .raster = c("x", "y"))
+m <- matrix(runif(20),5,4)
+r1 <- st_as_stars(r = m, dimensions = d)
+
+r <- attr(d, "raster")
+r$affine <- c(0.2, -0.2)
+attr(d, "raster") = r
+r2 <- st_as_stars(r = m, dimensions = d)
+
+r <- attr(d, "raster")
+r$affine <- c(0.1, -0.3)
+attr(d, "raster") = r
+r3 = st_as_stars(r = m, dimensions = d)
+
+x <- c(1, 2, 3.5, 5, 6)
+y <- c(1, 1.5, 3, 3.5)
+d <- st_dimensions(x = x, y = y, .raster = c("x", "y"))
+r4 <- st_as_stars(r = m, dimensions = d)
+
+grd <- st_make_grid(cellsize = c(10,10), offset = c(-130,10), n = c(8,5), crs = st_crs('OGC:CRS84'))
+r5 <- st_transform(grd, "+proj=laea +lon_0=-70 +lat_0=35")
+
+par(mfrow = c(2,3), mar = c(0.1, 1, 1.1, 1))
+r1 <- st_make_grid(cellsize = c(1,1), n = c(5,4), offset = c(0,0))
+plot(r1, main = "regular")
+plot(st_geometry(st_as_sf(r2)), main = "rotated")
+plot(st_geometry(st_as_sf(r3)), main = "sheared")
+plot(st_geometry(st_as_sf(r4, as_points = FALSE)), main = "rectilinear")
+plot(st_geometry((r5)), main = "curvilinear")
+```
+
+\index{rectilinear raster}
+\index{curvilinear raster}
+\index{sheared raster}
+\index{raster!rectilinear}
+\index{raster!curvilinear}
+\index{raster!sheared}
+\index{raster!regular}
+\index{raster!rotated}
+\index{raster!regular}
+
+Regular rasters like shown in @fig-rastertypes01  have a constant,
+not necessarily square cell size and axes aligned with the $x$ and $y$
+(Easting and Northing) axes. Other raster types include those
+where the axes are no longer aligned with $x$ and $y$ (_rotated_),
+where axes are no longer perpendicular (_sheared_), or where cell
+size varies along a dimension (_rectilinear_). Finally, _curvilinear_
+rasters have cell size and/or direction properties that are no longer
+independent from the other raster dimension.
+
+When a raster that is regular in a given coordinate reference
+system is projected to another raster while keeping each raster
+cell in tact, it changes shape and may become rectilinear
+(e.g. when going from ellipsoidal coordinates to Mercator, as in
+@fig-mapviewfigure)  or curvilinear (e.g. when going from
+ellipsoidal coordinates to Lambert Conic Conformal, as in 
+@fig-first-map). When reverting this procedure, one can recover
+the exact original raster.
+
+Creating a new, regular grid in the new projection is called raster
+(or image) _reprojection_ or _warping_ (@sec-warp). Warping is lossy,
+irreversible, and needs to be informed whether raster cells should
+be interpolated, averaged or summed, or whether resampling using
+nearest neighbours should be used. For such choices it matters
+whether cell values reflect a categorical or continuous variable
+(see also @sec-support).
+
+## Time series, arrays, data cubes
+
+A lot of spatial data is not _only_ spatial, but also temporal. Just like any observation is associated with an observation location, it is associated with an observation time or period. The dataset on the North Carolina counties shown above contains disease cases counted over two time periods, shown in @fig-firstgather). Although the original dataset has these variables in two different columns, for plotting them these columns had to be stacked first, while repeating the associated geometries - a form called _tidy_ by [@tidy]. When we have longer time series associated with geometries, neither option - distributing time over multiple columns, or stacking columns while repeating geometries - works well, and a more effective way of storing such data would be a matrix or array, where one dimension refers to time, and the other(s) to space. The natural way for image or raster data is already to store them in matrices; time series of rasters then lead to a three-dimensional array. The general term for such data is a (spatiotemporal) **data cube**, where cube refers to arrays with any number of dimensions.  Data cubes can refer to both raster and vector data, examples are given in @sec-datacube. 
+
+\index{time series}
+\index{data cubes}
+
+## Support {#sec-support}
+
+\index{support}
+\index{support!point}
+\index{support!block}
+\index{support!area}
+
+When we have spatial data with geometries that are not points but
+collections of points (multi-points, lines, polygons, pixels),
+then an attribute associated with these geometries has one
+of several different relationships to them. An attribute can have:
+
+* a **constant** value for every point of the geometry 
+* a single value that is an **aggregate**  over all points of the geometry
+* a value that is unique to only this geometry, describing its **identity**
+
+An example of a constant is land use or bedrock type of a polygon.
+An example of an aggregate is the number of births over a given
+period of time, of a county.  An example of an identity is a
+county name.
+
+The spatial area an attribute value refers to is called its
+**support**: aggregate properties have "block" (or area, or line)
+support, constant properties have "point" support (they apply to
+every point). Support matters when we manipulate the data. For
+instance, @fig-vectoras  was derived from a variable that has
+polygon support: the number of births per county. Rasterizing these
+values gives pixels with values that remain associated with counties.
+The result of the rasterization is a meaningless map: the numeric
+values ("birth totals") are not associated with the raster cells,
+and the county boundaries are no longer present. Totals of birth for
+the whole state or birth densities can no longer be recovered from
+the pixel values.  Ignoring support can easily lead to meaningless
+results.  @sec-featureattributes discusses this further.
+
+Raster cell values may have point support, e.g. when the cell records
+the elevation of the point at the cell centre in a digital elevation
+model, or cell support, e.g. when a satellite image pixel gives the
+color value averaged over (an area similar to) a pixel. Most file
+formats do not provide this information, yet it may be important to
+know when aggregating, regridding or warping rasters (@sec-warp),
+extracting values at point locations.
+
+\index{support!raster cells}
+
+## Spatial data science software
+
+\index{data science!software}
+\index{spatial data science!software}
+
+Although this book largely uses R and R packages for spatial data
+science, a number of these packages use software libraries that were
+not developed for R specifically.  As an example, the dependency
+of R package `sf` on other R packages and system libraries is shown
+in @fig-gdal-fig-nodetails .
+
+```{r fig-gdal-fig-nodetails, out.width = '100%', echo=FALSE,fig.cap = "sf and its dependencies; arrows indicate strong dependency, dashed arrows weak dependency", echo=FALSE}
+#| code-fold: true
+knitr::include_graphics("images/sf_deps.png")
+```
+
+The C or C++ libraries used (GDAL, GEOS, PROJ, liblwgeom, s2geometry,
+NetCDF, udunits2) are all developed, maintained and used by (spatial)
+data science communities that are large and mostly different from
+the R community.  By using these libraries, R users share how we
+understand what we are doing with these other communities. Because R,
+Python and Julia provide interactive interfaces to this software,
+many users get closer to these libraries than do users of other
+software based on these libraries. The first part of this book
+describes many of the concepts implemented in these libraries,
+which is relevant to spatial data science in general.
+
+### GDAL
+
+\index{GDAL}
+
+GDAL ("Geospatial Data Abstraction Library") can be seen as the
+Swiss army knife of spatial data; besides for R it is being
+used in Python, QGIS, PostGIS, [and more than 100 other software
+projects](https://trac.osgeo.org/gdal/wiki/SoftwareUsingGdal).
+
+GDAL is a "library of libraries" -- in order to read all these data
+sources it needs a large number of other libraries. It typically
+links to over 100 other libraries, each of which provides access to
+e.g. a particular data file format, a database, a web service or
+a particular compression codec.
+
+Binary R packages distributed by CRAN contain only statically linked
+code: CRAN does not want to make any assumptions about presence
+of third-party libraries on the host system. As a consequence,
+when the `sf` package is installed in binary form from CRAN, it
+includes a copy of all the required external libraries as well as
+their dependencies, which may amount to 100 Mb.
+
+### PROJ
+
+\index{PROJ}
+
+PROJ (or PR$\phi$J) is a library for cartographic projections
+and datum transformations: it converts spatial coordinates
+from one coordinate reference system to another. It comes with
+a large database of known projections and access to datum grids
+(high-precision pre-calculated values for datum transformations). It
+aligns with an international standard for coordinate reference
+systems [@lott2015].  @sec-cs deals with coordinate
+systems, and PROJ.
+
+### GEOS and s2geometry
+
+\index{GEOS}
+\index{s2geometry}
+
+GEOS ("Geometry Engine Open Source") and s2geometry are two libraries
+for geometric operations. They are used to find measures (length,
+area, distance), and calculate predicates (do two geometries have
+any points in common?) or new geometries (which points do these two
+geometries have in common?). GEOS does this for flat, two-dimensional
+space (indicated by $R^2$), s2geometry does this for geometries on
+the sphere (indicated by $S^2$). @sec-cs introduces
+coordinate reference systems, and @sec-spherical discusses
+more about the differences between working with these two spaces.
+
+### NetCDF, udunits2, liblwgeom
+
+\index{NetCDF}
+\index{udunits2}
+\index{liblwgeom}
+\index{GeographicLib}
+\index{PostGIS}
+
+NetCDF [@netcdf] refers to a file format as well as a C library
+for reading and writing NetCDF files. It allows the definition of
+arrays of any dimensionality, and is widely used for spatial and
+spatiotemporal information, especially in the (climate) modelling
+communities. Udunits2 [@udunits2; @R-units] is a database and software
+library for units of measurement that allows the conversion of
+units, handles derived units, and supports user-defined units. The
+liblwgeom "library" is a software component of PostGIS [@postgis]
+that contains several routines missing from GDAL or GEOS, including
+convenient access to GeographicLib routines [@karney2013algorithms]
+that ship with PROJ.
+
+## Exercises
+1. List five differences between raster and vector data.
+<!-- 1: regular/irregular coordinates, 2: regular/irregular shaped elements; 3: different file formats: tiff vs. shapefile/GPKG, 4:  -->
+2. In addition to those listed below @fig-first-map , list five further graphical components that are often found on a map.
+<!-- scale bar; North arrow; geographic components used for reference, e.g. coastline, rivers; colored "other" area, e.g. blue sea; symbols; words indicating a region-->
+3. In your own words, why is the numeric information shown in @fig-vectoras misleading (or meaningless)?
+<!-- for the numbers shown as colors, it is unclear with which area they are associated with (counties) -->
+4. Under which conditions would you expect strong differences when doing geometrical operations on $S^2$, compared to doing them on $R^2$?
+<!-- when working with global datasets -->
