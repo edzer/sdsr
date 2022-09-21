@@ -120,7 +120,7 @@ support) variables are:
 A typical property of such variables is that they have geometries
 that are not man-made and also not associated with a sensor device
 (such as remote sensing image pixel boundaries). Instead, the geometry
-follows from the variable observed.
+follows from mapping the variable observed.
 
 Examples for the **aggregate** AGR (block support) variables are:
 
@@ -172,8 +172,8 @@ variable such as land use (_coverage_), but also aggregates such
 as population density
 * raster or other mesh triangulations may have different variables
 associated with either nodes (points), edges (lines) or faces
-(areas, cells) for instance when they were used to approximate
-partial differential equations [@Haltiner, @Collins13]
+(areas, cells) for instance when partial differential equations
+are approximated using _staggered grids_ [@Haltiner; @Collins13]
 
 Properly specifying attribute-geometry relationships, and warning
 against their absence or cases when change in geometry (change
@@ -198,15 +198,15 @@ _grouping predicate_ (`GroupID`).
 
 R package `dplyr` for instance uses two steps to accomplish this:
 function `group_by` specifies the group membership of records,
-`summarize` computes data summaries (such as `sum` or `mean`) for
-each of the groups. R (base) function `aggregate` does both in a
-single function that takes the data table, the grouping predicate(s)
-and the aggregation function.
+`summarize` computes data summaries (such as `sum` or `mean`)
+for each of the groups. The (base) R method `aggregate` combines
+both in a single function call that takes the table, the grouping
+predicate(s) and the aggregation function(s) as arguments.
 
 An example for the North Carolina counties is shown in
 @fig-ncaggregation. Here, we grouped counties by their position
 (according to the quadrant in which the county centroid is with
-respect to ellipsoidal coordinate `POINT(-79, 35.5)`) and counted
+respect to ellipsoidal coordinate `POINT(-79, 35.5)`) and summed
 the number of disease cases per group. The result shows that
 the geometries of the resulting groups have been unioned 
 (@sec-bintrans): this is necessary because the `MULTIPOLYGON`
@@ -214,8 +214,10 @@ formed by just putting all the county geometries together would
 have many duplicate boundaries, and hence not be _valid_
 (@sec-valid).
 
-```{r fig-ncaggregation, out.width = '70%', fig.cap="SID74 counts by county quadrant, with county polygons unioned by county quadrant", echo=!knitr::is_latex_output()}
+```{r fig-ncaggregation, echo = !knitr::is_latex_output()}
 #| code-fold: true
+#| out.width: 80%
+#| fig.cap: "SID74 total incidences aggregated to four areas"
 nc <- read_sf(system.file("gpkg/nc.gpkg", package = "sf"))
 # encode quadrant by two logicals:
 nc$lng <- st_coordinates(st_centroid(st_geometry(nc)))[,1] > -79
@@ -226,16 +228,18 @@ plot(nc.grp["SID74"], axes = TRUE)
 
 Plotting collated county polygons is technically not a problem, but
 for this case would raise the wrong suggestion that the group sums
-relate to the counties, and not the group of counties. 
+relate to individual counties, rather than to the grouped counties.
 
 One particular property of aggregation in this way is that each
 record is assigned to a single group; this has the advantage that
 the sum of the group-wise sums equals the sum of the ungrouped data:
 for variables that reflect _amount_, nothing gets lost and nothing
 is added. The newly formed geometry is the result of unioning the
-geometries of the records.
+geometries of the contributing records.
 
-```{r fig-ncblocks, out.width = '70%', fig.cap="example target blocks layed out over North Carolina counties", echo=!knitr::is_latex_output()}
+```{r fig-ncblocks, echo=!knitr::is_latex_output()}
+#| out.width: 80%
+#| fig.cap: "Example target blocks layed out over North Carolina counties"
 #| code-fold: true
 nc <- st_transform(nc, 2264)
 gr <- st_sf(
@@ -248,7 +252,7 @@ plot(st_geometry(gr), add = TRUE)
 When we need an aggregate for a new area that is _not_ a union of the
 geometries for a group of records, and we use a spatial predicate
 then single records may be matched to multiple groups. When taking
-the rectangles of @fig-ncblocks  as the target areas,
+the rectangles of @fig-ncblocks as the target areas,
 and summing for each rectangle the disease cases of the counties
 that _intersect_ with the rectangles of @fig-ncblocks ,
 the sum of these will be much larger:
@@ -262,7 +266,7 @@ c(sid74_sum_counties = sum(nc$SID74),
 
 Choosing another predicate, e.g. _contains_ or _covers_ would on
 the contrary result in much smaller values, because many counties
-are not contained by _any_ the target geometries. However, there are
+are not contained by _any_ of the target geometries. However, there are
 a few cases where this approach might be good or satisfactory:
 
 * when we want to aggregate `POINT` geometries by a set of polygons,
@@ -270,12 +274,14 @@ and all points are contained by a single polygon. If points fall on a
 shared boundary than they are assigned to both polygons (this is
 the case for DE-9IM-based GEOS library; the s2geometry library has
 the option to define polygons as "semi-open", which implies that
-points are assigned to single polygons when the polygons form a
-coverage)
+points are assigned to maximally one polygons when polygons do not
+overlap)
 * when aggregating many very small polygons or raster pixels over
-larger areas, e.g. averaging altitude from 30 m resolution raster
+larger areas, e.g. _averaging_ altitude from 30 m resolution raster
 over North Carolina counties, the error made by multiple matches
 may be insignificant
+* when the many-to-many match is reduced to the single largest area
+match, as shown in @fig-largest
 
 A more comprehensive approach to aggregating spatial data associated
 to areas to larger, arbitrary shaped areas is by using area-weighted
@@ -285,15 +291,18 @@ interpolation.
 
 \index{area-weighted interpolation}
 \index{interpolation!area-weighted}
+\index{conservative region aggregation}
+\index{conservative region regridding}
 
 When we want to combine geometries and attributes of two datasets
 such that we get attribute values of a source dataset summarised for
 the geometries of a target, where source and target geometries are
 unrelated, area-weighted interpolation may be a simple approach. In
 effect, it considers the area of overlap of the source and target
-geometries, and uses that to weight the source attribute values into
-the target value [@goodchild; @thomas; @do; @Do2021]. Here, we follow the
-notation of @do.
+geometries, and uses that to weigh the source attribute values into
+the target value [@goodchild; @thomas; @do; @Do2021].  This methods
+is also known as conservative region aggregation or regridding
+[@conservative]. Here, we follow the notation of @do.
 
 Area-weighted interpolation computes, for each of $q$ spatial target
 areas $T_j$, a weighted average from the values $Y_i$ corresponding
@@ -332,7 +341,7 @@ densities which will be similar to the density of the total area.
 
 Extensive variables correspond to amounts, associated with a physical
 size (length, area, volume); for _spatially_ extensive variables,
-if the area a value corresponds to is cut in parts, the values
+if the area to which a value corresponds is cut in parts, the values
 associated with the sub-area are split accordingly. In other words:
 the value is proportional to the support. Intensive variables are
 variables that do not have values proportional to support: if the
@@ -340,11 +349,10 @@ area is split, values may vary but _on average_ remain the same.
 The corresponding example of an intensive variable is _population
 density_: when we split an area into sub-areas, the sub-areas either
 have identical population densities (in case population is uniformly
-distributed) or, more realistically, have _varying_ population
-densities that by necessity are both higher and lower than the
-density of the total area.
+distributed) or, more realistically, have values that vary around
+the mean of the entire area.
 
-When we assume that the extensive variable $Y$ is uniformly
+When we assume that the **extensive** variable $Y$ is uniformly
 distributed over space, the value $Y_{ij}$, derived from $Y_i$
 for a sub-area of $S_i$, $A_{ij} = T_j \cap S_i$ of $S_i$ is
 
@@ -357,9 +365,9 @@ $$
 \hat{Y}_j(T_j) = \sum_{i=1}^p \frac{|A_{ij}|}{|S_i|} Y_i(S_i)
 $$ {#eq-awextensive}
 
-For an intensive variable, under the assumption that the variable
+For an **intensive** variable, under the assumption that the variable
 has a constant value over each area $S_i$, the estimate for a
-sub-area equals that of the total,
+sub-area equals that of the total area,
 
 $$\hat{Y}_{ij} = Y_i(S_i)$$
 
@@ -409,20 +417,18 @@ are GeoPackage and FileGDB.
 Up- and downscaling refers in general to obtaining high-resolution
 information from low-resolution data (downscaling) or obtaining
 low-resolution information from high-resolution data (upscaling).
-Both are activities involve attributes' relation to geometries and
+Both activities involve attributes' relation to geometries and
 both change support. They are synonymous with aggregation (upscaling)
-and disaggregation (downscaling).
-
-The simplest form of downscaling is sampling (or extracting)
-polygon, line or grid cell values at point locations. This works
-well for variables with point-support ("constant" AGR), but is at
-best approximate when the values are aggregates. 
-
-Challenging applications for downscaling include high-resolution
-prediction of variables obtained by low-resolution weather prediction
-models or climate change models, and the high-resolution prediction
-of satellite image derived variables based on the fusion of sensors
-with different spatial and temporal resolutions.
+and disaggregation (downscaling).  The simplest form of downscaling
+is sampling (or extracting) polygon, line or grid cell values at
+point locations. This works well for variables with point-support
+("constant" AGR), but is at best approximate when the values are
+aggregates.  Challenging applications for downscaling include
+high-resolution prediction of variables obtained by low-resolution
+weather prediction models or climate change models, and the
+high-resolution prediction of satellite image derived variables
+based on the fusion of sensors with different spatial and temporal
+resolutions.
 
 The application of areal interpolation using (@eq-aw) with
 its realisations for extensive (@eq-awextensive) and intensive
@@ -432,8 +438,8 @@ have some overlap. This means that one can go arbitrarily to much
 larger units (aggregation) or to much smaller units (disaggregation).
 Of course this makes only sense to the extent that the assumptions
 hold: over the source regions extensive variables need to be
-uniformly distributed and intensive variables need to have constant
-value.
+uniformly distributed and intensive variables need to have a
+constant value.
 
 The ultimate disaggregation involves retrieving (extracting)
 point values from line or area data. For this, we cannot work with
@@ -443,12 +449,14 @@ constant value over the geometry, for intensive variables the value
 $Y_i(S_i)$ can be assigned to points as long as all points can be
 uniquely assigned to a single source area $S_i$. For polygon data,
 this implies that $Y$ needs to be a coverage variable (@sec-coverages).
+For extensive variables, extracting a value at a point is rather
+meaningless as it should always give a zero value.
 
 In cases where values associated with areas are **aggregate** values
 over the area, the assumptions made by area-weighted interpolation
 or dasymetric mapping -- uniformity or constant values over the
 source areas -- are highly unrealistic. In such cases, these simple
-approaches still be reasonable approximations, for instance when:
+approaches could still be reasonable approximations, for instance when:
 
 * the source and target area are nearly identical
 * the variability inside source units is very small, and the variable
@@ -471,11 +479,12 @@ Alternative disaggregation methods include:
 
 * deterministic, smoothing-based approaches such as kernel- or spline-based
 smoothing methods [@toblerpyc; @martin89]
-* statistical, model-based approaches: area-to-area and area-to-point
-kriging [@kyriakidis04; @stcos].  
-## Exercises
+* statistical, model-based approaches such as area-to-area and
+area-to-point kriging [@kyriakidis04; @stcos].
 
 \index{interpolation!area-to-area}
+
+## Exercises
 
 Where relevant, try to make the following exercises with R.
 
@@ -499,7 +508,9 @@ cells, first for the case where the four cells represent (i) an extensive
 variable, and (ii) an intensive variable. The red numbers are the
 data values of the source areas.
 
-```{r fig-awiex, out.width = '50%', fig.cap = "example data for area-weighted interpolation", echo = !knitr::is_latex_output()}
+```{r fig-awiex, echo = !knitr::is_latex_output()}
+#| out.width: 40%
+#| fig.cap: "Example data for area-weighted interpolation"
 #| code-fold: true
 g <- st_make_grid(st_bbox(st_as_sfc("LINESTRING(0 0,1 1)")), n = c(2,2))
 par(mar = rep(0,4))

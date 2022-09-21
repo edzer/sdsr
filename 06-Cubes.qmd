@@ -357,7 +357,7 @@ text(3, 3.5, "2020-10-25", col = "black")
 \index{data cube!support}
 
 Phenomena in space and time can be thought of as functions
-with domain space and time, and with range one or more observed
+with _domain_ space and time, and with _range_ one or more observed
 attributes. For clearly identifiable discrete events or objects,
 the range is typically discrete, and precise delineation involves
 describing the precise coordinates where a thing starts or stops,
@@ -392,8 +392,8 @@ color bands as attributes.
 
 Multiple time dimensions arise for instance when making forecasts for
 different times in the future $t'$ at different times $t$, or when
-time is split into multiple dimensions (e.g. year, day-of-year,
-hour-of-day). The most general definition of a data cube is a
+time is split over multiple dimensions (e.g. year, day-of-year,
+and hour-of-day). The most general definition of a data cube is a
 functional mapping from $n$ dimensions to $p$ attributes:
 
 $$\{Z_1,Z_2,...,Z_p\} = f(D_1,D_2,...,D_n)$$
@@ -448,10 +448,12 @@ cell _center_ of the top left grid cell (in case of a negative $d_y$),
 we use $i=1.5$ and $j=1.5$.
 
 For rectilinear rasters, a table that maps array index to dimension
-values is needed. NetCDF files for instance always stores all values
-of spatial dimension variables that correspond to the center of
-spatial grid cells, and may in addition store grid cell boundaries
-(which is needed to define rectlinear dimensions unambiguously).
+values is needed. NetCDF files for instance always store all values
+of spatial dimension (coordinate) variables that correspond to
+e.g. the center or offset of spatial grid cells, and in addition
+often store grid cell boundaries (needed to define rectlinear
+dimensions or to disambiguate the relation of the coordinate variable
+to the cell boundary).
 
 \index{raster!rectilinear}
 
@@ -500,17 +502,20 @@ interpolation but over the time dimension.
 
 \index{data cube!filter}
 
-Data cubes can be sliced into sub-cubes by fixing a dimension at a
-particular value. @fig-cube4filter  shows the sub-cubes
-obtained by doing with each of the dimensions. In this figure,
-the spatial filtering does not happen by fixing a single spatial
-dimension at a particular value, but by selecting a particular
-subregion, which is a more common operation. Fixing $x$ or $y$ would
-give a sub-cube along a transect of constant $x$ or $y$, which can
-be used to show a Hovmöller diagram, where an attribute is plotted
-(colored) in the space of one space and one time dimension.
+Data cubes can be sliced into sub-cubes by fixing a dimension at
+a particular value. @fig-cube4filter shows the sub-cubes obtained
+by doing this with the temporal, spectral or spatial dimension. In
+this figure, the spatial filtering does not happen by fixing a
+single spatial dimension at a particular value, but by selecting a
+particular subregion, which is a more common operation. Fixing $x$
+or $y$ would give a sub-cube along a transect of constant $x$ or $y$,
+which can be used to show a Hovmöller diagram, where an attribute is
+plotted (colored) in the space of one space and one time dimension.
 
-```{r fig-cube4filter, fig.width=10,fig.height=11, fig.cap="Data cube filtering by time, band or spatially", echo=!knitr::is_latex_output()}
+```{r fig-cube4filter, echo=!knitr::is_latex_output()}
+#| fig.width: 10
+#| fig.height: 11
+#| fig.cap: "Data cube filtering by time, band or spatially"
 #| code-fold: true
 # filter ----
 # mask <- matrix(c(rep(NA, 26), 1,NA,1,NA,1,1,1, rep(NA, 9)), ncol = 7)
@@ -627,13 +632,77 @@ cube dimensions. Simple cases arise where a function such as `abs`,
 takes all values in the cube and returns a single scalar, e.g. when
 one computes the mean or maximum value over the entire cube. Other
 options include applying the function to selected dimensions,
-e.g. applying a temporal low-pass filter to every individual
+e.g. applying a _temporal_ low-pass filter to every individual
 (pixel/band) time series as shown in @fig-cube4apply1 ,
 or applying a _spatial_ low-pass filter to every spatial
 slice (i.e. every band/time combination), shown in 
 @fig-cube4apply2.
 
-```{r fig-cube4apply2, fig.height=6, fig.width=10, fig.cap="Low pass filtering of spatial slices", echo=!knitr::is_latex_output()}
+```{r fig-cube4apply1, echo=!knitr::is_latex_output()}
+#| fig.width: 10
+#| fig.height: 7
+#| fig.cap: "Low pass filtering of time series"
+#| code-fold: true
+
+time_arrow_seg <- matrix(c(c(-1.0, 0.3, 1.5, 2.7, 3.9, 5.1), c(-1.0, 0.3, 1.5, 2.7, 3.9, 5.1),
+                           c(-0.5, 0.7, 1.9, 3.1, 4.3, 5.6), c(-0.5, 0.7, 1.9, 3.1, 4.3, 5.6)), ncol = 4)
+time_arrow_flag_seg <- matrix(c(c(-1.0, 1.5, 2.7, 3.9), c(-1.0, 1.5, 2.7, 3.9),
+                                c(0.7, 1.9, 3.1, 5.6), c(0.7, 1.9, 3.1, 5.6)), ncol = 4)
+
+b11 <- b2 - t1
+b12 <- b1 - t2 + t1
+
+# png("exp_apply_ts.png", width = 2400, height = 1000, pointsize = 24)
+plot.new()
+par(mar = c(2,2,2,2))
+x <- 30
+y <- 10 # 7.5
+plot.window(xlim = c(0, x), ylim = c(0, y), asp = 1)
+pl(f, 4.8, 3.8, pal = blues, m = b3, breaks = brks)
+print_text(s, 4.8, 3.8, m = b3)
+pl(f, 3.6, 2.6, pal = blues, m = b11, breaks = brks)
+print_text(s, 3.6, 2.6, m = b11)
+pl(f, 2.4, 1.4, pal = blues, m = b12, breaks = brks)
+print_text(s, 2.4, 1.4, m = b12)
+pl(f, 1.2, .2, pal = blues, m = b2, breaks = brks)
+print_text(s, 1.2, .2, m = b2)
+pl(f, 0, -1, pal = blues, m = b1, breaks = brks)
+print_text(s, 0, -1, m = b1) # print text on left first stack
+pl(f, 24.8, 3.8, pal = alpha(greys, 0.1), m = matrix(rep("NA", 42), ncol = 7))
+pl(f, 23.6, 2.6, pal = blues, m = (b12 + b11 + b3) / 3, breaks = brks)
+print_text(s, 23.6, 2.6, m = floor((b12 + b11 + b3) / 3))
+pl(f, 22.4, 1.4, pal = blues, m = (b2 + b12 + b11) / 3, breaks = brks)
+print_text(s, 22.4, 1.4, m = floor((b2 + b12 + b11) / 3))
+pl(f, 21.2, .2, pal = blues, m = (b1 + b2 + b12) / 3, breaks = brks)
+print_text(s, 21.2, .2, m = floor((b1 + b2 + b12) / 3))
+pl(f, 20, -1, pal = alpha(greys, 0.1), m = matrix(rep("NA", 42), ncol = 7))
+print_segments(5.7, 1.7, seg = time_arrow_seg, col = "forestgreen")
+arrows(12.5, 9, 20, 9, lwd = 2)
+cex <- .9
+text(16.3, 8.3, "apply_dimension(dimension = 't')", cex = cex)
+print_segments(9.7, 1.7, time_arrow_seg, col = "forestgreen") # draw ma explanation
+text(-0.5 + 10, -0.5 + 2, "496", cex = cex)
+text(.7 + 10, .7 + 2, "363", cex = cex)
+text(1.9 + 10, 1.9 + 2, "658", cex = cex)
+text(3.1 + 10, 3.1 + 2, "230", cex = cex)
+text(4.3 + 10, 4.3 + 2, "525", cex = cex)
+t_formula <- expression("t"[n]*" = (t"[n-1]*" + t"[n]*" + t"[n+1]*") / 3")
+# text(13.8, 3, t_formula, srt = 45, cex = 1.2)
+text(14.4, 3.6, "calculate moving average", srt = 45, cex = cex)
+arrows(15, 5.7, 18, 5.7, lwd = 2)
+print_segments(15.4, 1.7, seg = time_arrow_seg, col = "forestgreen") # draw ma explanation
+text(-0.5 + 15.7, -0.5 + 2, "NA", cex = cex)
+text(.7 + 15.7, .7 + 2, "505", cex = cex)
+text(1.9 + 15.7, 1.9 + 2, "417", cex = cex)
+text(3.1 + 15.7, 3.1 + 2, "471", cex = cex)
+text(4.3 + 15.7, 4.3 + 2, "NA", cex = cex)
+print_segments(25.7, 1.7, seg = time_arrow_seg, col = "forestgreen")
+```
+
+```{r fig-cube4apply2, echo=!knitr::is_latex_output()}
+#| fig.height: 6
+#| fig.width: 10
+#| fig.cap: "Low pass filtering of spatial slices"
 #| code-fold: true
 # apply ----
 print_text = function(s, x, y, m) {
@@ -707,65 +776,6 @@ text(13.3, 1.5, "0.2", cex = cex)
 text(15.3, 1.5, "0.2", cex = cex)
 text(14.3, 2.5, "0.2", cex = cex)
 text(14.3, .5, "0.2", cex = cex)
-```
-
-
-```{r fig-cube4apply1, fig.width=10, fig.height=7, fig.cap="Low pass filtering of time series", echo=!knitr::is_latex_output()}
-#| code-fold: true
-
-time_arrow_seg <- matrix(c(c(-1.0, 0.3, 1.5, 2.7, 3.9, 5.1), c(-1.0, 0.3, 1.5, 2.7, 3.9, 5.1),
-                           c(-0.5, 0.7, 1.9, 3.1, 4.3, 5.6), c(-0.5, 0.7, 1.9, 3.1, 4.3, 5.6)), ncol = 4)
-time_arrow_flag_seg <- matrix(c(c(-1.0, 1.5, 2.7, 3.9), c(-1.0, 1.5, 2.7, 3.9),
-                                c(0.7, 1.9, 3.1, 5.6), c(0.7, 1.9, 3.1, 5.6)), ncol = 4)
-
-b11 <- b2 - t1
-b12 <- b1 - t2 + t1
-
-# png("exp_apply_ts.png", width = 2400, height = 1000, pointsize = 24)
-plot.new()
-par(mar = c(2,2,2,2))
-x <- 30
-y <- 10 # 7.5
-plot.window(xlim = c(0, x), ylim = c(0, y), asp = 1)
-pl(f, 4.8, 3.8, pal = blues, m = b3, breaks = brks)
-print_text(s, 4.8, 3.8, m = b3)
-pl(f, 3.6, 2.6, pal = blues, m = b11, breaks = brks)
-print_text(s, 3.6, 2.6, m = b11)
-pl(f, 2.4, 1.4, pal = blues, m = b12, breaks = brks)
-print_text(s, 2.4, 1.4, m = b12)
-pl(f, 1.2, .2, pal = blues, m = b2, breaks = brks)
-print_text(s, 1.2, .2, m = b2)
-pl(f, 0, -1, pal = blues, m = b1, breaks = brks)
-print_text(s, 0, -1, m = b1) # print text on left first stack
-pl(f, 24.8, 3.8, pal = alpha(greys, 0.1), m = matrix(rep("NA", 42), ncol = 7))
-pl(f, 23.6, 2.6, pal = blues, m = (b12 + b11 + b3) / 3, breaks = brks)
-print_text(s, 23.6, 2.6, m = floor((b12 + b11 + b3) / 3))
-pl(f, 22.4, 1.4, pal = blues, m = (b2 + b12 + b11) / 3, breaks = brks)
-print_text(s, 22.4, 1.4, m = floor((b2 + b12 + b11) / 3))
-pl(f, 21.2, .2, pal = blues, m = (b1 + b2 + b12) / 3, breaks = brks)
-print_text(s, 21.2, .2, m = floor((b1 + b2 + b12) / 3))
-pl(f, 20, -1, pal = alpha(greys, 0.1), m = matrix(rep("NA", 42), ncol = 7))
-print_segments(5.7, 1.7, seg = time_arrow_seg, col = "forestgreen")
-arrows(12.5, 9, 20, 9, lwd = 2)
-cex <- .9
-text(16.3, 8.3, "apply_dimension(dimension = 't')", cex = cex)
-print_segments(9.7, 1.7, time_arrow_seg, col = "forestgreen") # draw ma explanation
-text(-0.5 + 10, -0.5 + 2, "496", cex = cex)
-text(.7 + 10, .7 + 2, "363", cex = cex)
-text(1.9 + 10, 1.9 + 2, "658", cex = cex)
-text(3.1 + 10, 3.1 + 2, "230", cex = cex)
-text(4.3 + 10, 4.3 + 2, "525", cex = cex)
-t_formula <- expression("t"[n]*" = (t"[n-1]*" + t"[n]*" + t"[n+1]*") / 3")
-# text(13.8, 3, t_formula, srt = 45, cex = 1.2)
-text(14.4, 3.6, "calculate moving average", srt = 45, cex = cex)
-arrows(15, 5.7, 18, 5.7, lwd = 2)
-print_segments(15.4, 1.7, seg = time_arrow_seg, col = "forestgreen") # draw ma explanation
-text(-0.5 + 15.7, -0.5 + 2, "NA", cex = cex)
-text(.7 + 15.7, .7 + 2, "505", cex = cex)
-text(1.9 + 15.7, 1.9 + 2, "417", cex = cex)
-text(3.1 + 15.7, 3.1 + 2, "471", cex = cex)
-text(4.3 + 15.7, 4.3 + 2, "NA", cex = cex)
-print_segments(25.7, 1.7, seg = time_arrow_seg, col = "forestgreen")
 ```
 
 ### Reducing dimensions {#sec-reducedimension}
