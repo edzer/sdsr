@@ -8,7 +8,7 @@ how geometries can be described using these coordinate systems. This
 chapter will explain:
 
 * _simple features_, a standard that describes point, line and polygon 
-geometries along with operations on them, 
+geometries along with operations on them 
 * operations on geometries
 * coverages, subdivisions of larger regions into sub-regions
 * networks
@@ -24,8 +24,8 @@ in @sec-datacube.
 
 Simple feature geometries are a way to describe the geometries of
 _features_.  By _features_ we mean _things_ that have a geometry,
-potentially some time properties, and other attributes that could
-include a label describing the thing and quantitative measures of it.
+potentially implicitly some time properties, and further _attributes_ that could
+include labels describing the thing and/or values quantitatively measuring it.
 The main application of simple feature geometries is to describe
 geometries in two-dimensional space by points, lines, or polygons. The
 "simple" adjective refers to the fact that the line or polygon
@@ -67,9 +67,10 @@ The most commonly used simple features geometries, used to represent a _single_ 
 | `MULTIPOLYGON`            | set of polygons |
 | `GEOMETRYCOLLECTION`      | set of the geometries above  |
 
-```{r fig-sfgeometries,fig.cap = "sketches of the main simple feature geometry types", echo=!knitr::is_latex_output()}
+```{r fig-sfgeometries, echo=!knitr::is_latex_output(), message = FALSE}
+#| fig.cap: "sketches of the main simple feature geometry types"
 #| code-fold: true
-library(sf)
+suppressPackageStartupMessages(library(sf))
 par(mfrow = c(2,4))
 par(mar = c(1,1,1.2,1))
 
@@ -164,11 +165,12 @@ GEOMETRYCOLLECTION (
 
 In this representation, coordinates are separated by space, and
 points by commas. Sets are grouped by parentheses, and separated
-by commas.
+by commas. Polygons consist of an outer ring followed by zero or
+more inner rings denoting holes.
 
 Individual points in a geometry contain at least two coordinates:
-x and y, in that order.  If these coordinates refer to ellipsoidal
-coordinates, x and y usually refer to longitude and latitude,
+$x$ and $y$, in that order.  If these coordinates refer to ellipsoidal
+coordinates, $x$ and $y$ usually refer to longitude and latitude,
 respectively, although sometimes to latitude and longitude (see
 @sec-projlib and @sec-axisorder).
 
@@ -201,7 +203,7 @@ usually be repaired to make them valid.
 A further convention is that the outer ring of a polygon is winded
 counter-clockwise, while the holes are winded clockwise, but polygons
 for which this is not the case are still considered valid. For polygons
-on the sphere, the "clockwise" is not very useful: if for instance we take
+on the sphere, the "clockwise" concept is not very useful: if for instance we take
 the equator as polygon, is the Northern hemisphere or the Southern hemisphere
 "inside"? The convention taken here is to consider the area on the left while
 traversing the polygon is considered the polygon's inside.
@@ -305,19 +307,19 @@ manual](http://postgis.net/docs/using_postgis_dbmanagement.html).
 Part of the simple feature standard are two encodings: a text and
 a binary encoding. The well-known text encoding, used above, is
 human-readable, the well-known binary encoding is machine-readable.
-Binary encodings are lossless and typically faster to work with
-than text encoding (and decoding), and are used for instance in all
-communications between R package `sf` and the GDAL, GEOS, liblwgeom
-and s2geometry libraries (@fig-gdal-fig-nodetails) .
+Well-known binary (WKB) encodings are lossless and typically faster
+to work with than text encoding (and decoding), and are used for
+instance in all communications between R package `sf` and the GDAL,
+GEOS, liblwgeom and s2geometry libraries (@fig-gdal-fig-nodetails).
 
 ## Operations on geometries {#sec-opgeom}
 
 \index{geometry!operations}
 
 Simple feature geometries can be queried for properties,
-transformed into new geometries, and combinations of geometries can
-be queried for properties. This section gives an overview of the
-operations entirely focusing on _geometrical_ properties.  
+transformed into new geometries, and combinations of geometries
+can be queried for properties. This section gives an overview
+of the operations entirely focusing on _geometrical_ properties.
 @sec-featureattributes focuses on the analysis of non-geometrical
 feature properties, in relationship to their geometries. Some of
 the material in this section appeared in @rjsf.
@@ -539,12 +541,12 @@ geometries explained in @sec-de9im.
 
 Unary transformations work on a per-geometry basis, and for each geometry return a new geometry.
 
-|transformer               |returns a geometry ...                                                              |
-|--------------------------|----------------------------------------------------------------------------------|
+|transformer                |returns a geometry ...                                                              |
+|---------------------------|----------------------------------------------------------------------------------|
 |`centroid`|of type `POINT` with the geometry's centroid|
 |`buffer`|that is this larger (or smaller) than the input geometry, depending on the buffer size|
 |`jitter` |that was moved in space a certain amount, using a bivariate uniform distribution|
-|`wrap_dateline`|cut into pieces that do no longer cover the dateline|
+|`wrap_dateline`|cut into pieces that do no longer cover or cross the dateline|
 |`boundary`|with the boundary of the input geometry|
 |`convex_hull`|that forms the convex hull of the input geometry (@fig-vor) |
 |`line_merge`|after merging connecting `LINESTRING` elements of a `MULTILINESTRING` into longer `LINESTRING`s.|
@@ -727,10 +729,10 @@ constant range value, an efficient way to represent these data
 is by storing the boundaries of the areas with constant value, such
 as country boundaries. Although this can be done (and is often done)
 by a set of simple feature geometries (polygons or multipolygons),
-but this brings along some challenges:
+this brings along some challenges:
 
-* it is hard to guarantee for such a set of simple feature polygons that they do not overlap, or that there are no gaps between them
-* simple features have no way of assigning points _on_ the boundary of two adjacent polygons uniquely to a single polygon, which introduces ambiguity in terms the interpretation as coverage
+* it is hard to guarantee for such a set of simple feature polygons that they do not overlap, or that there are no unwanted gaps between them
+* simple features have no way of assigning points _on_ the boundary of two adjacent polygons uniquely to a single polygon, which conflicts with the interpretation as coverage
 
 ### Topological models
 
@@ -758,7 +760,7 @@ involves setting thresholds on errors and handling gaps or overlaps.
 A tessellation is a subdivision of a space (area, volume) into
 smaller elements by ways of polygons. A regular tessellation
 does this with regular polygons: triangles, squares or hexagons.
-Tessellations using squares are very commonly used for spatial data,
+Tessellations using squares are commonly used for spatial data,
 and are called _raster data_. Raster data
 tessellate each spatial dimension $d$ into regular cells,
 formed e.g. by left-closed and right-open intervals $d_i$:
@@ -781,9 +783,12 @@ positive for the $x$-coordinate, only the top-left corner point
 is part of each raster cell. An artifact resulting from this is
 shown in @fig-rasterizeline .
 
-```{r fig-rasterizeline, out.width = '60%', fig.cap = "rasterization artifact: as only top-left corners are part of the raster cell, only cells below the diagonal line are rasterized", echo=!knitr::is_latex_output()}
+```{r fig-rasterizeline, echo=!knitr::is_latex_output()}
+#| out.width: 50%
+#| fig.cap: "Rasterization artifact: as only top-left corners are part of the raster cell, only cells touching the red line below the diagonal line are rasterized"
 #| code-fold: true
-library(stars)
+suppressPackageStartupMessages(library(stars))
+par(mar = rep(1, 4))
 ls <- st_sf(a = 2, st_sfc(st_linestring(rbind(c(0.1, 0), c(1, .9)))))
 grd <- st_as_stars(st_bbox(ls), nx = 10, ny = 10, xlim = c(0, 1.0), ylim = c(0, 1),
    values = -1)
@@ -791,7 +796,7 @@ r <- st_rasterize(ls, grd, options = "ALL_TOUCHED=TRUE")
 r[r == -1] <- NA
 plot(st_geometry(st_as_sf(grd)), border = 'orange', col = NA, 
 	 reset = FALSE, key.pos = NULL)
-plot(r, axes = TRUE, add = TRUE, breaks = "equal", main = NA) # ALL_TOUCHED=FALSE;
+plot(r, axes = FALSE, add = TRUE, breaks = "equal", main = NA) # ALL_TOUCHED=FALSE;
 plot(ls, add = TRUE, col = "red", lwd = 2)
 ```
 
@@ -808,7 +813,7 @@ cubes are discussed in @sec-datacube.
 
 As mentioned above, besides square cells the other two shapes
 that can lead to regular tessellations of $R^2$ are triangles
-and hexagons. On the sphere, there are few more, including cube,
+and hexagons. On the sphere, there are a few more, including cube,
 octahedron, icosahedron and dodecahedron. A spatial index that
 builds on the cube is [s2geometry](https://s2geometry.io/), the
 [H3 library](https://eng.uber.com/h3/) uses the icosahedron and
@@ -832,8 +837,9 @@ R packages including `osmar` [@R-osmar], `stplanr` [@R-stplanr] and
 `sfnetworks` [@R-sfnetworks] provide functionality for constructing
 network objects, and working with them, e.g. computing shortest or
 fastest routes through a network. Package `spatstat` [@R-spatstat;
-@baddeley2015spatial] has infrastructure for analysing point patterns
-on linear networks (@sec-pointpatterns).
+@baddeley2015spatial] has infrastructure for analysing point
+patterns on linear networks (@sec-pointpatterns). Chapter 12 of
+@geocomp has a transportation application using networks.
 
 ## Exercises 
 
