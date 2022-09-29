@@ -649,6 +649,63 @@
 \long\def\@ytrplarg#1[#2]#3{#1[{#2}][{#2}]{#3}}
 \long\def\@ztrplarg#1#2{#1[{#2}][{#2}]{#2}}
 
+\def\halftitle{\cleardoublepage\thispagestyle{empty}%
+  {\parindent \z@ \raggedright \baselineskip \z@ \lineskip \z@ \parskip \z@
+    \vbox{
+    \vskip -2\p@
+    \ChapNumFont
+%    \thechapter
+    \vskip -15\p@
+    \chap@rule
+    \vskip 6\p@
+    {\baselineskip 20\p@\lineskip 20\p@\ChapTitleFont Half Title\par\vskip-15pt}%
+    \noindent\hbox{\vrule height.5pt width84pt}
+    \vskip28\p@}
+            \if@ChapterTOCs
+      \make@chaptoc
+    \else
+\fi
+    \vskip 19.3\p@}
+    }%
+
+\def\booktitle{\cleardoublepage\thispagestyle{empty}%
+  {\parindent \z@ \raggedright \baselineskip \z@ \lineskip \z@ \parskip \z@
+    \vbox{
+    \vskip -2\p@
+    \ChapNumFont
+%    \thechapter
+    \vskip -15\p@
+    \chap@rule
+    \vskip 6\p@
+    {\baselineskip 20\p@\lineskip 20\p@\ChapTitleFont Title Page\par\vskip-15pt}%
+    \noindent\hbox{\vrule height.5pt width84pt}
+    \vskip28\p@}
+            \if@ChapterTOCs
+      \make@chaptoc
+    \else
+\fi
+    \vskip 19.3\p@}
+    }%
+
+\def\locpage{\clearpage\thispagestyle{empty}%
+  {\parindent \z@ \raggedright \baselineskip \z@ \lineskip \z@ \parskip \z@
+    \vbox{
+    \vskip -2\p@
+    \ChapNumFont
+%    \thechapter
+    \vskip -15\p@
+    \chap@rule
+    \vskip 6\p@
+    {\baselineskip 20\p@\lineskip 20\p@\ChapTitleFont LOC Page\par\vskip-15pt}%
+    \noindent\hbox{\vrule height.5pt width84pt}
+    \vskip28\p@}
+            \if@ChapterTOCs
+      \make@chaptoc
+    \else
+\fi
+    \vskip 19.3\p@}
+}%
+
 
 \newcommand\chapter{\if@openright\cleardoublepage\else\clearpage\fi
   \make@cornermarks
@@ -1031,6 +1088,7 @@
 \newcounter{numauthors}
 \newif\if@break
 \newif\if@firstauthor
+    
 \newcommand\tableofcontents{\cleardoublepage\markboth{Contents}{Contents}%
   \make@cornermarks
     \gdef\chapterauthor{\@caplusone}%
@@ -1048,20 +1106,15 @@
     \FMHeadFont \contentsname\par\vskip-12pt
     \noindent\hbox{\vrule height.5pt width84pt}
     \vskip 41\p@}}
-%%%    \chapter*{\contentsname
-%%%        \@mkboth{%
-%%%           \MakeUppercase\contentsname}{\MakeUppercase\contentsname}}%
            \pagestyle{headings}\thispagestyle{folio}
              {\let\break\space
     \let\author\toc@author
     \reset@authors
     \let\toc@draw\relax
     \@starttoc{toc}
-    \toc@draw
     }
     \if@restonecol\twocolumn\fi
     }
-    
   
 \def\draw@part#1#2{%
   \addpenalty{-\@highpenalty}%

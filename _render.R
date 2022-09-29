@@ -13,9 +13,9 @@ if (length(formats) == 0) formats = c(
   'bookdown::pdf_book', 'bookdown::epub_book', 'bookdown::gitbook'
 )
 
-bookdown::render_book('index.Rmd', bookdown::pdf_book(pandoc_args = '--syntax-definition=r.xml'), quiet = TRUE)
+bookdown::render_book('index.Rmd', bookdown::pdf_book(pandoc_args = c('--syntax-definition=r.xml', '--top-level-division=chapter', '--include-in-header=preamble.tex')), quiet = FALSE)
 #bookdown::pdf_book('index.Rmd', quiet = TRUE, pandoc_args = '--syntax-definition=r.xml')
-q(FALSE)
+q("no")
 
 # render the book to all formats unless they are specified via command-line args
 for (fmt in formats) {
