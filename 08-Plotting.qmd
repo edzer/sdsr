@@ -3,12 +3,13 @@
 \index{maps!plotting}
 
 Together with timelines, maps belong to the most powerful graphs,
-perhaps because we can immediately relate where we are, or have
-been, on the space of the plot. Two recent books on visualisation
-[@Healy; @Wilke] contain chapters on visualising geospatial data or
-maps. Here, we will not try to preach the do's and don'ts of maps,
-but rather point out a number of possibilities how to do things,
-point out challenges along the way and ways to mitigate them.
+perhaps because we can immediately relate to where we are, or
+once have been, on the space of the plot. Two recent books on
+visualisation [@Healy; @Wilke] contain chapters on visualising
+geospatial data or maps. Here, we will not try to point out which
+maps are good and which are bad, but rather point out a number of
+possibilities how to create them, and point out challenges along
+the way and possible ways to mitigate them.
 
 ## Every plot is a projection {#sec-transform}
 
@@ -17,13 +18,12 @@ point out challenges along the way and ways to mitigate them.
 The world is round, but plotting devices are flat.  As mentioned
 in @sec-projections, any time we visualise, in any
 way, the world on a flat device, we project: we convert ellipsoidal
-coordinates into Cartesian coordinates. This includes the cases
-where we think we "do nothing" (@fig-world), left ,
-or where we show the world "as it is", e.g. as seen from space
-(@fig-world, right).
+coordinates into Cartesian coordinates. This includes the cases where
+we think we "do nothing" as in @fig-world (left), or where we show
+the world "as it is", e.g. as seen from space (@fig-world, right).
 
 ```{r fig-world, echo = !knitr::is_latex_output(), message = FALSE}
-#| fig.cap: "Earth country boundaries; left: mapping long/lat linearly to $x$ and $y$ (plate carrée); right: as seen from infinite distance (orthographic)"
+#| fig.cap: "Earth country boundaries; left: mapping long/lat linearly to $x$ and $y$ (plate carrée); right: as seen from an infinite distance (orthographic)"
 #| out.width: 90%
 library(sf)
 library(rnaturalearth)
@@ -52,20 +52,20 @@ library(rnaturalearth)
 w <- ne_countries(scale = "medium", returnclass = "sf")
 plot(st_geometry(w))
 ```
-and we see that this is the default projection for data with ellipsoidal coordinates, as indicated by
+indicating that this is the default projection for global data with ellipsoidal coordinates:
 ```{r}
 st_is_longlat(w)
 ```
 
-The projection taken in @fig-world) (left  is the
-equirectangular (or equidistant cylindrical) projection, which maps
-longitude and latitude linearly to the $x$ and $y$ axis, keeping
-an aspect ratio of 1. Were we to do this for smaller areas not on
-the equator, it makes sense to choose a plot ratio such that one
-distance unit E-W equals one distance unit N-S on the center of
-the plotted area, and this is the default behaviour of the `plot()`
-method for unprojected `sf` or `stars` datasets, as well as the
-default for `ggplot2::geom_sf()` (@sec-geomsf).
+The projection taken in @fig-world (left) is the equirectangular
+(or equidistant cylindrical) projection, which maps longitude and
+latitude linearly to the $x$ and $y$ axis, keeping an aspect ratio of
+1. Were we to do this for smaller areas not on the equator, then it
+makes sense to choose a plot ratio such that one distance unit E-W
+equals one distance unit N-S on the center of the plotted area,
+and this is the default behaviour of the `plot()` method for
+unprojected `sf` or `stars` datasets, as well as the default for
+`ggplot2::geom_sf()` (@sec-geomsf).
 
 We can also carry out this projection before plotting. Say we want to
 plot Germany, then after loading the (rough) country outline,
@@ -73,20 +73,22 @@ we use `st_transform` to project:
 ```{r}
 DE <- st_geometry(ne_countries(country = "germany",
 							  returnclass = "sf"))
-DE.eqc <- st_transform(DE, "+proj=eqc +lat_ts=51.14 +lon_0=90w")
+DE |> st_transform("+proj=eqc +lat_ts=51.14 +lon_0=90w") ->
+    DE.eqc
 ```
 The `eqc` refers to the "equidistant cylindrical" projection of PROJ;
 the projection parameter here is `lat_ts`, the latitude of true
-scale (i.e., one length unit N-S equals one length unit E-W),
-which was here chosen as the middle of the bounding box latitudes
-```{r}
+scale (i.e., where one length unit N-S equals one length unit E-W),
+which was here chosen at the middle of the bounding box latitudes
+```{r, echo=!knitr::is_latex_output()}
+#| code-fold: true
 print(mean(st_bbox(DE)[c("ymin", "ymax")]), digits = 4)
 ```
 When we now plot both maps (@fig-eqc) , they look
 identical up to the values along the axes: degrees for ellipsoidal
 (left), and metres for projected (Cartesian) coordinates.
 
-```{r fig-eqc}
+```{r fig-eqc, echo=!knitr::is_latex_output()}
 #| fig.height: 4.5
 #| out.width: 70%
 #| code-fold: true
@@ -118,7 +120,9 @@ the different projections and understand their consequences. When
 the primary purpose of the map however is not to entertain or educate
 projection varieties, it may be preferable to choose a well-known or
 less surprising projection, and move the discussion which projection
-should be preferred to a decision process on its own.
+should be preferred to a decision process on its own.  For global
+maps however in almost all cases, equal area projections are to be
+preferred over plate carr\'{e}e or web Mercator projections.
 
 ## Plotting points, lines, polygons, grid cells
 
@@ -197,20 +201,19 @@ to create the breaks for "fisher" and "jenks".
 \index{maps!graticule}
 \index{graticule}
 
-A graticule is a network of lines on a map that follow constant latitude or
-longitude. On @fig-first-map  a graticule is drawn
-in grey, on @fig-firstgather  in white. 
-Graticules are often drawn in maps to give reference where
-something is. In our first map in @fig-first-map  we can
-read that the area plotted is near 35$^o$ North and 80$^o$ West.
+A graticule is a network of lines on a map that follow constant
+latitude or longitude. On @fig-first-map  a graticule is drawn in
+grey, on @fig-firstgather  in white.  Graticules are often drawn in
+maps to give place reference.  In our first map in @fig-first-map  we
+can read that the area plotted is near 35$^o$ North and 80$^o$ West.
 Had we plotted the lines in the projected coordinate system, they
 would have been straight and their actual numbers would not have
 been very informative, apart from giving an interpretation of size
 or distances when the unit is known, and familiar to the map reader.
-Graticules, by that, also shed light on which projection
-was used: equirectangular or Mercator projections have straight
-vertical and horizontal lines, conic projections have straight but
-diverging meridians, equal area may have curved meridians.
+Graticules, by that, also shed light on which projection was used:
+equirectangular or Mercator projections have straight vertical and
+horizontal lines, conic projections have straight but diverging
+meridians, equal area may have curved meridians.
 
 The real navigation aid on @fig-world  and most other
 maps are geographical features like the state outline, country
@@ -235,25 +238,26 @@ This means that:
 * given a geometry only (`sfc`), the geometry is plotted, without colours
 * given a geometry and an attribute, the geometry is coloured according to
   the values of the attribute, using a qualitative colour scale for `factor`
-  or `logical` attributes and a continuous scale otherwise
+  or `logical` attributes and a continuous scale otherwise, and a color key
+  is added
 * given multiple attributes, multiple maps are plotted, each with a colour
-  scale but a legend is omitted by default, as colour assignment is
+  scale but a key is by default omitted, as colour assignment is
   done on a per sub-map basis
 * for `stars` objects with multiple attributes, only the first
   attribute is plotted; for three-dimensional raster cubes, all
-  slices over the third dimension are plotted
+  slices over the third dimension are plotted as sub-plots
 
 ### Adding to plots with legends
 
 \index{sf!plot!legend}
 
 The `plot` methods for `stars` and `sf` objects may show a colour key
-on one of the sides (e.g., @fig-first-map) . To do this
+on one of the sides (e.g., @fig-first-map). To do this
 with `base::plot`, the plot region is split in two and two plots are
 created: one with the map, and one with the legend.  By default, the
 `plot` function resets the graphics device (using `layout(matrix(1))`
 so that subsequent plots are not hindered by the device being split
-in two. If one wants to _add_ to an existing plot having a coulor
+in two. If one wants to _add_ to an existing plot having a colour
 legend, this is however what is needed, and resetting the plotting
 device needs to be prevented by setting argument `reset = FALSE`,
 and use `add = TRUE` in a subsequent call to `plot`, an example
@@ -268,7 +272,7 @@ plot(nc["BIR74"], reset = FALSE, key.pos = 4)
 plot(st_buffer(nc[1,1], units::set_units(10, km)), col = 'NA', 
 	 border = 'red', lwd = 2, add = TRUE)
 ```
-which is shown in @fig-figreset .  Annotating `stars`
+which is shown in @fig-figreset.  Annotating `stars`
 plots can be done in the same way when a _single_ stars layer is
 shown. Annotating `stars` plots with multiple cube slices can be
 done by adding a "hook" function that will be called on every slice
@@ -286,7 +290,7 @@ hook <- function() {
 }
 plot(r, hook = hook, key.pos = 4)
 ```
-and as shown in @fig-starshook .
+and as shown in @fig-starshook.
 
 Base plot methods have access to the resolution of the screen device
 and hence the base plot method for `stars` and `stars_proxy` object
@@ -305,11 +309,12 @@ plate carrée (@fig-world) left . Subsequent plots need to be in
 the same coordinate reference system in order to make sense with
 overplotting, this is not being checked.
 
-### Colors and coulor breaks
+### Colors and colour breaks
 
-In base plots, `nbreaks` can be used to set the number of coulor
-breaks, and `breaks` either to the numeric vector with actual breaks,
-or to a value for the `style` argument in `classInt::classIntervals`.
+In base plots, argument `nbreaks` can be used to set the number of
+colour breaks, and argument `breaks` either to the numeric vector
+with actual breaks, or to a style value for the `style` argument in
+`classInt::classIntervals`.
 
 ## Maps with `ggplot2` {#sec-geomsf}
 
@@ -323,7 +328,7 @@ helps creating beautiful maps; an introduction to this is found in
 @moreno, a first example is shown in @fig-firstgather .
 The code used for this plot is:
 ```{r}
-suppressPackageStartupMessages(library(tidyverse))
+library(tidyverse) |> suppressPackageStartupMessages()
 nc.32119 <- st_transform(nc, 32119) 
 year_labels <- 
 	c("SID74" = "1974 - 1978", "SID79" = "1979 - 1984")
@@ -339,7 +344,7 @@ ggplot() + geom_sf(data = nc_longer, aes(fill = value)) +
   theme(panel.grid.major = element_line(colour = "white"))
 ```
 where we see that two attributes had to be stacked (`pivot_longer`)
-before plotting them as facets: this is the idea of "tidy" data,
+before plotting them as facets: this is the idea behind "tidy" data,
 and the `pivot_longer` method for `sf` objects automatically stacks
 the geometry column too.
 
@@ -363,7 +368,7 @@ automatically choose a downsampling rate. This may be just enough,
 for instance figure
 @fig-ggplotstars is created by the following commands:
 ```{r fig-ggplotstars}
-#| fig.cap: "Simple raster plot with ggplot2 and `geom_stars`"
+#| fig.cap: "Simple facet raster plot with `ggplot2` and `geom_stars`"
 #| out.width: 80%
 library(ggplot2)
 library(stars)
@@ -378,17 +383,21 @@ ggplot() + geom_stars(data = r) +
 More elaborate `ggplot2`-based plots with `stars` objects may be
 obtained using package `ggspatial` [@R-ggspatial]. Non-compatible
 but nevertheless `ggplot2`-style plots can be created with `tmap`,
-a package dedicated to creating high quality maps.
+a package dedicated to creating high quality maps (@sec-tmap).
+
+\index[function]{coord\_sf}
 
 When combining several feature sets with varying coordinate reference
 systems, using `geom_sf`, all sets are transformed to the reference
-system of the first set. To get further control over the "base"
+system of the first set. To get further control the "base"
 coordinate reference system, `coord_sf` can be used. This allows
 for instance working in a projected system, while combining graphics
 elements that are _not_ `sf` objects but regular `data.frame`s
-with ellipsoidal coordinates associated to WGS84. A
-twitter thread by Claus Wilke illustrating this is found
+with ellipsoidal coordinates associated to WGS84. 
+::: {.content-visible when-format="html"}
+A twitter thread by Claus Wilke illustrating this is found
 [here](https://twitter.com/ClausWilke/status/1275938314055561216).
+:::
 
 ## Maps with `tmap` {#sec-tmap}
 
@@ -441,7 +450,8 @@ tm_shape(r) + tm_raster()
 #| fig.cap: "Simple raster plot with tmap"
 tm_shape(r) + tm_raster()
 ```
-is shown in @fig-tmapstars. More examples of the use of **tmap** are given in @sec-area.
+is shown in @fig-tmapstars. More examples of the use of **tmap**
+are given in @sec-area - @sec-spatglmm.
 
 ## Interactive maps: `leaflet`, `mapview`, `tmap`
 
@@ -467,7 +477,7 @@ whereas after
 ```{r eval=FALSE}
 tmap_mode("plot")
 ```
-again all output is sent to R own static graphics device.
+again all output is sent to R's own (static) graphics device.
 
 ## Exercises
 

@@ -5,17 +5,16 @@
 
 This chapter describes how large spatial and spatiotemporal datasets
 can be handled with R, with a focus on packages `sf` and `stars`.
-For practical use, we classify large data sets as either:
+For practical use, we classify large datasets as either too large:
 
-* too large to fit in working memory, or
-* also too large to fit on the local hard drive, or
-* also too large to download it to locally managed compute
-infrastructure (such as network attached storage)
+* to fit in working memory, or
+* to fit on the local hard drive, or
+* to download it to locally managed compute infrastructure (such as network attached storage)
 
 \index{out-of-core}
 
-These three categories correspond very roughly to Gigabyte-,
-Terabyte- and Petabyte-sized data sets.  Besides size considerations,
+These three categories may (today) correspond very roughly to Gigabyte-,
+Terabyte- and Petabyte-sized datasets.  Besides size considerations,
 considerations of access and processing speed also play a role,
 in particular for larger datasets or interactive applications.
 Cloud native geospatial formats are formats optimised with processing
@@ -37,12 +36,12 @@ reduced by
   storage protocols in mind.
 
 It should be noted that there are no silver bullets in this area:
-optimizing storage for one particular access way will lead to slow
+optimizing storage for one particular access pattern will lead to slow
 access for other ways: for instance if raster data is stored for
 optimal access of spatial regions at different spatial resolutions,
 reading the data as pixel time series may be very slow. Compression
-leads to low storage costs but to higher processing costs when
-reading, because of the decompression involved.
+leads to low storage and bandwidth costs but to higher processing
+costs when reading, because of the decompression involved.
 
 ## Vector data: `sf` {#sec-largesf}
 
@@ -129,21 +128,21 @@ pg <- DBI::dbConnect(
     RPostgres::Postgres(),
     host = "localhost",
     dbname = "postgis")
-read_sf(pg, query = "select BIR74,wkb_geometry from nc limit 3") |> 
-    nrow()
+read_sf(pg, query = 
+		"select BIR74,wkb_geometry from nc limit 3") |> nrow()
 ```
 A spatial query might look like
 ```{r, eval=has_PG}
 q <- "SELECT BIR74,wkb_geometry FROM nc WHERE \
-  ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.50 36.43)');"
+ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.50 36.43)');"
 read_sf(pg, query = q) |> nrow()
 ```
 Here, the intersection is done in the database, and uses the spatial
-index typically present.
+index when present.  The same mechanism works when using `dplyr`
+with a database backend:
 
 \index{sf!dbplyr proxy}
 
-The same mechanism works when using `dplyr` with a database backend:
 ```{r, eval=has_PG}
 library(dplyr, warn.conflicts = FALSE)
 nc_db <- tbl(pg, "nc")
@@ -153,22 +152,20 @@ Spatial queries can be formulated and are passed on to the database:
 ```{r, eval=has_PG}
 nc_db |> 
 	 filter(ST_Intersects(wkb_geometry, 
-						  'SRID=4267;POINT (-81.50 36.43)')) |>
+						'SRID=4267;POINT (-81.50 36.43)')) |>
 	 collect()
 nc_db |> filter(ST_Area(wkb_geometry) > 0.1) |> head(3)
 ```
-
-It should be noted that PostGIS' `ST_Area` computes the same
-area as the `AREA` field in `nc`, which is the meaningless value
-obtained by assuming the coordinates are projected, where they
-are ellipsoidal.
+(Note that PostGIS' `ST_Area` computes the same area as
+the `AREA` field in `nc`, which is the meaningless value obtained by
+assuming the coordinates are projected, where they are ellipsoidal.)
 
 ### Reading from online resources or web services {#sec-vsi}
 
 \index{st\_read!online resources}
 
 GDAL drivers support reading from online resources, by prepending
-`/vsicurl/` before the URL starting with e.g. `https://`. A number of
+the URL starting with e.g. `https://` with `/vsicurl/`.  A number of
 similar drivers specialized for particular clouds include `/vsis3/`
 for Amazon S3, `/vsigs/`  for Google Cloud Storage, `/vsiaz/` for
 Azure, `/vsioss/` for Alibaba Cloud, or `/vsiswift/` for OpenStack
@@ -189,8 +186,7 @@ efficiently using `http` requests.
 \index{st\_read!OpenStreetMap}
 \index{OpenStreetMap, reading}
 
-Although online resource do not have to be stored files but could be
-created server-side on the fly, typical web services for geospatial
+Typical web services for geospatial
 data create data on the fly, and give access to this through an API.
 As an example, data from [OpenStreetMap](https://openstreetmap.org/)
 can be bulk downloaded and read locally, e.g. using the GDAL vector
@@ -200,24 +196,24 @@ that query OpenStreetMap data:
 
 * Package `OpenStreetMap` downloads data as raster tiles, typically
   used as backdrop or reference for plotting other features
-* Package `osmdata` downloads vector data as points, lines or polygons
+* Package `osmdata` [@osmdata] downloads vector data as points, lines or polygons
   in `sf` or `sp` format
 * Package `osmar` returns vector data, but in addition the network
   topology (as an `igraph` object) that contains how road elements
-  form a network, and has functions that compute the shortest route
+  are connected, and has functions for computing the shortest route
 
 When provided with a correctly formulated API call in the URL the
 highly configurable GDAL OSM driver (in `st_read`) can read an
-".osm" file (xml) and returns a dataset with five layers: `points`
+".osm" file (xml) and return a dataset with five layers: `points`
 that have significant tags, `lines` with non-area "way" features,
 `multilinestrings` with "relation" features, `multipolygons` with
 "relation" features  and `other_relations`. A simple and very small
 bounding box query to OpenStreetMap could look like
 
 ```{r,eval=FALSE}
-download.file(
-"https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970",
-"data/ms.osm", method = "auto")
+download.file(paste0("https://openstreetmap.org/api/0.6/map?",
+	   "bbox=7.595,51.969,7.598,51.970"),
+    "data/ms.osm", method = "auto")
 ```
 and from this file we can read the layer `lines`, and plot its
 first attribute by
@@ -227,13 +223,14 @@ first attribute by
 #| fig.height: 5
 o <- read_sf("data/ms.osm", "lines")
 p <- read_sf("data/ms.osm", "multipolygons")
-bb <- st_bbox(c(xmin = 7.595, ymin = 51.969, 
-			   xmax = 7.598, ymax = 51.970), crs = 'OGC:CRS84')
-plot(st_as_sfc(bb), axes = TRUE, lwd = 2, lty = 2, cex.axis = .5)
+st_bbox(c(xmin = 7.595, ymin = 51.969, 
+		  xmax = 7.598, ymax = 51.970), crs = 'OGC:CRS84') |>
+    st_as_sfc() |>
+    plot(axes = TRUE, lwd = 2, lty = 2, cex.axis = .5)
 plot(o[,1], lwd = 2, add = TRUE)
 plot(st_geometry(p), border = NA, col = '#88888888', add = TRUE)
 ```
-the result of which is shown in @fig-overpass .
+the result of which is shown in @fig-overpass.
 The overpass API provides a more generic and powerful query
 functionality to OpenStreetMap data.
 
@@ -260,26 +257,21 @@ most other databases.  The Geo- extensions of both involve
 At the time of writing this book, both formats are under active
 development but drivers for reading or creating them are available in
 GDAL starting from version 3.5. Both formats allow for compressed
-storage; the difference seems to be that (Geo)Parquet is more
-oriented towards persistent storage, where (Geo)Arrow is more
-oriented to fast access and fast computation; Arrow can for instance
-be both an in-memory and an on-disk format.
+storage. The difference is that (Geo)Parquet is more oriented
+towards persistent storage, where (Geo)Arrow is more oriented to
+fast access and fast computation; Arrow can for instance be both
+an in-memory and an on-disk format.
 
 ## Raster data: `stars`
 
 A common challenge with raster datasets is not only that they come
 in large files (single Sentinel-2 tiles are around 1 GB), but that
-many of these files, potentially thousands, are needed to address
+many of these files, potentially thousands or millions, are needed to address
 the area and time period of interest. At time of writing this, the
 Copernicus program that runs all Sentinel satellites publishes 160
 TB of images per day.  This means that a classic pattern in using R,
-consisting of:
-
-* downloading data to local disc, 
-* loading the data in memory, 
-* analysing it
-
-is not going to work.
+consisting of downloading data to local disc, loading the data in
+memory and analysing it is not going to work.
 
 \index{Google Earth Engine}
 \index{Sentinel Hub}
@@ -293,7 +285,7 @@ range rather easily and with a great deal of interactivity. They
 share the following properties:
 
 * computations are postponed as long as possible (lazy evaluation)
-* only the data you ask for are being computed and returned, and nothing more
+* only the data asked for by the user is being computed and returned, and nothing more
 * storing intermediate results is avoided in favour of on-the-fly computations
 * maps with useful results are generated and shown quickly to allow for interactive model development
 
@@ -308,7 +300,7 @@ at screen resolution rather than native (observation) resolution.
 \index{resolution!low resolution computation}
 
 If for instance we want to "see" results for the United States on
-screen with 1000 x 1000 pixels, we only need to compute results
+a screen with 1000 x 1000 pixels, we only need to compute results
 for this many pixels, which corresponds roughly to data
 on a grid with 3000 m x 3000 m grid cells.  For Sentinel-2
 data with 10 m resolution, this means we can downsample with
@@ -318,7 +310,7 @@ to working on the native 10 m x 10 m resolution. On the platforms
 mentioned, zooming in the map triggers further computations on a
 finer resolution and smaller extent.
 
-A simple optimisation that follows these lines is how stars' plot
+A simple optimisation that follows these lines is how `stars`' plot
 method works:  in the case of plotting large rasters, it downsamples
 the array before it plots, drastically saving time.  The degree
 of downsampling is derived from the plotting region size and the
@@ -342,7 +334,7 @@ install.packages("starsdata",
 ```
 We can "load" a Sentinel-2 image from it by
 ```{r}
-library(stars)
+library(stars) |> suppressPackageStartupMessages()
 f <- paste0("sentinel/S2A_MSIL1C_20180220T105051_N0206",
 		   "_R051_T32ULE_20180221T134037.zip")
 granule <- system.file(file = f, package = "starsdata")
@@ -367,11 +359,11 @@ p2 <- p * 2
 ```
 but that the computations for this are postponed. Only when we
 really need the data, e.g. because we want to plot it, is `p *
-2` evaluated.  We need data when either:
+2` evaluated.  We need data when either we:
 
-* we want to `plot` data, or
-* we want to write an object to disk, with `write_stars`, or
-* we want to explicitly load an object in memory, with `st_as_stars`
+* `plot` data, or
+* write an object to disk, with `write_stars`, or
+* explicitly load an object in memory, with `st_as_stars`
 
 In case the entire object does not fit in memory, `plot` and
 `write_stars` choose different strategies to deal with this:
@@ -380,23 +372,24 @@ In case the entire object does not fit in memory, `plot` and
 pixels available
 * `write_stars` reads, processes, and writes data chunk by chunk
 
-Downsampling and chunking is implemented for spatially dense images,
-not e.g. for dense time series, or other dense dimensions.
-
-As an example, the output of `plot(p)`, shown in @fig-plotp 
-```{r fig-plotp, fig.cap="downsampled 10 m bands of a Sentinel-2 scene", echo=!knitr::is_latex_output(), message=FALSE}
+```{r fig-plotp, echo=!knitr::is_latex_output(), message=!knitr::is_latex_output()}
+#| fig.cap: "downsampled 10 m bands of a Sentinel-2 scene"
+#| code-fold: true
 plot(p)
 ```
+
+Downsampling and chunking is implemented for spatially dense images,
+not e.g. for dense time series, or other dense dimensions. 
+As an example, the output of `plot(p)`, shown in @fig-plotp 
 only fetches the pixels that can be seen on the plot device, rather
 than the 10980 x 10980 pixels available in each band. The downsampling
 ratio taken is
-```{r}
+```{r, echo=!knitr::is_latex_output()}
+#| code-fold: true
 (ds <- floor(sqrt(prod(dim(p)) / prod(dev.size("px")))))
 ```
 meaning that for every `r ds` $\times$ `r ds` sub-image in the
-original image, only one pixel is read, and plotted. This value is
-still a bit too low as it ignores the white space and space for
-the key on the plotting device.
+original image, only one pixel is read, and plotted.
 
 ### Operations on proxy objects
 
@@ -453,7 +446,7 @@ dataset creation options in a `write_stars` call.
 \index{Copernicus}
 \index{Landsat}
 
-At some stage, data sets need to be analysed that are so large that
+At some stage, datasets need to be analysed that are so large that
 downloading them is no longer feasible; even when local storage would
 be sufficient, network bandwidth may become limiting. Examples are
 satellite image archives such as those from Landsat and Copernicus
@@ -488,9 +481,9 @@ to create queries, and manage the information returned.
 Processing the resulting files may involve creating a data cube at
 a lower spatial and/or temporal resolution, from images that may
 span a range of coordinate reference systems (e.g., several UTM
-zones). An R package that can do that is gdalcubes [@R-gdalcubes;
-@appel2019demand], which can also directly use STAC output
-[@appelblog].
+zones). An R package that creates a regular data cube from such a
+collection of images is gdalcubes [@R-gdalcubes; @appel2019demand],
+which can also directly use a STAC [@appelblog].
 
 ### Cloud native storage: Zarr {#sec-zarr}
 
@@ -506,18 +499,18 @@ compressed chunks of the data. The compression algorithm and
 the chunking strategy will have an effect on how fast particular
 sub-cubes can be read or written.
 
-Function `stars::read_mdim` has options for reading sub-cubes by
-specifying offset and size of the index in each dimension, and a step
-size to read one or more dimensions at a lower resolution. Similarly,
-`stars::write_mdim` can write multidimensional arrays to Zarr
-or NetCDF files, or other formats that support the GDAL C++
-multidimensional array API.
+Function `stars::read_mdim` can read entire data cubes but has
+options for reading sub-cubes by specifying for each dimension
+offset, number of pixels, and the step size to read a dimension
+at a lower resolution [@zarrblog]. Similarly, `stars::write_mdim`
+can write multidimensional arrays to Zarr or NetCDF files, or other
+formats that support the GDAL C++ multidimensional array API.
 
 \index{read\_mdim}
 \index{write\_mdim}
 \index{NetCDF}
 
-To read parts of a remote (cloud-based) Zarr file, one needs to prepend the
+To read a remote (cloud-based) Zarr file, one needs to prepend the
 URL with indicators about the format and the access protocol:
 ```{r}
 dsn = paste0('ZARR:"/vsicurl/https://ncsa.osn.xsede.org',

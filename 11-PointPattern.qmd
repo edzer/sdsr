@@ -8,7 +8,7 @@ points over space, and making inference about the process that
 could have generated an observed pattern. The main focus here lies on
 the information carried in the locations of the points, and typically
 these locations are not controlled by sampling but a result of a
-process we're interested in, such as animal sightings, accidents,
+process we are interested in, such as animal sightings, accidents,
 disease cases, or tree locations. This is opposed to geostatistical
 processes (@sec-interpolation) where we have values of
 some phenomenon everywhere but observations limited to a set of
@@ -34,24 +34,25 @@ more relevant than others.  In particular, this chapter tries to
 illustrate interfaces existing between `spatstat` and the more
 spatial data science oriented packages `sf` and `stars`.
 A further book that introduces point patterns analysis is
-@STOYAN2017125. An R package for analysing spatiotemporal 
-point processes is discussed in @stpp.
+@STOYAN2017125. R package `stpp` [@R-stpp] for analysing
+spatiotemporal point processes is discussed in @stpp.
 
 Important concepts of point patterns analysis are the distinction
 between a point _pattern_ and a point _process_: the latter is the
 stochastic process that, when sampled, generates a point pattern.
 A data set is always a point pattern, and inference involves figuring
-out what kind of process could have generated a pattern like the one
-we observed. Properties of a spatial point process are:
+out the properties of a process that could have generated a pattern
+like the one we observed. Properties of a spatial point process
+include:
 
 * first order properties or intensity function, which measures the
   number of points per area unit; this function is spatially varying
   for a _inhomogeneous_ point process
 * second order properties, e.g. pairwise interactions: given a
   constant or varying intensity function, are points distributed
-  independently _from one another_, or do the tend to attract
+  independently _from one another_, or do they tend to attract
   each other (clustering) or repulse each other (appear regularly
-  distributed, compared to independence)
+  distributed, compared to complete spatial randomness)
 
 ## Observation window
 
@@ -96,7 +97,7 @@ Point patterns in `spatstat` are objects of class `ppp` that contain
 points and an observation window (an object of class `owin`).
 We can create a `ppp` from points by
 ```{r}
-suppressPackageStartupMessages(library(spatstat))
+library(spatstat) |> suppressPackageStartupMessages()
 as.ppp(xy)
 ```
 where we see that the bounding box of the points is used as observation
@@ -132,8 +133,10 @@ and carry out a $\chi^2$ test on these counts:
 quadrat.test(pp1, nx=3, ny=3)
 quadrat.test(pp2, nx=3, ny=3)
 ```
-where we should take the p-values with a large grain of salt because
-we have too small expected counts.
+which indicates that for the second case we have an indication
+that this is not a CSR (completely spatially random) pattern.
+As indicated by the warning, we should take the p-values with a
+large grain of salt because we have too small expected counts.
 
 \index{kernel density}
 Kernel densities can be computed using `density`, where kernel shape and
@@ -168,8 +171,10 @@ s1 <- st_as_stars(den1)
 and we can verify that the area under the density surface is similar
 to the sample size (`r n`),  by
 ```{r}
-sum(s1[[1]], na.rm = TRUE)*st_dimensions(s1)$x$delta^2
-sum(s2[[1]], na.rm = TRUE)*st_dimensions(s2)$x$delta^2
+s1$a <- st_area(s1) |> suppressMessages()
+s2$a <- st_area(s2) |> suppressMessages()
+with(s1, sum(v * a, na.rm = TRUE))
+with(s2, sum(v * a, na.rm = TRUE))
 ```
 
 \index{ppm}
@@ -183,7 +188,8 @@ the intensity is a function of distance to the center of the
 "cluster", and these distance are available in a `stars` object:
 ```{r}
 pt <- st_sfc(st_point(c(0.5, 0.5)))
-s2$dist <- st_distance(st_as_sf(s2, as_points = TRUE, na.rm = FALSE), pt)
+st_as_sf(s2, as_points = TRUE, na.rm = FALSE) |>
+  st_distance(pt) -> s2$dist
 ```
 we can then model the densities using `ppm`, where the _name_ of the
 point pattern object is used as the left-hand-side of the `formula`:
@@ -235,7 +241,7 @@ dataset, containing diameter at breast height as numeric mark:
 ```{r}
 longleaf
 ll <- st_as_sf(longleaf)
-print(ll, n = 5)
+print(ll, n = 3)
 ```
 Values can be converted back to `ppp` with
 ```{r}
@@ -269,18 +275,18 @@ imported from OpenStreetMaps to `spatstat`.
 ## Spatial sampling and simulating a point process 
 
 \index{point pattern!simulation}
-Package `sf` contains an `st_sample` method that samples points
-from `MULTIPOINT`, linear or polygonal geometries, using different
-spatial sampling strategies. It natively supports strategies
-"random", "hexagonal" and "regular", where "regular" refers to
-sampling on a square regular grid, and "hexagonal" essentially
-gives a triangular grid. For type "random", it can return exactly
-the number of requested points, for other types this is approximate.
+Package `sf` contains an `st_sample` method that samples points from
+`MULTIPOINT`, linear or polygonal geometries, using different spatial
+sampling strategies. It natively supports strategies "random",
+"hexagonal", "Fibonacci" (@sec-simsphere) and "regular", where "regular" refers to
+sampling on a square regular grid and "hexagonal" essentially gives
+a triangular grid. For type "random", it can return exactly the
+number of requested points, for other types this is approximate.
 
 `st_sample` also interfaces point process simulation functions of
 `spatstat`, when other values for sampling type are chosen. For instance
 the `spatstat` function `rThomas` is invoked when setting `type = Thomas`
-(@fig-rThomas) :
+(@fig-rThomas):
 ```{r}
 kappa <- 30 / st_area(w2) # intensity
 th <- st_sample(w2, kappa = kappa, mu = 3, scale = 0.05, 
@@ -289,8 +295,9 @@ nrow(th)
 ```
 ```{r fig-rThomas, echo=!knitr::is_latex_output()}
 #| fig.height: 4
-#| out.width: 80%
+#| out.width: 60%
 #| fig.cap: "Thomas process with mu = 3 and scale = 0.05"
+#| code-fold: true
 par(mar = rep(0, 4))
 plot(w2)
 plot(th, add = TRUE)
@@ -301,19 +308,21 @@ means that the intensity is given, not the sample size. The sample
 size within the observation window obtained this way is a random
 variable.
 
-## Simulating points on the sphere
+## Simulating points on the sphere {#sec-simsphere}
 
 \index{point pattern!simulation on the sphere}
 Another spatial random sampling type supported by `sf` natively
 (in `st_sample`) is simulation of random points on the sphere. An
 example of this is shown in @fig-srsglobe , where points
-were constrained to those in oceans.
+were constrained to those in oceans. Points approximately regularly
+distributed over a sphere are obtained by `st_sample` with
+`type = "Fibonacci"` [@fibo].
 
 ```{r fig-srsglobe, echo=!knitr::is_latex_output(), messages = FALSE}
-#| fig.cap: "Points randomly sampled over the oceans"
-#| out.width: 80%
+#| fig.cap: "Points sampled over the oceans: randomly (left) and approximately regular (Fibonacci; right)"
+#| out.width: 100%
 #| code-fold: true
-par(mar = rep(0, 4))
+par(mar = rep(0, 4), mfrow = c(1, 2))
 library(s2)
 g <- as_s2_geography(TRUE) # Earth
 co <- s2_data_countries()
@@ -321,18 +330,28 @@ oc <- s2_difference(g, s2_union_agg(co)) # oceans
 b <- s2_buffer_cells(as_s2_geography("POINT(-30 -10)"), 9800000) # visible half
 i <- s2_intersection(b, oc) # visible ocean
 co <- s2_intersection(b, co)
-plot(st_transform(st_as_sfc(i), "+proj=ortho +lat_0=-10 +lon_0=-30"), 
-	 col = 'lightblue')
-plot(st_transform(st_as_sfc(co), "+proj=ortho +lat_0=-10 +lon_0=-30"), 
-	 col = NA, add = TRUE, border = 'grey')
-# sampling from globe:
-sf_use_s2(FALSE)
-pts <- suppressMessages(
-   st_sample(st_as_sfc(st_bbox(st_as_stars())), 1000, exact = FALSE))
-sf_use_s2(TRUE)
-pts <- s2_intersection(i, pts) |> st_as_sfc()
-plot(st_transform(pts, "+proj=ortho +lat_0=-10 +lon_0=-30"), 
-	 add = TRUE, pch = 3, cex = .7)
+ortho = st_crs("+proj=ortho +lat_0=-10 +lon_0=-30")
+# background:
+st_transform(st_as_sfc(i), ortho) |> plot(col = 'lightblue')
+st_transform(st_as_sfc(co), ortho) |> plot(col = NA, add = TRUE, border = 'grey')
+# sampling randomly from globe:
+sf_use_s2(FALSE) |> suppressMessages()
+st_as_stars() |> st_bbox() |> st_as_sfc() |> st_sample(1000, exact = FALSE) |>
+  suppressMessages() -> pts
+sf_use_s2(TRUE) |> suppressMessages()
+pts |> s2_intersection(i) |> st_as_sfc() -> pts
+# add:
+st_transform(pts, ortho) |> plot(add = TRUE, pch = 3, cex = .5)
+# right: background:
+st_transform(st_as_sfc(i), ortho) |> plot(col = 'lightblue')
+st_transform(st_as_sfc(co), ortho) |> plot(col = NA, add = TRUE, border = 'grey')
+# Fibonacci:
+sf_use_s2(FALSE) |> suppressMessages()
+st_as_stars() |> st_bbox() |> st_as_sfc() |> 
+  st_sample(1000, type = "Fibonacci", exact = FALSE) |> suppressMessages() -> pts
+sf_use_s2(TRUE) |> suppressMessages()
+pts |> s2_intersection(i) |> st_as_sfc() -> pts
+st_transform(pts, ortho) |> plot(add = TRUE, pch = 3, cex = .5)
 ```
 
 ## Exercises

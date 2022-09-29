@@ -28,7 +28,7 @@ move spatial data analysis in R closer to standards-based approaches
 seen in the industry and open source projects, to build upon more
 modern versions of the open source geospatial software stack
 (@fig-gdal-fig-nodetails), and to allow for integration of R spatial
-software with the tidyverse if desired.
+software with the tidyverse [@wickham2019welcome], if desired.
 
 \index{tidyverse}
 
@@ -97,7 +97,7 @@ Geometry columns in `sf` objects can be set or replaced using
 ### Creation
 
 \index{sf!create from scratch}
-One could create an `sf` object from scratch e.g. by
+An `sf` object can be created from scratch by e.g.
 ```{r echo=TRUE}
 library(sf)
 p1 <- st_point(c(7.35, 52.42))
@@ -120,6 +120,7 @@ in R are typically read from an external source, which can be:
 \index{sf!components figure}
 
 * an external file
+* a table (or set of tables) in a database
 * a request to a web service
 * a dataset held in some form in another R package
 
@@ -281,7 +282,7 @@ present. In case a user wants the geometry to be removed, one can
 use `st_drop_geometry()` or simply coerce to a `tibble` or 
 `data.frame` before selecting:
 ```{r}
-suppressPackageStartupMessages(library(tidyverse))
+library(tidyverse) |> suppressPackageStartupMessages()
 nc |> as_tibble() |> select(BIR74) |> head(3)
 ```
 
@@ -372,9 +373,9 @@ plot(st_geometry(gr), border = 'green', add = TRUE)
 \index{sf!aggregate}
 \index[function]{aggregate}
 
-Another way to reduce the result set is to use `aggregate` after a
-join, all matching records, and union their geometries; see 
-@sec-updownscaling.
+Another way to reduce the result set is to use `aggregate` after
+a join, to merge all matching records, and union their geometries;
+see @sec-updownscaling.
 
 ### Sampling, gridding, interpolating
 
@@ -520,8 +521,8 @@ library(stars)
 (r <- read_stars(tif))
 ```
 where we see the offset, cell size, coordinate reference system,
-and dimensions. The dimension table reports the following for
-each dimension:
+and dimensions. The dimension table reports the following fields
+for each dimension:
 
 * `from`: the starting index
 * `to`: the ending index
@@ -529,13 +530,13 @@ each dimension:
 * `delta`: the cell size; negative `delta` values indicate that pixel index increases with decreasing dimension values
 * `refsys`: the reference system
 * `point`: boolean, indicating whether cell values have point support or cell support
-* `values`: a list with values or labels associated with each of the dimension's values
 * `x/y`: an indicator whether a dimension is associated with a spatial raster x- or y-axis
 
-For regular, rotated or sheared grids or other regularly discretized
-dimensions (e.g. time), `offset` and `delta` are not `NA`
-and `values` is `NULL`; for other cases, `offset` and `delta` are
-`NA` and `values` contains one of:
+One further field, `values` is hidden as it is not used.  For
+regular, rotated or sheared grids or other regularly discretized
+dimensions (e.g. time), `offset` and `delta` are not `NA`; for for
+irregular cases, `offset` and `delta` are `NA` and the `values`
+property contains one of:
 
 * the sequence of values, or intervals, in case of a rectlinear spatial raster or irregular time dimension
 * in case of a vector data cube, geometries associated with the spatial dimension
@@ -583,7 +584,7 @@ selects from `r` attributes 1-2, index 101-200 for dimension 1, and index
 5-10 for dimension 3; omitting dimension 2 means that no subsetting
 takes place. For attributes, attributes names or logical vectors
 can be used. For dimensions, logical vectors are not supported;
-Selecting discontinuous ranges supported when it is a regular
+Selecting discontinuous ranges is supported only when it is a regular
 sequence. By default, `drop` is FALSE, when set to `TRUE` dimensions
 with a single value are dropped:
 ```{r}
@@ -602,7 +603,7 @@ can also be obtained with `slice`, e.g.
 ```{r}
 slice(r, band, 3)
 ```
-which drops the singular dimension. `mutate` can be used on `stars`
+which drops the singular dimension `band`. `mutate` can be used on `stars`
 objects to add new arrays as functions of existing ones, `transmute`
 drops existing ones.
 
@@ -646,7 +647,7 @@ Cropping a `stars` object can alternatively be done directly with `st_crop`, as 
 st_crop(r, b)
 ```
 
-### Redimensioning `stars` objects
+### Redimensioning and combining `stars` objects
 
 \index{stars!redimension}
 \index{dimension!change order}
@@ -663,15 +664,24 @@ permutes the order of dimensions of the resulting object.
 Attributes and dimensions can be swapped, using `split` and `merge`:
 ```{r}
 (rs <- split(r))
-merge(rs)
+merge(rs, name = "band") |> setNames("L7_ETMs")
 ```
 split distributes the `band` dimension over 6 attributes of a
 2-dimensional array, `merge` reverses this operation. `st_redimension`
 can be used for more generic operations, such as splitting a single array
 dimension over two new dimensions:
 ```{r}
-st_redimension(r, c(349, 352, 3, 2))
+st_redimension(r, c(x = 349, y = 352, b1 = 3, b2 = 2))
 ```
+
+Multiple `stars` object with identical dimensions can be combined
+using `c`. By default, the arrays are combined as additional
+attributes, but by specifying an `along` argument, the arrays are
+merged along a new dimension:
+```{r}
+c(r, r, along = "new_dim")
+```
+the use of this is illustrated in @sec-oddc.
 
 ### Extracting point samples, aggregating
 
@@ -735,22 +745,22 @@ land from sea in the example Landsat data set, using the sample
 points extracted above, shown in @fig-rsample .
 ```{r fig-rsample, echo=!knitr::is_latex_output()}
 #| out.width: 80%
-#| fig.cap: "Randomly chosen sample locations for training data; red: water, green: land"
+#| fig.cap: "Randomly chosen sample locations for training data; red: water, yellow: land"
 plot(r[,,,1], reset = FALSE)
-col <- rep("green", 20)
+col <- rep("yellow", 20)
 col[c(8, 14, 15, 18, 19)] = "red"
 st_as_sf(e) |> st_coordinates() |> text(labels = 1:20, col = col)
 ```
 From this figure, we read "by eye" that the points 8, 14, 15, 18 and
 19 are on water, the others on land. Using a linear discriminant
 ("maximum likelihood") classifier, we find model predictions as
-shown in @fig-lda .
+shown in @fig-lda by
 
 ```{r ldapr}
 rs <- split(r)
 trn <- st_extract(rs, pts)
 trn$cls <- rep("land", 20)
-trn$cls[c(8, 14, 15, 18, 19)] = "water"
+trn$cls[c(8, 14, 15, 18, 19)] <- "water"
 model <- MASS::lda(cls ~ ., st_drop_geometry(trn))
 pr <- predict(rs, model)
 ```
@@ -770,18 +780,21 @@ We also see that the layer plotted in @fig-lda is a `factor` variable, with clas
 \index{stars!plot}
 \index{plot!star}
 
-We can use the base `plot` method for `stars` objects, where the plot created with
-`plot(r)` is shown in @fig-firststars .
 ```{r fig-firststars, echo=!knitr::is_latex_output(), message=FALSE}
 #| fig.cap: "Six 30m Landsat bands downsampled to 90m for Olinda, Br."
 #| out.width: 80%
 plot(r)
 ```
-is shown in @fig-firststars .
+
+We can use the base `plot` method for `stars` objects, where
+the plot created with `plot(r)` is shown in @fig-firststars.
 The default color scale uses grey tones, and stretches these such
 that color breaks correspond to data quantiles over all bands
-("histogram equalization").  A more familiar view is the RGB or 
-false color composite shown in @fig-starsrgb .
+("histogram equalization"). Setting `breaks = "equal"` gives equal
+color breaks, alternatively a numeric sequence of breaks can be
+given.  A more familiar view may the RGB or false color composite
+shown in @fig-starsrgb.
+
 ```{r fig-starsrgb, echo=!knitr::is_latex_output(), message=FALSE}
 #| fig.cap: "Two color composites"
 #| out.width: 80%
@@ -842,7 +855,7 @@ needs to be called for every pixel whereas `ndvi` can be called
 once for all pixels, or for large chunks of pixels.
 The mean for each band over the whole image is computed by
 ```{r}
-as.data.frame(st_apply(r, c("band"), mean))
+st_apply(r, c("band"), mean) |> as.data.frame()
 ```
 the result of which is small enough to be printed here as a `data.frame`. In these
 two examples, entire dimensions disappear. Sometimes, this does not
@@ -869,7 +882,7 @@ curved. Other reasons are:
 
 * when we convert or transform a regular raster data into another
 coordinate reference system, it will become curvilinear unless we
-resample (warp; @sec-warp); warping always goes at the 
+resample (warp; @sec-warp); warping always comes at the 
 cost of some loss of data and is not reversible
 * observation may lead to irregular rasters; e.g. for satellite swaths, we
 may have a regular raster in the direction of the satellite (not
@@ -881,20 +894,14 @@ aligned with $x$ or $y$), and rectilinear in the direction perpendicular to that
 \index{GDAL!utils C API}
 \index[function]{gdal\_utils}
 
-The GDAL library is typically shipped with a number of executable
+The GDAL library typically ships with a number of executable
 binaries, the GDAL command line utilities for data translation and
-processing. A package like `gdalUtils` [@R-gdalUtils] provides R
-functions that actually call these binaries, using R's `system()`
-call mechanism. This requires that these binaries are properly
-installed, and findable by R, which is something that an R package
-by itself cannot guarantee.
-
-Several of these utilities (all except for those written in Python)
-are also available as C functions in the GDAL library, through the
-"GDAL Algorithms C API".  If an R package like `sf` that links to
-the GDAL library uses these C API algorithms, it means that the user
-no longer needs to install any GDAL binary command line utilities in
-addition to the R package.
+processing.  Several of these utilities (all except for those
+written in Python) are also available as C functions in the GDAL
+library, through the "GDAL Algorithms C API".  If an R package like
+`sf` that links to the GDAL library uses these C API algorithms,
+it means that the user no longer needs to install any GDAL binary
+command line utilities in addition to the R package.
 
 Package `sf` allows calling these C API algorithms through function
 `gdal_utils()`, where the first argument is the name of the utility
@@ -916,7 +923,10 @@ These utilities work on files, and not not directly on `sf` or
 `stars` objects.  However, `stars_proxy` objects are essentially
 pointers to files, and other objects can be written to file. Several
 of these utilities are (always or optionally) used, e.g. by
-`st_mosaic`, `st_warp` or `st_write`.
+`st_mosaic`, `st_warp` or `st_write`. R package `gdalUtilities`
+[@R-gdalUtilities] provides further wrapper functions around
+`gdal_utils` that provide function arguments identical to the
+command line arguments of the binary utils.
 
 ## Vector data cube examples
 
@@ -942,7 +952,6 @@ options("rgdal_show_exportToProj4_warnings"="none") # led to:
 # lost in output
 ```
 
-
 ```{r}
 library(spacetime)
 data(air) # this loads several datasets in .GlobalEnv
@@ -952,18 +961,20 @@ d <- st_dimensions(station = st_as_sfc(stations), time = dates)
 ```
 We can see from @fig-airst  that the time series are
 quite long, but also have large missing value gaps.
-@fig-airmap  shows the spatial distribution measurement stations and
-mean PM$_{10}$ values.
+@fig-airmap  shows the spatial distribution of measurement stations
+along with mean PM$_{10}$ values.
 
 ```{r fig-airst, echo=!knitr::is_latex_output()}
 #| fig.cap: "Space-time diagram of PM$_{10}$ measurements by time and station"
 #| out.width: 80%
+#| code-fold: true
 image(aperm(log(aq), 2:1), main = "NA pattern (white) in PM10 station time series")
 ```
 
 ```{r fig-airmap, echo=!knitr::is_latex_output()}
 #| out.width: 80%
 #| fig.cap: "Locations of PM$_{10}$ measurement stations, showing mean values"
+#| code-fold: true
 plot(st_as_sf(st_apply(aq, 1, mean, na.rm = TRUE)), reset = FALSE, pch = 16,
 	ylim = st_bbox(DE)[c(2,4)])
 plot(DE, add=TRUE)
@@ -977,8 +988,8 @@ as a simple exercise.  For this, we use the `aggregate` method for
 (a <- aggregate(aq, st_as_sf(DE_NUTS1), mean, na.rm = TRUE))
 ```
 
-and we can now for instance show the maps for six arbitrarily chosen days
-(@fig-airagg) , using
+and we can now show the maps for six arbitrarily chosen days
+(@fig-airagg), using
 
 ```{r fig-airagg}
 #| fig.cap: "areal mean PM$_{10}$ values, for six days"
@@ -992,28 +1003,31 @@ or create a time series plot of mean values for a single state
 ```{r fig-airts}
 #| fig.cap: "Areal mean PM$_{10}$ time series for a single state"
 #| out.width: 80%
-suppressPackageStartupMessages(library(xts))
+library(xts) |> suppressPackageStartupMessages()
 plot(as.xts(a)[,4], main = DE_NUTS1$NAME_1[4])
 ```
 
-### Example: Bristol origin-destination datacube
+### Example: Bristol origin-destination datacube {#sec-oddc}
 
 \index{origin-destination matrix}
 \index{data cube!origin-destination matrix}
 
 The data used for this example come from @geocomp, and concern
-origin-destination (OD) counts: the number of persons going from
-region A to region B, by transportation mode.  We have feature
-geometries for the 102 origin and destination regions, shown in @fig-bristol1 .
-```{r fig-bristol1}
+origin-destination (OD) counts: the number of persons going from zone
+A to zone B, by transportation mode.  We have feature geometries
+in `sf` object `bristol_zones` for the 102 origin and destination
+regions, shown in @fig-bristol1.
+
+```{r fig-bristol1, echo=!knitr::is_latex_output()}
 #| fig.height: 5
 #| out.width: 80%
 #| fig.cap: "Origin destination data zones for Bristol, UK, with zone 33 (E02003043) colored red"
+#| code-fold: true
 library(spDataLarge)
 plot(st_geometry(bristol_zones), axes = TRUE, graticule = TRUE)
 plot(st_geometry(bristol_zones)[33], col = 'red', add = TRUE)
 ```
-and the OD counts come in a table
+and the OD counts come in a table `bristol_od`
 with OD pairs as records, and transportation mode as variables:
 ```{r}
 head(bristol_od)
@@ -1049,9 +1063,9 @@ dim(a)
 ```
 We see that the dimensions are named with the zone names (o, d)
 and the transportation mode name (mode). 
-Every row of `bristol_tidy` denotes an array entry, and we can
-use this to to fill the non-zero entries of the `bristol_tidy` table
-with their appropriate value (`n`):
+Every row of `bristol_tidy` denotes a single array entry, and we can
+use this to to fill the non-zero entries of `a` using the `bristol_tidy` 
+table to provide index (`o`, `d` and `mode`)  and value (`n`):
 ```{r}
 a[as.matrix(bristol_tidy[c("o", "d", "mode")])] <- 
 		bristol_tidy$n
@@ -1078,8 +1092,8 @@ and finally build or stars object from `a` and `d`:
 (odm <- st_as_stars(list(N = a), dimensions = d))
 ```
 
-We can take a single slice through from this three-dimensional
-array, e.g. for zone 33 (@fig-bristol1) , by `odm[,,33]`, 
+We can take a single slice through this three-dimensional
+array, e.g. for zone 33 (@fig-bristol1) , by `odm[ , , 33]`, 
 and plot it with
 ```{r fig-odm33, out.width = '80%', fig.cap = "OD matrix sliced for destination zone 33, by transportation mode"}
 plot(adrop(odm[,,33]) + 1, logz = TRUE)
@@ -1154,14 +1168,14 @@ by imagery or other sensory devices, or e.g. by climate models
 * it is easier to derive the long table form from the array than
 vice versa
 * the long table form requires much more memory, since the space
-occupied by dimension values is $O(\Pi n_i)$, rather than $O(\Sigma n_i)$, with $n_i$ the cardinality of dimension $i$
+occupied by dimension values is $O(\Pi n_i)$, rather than $O(\Sigma n_i)$, with $n_i$ the cardinality (size) of dimension $i$
 * when missing-valued cells are dropped, the long table form loses
 the implicit indexing of the array form
 
 To put this argument to the extreme, consider for instance that
 all image, video and sound data are stored in array form; few
 people would make a real case for storing them in a long table
-form instead.  Nevertheless, R packages like `tsibble` take this
+form instead.  Nevertheless, R packages like `tsibble` [@R-tsibble] take this
 approach, and have to deal with ambiguous ordering of multiple records
 with identical time steps for different spatial features and index
 them, which is solved for both _automatically_ by using the array
@@ -1174,25 +1188,25 @@ case where one or more of the dimensions refer to space, and/or time.
 
 ### File formats for vector data cubes
 
-Regular table forms, including the long table form are options are
-possible if clumsy to use: the origin-destination data example above
+Regular table forms, including the long table form are
+possible but clumsy to use: the origin-destination data example above
 and @sec-stgeostatistics illustrate the complexity of recreating
-a vector data cube from table forms. Array formats like NetCDF
-or Zarr can be used for _any_ data structure, and carry the risk
-that files once written are hard to reuse. For vector cubes that
-have a _single_ geometry dimension that consists of either points,
-(multi)linestrings or (multi)polygons, the CF conventions [@cf]
-describe a way to encode such geometries. `stars::read_mdim` and
-`stars::write_mdim` can read and write vector data cubes following
-these conventions.
+a vector data cube from table forms. Array formats like NetCDF or
+Zarr are designed for storing array data. They can however be used
+for _any_ data structure, and carry the risk that files once written
+are hard to reuse. For vector cubes that have a _single_ geometry
+dimension that consists of either points, (multi)linestrings or
+(multi)polygons, the CF conventions [@cf] describe a way to encode
+such geometries. `stars::read_mdim` and `stars::write_mdim` can
+read and write vector data cubes following these conventions.
 
 \index[function]{read\_mdim}
 \index[function]{write\_mdim}
 
 ## raster-to-vector, vector-to-raster {#sec-raster-to-vector}
 
-\@sec-rasterize already showed some examples of raster-to-vector
-and vector-to-raster conversions, this section will add some code
+@sec-rasterize already showed some examples of raster-to-vector
+and vector-to-raster conversions. This section will add some code
 details and examples.
 
 ### vector-to-raster
@@ -1255,7 +1269,7 @@ read_sf(file) |>
 \index[function]{st\_crs}
 
 Spatial objects of class `sf` or `stars` contain a coordinate
-reference system that can be get or replaced with `st_crs`, or be
+reference system that can be retrieved or replaced with `st_crs`, or be
 set or replaced in a pipe with `st_set_crs`. Coordinate reference
 systems can be set with an EPSG code, like `st_crs(4326)` which
 will be converted to `st_crs('EPSG:4326')`, or with a PROJ.4 string
@@ -1263,8 +1277,7 @@ like `"+proj=utm +zone=25 +south"`, a name like "WGS84", or a name
 preceded by an authority like "OGC:CRS84"; alternatives include
 a coordinate reference system definition in WKT, WKT-2 (@sec-wkt2)
 or [PROJJSON](https://proj.org/specifications/projjson.html).
-
-The object returned contains two fields: 
+The object returned by `st_crs` contains two fields: 
 
 * `wkt` with the WKT-2 representation 
 * `input` with the user input, if any, or a human readable
@@ -1298,6 +1311,10 @@ to it with `st_crs`). When PROJ finds more than one possibility
 to transform or convert from the source `crs` to the target `crs`,
 it chooses the one with the highest declared accuracy. More fine-grained
 control over the options is explained in @sec-pipelines.
+For `stars` object with regular raster dimensions, `st_transform`
+will _only_ transform coordinate and always result in a curvilinear
+grid. `st_warp` can be used to create a regular raster in a new
+coordinate reference system, by regridding (@sec-warp).
 
 A lower-level function to transform or convert coordinates _not_
 in `sf` or `stars` objects is `sf_project`: it takes a matrix with
@@ -1380,7 +1397,7 @@ Internally, PROJ uses a so-called _coordinate operation pipeline_,
 to represent the sequence of operations to get from a source CRS to
 a target CRS.  Given multiple options to go from source to target,
 `st_transform` chooses the one with highest accuracy. We can query
-the options available by
+the options available by e.g.
 ```{r}
 (p <- sf_proj_pipelines("OGC:CRS84", "EPSG:22525"))
 ```
@@ -1398,12 +1415,12 @@ names(p)
 ```
 and we can list for instance the accuracies by
 ```{r}
-p$accuracy
+p |> pull(accuracy)
 ```
 Here, `NA` refers to "ballpark accuracy", which may be anything in the
 30-120 m range:
 ```{r}
-p[is.na(p$accuracy),]
+p |> filter(is.na(accuracy))
 ```
 The default, most accurate pipeline chosen by `st_transform` can
 be overriden by specifying `pipeline` argument, as selected from
@@ -1420,7 +1437,7 @@ defines the first axis to be associated with latitude and the
 second with longitude; this is also the case for a number of other
 ellipsoidal coordinate reference systems. Although this is how
 the authority (EPSG) prescribes this, it is not how most datasets
-are currently stored! As most other software, package `sf` by default
+are currently stored. As most other software, package `sf` by default
 ignores this, and interprets ellipsoidal coordinate pairs as (longitude,
 latitude) by default. If however data needs to be read e.g. from a
 WFS service that wants to be compliant to the authority, one can set
@@ -1466,7 +1483,7 @@ and use some rule to assign values to new grid cells. Rules can
 involve using the nearest value, or using some form of interpolation.
 This operation is not lossless and not invertible. 
 
-The best options for warping is to specify the target grid as a
+The best approach for warping is to specify the target grid as a
 `stars` object. When only a target CRS is specified, default options
 for the target grid are picked that may be completely inappropriate
 for the problem at hand. An example workflow that uses only a
@@ -1489,6 +1506,8 @@ grd <- st_bbox(r) |>
 		st_as_stars(nx = dim(r)["x"], ny = dim(r)["y"])
 st_warp(r, grd)
 ```
+where we see that grid resolution in $x$ and $y$ directions slightly
+varies.
 
 ## Exercises 
 
