@@ -257,9 +257,8 @@ In the global measure case, bootstrap permutations may be used as an alternative
 ```{r, message=FALSE, cache=TRUE}
 library(parallel)
 invisible(spdep::set.coresOption(max(detectCores() - 1L, 1L)))
-system.time(I_turnout |> 
-    localmoran_perm(listw = lw_q_W, nsim = 9999, iseed = 1) ->
-    locm_p)
+I_turnout |> 
+    localmoran_perm(listw = lw_q_W, nsim = 9999, iseed = 1) -> locm_p
 ```
 The outcome is that over 15\% of observations have two sided p-values < 0.005 without multiple comparison adjustment, and about 1.5\% with Bonferroni adjustment, when the p-values are calculated using the standard deviate of the permutation samples and the normal distribution.
 
@@ -279,14 +278,18 @@ apply(pvsp, 2, f)
 ```
 Now the `"BY"` and Bonferroni counts of *interesting* locations are zero with 9999 samples, but may be recovered by increasing the sample count to 999999 if required; the FDR adjustment and *interesting* cutoff 0.005 yields about 5\% locations. 
 
-```{r fig-localmoranPr}
-#| out.width: 80%
-#| fig.cap: "Local Moran's I FDR probability values: left panel upper: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first round turnout, row-standardised neighbours"
+```{r}
 pol_pres15$locm_pv <- p.adjust(locm[, "Pr(z != E(Ii))"], "fdr")
 pol_pres15$locm_std_pv <- p.adjust(locm_p[, "Pr(z != E(Ii))"], 
 								   "fdr")
 pol_pres15$locm_p_pv <- p.adjust(locm_p[, "Pr(z != E(Ii)) Sim"],
 								 "fdr")
+```
+
+
+```{r fig-localmoranPr}
+#| out.width: 80%
+#| fig.cap: "Local Moran's I FDR probability values: left panel upper: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first round turnout, row-standardised neighbours"
 tm_shape(pol_pres15) +
 		tm_fill(c("locm_pv", "locm_std_pv", "locm_p_pv"), 
 				breaks=c(0, 0.0005, 0.001, 0.005, 0.01, 
@@ -351,34 +354,31 @@ lm(I_turnout ~ 1) -> lm_null
 Saddlepoint approximation is as computationally intensive as conditional permutation, because, rather than computing a simple measure on many samples, a good deal of numerical calculation is needed for each local approximation:
 
 ```{r, cache=TRUE}
-system.time(lm_null |> localmoran.sad(nb = nb_q, style = "W",
+lm_null |> localmoran.sad(nb = nb_q, style = "W",
 								  alternative = "two.sided") |>
-        summary() -> locm_sad_null)
+        summary() -> locm_sad_null
 ```
 The chief advantage of the Saddlepoint approximation is that it takes a fitted linear model rather than simply a numerical variable, so the residuals are analysed. With an intercept-only model, the results are similar to local Moran's $I_i$, but we can weight the observations, here by the count of those entitled to vote, which should down-weight small units of observation:
 
 ```{r, cache=TRUE}
 lm(I_turnout ~ 1, weights = pol_pres15$I_entitled_to_vote) ->
 		lm_null_weights
-system.time(lm_null_weights |>
+lm_null_weights |>
 			localmoran.sad(nb = nb_q, style = "W",
 						   alternative = "two.sided") |>
-        summary() -> locm_sad_null_weights)
+        summary() -> locm_sad_null_weights
 ```
 Next we add the categorical variable distinguishing between rural, urban and other types of observational unit:
 
 ```{r, cache=TRUE}
 lm(I_turnout ~ Types, weights=pol_pres15$I_entitled_to_vote) ->
 		lm_types
-system.time(lm_types |> localmoran.sad(nb = nb_q, style = "W",
+lm_types |> localmoran.sad(nb = nb_q, style = "W",
 								  alternative = "two.sided") |>
-        summary() -> locm_sad_types)
+        summary() -> locm_sad_types
 ```
 
-
-```{r fig-localmoranHsad}
-#| out.width: 80%
-#| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel upper: permutation rank conditional p-values; right upper panel:  null (intercept only) model Saddlepoint p-values; left lower panel: weighted null (intercept only) model Saddlepoint p-values; right lower panel: weighted types model Saddlepoint p-values, for first round turnout, row-standardised neighbours"
+```{r}
 pol_pres15$locm_sad0 <- pol_pres15$locm_sad1 <-
     pol_pres15$locm_sad2 <- quadr
 is.na(pol_pres15$locm_sad0) <-
@@ -390,6 +390,12 @@ pol_pres15$locm_sad1 <- droplevels(pol_pres15$locm_sad1)
 is.na(pol_pres15$locm_sad2) <-
     p.adjust(locm_sad_types[, "Pr. (Sad)"], "fdr") >= 0.005
 pol_pres15$locm_sad2 <- droplevels(pol_pres15$locm_sad2)
+```
+
+
+```{r fig-localmoranHsad}
+#| out.width: 80%
+#| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel upper: permutation rank conditional p-values; right upper panel:  null (intercept only) model Saddlepoint p-values; left lower panel: weighted null (intercept only) model Saddlepoint p-values; right lower panel: weighted types model Saddlepoint p-values, for first round turnout, row-standardised neighbours"
 tm_shape(pol_pres15) +
   tm_fill(c("hs_cp_q", "locm_sad0", "locm_sad1",  "locm_sad2"),
     colorNA = "grey95", textNA = "Not \"interesting\"",
@@ -413,18 +419,22 @@ rbind(null = append(table(addNA(pol_pres15$locm_sad0)),
 The same can also be accomplished using exact methods, but may require more tuning as numerical integration may fail, returning `NaN` rather than the exact estimate of the standard deviate [@bivandetal:09]:
 
 ```{r, cache=TRUE}
-system.time(lm_types |> localmoran.exact(nb = nb_q, style = "W", 
+lm_types |> localmoran.exact(nb = nb_q, style = "W", 
     alternative = "two.sided", useTP=TRUE, truncErr=1e-8) |> 
-    as.data.frame() -> locm_ex_types)
+    as.data.frame() -> locm_ex_types
 ```
 
-```{r fig-localmoranHsadex}
-#| out.width: 80%
-#| fig.cap: "Local Moran's I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel: weighted types model Saddlepoint p-values; right panel: weighted types model exact p-values, for first round turnout, row-standardised neighbours"
+```{r}
 pol_pres15$locm_ex <- quadr
 is.na(pol_pres15$locm_ex) <-
       p.adjust(locm_ex_types[, "Pr. (exact)"], "fdr") >= 0.005
 pol_pres15$locm_ex <- droplevels(pol_pres15$locm_ex)
+```
+
+
+```{r fig-localmoranHsadex}
+#| out.width: 80%
+#| fig.cap: "Local Moran's I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel: weighted types model Saddlepoint p-values; right panel: weighted types model exact p-values, for first round turnout, row-standardised neighbours"
 tm_shape(pol_pres15) +
 	tm_fill(c("locm_sad2", "locm_ex"), colorNA = "grey95",
 		textNA = "Not \"interesting\"", 
@@ -450,14 +460,14 @@ table(Saddlepoint = addNA(pol_pres15$locm_sad2),
 The local Getis-Ord $G_i$ measure [@getis+ord:92; @getis+ord:96] is reported as a standard deviate, and may also take the $G^*_i$ form where self-neighbours are inserted into the neighbour object using `include.self()`. The observed and expected values of local $G$ with their analytical variances may also be returned if `return_internals=TRUE`. 
 
 ```{r}
-system.time(I_turnout |> 
-        localG(lw_q_W, return_internals = TRUE) -> locG)
+I_turnout |> 
+        localG(lw_q_W, return_internals = TRUE) -> locG
 ```
 Permutation inference is also available for this measure:
 
 ```{r, cache=TRUE} 
-system.time(I_turnout |> 
-        localG_perm(lw_q_W, nsim = 9999, iseed = 1) -> locG_p)
+I_turnout |> 
+        localG_perm(lw_q_W, nsim = 9999, iseed = 1) -> locG_p
 ```
 The correlation between the two-sided probability values for analytical and permutation-based standard deviates (first two columns and rows) and permutation rank-based probability values are very strong:
 
@@ -475,8 +485,8 @@ cor(cbind(localG=attr(locG, "internals")[, "Pr(z != E(Gi))"],
 @https://doi.org/10.1111/gean.12164 extends @anselin:95, and has been recently added to **spdep** thanks to contributions by Josiah Parry (pull request https://github.com/r-spatial/spdep/pull/66 and subsequent). The conditional permutation framework used for $I_i$ and $G_i$ is also used for $C_i$:
 
 ```{r, cache=TRUE}
-system.time(I_turnout |> 
-        localC_perm(lw_q_W, nsim=9999, iseed=1) -> locC_p)
+I_turnout |> 
+        localC_perm(lw_q_W, nsim=9999, iseed=1) -> locC_p
 ```
 The permutation standard deviate-based and rank-based probability values are not as highly correlated as for $G_i$, in part reflecting the difference in view of autocorrelation in $C_i$ as represented by a function of the differences between values rather than the products of values:
 
@@ -529,10 +539,10 @@ tmap_arrange(m1, m2, m3, nrow=1)
 For comparison, and before moving to multivariate $C_i$, let us take the univariate $C_i$ for the second (final) round turnout. One would expect that the run-off between the two top candidates from the first round might mobilise some voters who did not have a clear first-round preference, but discourage some of those with strong loyalty to a candidate eliminated after the first round:
 
 ```{r, cache=TRUE}
-system.time(pol_pres15 |> 
+pol_pres15 |> 
         st_drop_geometry() |> 
         subset(select = II_turnout) |> 
-        localC_perm(lw_q_W, nsim=9999, iseed=1) -> locC_p_II)
+        localC_perm(lw_q_W, nsim=9999, iseed=1) -> locC_p_II
 ```
 
 ```{r}
@@ -546,10 +556,10 @@ pol_pres15$hs_C_II <- droplevels(pol_pres15$hs_C_II)
 Multivariate $C_i$ [@https://doi.org/10.1111/gean.12164] is taken as the sum of univariate $C_i$ divided by the number of variables, but permutation is fixed so that the correlation between the variables is unchanged:
 
 ```{r, cache=TRUE}
-system.time(pol_pres15 |> 
+pol_pres15 |> 
         st_drop_geometry() |> 
         subset(select = c(I_turnout, II_turnout)) |>
-        localC_perm(lw_q_W, nsim=9999, iseed=1) -> locMvC_p)
+        localC_perm(lw_q_W, nsim=9999, iseed=1) -> locMvC_p
 ```
 Let us check that the multivariate $C_i$ is equal  to  the mean of the univariate $C_i$:
 
@@ -572,7 +582,7 @@ pol_pres15$hs_MvC <- droplevels(pol_pres15$hs_MvC)
 #| fig.cap: 'FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.005$: left panel: local $C_i$, first round turnout; centre panel: local $C_i$, second round turnout; right panel: local multivariate $C_i$, both turnout rounds; row-standardised neighbours'
 m3 <- tm_shape(pol_pres15) +
   tm_fill("hs_C", 
-	palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)],
+	palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1, 3, 2)],
 	colorNA = "grey95", textNA = "Not \"interesting\"",
 	title = "First round turnout\nLocal Geary C")
 m4 <- tm_shape(pol_pres15) +
@@ -606,17 +616,17 @@ Geoda has been wrapped for R as **rgeoda** [@R-rgeoda], and provides very simila
 \index[function]{queen\_weights}
 ```{r, message=FALSE}
 library(rgeoda)
-system.time(Geoda_w <- queen_weights(pol_pres15))
+Geoda_w <- queen_weights(pol_pres15)
 summary(Geoda_w)
 ```
 For comparison, let us take the multivariate $C_i$ measure of turnout in the two rounds of the 2015 Polish presidential election as above:
 
 \index[function]{local\_multigeary}
 ```{r, message=FALSE}
-system.time(lisa <- local_multigeary(Geoda_w, 
+lisa <- local_multigeary(Geoda_w, 
     pol_pres15[c("I_turnout", "II_turnout")], 
     cpu_threads = max(detectCores() - 1, 1),
-    permutations = 99999, seed = 1))
+    permutations = 99999, seed = 1)
 ```
 The contiguity neighbours are the same as those found by `poly2nb()`:
 
