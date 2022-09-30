@@ -56,15 +56,15 @@ References to the definitions of these models may be found in @gómez2020bayesia
 
 More recent books expounding the theoretical bases for modelling with areal data simply point out the similarities between SAR and CAR models in relevant chapters [@gaetan+guyon:10; @vanlieshout:19]; the interested reader is invited to consult these sources for background information.
 
-### Boston house value data set
+### Boston house value dataset
 
-Here we shall use the Boston housing data set, which has been restructured and furnished with census tract boundaries [@bivand17]. The original data set used 506 census tracts and a hedonic model to try to estimate willingness to pay for clean air. The response was constructed from counts of ordinal answers to a 1970 census question about house value. The response is left and right censored in the census source and has been treated as Gaussian. The key covariate was created from a calibrated meteorological model showing the annual nitrogen oxides (NOX) level for a smaller number of model output zones. The numbers of houses responding also varies by tract and model output zone. There are several other covariates, some measured at the tract level, some by town only, where towns broadly correspond to the air pollution model output zones.
+Here we shall use the Boston housing dataset, which has been restructured and furnished with census tract boundaries [@bivand17]. The original dataset used 506 census tracts and a hedonic model to try to estimate willingness to pay for clean air. The response was constructed from counts of ordinal answers to a 1970 census question about house value. The response is left and right censored in the census source and has been treated as Gaussian. The key covariate was created from a calibrated meteorological model showing the annual nitrogen oxides (NOX) level for a smaller number of model output zones. The numbers of houses responding also varies by tract and model output zone. There are several other covariates, some measured at the tract level, some by town only, where towns broadly correspond to the air pollution model output zones.
 
 ```{r setup_sr0, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, paged.print = FALSE)
 ```
 
-We can start by reading in the 506 tract data set from **spData** [@R-spData], and creating a contiguity neighbour object and from that again a row standardized spatial weights object. 
+We can start by reading in the 506 tract dataset from **spData** [@R-spData], and creating a contiguity neighbour object and from that again a row standardized spatial weights object. 
 ```{r, message=FALSE}
 library(sf)
 library(spData)
@@ -139,7 +139,7 @@ nb_q_94 <- spdep::subset.nb(nb_q_96, !is.na(boston_96$median))
 lw_q_94 <- spdep::nb2listw(nb_q_94, style="W")
 ```
 
-We now have two data sets at each level, at the lower, census tract level, and at the upper, air pollution model output zone level, one including the censored observations, the other excluding them.
+We now have two datasets at each level, at the lower, census tract level, and at the upper, air pollution model output zone level, one including the censored observations, the other excluding them.
 
 ```{r}
 boston_94a <- aggregate(boston_489[,"NOX_ID"], 
@@ -158,7 +158,7 @@ nb_q_93 <- spdep::poly2nb(boston_93,
 
 The original model related the log of median house values by tract to the square of NOX values, including other covariates usually related to house value by tract, such as aggregate room counts, aggregate age, ethnicity, social status, distance to downtown and to the nearest radial road, a crime rate, and town-level variables reflecting land use (zoning, industry), taxation and education [@bivand17]. This structure will be used here to exercise issues raised in fitting spatial regression models, including the presence of multiple levels.
 
-## Multilevel models of the Boston data set
+## Multilevel models of the Boston dataset
 \index{multilevel models}
 The ZN, INDUS, NOX, RAD, TAX and PTRATIO variables show effectively no variability within the TASSIM zones, so in a multilevel model the random effect may absorb their influence. 
 
@@ -359,8 +359,9 @@ Unfortunately, the coefficient estimates for the air pollution variable for thes
 
 @fig-multi-levelmaps1 shows that the air pollution model output zone level IID random effects are very similar across the four model fitting functions reported. In all the maps, the central downtown zones have stronger negative random effect values, but strong positive values are also found in close proximity; suburban areas take values closer to zero.
 
-```{r fig-multi-levelmaps1}
+```{r fig-multi-levelmaps1, echo=!knitr::is_latex_output(), message=FALSE}
 #| out.width: 80%
+#| code-fold: true
 #| fig.cap: "Air pollution model output zone level IID random effects estimated using **lme4**, **hglm**, **INLA** and **R2BayesX**; the range of the response, `log(median)` is 2.1893"
 library(tmap, warn.conflicts=FALSE)
 tm_shape(boston_93) +
@@ -373,8 +374,9 @@ tm_shape(boston_93) +
 
 @fig-multi-levelmaps2 shows that the spatially structured random effects are also very similar to each other, with the `"SAR"` spatial smooth being perhaps a little smoother than the `"CAR"` smooths when considering the range of values taken by the random effect term.
 
-```{r fig-multi-levelmaps2}
+```{r fig-multi-levelmaps2, echo=!knitr::is_latex_output(), message=FALSE}
 #| out.width: 80%
+#| code-fold: true
 #| fig.cap: "Air pollution model output zone level spatially structured random effects estimated using **hglm**, **HSAR**, **INLA**, **R2BayesX** and **mgcv**"
 tm_shape(boston_93) +
   tm_fill(c("HGLM_ss", "INLA_lr", "INLA_ss", "BX_ss", 
