@@ -313,13 +313,13 @@ In presenting local Moran's $I$, use is often made of "hotspot" maps. Because $I
 ```{r}
 quadr <- attr(locm, "quadr")$mean
 a <- table(addNA(quadr))
-pol_pres15$hs_an_q <- pol_pres15$hs_ac_q <-
-		pol_pres15$hs_cp_q <- quadr
-is.na(pol_pres15$hs_an_q) <- pol_pres15$locm_pv >= 0.005
+locm |>
+    hotspot(Prname="Pr(z != E(Ii))", cutoff=0.005, droplevels=FALSE) -> pol_pres15$hs_an_q
+locm_p |>
+    hotspot(Prname="Pr(z != E(Ii))", cutoff=0.005, droplevels=FALSE) -> pol_pres15$hs_ac_q 
+locm_p |> hotspot(Prname="Pr(z != E(Ii)) Sim", cutoff=0.005, droplevels=FALSE) -> pol_pres15$hs_cp_q
 b <- table(addNA(pol_pres15$hs_an_q))
-is.na(pol_pres15$hs_ac_q) <- pol_pres15$locm_std_pv >= 0.005
 c <- table(addNA(pol_pres15$hs_ac_q))
-is.na(pol_pres15$hs_cp_q) <- pol_pres15$locm_p_pv >= 0.005
 d <- table(addNA(pol_pres15$hs_cp_q))
 t(rbind("Moran plot quadrants" = a, "Analytical cond." = b, 
     "Permutation std. cond." = c, "Permutation rank cond." = d))
@@ -383,17 +383,9 @@ lm_types |> localmoran.sad(nb = nb_q, style = "W",
 ```
 
 ```{r}
-pol_pres15$locm_sad0 <- pol_pres15$locm_sad1 <-
-    pol_pres15$locm_sad2 <- quadr
-is.na(pol_pres15$locm_sad0) <-
-    p.adjust(locm_sad_null[, "Pr. (Sad)"], "fdr")  >= 0.005
-pol_pres15$locm_sad0 <- droplevels(pol_pres15$locm_sad0)
-is.na(pol_pres15$locm_sad1) <- p.adjust(
-    locm_sad_null_weights[, "Pr. (Sad)"], "fdr") >= 0.005
-pol_pres15$locm_sad1 <- droplevels(pol_pres15$locm_sad1)
-is.na(pol_pres15$locm_sad2) <-
-    p.adjust(locm_sad_types[, "Pr. (Sad)"], "fdr") >= 0.005
-pol_pres15$locm_sad2 <- droplevels(pol_pres15$locm_sad2)
+locm_sad_null |> hotspot(Prname="Pr. (Sad)", cutoff=0.005) -> pol_pres15$locm_sad0
+locm_sad_null_weights |> hotspot(Prname="Pr. (Sad)", cutoff=0.005) -> pol_pres15$locm_sad1
+locm_sad_types |> hotspot(Prname="Pr. (Sad)", cutoff=0.005) -> pol_pres15$locm_sad2
 ```
 
 ```{r fig-localmoranHsad, echo=!knitr::is_latex_output()}
@@ -415,7 +407,8 @@ rbind(null = append(table(addNA(pol_pres15$locm_sad0)),
 					c("Low-High" = 0), 1),
 	  weighted = append(table(addNA(pol_pres15$locm_sad1)),
 						c("Low-High" = 0), 1),
-	  type_weighted = table(addNA(pol_pres15$locm_sad2)))
+	  type_weighted = append(table(addNA(pol_pres15$locm_sad2)),
+						c("Low-High" = 0), 1))
 ```
 
 @fig-localmoranHsad includes the permutation rank cluster cores for comparison (upper left panel). Because Saddlepoint approximation permits richer mean models to be used, and possibly because the approximation approach is inherently local, relating regression residual values at $i$ to those of its neighbours, the remaining three panels diverge somewhat. The intercept-only (null) model is fairly similar to standard local Moran's $I_i$, but weighting by counts of eligible voters removes most of the `"Low-Low"` cluster cores. Adding the type categorical variable strengthens the urban `"High-High"` cluster cores, but removes the Warsaw boroughs as *interesting* cluster cores. The central boroughs are surrounded by other boroughs, all with high turnout, not driven by autocorrelation but by being metropolitan boroughs. It is also possible to use Saddlepoint approximation where the global spatial process has been incorporated, removing the conflation of global and local spatial autocorrelation in standard approaches. 
@@ -429,10 +422,7 @@ lm_types |> localmoran.exact(nb = nb_q, style = "W",
 ```
 
 ```{r}
-pol_pres15$locm_ex <- quadr
-is.na(pol_pres15$locm_ex) <-
-      p.adjust(locm_ex_types[, "Pr. (exact)"], "fdr") >= 0.005
-pol_pres15$locm_ex <- droplevels(pol_pres15$locm_ex)
+locm_ex_types |> hotspot(Prname="Pr. (exact)", cutoff=0.005) -> pol_pres15$locm_ex
 ```
 
 
@@ -444,7 +434,7 @@ tm_shape(pol_pres15) +
 	tm_fill(c("locm_sad2", "locm_ex"), colorNA = "grey95",
 		textNA = "Not \"interesting\"", 
 		title = "Turnout hotspot status\nLocal Moran's I",
-		palette = RColorBrewer::brewer.pal(4, "Set3")[c(1, 2, 4)]) +
+		palette = RColorBrewer::brewer.pal(4, "Set3")[c(1, 4, 2)]) +
     tm_facets(free.scales = FALSE, ncol = 2) +
 	tm_layout(panel.labels = c("Saddlepoint weighted types",
 							   "Exact weighted types"))
@@ -500,23 +490,9 @@ cor(attr(locC_p, "pseudo-p")[, c("Pr(z != E(Ci))",
 								 "Pr(z != E(Ci)) Sim")])
 ```
 
-
 ```{r}
-pol_pres15$hs_C <- attr(locC_p, "cluster")
-is.na(pol_pres15$hs_C) <-
-	p.adjust(attr(locC_p, "pseudo-p")[,"Pr(z != E(Ci)) Sim"], 
-			 "fdr") >= 0.005
-pol_pres15$hs_C <- droplevels(pol_pres15$hs_C)
-```
-
-
-```{r}
-pol_pres15$hs_G <- cut(I_turnout, c(-Inf, mean(I_turnout), Inf), 
-    labels = c("Low", "High"))
-is.na(pol_pres15$hs_G) <-
-    p.adjust(attr(locG_p, "internals")[,"Pr(z != E(Gi))"], 
-			 "fdr") >= 0.005
-pol_pres15$hs_G <- droplevels(pol_pres15$hs_G)
+locC_p |> hotspot(Prname="Pr(z != E(Ci)) Sim", cutoff=0.005) -> pol_pres15$hs_C
+locG_p |> hotspot(Prname="Pr(z != E(Gi)) Sim", cutoff=0.005) -> pol_pres15$hs_G
 ```
 
 ```{r fig-localIGC, echo=!knitr::is_latex_output(), message=FALSE}
@@ -535,7 +511,7 @@ m2 <- tm_shape(pol_pres15) +
 			title = "Turnout hotspot status\nLocal Getis/Ord G")
 m3 <- tm_shape(pol_pres15) +
     tm_fill("hs_C",
-			palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)],
+			palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1, 3)],
 			colorNA = "grey95", textNA="Not \"interesting\"",
 			title = "Turnout hotspot status\nLocal Geary C")
 tmap_arrange(m1, m2, m3, nrow=1)
@@ -552,11 +528,7 @@ pol_pres15 |>
 ```
 
 ```{r}
-pol_pres15$hs_C_II <- attr(locC_p_II, "cluster")
-is.na(pol_pres15$hs_C_II) <-
-    p.adjust(attr(locC_p_II, "pseudo-p")[,"Pr(z != E(Ci)) Sim"],
-			 "fdr") >= 0.005
-pol_pres15$hs_C_II <- droplevels(pol_pres15$hs_C_II)
+locC_p_II |> hotspot(Prname="Pr(z != E(Ci)) Sim", cutoff=0.005) -> pol_pres15$hs_C_II
 ```
 
 Multivariate $C_i$ [@https://doi.org/10.1111/gean.12164] is taken as the sum of univariate $C_i$ divided by the number of variables, but permutation is fixed so that the correlation between the variables is unchanged:
@@ -573,13 +545,8 @@ Let us check that the multivariate $C_i$ is equal  to  the mean of the univariat
 all.equal(locMvC_p, (locC_p+locC_p_II)/2,
 		  check.attributes = FALSE)
 ```
-
 ```{r}
-pol_pres15$hs_MvC <- attr(locMvC_p, "cluster")
-is.na(pol_pres15$hs_MvC) <-
-    p.adjust(attr(locMvC_p, "pseudo-p")[,"Pr(z != E(Ci)) Sim"],
-			 "fdr") >= 0.005
-pol_pres15$hs_MvC <- droplevels(pol_pres15$hs_MvC)
+locMvC_p |> hotspot(Prname="Pr(z != E(Ci)) Sim", cutoff=0.005) -> pol_pres15$hs_MvC
 ```
 
 
@@ -658,11 +625,7 @@ apply(attr(locMvC_p, "pseudo-p")[,c("Pr(z != E(Ci)) Sim",
 This means that the cutoff corresponding to $0.005$ over $[0, 1]$ is $0.0025$ over $[0, 0.5]$:
 
 ```{r}
-hs_MvCa <- attr(locMvC_p, "cluster")
-is.na(hs_MvCa) <-
-  p.adjust(attr(locMvC_p, "pseudo-p")[,"Pr(folded) Sim"], 
-		   "fdr") >= 0.0025
-pol_pres15$hs_MvCa <- droplevels(hs_MvCa)
+locMvC_p |> hotspot(Prname="Pr(folded) Sim", cutoff=0.0025) -> pol_pres15$hs_MvCa
 ```
 
 So although `local_multigeary()` used the default cutoff of $0.05$ in setting cluster core classes, we can sharpen the cutoff and apply the FDR adjustment on output components of the `lisa` object in the compiled code workspace:
