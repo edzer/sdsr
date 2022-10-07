@@ -1,5 +1,12 @@
 # Statistical modelling of spatial data {#sec-modelling}
 
+```{r message=FALSE}
+library(tidyverse)
+library(sf)
+system.file("gpkg/nc.gpkg", package="sf") |>
+	read_sf() -> nc
+```
+
 \index{statistical models}
 
 So far, in this book we mostly addressed the problem of _describing_
@@ -20,13 +27,329 @@ $$
 \mbox{observed} = \mbox{explained} + \mbox{remainder}
 $$ {#eq-model}
 
-where ``explained'' typically uses external variables (predictors,
+where "explained" typically uses external variables (predictors,
 covariates, in machine learning confusingly also called features)
 that are related to the observed variable and some kind of regression
 model to translate into variability of the observed variable, and
-``remainder'' is remaining variability that could not be explained.
+"remainder" is remaining variability that could not be explained.
 Interest may focus on the nature and magnitude or the relations
 between predictors and the observed variable, or in predicting
 new observations.
 
+Statistical models, and _sampling_ hinge on the concept of
+probability, which in typical spatial data science problems is not a
+force of nature but has to be assumed in one way or another.  If we
+are faced with data that come from (spatially) random sampling and
+we are interested in estimating means or totals, a _design-based_
+approach that assumes randomness in the sample locations is the most
+straightforward analysis approach, as pointed out in more detail in
+@sec-design. If observations were not sampled randomly, or if our
+interest is in predicting values at specific locations (mapping)
+a _model-based_ approach is needed. The remaining chapters in this
+part deal with model-based approaches.
 
+
+## Mapping with non-spatial regression and ML models
+
+Regression models or other machine learning (ML) models can be
+applied to spatial data just the way they are applied for predicting
+new observations in non-spatial problems:
+
+1. **estimate**: for a set of observations, a regression or ML model is fitted
+using predictor values corresponding to the observations (in ML jargon this
+step is also known as "train")
+2. **predict**: for a new situation, known predictor values are combined
+with the fitted model to predict the value of the observed variable, along
+with a prediction error or prediction interval if possible
+
+Objects of class `sf` need no special treatment, as they are
+`data.frame`s. To create maps of the resulting predictions, predicted
+values need to be added to the `sf` object, as e.g. done using the `nc`
+dataset loaded as in @sec-intro:
+```{r sid, cache = FALSE}
+#| code-fold: true
+nc |> mutate(SID = SID74/BIR74, NWB = NWBIR74/BIR74) -> nc1
+lm(SID ~ NWB, nc1) |>
+  predict(nc1, interval = "prediction") -> pr
+bind_cols(nc, pr) |> names()
+```
+where we see that three columns: `fit` for predicted values and `lwr`
+and `upr` for the 95\% prediction intervals, have been added to the
+final object. In this case, the dataset used for model estimation
+was reused for prediction, but in general this does not have to be
+the case.  @sec-starspredict points out how this can be done with
+`stars` objects.
+
+Because many regression and ML type problems share this same
+structure, packages like `caret` [@R-Caret] or `tidymodels`
+[@R-tidymodels] allow for automated evaluation and comparison over
+a large set of model alternatives, offering a large set of model
+evaluation criteria and cross validation strategies.  Such cross
+validation approaches assume independent observations, which is
+often not a reasonable assumption for spatial data, for instance
+because of spatial correlation [@Ploton2020] or because of strong
+spatial clustering in sample data [@meyerpebesmanc], or both,
+and a number of R packages provide methods that are meant as
+replacements for naive cross validation, including `spatialsample`
+[@R-spatialsample], `CAST` [@R-CAST], `mlr3spatial` [@R-mlr3spatial]
+and `mlr3spatiotempcv` [@R-mlr3spatiotempcv].
+
+Strong spatial clustering of sample can arise when sample data are
+composed by joining different databases, each with very different
+sampling density. This is often the case in global datasets
+[@meyerpebesmanc]. Another example of strong clustering arises when,
+for sampling ground truth points of a land cover class, polygons
+are digitized and points are sampled within these polygons at the
+resolution of pixels in satellite imagery.
+
+Spatial correlation in the "remainder" part of the model may be
+decreased by adding spatial coordinates or functions of spatial
+coordinates to the set of predictors. This also carries a risk
+of over-optimistic predictions in extrapolation cases, (cross)
+validation, and model assessment, and is further discussed in
+@sec-models-with-coordinates.
+
+## Support and statistical modelling {#sec-supportstatistical}
+
+Support of data (@sec-support; @sec-featureattributes) plays a
+lead role in the statistical analysis of spatial data. Methods
+for areal data (@sec-area - @sec-spatecon) are deviced for data
+with area support, where the set of areas cover the entire area
+of interest.  
+
+By showing an extensive variable (@sec-extensiveintensive)
+in a polygon choropleth map as done in @fig-first-map one runs
+the risk that the information is related with the polygon size,
+and that the signal shown is actually the size of the polygons,
+in color.  For the variable _population count_ one would divide
+by the polygon area to show the (intensive) variable _population
+density_, in order to create an informative map.  In the analysis
+of health data, like disease incidences over a time period shown
+in @fig-first-map, rather than dividing by polygon area to get a
+spatial density, observations are usually converted to probabilities
+or _incidence rates_ by dividing over the population size of the
+associated polygons. As such they are (still) associated with the
+polygon area but their support is the population total divided
+by. It is these totals that inform the (Poisson) variability used
+by subsequent modelling, e.g. in CAR-type models (@sec-multilevel).
+
+@sec-pointpatterns deals in principle with point support
+observations, but at some stage needs to acknowledge that
+observations have non-zero size: tree stem "points" cannot be
+separated distances smaller than the tree diameter. Also, points in
+point pattern analysis are considered in their _obervation window_,
+the area for which the point dataset is exhaustive, or complete.
+The observation window is of influence in many of the analysis
+tools. If points are observed on a line network, then the observation
+window consists of the set of lines observed, and distances measured
+through this network.
+
+Geostatistical data (@sec-interpolation, @sec-stgeostatistics)
+usually start with point support observations, and may end with
+predictions (spatial interpolations) for unobserved point locations
+distributed over the area of interest, or may end in predictions for
+means over areas (block kriging; @sec-blockkriging). Alternatively,
+observations may be aggregates over regions (@rtop). In remote
+sensing data, pixel values are usually associated with aggregates
+over the pixel area. Challenges may be the filling of gaps in images,
+e.g. caused by cloud coverage, from neihbouring pixels both in
+space and time (@gapfill, @heaton).
+
+When combining data with different spatial supports, e.g. polygons
+from administrative regions and raster layers, it is often seen that
+all information is "brought together" to the highest resolution,
+by simply extracting polygon values at pixel locations, and
+proceeding from there, with all the newly created "observations".
+This of course bears a large risk of producing nonsensible results
+when analysing these "data", and a proper downsampling strategy,
+possibly using simulations to cope with uncertainty, would be a
+better alternative. For naive users, using software that is not
+aware of support of values associated with areas and using software
+that does not warn against naive downsampling is of course not a
+helpful situation.
+
+## Time in predictive models
+
+@schabenberger+gotway:2005 already noted that in many cases,
+statistical analysis of spatiotemporal data proceeds either by
+reducing time, then working on the problem spatially (time first,
+space later) or reducing space, then working on the problem
+temporally (space first, time later). An example of the first
+approach is given in @sec-interpolation where a dataset with a year
+of hourly values (detailed in @sec-stgeostatistics) are reduce
+to station mean values (time first) after which these means are
+interpolated spatially (space later). Examples from the area of
+remote sensing are
+
+* @sits, who use supervised machine learning and time series deep learning
+  to segmentize pixel time series into sequences of land use (time
+  first), and then smooth the resulting sequences of maps to remove
+  improbable transitions in isolated pixels (space later)
+* @bfast, who use (unsupervised) structural change algorithms to
+  find breakpoints in pixel time series (time first), which are interpreted
+  in the context deforestation later on.
+
+Examples of space first, time later in the area of remote sensing are
+any case where a single scene or scenes belonging to a single season
+are classified, and multi-year changes in land use or land cover
+are assessed by comparing time sequences of classified scenes. An
+example of this is @brown2022dynamic.  Examples where space and
+time are considered _jointly_ are the spatiotemporal interpolation
+in @sec-stgeostatistics, and @LU2016227 in the context of remote
+sensing.
+
+## Design-based and model-based inference {#sec-design}
+
+\index{inference!design-based}
+\index{inference!model-based}
+\index{design-based inference}
+\index{model-based inference}
+
+Statistical inference means the action of estimating parameters
+about a population from sample data. Suppose we denote the variable
+of interest with $z(s)$, where $z$ is the attribute value measured
+at location $s$, and we are interested in estimating the 
+mean value of $z(s)$ over a domain $D$,
+$$z(s)=\frac{1}{|D|} \int_{ u \in D} z(u)du,$$
+with $|D|$ the area of $D$, from sample data $z(s_1),...,z(s_n)$.
+
+Then, there are two possibilities to proceed: model-based, or
+design-based. A model-based approach considers $z(s)$ to be a
+realisation of a superpopulation $Z(s)$ (using capital letters to
+indicate random variables), and could for instance postulate a
+model for its spatial variability in the form of
+$$Z(s) = m + e(s), \  \ \mbox{E}(e(s)) = 0, \  \ \mbox{Cov(e(s))} = \Sigma(\theta)$$
+with $m$ a constant mean and $e(s)$ a residual with mean zero and
+covariance matrix $\Sigma(\theta)$. This
+would require choosing the covariance function $\Sigma()$ and
+estimating its parameters $\theta$ from $z(s)$, and then computing a
+block kriging prediction $\hat{Z}(D)$ (@sec-blockkriging).
+This approach makes no assumptions about how $z(s)$ was sampled
+_spatially_, but of course it should allow for choosing the
+covariance function and estimating its parameters; inference is
+conditional to the validity of the postulated model.
+
+\index{superpopulation model}
+\index{spatial random sampling}
+\index{random sampling}
+
+Rather than assuming a superpopulation model, the design-based
+approach [@de1990model; @brus2021; @breidt2017model] assumes
+randomness in the locations, which is justified (only) when using
+random sampling. It _requires_ that the sample data were obtained
+by probability sampling, meaning that some form of spatial random
+sampling was used where all elements of $z(s)$ had a known and
+positive probability of being included in the sample obtained. The
+random process is that of sampling: $z(s_1)$ is a realisation of
+the random process $z(S_1)$, the first observation taken _over
+repeated random sampling_.  Design-based estimaters only need
+these inclusion probabilities to estimate mean values with standard
+errors. This means that for instance given a simple random sample,
+the unweighted sample mean is used to estimate the population mean,
+and no model parameters need to be fit.
+
+Now the question is whether $z(s_1)$ and $z(s_2)$ can be expected
+to be correlated when $s_1$ and $s_2$ are close together. The question
+doesn't work out as long as $z(s_1)$ and $z(s_2)$ are just two numbers:
+we need some kind of framework, random variables, that recreates this
+situation to form two sets of numbers for which we can consider correlation.
+The misconception here, as explained in @brus2021, is that the two
+are always spatially correlated but this is only the case when
+working under model-based approaches: $Z(s_1)$ and $Z(s_2)$ may
+well be correlated ("model-dependent"), but although in a particular
+random sample (realisation) $z(s_1)$ and $z(s_2)$ _may_ be close
+in space, the corresponding random variables $z(S_1)$ and $z(S_2)$
+considered over repeated random sampling are not close together,
+and are design-independent. Both situations can co-exist without
+contradiction, and are a consequence of choosing to work under one
+inference framework or the other.
+
+The choice whether to work under a design-based or model-based
+framework depends on the purpose of the study and the data collection
+process. The model-based framework lends itself best for cases:
+
+* where predictions are required for individual locations, or
+  for areas too small to be sampled
+* where the available data were not collected using a known random
+  sampling scheme (i.e., the inclusion probabilities are unknown,
+  or are zero over particular areas or/and times)
+
+Design-based approaches are most suitable when:
+
+* observations were collected using a spatial random sampling process
+* aggregated properties of the entire sample region (or sub-region)
+  are needed
+* estimates are required that are not sensitive to potential model
+misspecification, e.g. when needed for regulatory or legal purposes
+
+In case a sampling procedure is to be planned [@de2006sampling], some
+form of spatial random sampling is definitely worth considering since
+it opens up the possibility of following both inference frameworks.
+
+## Predictive models with coordinates {#sec-models-with-coordinates}
+
+\index{predictive models}
+\index{coordinates!as predictors}
+
+In data science projects, coordinates may be seen as features in a
+larger set of predictors (or features, or covariates) and treated
+accordingly. There are some catches with doing so.
+
+As usual when working with predictors, it is good to choose
+predictive methods that are not sensitive to shifts in origin
+or shifts in unit (scale).  Assuming a two-dimensional problem,
+predictive models should also not be sensitive to arbitrary rotations
+of the $x$- and $y$- or latitude and longitude axes.  For projected (2D,
+Cartesian) coordinates this can be assured e.g. by using polynomials
+of order $n$ as $(x+y)^n$, rather than $(x)^n + (y)^n$; for a second
+order polynomial this involves including the term $xy$, so that an
+ellipsoidal-shape trend surface does not have to be aligned with
+the $x-$ or $y-$axis.  For a GAM model with spline components, one
+would use a spline in two dimensions $s(x,y)$ rather than two
+independent splines $s(x)$ and $s(y)$ that do not allow for
+interaction. An exception to this "rule" is when e.g. a pure latitude
+effect is desired, for instance to account for yearly total solar
+energy influx.
+
+When the area covered by the data is large, the difference between
+using ellipsoidal coordinates and projected coordinates
+will automatically become larger, and hence choosing one of both
+will have an effect on predictive modelling.  For very large extents,
+e.g. global models, polynomials or splines in latitude and longitude
+will not make sense as they ignore the circular nature of longitude
+and the coordinate singularities at the poles. Here, spherical
+harmonics, base functions that are continuous on the sphere with
+increasing spatial frequencies can replace polynomials or be used
+as spline base functions.
+
+In many cases, the spatial coordinates over which samples were
+collected also define the space over which predictions are made,
+setting them apart from other features. Many simple predictive
+approaches, including most machine learning methods, assume
+sample data to be independent.  When samples are collected by
+spatially random sampling over the spatial target area, this
+assumption may be justified when working under a design-based context
+[@brusejss]. This context however treats the coordinate space as
+the variable over which we randomize, which affords predicting
+values for a new _randomly chosen_ location but rules out making
+predictions for fixed locations; this implies that averages over
+areas over which samples were collected can be obtained, but not
+spatial interpolations.  In case predictions for fixed locations
+are required, or in case data were not collected by spatial
+random sampling, a model-based approach (as taken in 
+@sec-interpolation) is needed and typically some form of spatial
+and/or temporal autocorrelation of residuals must be assumed.
+
+\index{cross validation}
+\index{spatial cross validation}
+
+A common case is where sample data are collected opportunistically
+("whatever could be found"), and are then used in a predictive
+framework that does not weigh them. This has a consequence that the
+resulting model may be biased towards over-represented areas (in
+predictor space and/or in spatial coordinates space), and that simple
+(random) cross validation statistics may be over-optimistic when
+taken as performance measures for spatial prediction [@meyerpebesma;
+@meyerpebesmanc].  Adaptive cross validation measures, e.g. from
+spatial cross validation may help getting more relevant measures
+for predictive performance.
