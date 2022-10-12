@@ -200,7 +200,6 @@ In addition, the Moran plot was introduced, plotting the values of the variable 
 \index[function]{moran.plot}
 ```{r fig-moranplot, echo=!knitr::is_latex_output()}
 #| fig.cap: "Moran plot of I round turnout, row standardised weights"
-#| out.width: 100%
 #| code-fold: true
 I_turnout |> 
     moran.plot(listw = lw_q_W, labels = pol_pres15$TERYT, 
@@ -210,7 +209,6 @@ I_turnout |>
 If we extract the hat value influence measure from the returned object, @fig-moranhat suggests that some edge entities exert more than proportional influence (perhaps because of row standardisation), as do entities in or near larger urban areas.
 
 ```{r fig-moranhat, echo=!knitr::is_latex_output()}
-#| out.width: 100%
 #| fig.cap: "Moran plot hat values, row standardised neighbours"
 library(tmap)
 pol_pres15$hat_value <- infl_W$hat
@@ -258,9 +256,10 @@ In the global measure case, bootstrap permutations may be used as an alternative
 
 ```{r, message=FALSE, cache=TRUE}
 library(parallel)
-invisible(spdep::set.coresOption(max(detectCores() - 1L, 1L)))
+invisible(spdep::set.coresOption(max(detectCores()-1L, 1L)))
 I_turnout |> 
-    localmoran_perm(listw = lw_q_W, nsim = 9999, iseed = 1) -> locm_p
+    localmoran_perm(listw = lw_q_W, nsim = 9999, 
+					iseed = 1) -> locm_p
 ```
 The outcome is that over 15\% of observations have two sided p-values < 0.005 without multiple comparison adjustment, and about 1.5\% with Bonferroni adjustment, when the p-values are calculated using the standard deviate of the permutation samples and the normal distribution.
 
@@ -290,7 +289,6 @@ pol_pres15$locm_p_pv <- p.adjust(locm_p[, "Pr(z != E(Ii)) Sim"],
 
 
 ```{r fig-localmoranPr, echo=!knitr::is_latex_output()}
-#| out.width: 80%
 #| code-fold: true
 #| fig.cap: "Local Moran's I FDR probability values: left panel upper: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first round turnout, row-standardised neighbours"
 tm_shape(pol_pres15) +
@@ -313,16 +311,17 @@ In presenting local Moran's $I$, use is often made of "hotspot" maps. Because $I
 ```{r}
 quadr <- attr(locm, "quadr")$mean
 a <- table(addNA(quadr))
-locm |>
-    hotspot(Prname="Pr(z != E(Ii))", cutoff=0.005, droplevels=FALSE) -> pol_pres15$hs_an_q
-locm_p |>
-    hotspot(Prname="Pr(z != E(Ii))", cutoff=0.005, droplevels=FALSE) -> pol_pres15$hs_ac_q 
-locm_p |> hotspot(Prname="Pr(z != E(Ii)) Sim", cutoff=0.005, droplevels=FALSE) -> pol_pres15$hs_cp_q
+locm |> hotspot(Prname="Pr(z != E(Ii))", cutoff = 0.005, 
+				droplevels=FALSE) -> pol_pres15$hs_an_q
+locm_p |> hotspot(Prname="Pr(z != E(Ii))", cutoff = 0.005, 
+				  droplevels=FALSE) -> pol_pres15$hs_ac_q 
+locm_p |> hotspot(Prname="Pr(z != E(Ii)) Sim", cutoff = 0.005,
+				  droplevels = FALSE) -> pol_pres15$hs_cp_q
 b <- table(addNA(pol_pres15$hs_an_q))
 c <- table(addNA(pol_pres15$hs_ac_q))
 d <- table(addNA(pol_pres15$hs_cp_q))
 t(rbind("Moran plot quadrants" = a, "Analytical cond." = b, 
-    "Permutation std. cond." = c, "Permutation rank cond." = d))
+  "Permutation std. cond." = c, "Permutation rank cond." = d))
 ```
 
 ```{r}
@@ -332,7 +331,6 @@ pol_pres15$hs_cp_q <- droplevels(pol_pres15$hs_cp_q)
 ```
 
 ```{r fig-Iihotspots, echo=!knitr::is_latex_output()}
-#| out.width: 80%
 #| code-fold: true
 #| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps $\\alpha = 0.005$: left panel upper: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first round turnout, row-standardised neighbours"
 tm_shape(pol_pres15) +
@@ -383,13 +381,15 @@ lm_types |> localmoran.sad(nb = nb_q, style = "W",
 ```
 
 ```{r}
-locm_sad_null |> hotspot(Prname="Pr. (Sad)", cutoff=0.005) -> pol_pres15$locm_sad0
-locm_sad_null_weights |> hotspot(Prname="Pr. (Sad)", cutoff=0.005) -> pol_pres15$locm_sad1
-locm_sad_types |> hotspot(Prname="Pr. (Sad)", cutoff=0.005) -> pol_pres15$locm_sad2
+locm_sad_null |> hotspot(Prname="Pr. (Sad)",
+					 cutoff=0.005) -> pol_pres15$locm_sad0
+locm_sad_null_weights |> hotspot(Prname="Pr. (Sad)",
+					 cutoff = 0.005) -> pol_pres15$locm_sad1
+locm_sad_types |> hotspot(Prname="Pr. (Sad)",
+					 cutoff = 0.005) -> pol_pres15$locm_sad2
 ```
 
 ```{r fig-localmoranHsad, echo=!knitr::is_latex_output()}
-#| out.width: 80%
 #| code-fold: true
 #| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel upper: permutation rank conditional p-values; right upper panel:  null (intercept only) model Saddlepoint p-values; left lower panel: weighted null (intercept only) model Saddlepoint p-values; right lower panel: weighted types model Saddlepoint p-values, for first round turnout, row-standardised neighbours"
 tm_shape(pol_pres15) +
@@ -422,12 +422,12 @@ lm_types |> localmoran.exact(nb = nb_q, style = "W",
 ```
 
 ```{r}
-locm_ex_types |> hotspot(Prname="Pr. (exact)", cutoff=0.005) -> pol_pres15$locm_ex
+locm_ex_types |> hotspot(Prname = "Pr. (exact)",
+						 cutoff = 0.005) -> pol_pres15$locm_ex
 ```
 
 
 ```{r fig-localmoranHsadex, echo=!knitr::is_latex_output()}
-#| out.width: 80%
 #| code-fold: true
 #| fig.cap: "Local Moran's I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel: weighted types model Saddlepoint p-values; right panel: weighted types model exact p-values, for first round turnout, row-standardised neighbours"
 tm_shape(pol_pres15) +
@@ -491,12 +491,13 @@ cor(attr(locC_p, "pseudo-p")[, c("Pr(z != E(Ci))",
 ```
 
 ```{r}
-locC_p |> hotspot(Prname="Pr(z != E(Ci)) Sim", cutoff=0.005) -> pol_pres15$hs_C
-locG_p |> hotspot(Prname="Pr(z != E(Gi)) Sim", cutoff=0.005) -> pol_pres15$hs_G
+locC_p |> hotspot(Prname = "Pr(z != E(Ci)) Sim",
+				  cutoff = 0.005) -> pol_pres15$hs_C
+locG_p |> hotspot(Prname = "Pr(z != E(Gi)) Sim",
+				  cutoff = 0.005) -> pol_pres15$hs_G
 ```
 
 ```{r fig-localIGC, echo=!knitr::is_latex_output(), message=FALSE}
-#| out.width: 80%
 #| code-fold: true
 #| fig.cap: "FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel: local Moran\\'s $I_i$; centre panel: local Getis-Ord $G_i$; right panel: local Geary\\'s $C_i$; first round turnout, row-standardised neighbours"
 m1 <- tm_shape(pol_pres15) +
@@ -528,7 +529,8 @@ pol_pres15 |>
 ```
 
 ```{r}
-locC_p_II |> hotspot(Prname="Pr(z != E(Ci)) Sim", cutoff=0.005) -> pol_pres15$hs_C_II
+locC_p_II |> hotspot(Prname = "Pr(z != E(Ci)) Sim",
+					 cutoff = 0.005) -> pol_pres15$hs_C_II
 ```
 
 Multivariate $C_i$ [@https://doi.org/10.1111/gean.12164] is taken as the sum of univariate $C_i$ divided by the number of variables, but permutation is fixed so that the correlation between the variables is unchanged:
@@ -546,12 +548,12 @@ all.equal(locMvC_p, (locC_p+locC_p_II)/2,
 		  check.attributes = FALSE)
 ```
 ```{r}
-locMvC_p |> hotspot(Prname="Pr(z != E(Ci)) Sim", cutoff=0.005) -> pol_pres15$hs_MvC
+locMvC_p |> hotspot(Prname = "Pr(z != E(Ci)) Sim",
+					cutoff = 0.005) -> pol_pres15$hs_MvC
 ```
 
 
 ```{r fig-localCmulti, echo=!knitr::is_latex_output(), message=FALSE}
-#| out.width: 80%
 #| code-fold: true
 #| fig.cap: 'FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.005$: left panel: local $C_i$, first round turnout; centre panel: local $C_i$, second round turnout; right panel: local multivariate $C_i$, both turnout rounds; row-standardised neighbours'
 m3 <- tm_shape(pol_pres15) +
@@ -625,7 +627,8 @@ apply(attr(locMvC_p, "pseudo-p")[,c("Pr(z != E(Ci)) Sim",
 This means that the cutoff corresponding to $0.005$ over $[0, 1]$ is $0.0025$ over $[0, 0.5]$:
 
 ```{r}
-locMvC_p |> hotspot(Prname="Pr(folded) Sim", cutoff=0.0025) -> pol_pres15$hs_MvCa
+locMvC_p |> hotspot(Prname = "Pr(folded) Sim",
+					cutoff = 0.0025) -> pol_pres15$hs_MvCa
 ```
 
 So although `local_multigeary()` used the default cutoff of $0.05$ in setting cluster core classes, we can sharpen the cutoff and apply the FDR adjustment on output components of the `lisa` object in the compiled code workspace:

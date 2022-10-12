@@ -108,8 +108,9 @@ st_sf(elev = c(33.2, 52.1, 81.2),
 	  marker = c("Id01", "Id02", "Id03"), geom = sfc)
 ```
 
-```{r fig-sfobj, out.width = '100%', echo = FALSE}
+```{r fig-sfobj, echo = FALSE}
 #| fig-cap: components of an `sf` object
+#| out.width: 100%
 knitr::include_graphics("images/sf_obj.png")
 ```
 
@@ -329,9 +330,11 @@ serves for illustration, it was _not_ used to select the counties.
 #| fig.cap: "Orange county (orange), counties within a 50 km radius (black), a 50 km buffer around Orange county (brown), and remaining counties (grey)"
 #| code-fold: true
 og <- st_geometry(orange)
-plot(st_geometry(o50), lwd = 2)
+buf50 <- st_buffer(og, units::set_units(50, km))
+all <- c(buf50, st_geometry(o50))
+plot(st_geometry(o50), lwd = 2, extent = all)
 plot(og, col = 'orange', add = TRUE)
-plot(st_buffer(og, units::set_units(50, km)), add = TRUE, col = NA, border = 'brown')
+plot(buf50, add = TRUE, col = NA, border = 'brown')
 plot(st_geometry(nc), add = TRUE, border = 'grey')
 ```
 
@@ -358,14 +361,15 @@ is shown (visually) in @fig-largest ; this is done using
 `st_join` with argument `largest = TRUE`.
 
 ```{r fig-largest, echo=!knitr::is_latex_output()}
-#| out.width: 80%
 #| fig-cap: "example of `st_join` with `largest = TRUE`: the label of the polygon in the top figure with the largest intersection with polygons in the bottom figure is assigned to the polygons of the bottom figure."
+#| code-fold: true
+#| out.width: 80%
 # example of largest = TRUE:
 system.file("shape/nc.shp", package="sf") |> 
     read_sf() |>
     st_transform('EPSG:2264') -> nc
 gr <- st_sf(
-         label = apply(expand.grid(1:10, LETTERS[10:1])[,2:1], 1, paste0, collapse = " "),
+         label = apply(expand.grid(1:10, LETTERS[10:1])[,2:1], 1, paste0, collapse = ""),
          geom = st_make_grid(nc))
 gr$col <- sf.colors(10, categorical = TRUE, alpha = .3)
 # cut, to verify that NA's work out:
@@ -434,10 +438,9 @@ st_intersects(pt, pol)
 ```
 as illustrated by @fig-figs2 (left: straight lines on an orthographic projection centered at the plot area).
 
-```{r fig-figs2,echo=!knitr::is_latex_output()}
+```{r fig-figs2, echo=!knitr::is_latex_output()}
 #| fig.cap: "Intersection depends on whether we use geodesics/great circle arcs (left: s2) or Cartesian coordinates (right)"
 #| code-fold: true
-#| fig.height: 4
 par(mfrow = c(1, 2))
 par(mar = c(2.1, 2.1, 1.2, .5))
 ortho <- st_crs("+proj=ortho +lon_0=50 +lat_0=45")
@@ -636,9 +639,10 @@ r[b]
 ```
 selects the circular center region with a diameter of 500 metre, for
 the first band shown in @fig-circr ,
-```{r fig-circr, out.width = '70%', echo=!knitr::is_latex_output()}
+```{r fig-circr, echo=!knitr::is_latex_output()}
 #| fig.cap: "circular center region of the Landsat 7 scene (band 1)"
 #| code-fold: true
+#| out.width: 70%
 plot(r[b][,,,1], reset = FALSE)
 plot(b, border = 'brown', lwd = 2, col = NA, add = TRUE)
 ```
@@ -756,8 +760,8 @@ We will illustrate this with a trivial two-class example mapping
 land from sea in the example Landsat dataset, using the sample
 points extracted above, shown in @fig-rsample .
 ```{r fig-rsample, echo=!knitr::is_latex_output()}
-#| out.width: 80%
 #| fig.cap: "Randomly chosen sample locations for training data; red: water, yellow: land"
+#| out.width: 80%
 plot(r[,,,1], reset = FALSE)
 col <- rep("yellow", 20)
 col[c(8, 14, 15, 18, 19)] = "red"
@@ -783,8 +787,9 @@ as a set of predictors.
 
 \index[function]{predict.stars}
 
-```{r fig-lda, out.width = '70%', echo=!knitr::is_latex_output()}
+```{r fig-lda, echo=!knitr::is_latex_output()}
 #| fig-cap: "Linear discriminant classifier for land/water, based on training data of @fig-rsample"
+#| out.width: 70%
 #| code-fold: true
 plot(pr[1], key.pos = 4, key.width = lcm(3.5), key.length = lcm(2))
 ```
@@ -798,7 +803,7 @@ We also see that the layer plotted in @fig-lda is a `factor` variable, with clas
 
 ```{r fig-firststars, echo=!knitr::is_latex_output(), message=FALSE}
 #| fig.cap: "Six 30m Landsat bands downsampled to 90m for Olinda, Br."
-#| out.width: 80%
+#| code-fold: true
 plot(r)
 ```
 
@@ -813,7 +818,7 @@ shown in @fig-starsrgb.
 
 ```{r fig-starsrgb, echo=!knitr::is_latex_output(), message=FALSE}
 #| fig.cap: "Two color composites"
-#| out.width: 80%
+#| code-fold: true
 par(mfrow = c(1, 2))
 plot(r, rgb = c(3,2,1), reset = FALSE, main = "RGB")    # rgb
 plot(r, rgb = c(4,3,2), main = "False color (NIR-R-G)") # false color
@@ -982,13 +987,11 @@ along with mean PM$_{10}$ values.
 
 ```{r fig-airst, echo=!knitr::is_latex_output()}
 #| fig.cap: "Space-time diagram of PM$_{10}$ measurements by time and station"
-#| out.width: 80%
 #| code-fold: true
 image(aperm(log(aq), 2:1), main = "NA pattern (white) in PM10 station time series")
 ```
 
 ```{r fig-airmap, echo=!knitr::is_latex_output()}
-#| out.width: 80%
 #| fig.cap: "Locations of PM$_{10}$ measurement stations, showing mean values"
 #| code-fold: true
 plot(st_as_sf(st_apply(aq, 1, mean, na.rm = TRUE)), reset = FALSE, pch = 16,
@@ -1009,7 +1012,6 @@ and we can now show the maps for six arbitrarily chosen days
 
 ```{r fig-airagg}
 #| fig.cap: "areal mean PM$_{10}$ values, for six days"
-#| out.width: 80%
 library(tidyverse)
 a |> filter(time >= "2008-01-01", time < "2008-01-07") |> 
 	plot(key.pos = 4)
@@ -1018,7 +1020,6 @@ or create a time series plot of mean values for a single state
 (@fig-airts)  by
 ```{r fig-airts}
 #| fig.cap: "Areal mean PM$_{10}$ time series for a single state"
-#| out.width: 80%
 library(xts) |> suppressPackageStartupMessages()
 plot(as.xts(a)[,4], main = DE_NUTS1$NAME_1[4])
 ```
@@ -1036,7 +1037,6 @@ regions, shown in @fig-bristol1.
 
 ```{r fig-bristol1, echo=!knitr::is_latex_output()}
 #| fig.height: 5
-#| out.width: 80%
 #| fig.cap: "Origin destination data zones for Bristol, UK, with zone 33 (E02003043) colored red"
 #| code-fold: true
 library(spDataLarge)
@@ -1111,7 +1111,7 @@ and finally build or stars object from `a` and `d`:
 We can take a single slice through this three-dimensional
 array, e.g. for zone 33 (@fig-bristol1) , by `odm[ , , 33]`, 
 and plot it with
-```{r fig-odm33, out.width = '80%', fig.cap = "OD matrix sliced for destination zone 33, by transportation mode"}
+```{r fig-odm33, fig.cap = "OD matrix sliced for destination zone 33, by transportation mode"}
 plot(adrop(odm[,,33]) + 1, logz = TRUE)
 ```
 the result of which is shown in @fig-odm33 .
@@ -1241,7 +1241,6 @@ and in @fig-asstars .
 
 ```{r fig-asstars}
 #| fig.cap: "Rasterizing vector geometry using `st_as_stars`"
-#| out.width: 80%
 file <- system.file("gpkg/nc.gpkg", package="sf")
 read_sf(file) |> 
 	st_geometry() |>
@@ -1267,7 +1266,6 @@ in @fig-lineras .
 
 ```{r fig-lineras}
 #| fig.cap: "Rasterizing North Carolina county boundaries"
-#| out.width: 80%
 read_sf(file) |>
 	st_cast("MULTILINESTRING") |>
 	select(CNTY_ID) |>

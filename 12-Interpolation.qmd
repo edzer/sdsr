@@ -139,7 +139,6 @@ v <- variogram(NO2~1, no2.sf)
 ```
 and the result of plotting this is shown in @fig-vgm.
 ```{r fig-vgm, echo=!knitr::is_latex_output()}
-#| out.width: 80%
 #| fig.cap: "Sample variogram plot"
 #| code-fold: true
 plot(v, plot.numbers = TRUE)
@@ -152,7 +151,6 @@ v0 <- variogram(NO2~1, no2.sf, cutoff = 100000, width = 10000)
 shown in @fig-vgm2.
 ```{r fig-vgm2, echo=!knitr::is_latex_output()}
 #| fig.cap: "Sample variogram plot with adjusted cutoff and lag width"
-#| out.width: 80%
 #| code-fold: true
 plot(v0, plot.numbers = TRUE)
 ```
@@ -164,20 +162,100 @@ Note that the formula `NO2~1` is used to select the variable of interest from th
 
 In order to progress toward spatial predictions, we need a variogram _model_ $\gamma(h)$ for (potentially) all distances $h$, rather than the set of estimates derived above. If we would connect these estimates with straight lines, or assume they reflect constant values over their respective distance intervals, it would lead to statistical models with non-positive definite covariance matrices, which would block using them in prediction.
 
+\index{variogram!model!WLS fitting}
+\index[function]{fit.variogram}
+
 To avoid this we fit parametric models $\gamma(h)$ to the estimates $\hat{\gamma}(h_i)$, where we take $h_i$ as the mean value of all the $h'$ values involved in estimating $\hat{\gamma}(h_i)$. We can fit for instance a model with an exponential variogram by
 ```{r}
 v.m <- fit.variogram(v, vgm(1, "Exp", 50000, 1))
 ```
 shown in @fig-fitvariogrammodel.
 ```{r fig-fitvariogrammodel, echo = !knitr::is_latex_output()}
-#| fig.cap: "Sample variogram with fitted model"
-#| out.width: 80%
-plot(v, v.m, plot.numbers = TRUE)
+#| fig.cap: "Sample variogram (circles) with models fitted using weighted least squares (drawn line) and maximum likelihood estimation (dashed line)"
+#| code-fold: true
+fit.variogram_ml <- function(formula, data, init, ...) {
+  stopifnot(nrow(init) <= 2, inherits(data, "sf"), inherits(formula, "formula"),
+    inherits(init, "variogramModel"))
+  if (nrow(init) == 2)
+    stopifnot("Nug" %in% init$model)
+
+  # convert from parameter vector to "variogramModel" class:
+  # x is c(sill, range) or: c(sill, range, nugget)
+  get_model <- function(x, model, min_range = 1e-10) {
+    sill <- x[1]
+    range <- max(x[2], min_range)
+    nugget <- if (length(x) == 3)
+		    x[3]
+      else
+		    0.
+    m <- vgm(sill, model, range, nugget)
+  }
+
+  # with A <- chol(Q), solve Q x = b for x:
+  ch_solve <- function(A, b) {
+    backsolve(A, forwardsolve(A, b, upper.tri = TRUE, transpose = TRUE))
+  }
+
+  # negative log likelihood, excluding the constant:
+  nll <- function(x, d, res, model, ...) {
+    m <- get_model(x, model, ...)
+    Q <- variogramLine(m, dist_vector = d, covariance = TRUE)
+    Qc <- chol(Q)
+    det <- 2 * sum(log(diag(Qc)))
+    det + t(res) %*% ch_solve(Qc, res)
+  }
+
+  # distance matrix, for optim stability rescaled to [0,1] range
+  d <- st_distance(data) |> units::drop_units()
+  max_d <- max(d)
+  d <- d / max_d
+  # residuals y - X beta: scale to sd 1
+  res <- residuals(lm(formula, data))
+  v <- var(res)
+  res <- res/sqrt(v)
+  if (nrow(init) == 2) {
+    o.init <- c(init$psill[2], init$range[2], init$psill[0])
+    model <- as.character(init$model[2])
+  } else {
+    o.init <- c(init$psill[1], init$range[1])
+    model <- as.character(init$model[1])
+  }
+  o.init[2] <- o.init[2] / max_d # scale to [0,1]
+  o.init[-2] <- o.init[-2] / v   # scale to sd 1
+  o <- optim(o.init, nll, d = d, res = res, model = model, 
+			lower = rep(0, length(o.init)), method = "L-BFGS-B", ...)$par
+  o[2] <- o[2] * max_d # scale back to distance units
+  o[-2] <- o[-2] * v # scale back to variance v
+  get_model(o, model)
+}
+# use WLS fit model v.m for initial parameters:
+v.ml <- fit.variogram_ml(NO2~1, no2.sf, v.m)
+# plot(v, v.ml, plot.numbers = TRUE)
+# plot(v, v.m, plot.numbers = TRUE) ## draws a single model; draw 2 models in single plot:
+par(xaxs = "i", yaxs = "i")
+plot(gamma ~ dist, v, xlim = c(0, 1.075 * max(v$dist)), ylim = c(0, 1.05 * max(v$gamma)),
+   xlab = "distance [m]", ylab = expression(gamma(h)))
+lines(variogramLine(v.m, 1.075 * max(v$dist)), lty = 1, col = 'blue')
+lines(variogramLine(v.ml, 1.075 * max(v$dist)), lty = 2, col = 'blue')
+text(v$dist, v$gamma, v$np, pos = 4)
 ```
-The fitting is done by weighted least squares, minimizing
-$\sum_{i=1}^{n}w_i(\gamma(h_i)-\hat{\gamma}(h_i))^2$, with $w_i$ by
-default equal to $N(h_i)/h^2$, other fitting schemes are available
-through argument `fit.method`.
+The fitting for the drawn line was done by weighted least squares,
+minimizing $\sum_{i=1}^{n}w_i(\gamma(h_i)-\hat{\gamma}(h_i))^2$,
+with weights $w_i$ by default equal to $N(h_i)/h^2$, other weight
+options are available through argument `fit.method`.
+
+\index{variogram!model!maximum likelihood estimation}
+
+As an alternative to weighted least squares fitting one can use
+maximum likelihood (ML) or restricted maximum likelihood parameter
+estimation [e.g., @kitanidis1985maximum], which for this case leads
+to a relatively similar fitted model, shown as the dashed line in
+@fig-fitvariogrammodel. An advantage of ML-type approaches is that
+it does not require choosing distance intervals $h_i$ and weights
+$w_i$. Disadvantages are that it leans on stronger assumptions of
+multivariate normally distributed data, and for larger datasets
+that it requires iteratively solving linear systems of size equal
+to the number of observations.
 
 ## Kriging interpolation {#sec-kriging}
 
@@ -234,7 +312,6 @@ b$kriging <- b$var1.pred
 
 ```{r fig-aggregations, echo = !knitr::is_latex_output()}
 #| fig.cap: "Aggregated NO$_2$ values from simple averaging (left) and block kriging (right)"
-#| out.width: 80%
 b |> select(sample, kriging) |> 
 		pivot_longer(1:2, names_to = "var", values_to = "NO2") -> b2
 b2$var <- factor(b2$var, levels = c("sample", "kriging"))
@@ -264,7 +341,6 @@ block kriging.
 
 ```{r fig-aggrSE, echo = !knitr::is_latex_output()}
 #| fig.cap: "Standard errors for mean NO$_2$ values obtained by simple averaging (left) and block kriging (right)"
-#| out.width: 80%
 #| code-fold: true
 b$sample <- a$NO2
 b$kriging <- sqrt(b$var1.var)
@@ -316,7 +392,6 @@ conditional simulations are shown in (@fig-plotkrigingvalues).
 
 ```{r fig-plotkrigingvalues, echo=!knitr::is_latex_output(), message=FALSE}
 #| fig.cap: "Six conditional simulations for NO$_2$ values"
-#| out.width: 80%
 #| code-fold: true
 library(viridis)
 g <- ggplot() + coord_equal() +
@@ -398,7 +473,6 @@ which indicates we did not loose many: using `st_interpolate_aw` should
 have given an exact match.
 ```{r fig-popdens, echo = !knitr::is_latex_output()}
 #| fig.cap: "Population density for 100 m $\times$ 100 m grid cells"
-#| out.width: 80%
 #| code-fold: true
 g + geom_stars(data = grd, aes(fill = sqrt(pop_dens), x = x, y = y))
 ```
@@ -424,7 +498,6 @@ summary(lm(NO2~sqrt(pop_dens), no2.sf))
 ```
 for which the corresponding scatterplot is shown in @fig-no2scat.
 ```{r fig-no2scat, echo=!knitr::is_latex_output()}
-#| out.width: 80%
 #| fig.cap: "Scatter plot of 2017 annual mean NO$_2$ concentration against population density, for rural background air quality stations"
 #| code-fold: true
 plot(NO2 ~ sqrt(pop_dens), no2.sf)
@@ -442,7 +515,6 @@ vr.m <- fit.variogram(vr, vgm(1, "Exp", 50000, 1))
 which is shown in (@fig-predictusingpopulationdensity).
 ```{r fig-predictusingpopulationdensity,echo=!knitr::is_latex_output()}
 #| fig.cap: "Residual variogram after subtracting population density trend"
-#| out.width: 80%
 #| code-fold: true
 plot(vr, vr.m, plot.numbers = TRUE)
 ```
@@ -453,7 +525,6 @@ kr <- krige(NO2 ~ sqrt(pop_dens), no2.sf,
 ```
 
 ```{r fig-residualkriging, echo=!knitr::is_latex_output()}
-#| out.width: 80%
 #| fig.cap: "Kriging NO$_2$ values using population density as a trend variable"
 #| code-fold: true
 k$kr1 <- k$var1.pred
