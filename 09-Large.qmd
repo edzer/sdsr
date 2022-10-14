@@ -4,7 +4,7 @@
 \index{large datasets}
 
 This chapter describes how large spatial and spatiotemporal datasets
-can be handled with R, with a focus on packages `sf` and `stars`.
+can be handled with R, with a focus on packages **sf** and **stars**.
 For practical use, we classify large datasets as either too large:
 
 * to fit in working memory, or
@@ -23,7 +23,7 @@ storage need to be considered and optimised. Such costs can be
 reduced by
 
 * using compression, such as the LERC (Limited Error Raster
-  Compression) algorithm used for cloud-optimized GeoTIFF, or the 
+  Compression) algorithm used for cloud-optimised GeoTIFF, or the 
   BLOSC compressor used for ZARR array data
 * fast access to spatial sub-regions, e.g. by ways of http range
   request enabled for cloud-optimised geotiffs, or column-oriented
@@ -32,11 +32,11 @@ reduced by
   available before or without the full resolution being read), implemented natively
   by progressive JPEG formats or by using image pyramids (or overviews)
   in other raster formats
-* optimizing data access with particular cloud storage or object
+* optimising data access with particular cloud storage or object
   storage protocols in mind.
 
 It should be noted that there are no silver bullets in this area:
-optimizing storage for one particular access pattern will lead to slow
+optimising storage for one particular access pattern will lead to slow
 access for other ways: for instance if raster data is stored for
 optimal access of spatial regions at different spatial resolutions,
 reading the data as pixel time series may be very slow. Compression
@@ -101,7 +101,7 @@ this is followed by the path to the zip file, and then followed by
 the file inside this zip file. Reading files this way may come at
 some computational cost.
 
-### Reading from databases, dbplyr
+### Reading from databases, **dbplyr**
 
 \index{sf\_read!from database connection}
 
@@ -166,7 +166,7 @@ assuming the coordinates are projected, where they are ellipsoidal.)
 
 GDAL drivers support reading from online resources, by prepending
 the URL starting with e.g. `https://` with `/vsicurl/`.  A number of
-similar drivers specialized for particular clouds include `/vsis3/`
+similar drivers specialised for particular clouds include `/vsis3/`
 for Amazon S3, `/vsigs/`  for Google Cloud Storage, `/vsiaz/` for
 Azure, `/vsioss/` for Alibaba Cloud, or `/vsiswift/` for OpenStack
 Swift Object Storage.  @sec-zarr has an example of using `/vsicurl/`.
@@ -175,11 +175,11 @@ These prepositions can be combined e.g. with `/vsizip/` to read a
 zipped online resource. Depending on the file format used, reading
 information this way may require reading the entire file, or reading
 it multiple times, and may not always be the most efficient way of
-handling resources. Cloud native formats are optimized to work
+handling resources. Cloud native formats are optimised to work
 efficiently using `http` requests.
 
 \index{cloud native}
-\index{cloud optimized}
+\index{cloud optimised}
 
 ### API's, OpenStreetMap
 
@@ -194,11 +194,11 @@ driver, but more typical a user wants to obtain a small subset of
 the data or use the data for a small query. Several R packages exist
 that query OpenStreetMap data: 
 
-* Package `OpenStreetMap` downloads data as raster tiles, typically
+* Package **OpenStreetMap** downloads data as raster tiles, typically
   used as backdrop or reference for plotting other features
-* Package `osmdata` [@osmdata] downloads vector data as points, lines or polygons
-  in `sf` or `sp` format
-* Package `osmar` returns vector data, but in addition the network
+* Package **osmdata** [@osmdata] downloads vector data as points, lines or polygons
+  in **sf** or **sp** format
+* Package **osmar** returns vector data, but in addition the network
   topology (as an `igraph` object) that contains how road elements
   are connected, and has functions for computing the shortest route
 
@@ -261,7 +261,7 @@ towards persistent storage, where (Geo)Arrow is more oriented to
 fast access and fast computation; Arrow can for instance be both
 an in-memory and an on-disk format.
 
-## Raster data: `stars`
+## Raster data: **stars**
 
 A common challenge with raster datasets is not only that they come
 in large files (single Sentinel-2 tiles are around 1 GB), but that
@@ -277,9 +277,9 @@ memory and analysing it is not going to work.
 \index{openEO cloud}
 
 Cloud-based Earth Observation processing platforms like Google Earth
-Engine [@gorelick], [Sentinel Hub](https://www.sentinel-hub.com/) or
+Engine\texttrademark [@gorelick], [Sentinel Hub](https://www.sentinel-hub.com/) or
 [openEO.cloud](https://openeo.cloud)
-recognize this and let users work with datasets up to the petabyte
+recognise this and let users work with datasets up to the petabyte
 range rather easily and with a great deal of interactivity. They
 share the following properties:
 
@@ -288,10 +288,10 @@ share the following properties:
 * storing intermediate results is avoided in favour of on-the-fly computations
 * maps with useful results are generated and shown quickly to allow for interactive model development
 
-This is similar to the `dbplyr` interface to databases and
+This is similar to the **dbplyr** interface to databases and
 cloud-based analytics environments, but differs in the aspect of
-_what_ we want to see quickly: rather than the first $n$ records
-of a `dbplyr` table, we want a quick _overview_ of the results,
+_what_ we want to see quickly: rather than the first $n$ records of a
+**dbplyr** lazy table, we want a quick _overview_ of the results,
 in the form of a map covering the whole area, or part of it, but
 at screen resolution rather than native (observation) resolution.
 
@@ -309,22 +309,25 @@ to working on the native 10 m x 10 m resolution. On the platforms
 mentioned, zooming in the map triggers further computations on a
 finer resolution and smaller extent.
 
-A simple optimisation that follows these lines is how `stars`' plot
-method works:  in the case of plotting large rasters, it downsamples
-the array before it plots, drastically saving time.  The degree
-of downsampling is derived from the plotting region size and the
-plotting resolution (pixel density). For vector devices, such as pdf,
-R sets plot resolution to 75 dpi, corresponding to 0.3 mm per pixel.
-Enlarging plots may reveal this, but replotting to an enlarged
-devices will create a plot at target density.
+A simple optimisation that follows these lines is how the plot method
+for `stars` objects works:  in the case of plotting large rasters,
+it downsamples the array before it plots, drastically saving time.
+The degree of downsampling is derived from the plotting region size
+and the plotting resolution (pixel density). For vector devices,
+such as pdf, R sets plot resolution to 75 dpi, corresponding to
+0.3 mm per pixel. Enlarging plots may reveal this, but replotting
+to an enlarged devices will create a plot at target density. For
+`geom_stars` the user has to specify the `downsample` rate, because
+the **ggplot2** does not make the device size available to that
+function.
 
 ### `stars` proxy objects
 \index{stars!proxy objects}
 \index{read\_stars!proxy objects}
 
-To handle datasets that are too large to fit in memory, `stars`
+To handle datasets that are too large to fit in memory, **stars**
 provides `stars_proxy` objects.  To demonstrate its use, we will
-use the `starsdata` package, an R data package with larger datasets
+use the **starsdata** package, an R data package with larger datasets
 (around 1 GB total). It can be installed by
 ```{r eval=FALSE}
 options(timeout = 600) # or large in case of slow network
@@ -372,7 +375,7 @@ pixels available
 * `write_stars` reads, processes, and writes data chunk by chunk
 
 ```{r fig-plotp, echo=!knitr::is_latex_output(), message=!knitr::is_latex_output()}
-#| fig.cap: "downsampled 10 m bands of a Sentinel-2 scene"
+#| fig.cap: "Downsampled 10 m bands of a Sentinel-2 scene"
 #| code-fold: true
 plot(p)
 ```
@@ -428,10 +431,10 @@ chunks.
 
 ### Remote raster resources
 
-\index{cloud-optimized GeoTIFF}
-\index{GeoTIFF!cloud-optimized}
+\index{cloud-optimised GeoTIFF}
+\index{GeoTIFF!cloud-optimised}
 
-A format like "cloud-optimized GeoTIFF" (COG) has been specially
+A format like "cloud-optimised GeoTIFF" (COG) has been specially
 designed to be efficient and resource-friendly in many cases,
 e.g. for only reading the metadata, or for only reading overviews
 (low-resolutions versions of the full imagery) or spatial regions
@@ -474,14 +477,14 @@ A solution to this is to use a catalogue. The recently developed
 and increasingly deployed STAC, short for _spatiotemporal asset
 catalogue_, provides an API that can be used to query image
 collections by properties like bounding box, date, band, and cloud
-coverage. The R package `rstac` [@R-rstac] provides an R interface
+coverage. The R package **rstac** [@R-rstac] provides an R interface
 to create queries, and manage the information returned.
 
 Processing the resulting files may involve creating a data cube at
 a lower spatial and/or temporal resolution, from images that may
 span a range of coordinate reference systems (e.g., several UTM
 zones). An R package that creates a regular data cube from such a
-collection of images is gdalcubes [@R-gdalcubes; @appel2019demand],
+collection of images is **gdalcubes** [@R-gdalcubes; @appel2019demand],
 which can also directly use a STAC [@appelblog].
 
 ### Cloud native storage: Zarr {#sec-zarr}
@@ -547,7 +550,7 @@ in @sec-dcoperations. It has an IDE where scripts can
 be written in JavaScript, and a Python interface to the same
 functionality. The code of GEE is not open source, and cannot be
 extended by arbitrary user-defined functions in languages like
-Python or R. R package `rgee` [@R-rgee] provides an R client
+Python or R. R package **rgee** [@R-rgee] provides an R client
 interface to GEE.
 
 Cloud-based data cube processing platforms built entirely around
@@ -561,7 +564,7 @@ object, in Python `xarray` objects are used.
 Other platforms include the Copernicus climate data store [@cds]
 or atmosphere data store, which allow processing of atmospheric
 or climate data from ECMWF, including ERA5. An R package with an
-interface to both data stores is `ecmwfr` [@R-ecmwfr].
+interface to both data stores is **ecmwfr** [@R-ecmwfr].
 
 \index{ERA5}
 
@@ -571,7 +574,7 @@ Use R to solve the following exercises.
 
 1. For the S2 image (above), find out in which order the bands are by
 using `st_get_dimension_values()`, and try to find out (e.g. by internet
-search) which spectral bands / colors they correspond to.
+search) which spectral bands / colours they correspond to.
 1. Compute NDVI for the S2 image, using `st_apply` and an appropriate 
 `ndvi` function.  Plot the result to screen, and then write the
 result to a GeoTIFF. Explain the difference in runtime between

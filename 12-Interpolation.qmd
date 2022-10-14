@@ -24,7 +24,7 @@ geostatistical data, will demonstrate simple interpolation methods,
 explore modelling spatial correlation, spatial prediction and
 simulation. @sec-stgeostatistics focuses on more complex
 multivariate and spatiotemporal geostatistical models.  We will
-use package `gstat` [@R-gstat; @gstatcg], which offers a fairly
+use package **gstat** [@R-gstat; @gstatcg], which offers a fairly
 wide palette of models and options for non-Bayesian geostatistical
 analysis.  Bayesian methods with R implementations are found in
 e.g. @DiggleTawnMoyeed:98, @Diggle:2007, @blangiardo2015spatial,
@@ -41,7 +41,7 @@ write_csv(right_join(a2, tb), "no2.csv")
 ## A first dataset
 
 We can read station mean NO$_2$ values, a dataset that is prepared 
-in @sec-stgeostatistics, by loading it from package `gstat` using
+in @sec-stgeostatistics, by loading it from package **gstat** using
 ```{r, message=FALSE}
 library(tidyverse) |> suppressPackageStartupMessages()
 no2 <- read_csv(system.file("external/no2.csv", 
@@ -101,7 +101,7 @@ $$
 $$
 
 with $w_i = |s_0-s_i|^p$, and the inverse distance power typically
-taken as 2, or optimized using cross validation. We can compute
+taken as 2, or optimised using cross validation. We can compute
 inverse distance interpolated values using `gstat::idw`, 
 ```{r, message=FALSE}
 library(gstat)
@@ -130,7 +130,7 @@ In order to make spatial predictions using geostatistical methods, we first need
 The sample variogram is obtained by computing estimates of $\gamma(h)$ for distance intervals, $h_i = [h_{i,0},h_{i,1}]$:
 $$
 \hat{\gamma}(h_i) = \frac{1}{2N(h_i)}\sum_{j=1}^{N(h_i)}(z(s_i)-z(s_i+h'))^2, \ \ h_{i,0} \le h' < h_{i,1}
-$$
+$$ {#eq-samplevariogram}
 
 with $N(h_i)$ the number of sample pairs available for distance interval $h_i$.
 Function `gstat::variogram` computes sample variograms,
@@ -141,18 +141,21 @@ and the result of plotting this is shown in @fig-vgm.
 ```{r fig-vgm, echo=!knitr::is_latex_output()}
 #| fig.cap: "Sample variogram plot"
 #| code-fold: true
-plot(v, plot.numbers = TRUE)
+plot(v, plot.numbers = TRUE, xlab = "distance h [m]",
+	 ylab = expression(gamma(h)),
+	 xlim = c(0, 1.055 * max(v$dist)))
 ```
 Function `variogram` chooses default for maximum distance (`cutoff`: one third of the length of the bounding box diagonal) and (constant) interval widths (`width`: cutoff divided by 15). These defaults can be changed, e.g. by
 ```{r controlcutoff}
-library(gstat)
 v0 <- variogram(NO2~1, no2.sf, cutoff = 100000, width = 10000)
 ```
 shown in @fig-vgm2.
 ```{r fig-vgm2, echo=!knitr::is_latex_output()}
 #| fig.cap: "Sample variogram plot with adjusted cutoff and lag width"
 #| code-fold: true
-plot(v0, plot.numbers = TRUE)
+plot(v0, plot.numbers = TRUE, xlab = "distance h [m]",
+	 ylab = expression(gamma(h)),
+	 xlim = c(0, 1.055 * max(v0$dist)))
 ```
 Note that the formula `NO2~1` is used to select the variable of interest from the data file (`NO2`), and to specify the mean model: `~1` specifies an intercept-only (unknown, constant mean) model.
 
@@ -169,7 +172,7 @@ To avoid this we fit parametric models $\gamma(h)$ to the estimates $\hat{\gamma
 ```{r}
 v.m <- fit.variogram(v, vgm(1, "Exp", 50000, 1))
 ```
-shown in @fig-fitvariogrammodel.
+shown by the drawn line in @fig-fitvariogrammodel.
 ```{r fig-fitvariogrammodel, echo = !knitr::is_latex_output()}
 #| fig.cap: "Sample variogram (circles) with models fitted using weighted least squares (drawn line) and maximum likelihood estimation (dashed line)"
 #| code-fold: true
@@ -233,29 +236,35 @@ v.ml <- fit.variogram_ml(NO2~1, no2.sf, v.m)
 # plot(v, v.ml, plot.numbers = TRUE)
 # plot(v, v.m, plot.numbers = TRUE) ## draws a single model; draw 2 models in single plot:
 par(xaxs = "i", yaxs = "i")
-plot(gamma ~ dist, v, xlim = c(0, 1.075 * max(v$dist)), ylim = c(0, 1.05 * max(v$gamma)),
-   xlab = "distance [m]", ylab = expression(gamma(h)))
+plot(gamma ~ dist, v, 
+	 xlim = c(0, 1.075 * max(v$dist)), ylim = c(0, 1.05 * max(v$gamma)),
+     xlab = "distance h [m]", ylab = expression(gamma(h)))
 lines(variogramLine(v.m, 1.075 * max(v$dist)), lty = 1, col = 'blue')
 lines(variogramLine(v.ml, 1.075 * max(v$dist)), lty = 2, col = 'blue')
 text(v$dist, v$gamma, v$np, pos = 4)
 ```
 The fitting for the drawn line was done by weighted least squares,
-minimizing $\sum_{i=1}^{n}w_i(\gamma(h_i)-\hat{\gamma}(h_i))^2$,
+minimising 
+$$
+\sum_{i=1}^{n}w_i(\gamma(h_i)-\hat{\gamma}(h_i))^2,
+$$ {#eq-wlsweights}
 with weights $w_i$ by default equal to $N(h_i)/h^2$, other weight
 options are available through argument `fit.method`.
 
 \index{variogram!model!maximum likelihood estimation}
 
-As an alternative to weighted least squares fitting one can use
-maximum likelihood (ML) or restricted maximum likelihood parameter
-estimation [e.g., @kitanidis1985maximum], which for this case leads
-to a relatively similar fitted model, shown as the dashed line in
-@fig-fitvariogrammodel. An advantage of ML-type approaches is that
-it does not require choosing distance intervals $h_i$ and weights
-$w_i$. Disadvantages are that it leans on stronger assumptions of
-multivariate normally distributed data, and for larger datasets
-that it requires iteratively solving linear systems of size equal
-to the number of observations.
+As an alternative to weighted least squares fitting one can
+use maximum likelihood (ML) or restricted maximum likelihood
+parameter estimation [e.g., @kitanidis1985maximum], which for
+this case leads to a relatively similar fitted model, shown
+as the dashed line in @fig-fitvariogrammodel. An advantage of
+ML-type approaches is that they do not require choosing distance
+intervals $h_i$ in @eq-samplevariogram or weights $w_i$ in
+@eq-wlsweights. Disadvantages are that they lean on stronger
+assumptions of multivariate normally distributed data, and for
+larger datasets require iteratively solving linear systems of size
+equal to the number of observations; @heaton compares approaches
+dedicated to fitting models to large datasets.
 
 ## Kriging interpolation {#sec-kriging}
 
@@ -321,7 +330,7 @@ ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +
 We see that the signal is similar, but that the simple means are
 more variable than the block kriging values; this may be due to
 the smoothing effect of kriging: data points outside the aggregation
-area recieve weight, too.
+area receive weight, too.
 
 \index{kriging!standard errors}
 
@@ -385,7 +394,7 @@ value:
 ```
 
 It is usually needed to constrain the (maximum) number of nearest
-neigbours to include in kriging estimation by setting `nmax`
+neighbours to include in kriging estimation by setting `nmax`
 because the dataset grows each step, leading otherwise quickly
 to very long computing times and large memory requirements. Resulting
 conditional simulations are shown in (@fig-plotkrigingvalues).
@@ -415,7 +424,7 @@ spatiotemporal data.
 
 Kriging and conditional simulation, as used so far in this
 chapter, assume that all spatial variability is a random process,
-characterized by a spatial covariance model. In case we have other
+characterised by a spatial covariance model. In case we have other
 variables that are meaningfully correlated with the target variable,
 we can use them in a linear regression model for the trend,
 $$
@@ -524,7 +533,7 @@ kr <- krige(NO2 ~ sqrt(pop_dens), no2.sf,
 			grd["pop_dens"], vr.m)
 ```
 
-```{r fig-residualkriging, echo=!knitr::is_latex_output()}
+```{r fig-residualkriging, echo=!knitr::is_latex_output(), message=FALSE}
 #| fig.cap: "Kriging NO$_2$ values using population density as a trend variable"
 #| code-fold: true
 k$kr1 <- k$var1.pred
@@ -561,7 +570,7 @@ that has the inverse distance interpolated map of
 2. Create a scatter plot of the map values of the idw and kriging
 map, and a scatter plot of map values of idw and residual kriging.
 3. Carry out a _block kriging_, predicting block averages for blocks
-centered over grid cells, by setting the `block` argument in
+centred over grid cells, by setting the `block` argument in
 `krige()`, and do this for block sizes of 10 km (the grid cell size),
 50 km and 200 km. Compare the resulting maps of estimates for these
 three blocks sizes with those obtained by point kriging, and

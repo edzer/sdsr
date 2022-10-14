@@ -7,7 +7,7 @@ Even though it may be tempting to focus on interpreting the map pattern of an ar
 
 \index{regression!generalised least squares}
 \index{linear model!mixed effects}
-Of course, handling a spatial correlation structure in a generalised least squares model or a (generalized) linear or nonlinear mixed effects model such as those provided in the **nlme** and many other packages does not have to use a graph of neighbours [@R:Pinheiro+Bates:2000]. These models are also spatial regression models, using functions of the distance between observations, and fitted variograms to model the spatial autocorrelation present; such models have been held to yield a clearer picture of the underlying processes [@wall:04], building on geostatistics. For example, the **glmmTMB** package successfully uses this approach to spatial regression [@brookesetal:17]. Here we will only consider spatial regression using spatial weights matrices.
+Of course, handling a spatial correlation structure in a generalised least squares model or a (generalised) linear or nonlinear mixed effects model such as those provided in the **nlme** and many other packages does not have to use a graph of neighbours [@R:Pinheiro+Bates:2000]. These models are also spatial regression models, using functions of the distance between observations, and fitted variograms to model the spatial autocorrelation present; such models have been held to yield a clearer picture of the underlying processes [@wall:04], building on geostatistics. For example, the **glmmTMB** package successfully uses this approach to spatial regression [@brookesetal:17]. Here we will only consider spatial regression using spatial weights matrices.
 
 ## Markov random field and multilevel models
 
@@ -19,9 +19,9 @@ Of course, handling a spatial correlation structure in a generalised least squar
 \index{conditional autoregressive model}
 \index{intrinsic CAR model}
 
-There is a large literature in disease mapping using conditional autoregressive (CAR) and intrinsic CAR (ICAR) models in spatially structured random effects. These extend to multilevel models, in which the spatially structured random effects may apply at different levels of the model [@bivandetal17a]. In order to try out some of the variants, we need to remove the no-neighbour observations from the tract level, and from the model output zone aggregated level, in two steps as reducing the tract level induces a no-neighbour outcome at the model output zone level. Many of the model estimating functions take `family=` arguments, and fit generalized linear mixed effects models with per-observation spatial random effects structured using a Markov random field representation of relationships between neighbours. In the multilevel case, the random effects may be modelled at the group level, which is the case presented in the following examples.
+There is a large literature in disease mapping using conditional autoregressive (CAR) and intrinsic CAR (ICAR) models in spatially structured random effects. These extend to multilevel models, in which the spatially structured random effects may apply at different levels of the model [@bivandetal17a]. In order to try out some of the variants, we need to remove the no-neighbour observations from the tract level, and from the model output zone aggregated level, in two steps as reducing the tract level induces a no-neighbour outcome at the model output zone level. Many of the model estimating functions take `family=` arguments, and fit generalised linear mixed effects models with per-observation spatial random effects structured using a Markov random field representation of relationships between neighbours. In the multilevel case, the random effects may be modelled at the group level, which is the case presented in the following examples.
 
-We follow @vgr_clubuc3m:19 in summarizing @R:Pinheiro+Bates:2000 and @mcculloch+searle:2001 to describe the mixed-effects model representation of spatial regression models. In a Gaussian linear mixed model setting, a random effect $u$ is added to the model, with response $Y$, fixed covariates $X$, their coefficients $\beta$ and error term $\varepsilon_i \sim N(0, \sigma^2), i=1,\dots, n$:
+We follow @vgr_clubuc3m:19 in summarising @R:Pinheiro+Bates:2000 and @mcculloch+searle:2001 to describe the mixed-effects model representation of spatial regression models. In a Gaussian linear mixed model setting, a random effect $u$ is added to the model, with response $Y$, fixed covariates $X$, their coefficients $\beta$ and error term $\varepsilon_i \sim N(0, \sigma^2), i=1,\dots, n$:
 
 $$
 Y = X \beta + Z u + \varepsilon
@@ -64,7 +64,7 @@ Here we shall use the Boston housing dataset, which has been restructured and fu
 knitr::opts_chunk$set(echo = TRUE, paged.print = FALSE)
 ```
 
-We can start by reading in the 506 tract dataset from **spData** [@R-spData], and creating a contiguity neighbour object and from that again a row standardized spatial weights object. 
+We can start by reading in the 506 tract dataset from **spData** [@R-spData], and creating a contiguity neighbour object and from that again a row standardised spatial weights object. 
 ```{r, message=FALSE}
 library(sf)
 library(spData)
@@ -93,7 +93,7 @@ nb_q_489 <- spdep::poly2nb(boston_489)
 lw_q_489 <- spdep::nb2listw(nb_q_489, style = "W",
 							zero.policy = TRUE)
 ```
-The `NOX_ID` variable specifies the upper level aggregation, letting us aggregate the tracts to air pollution model output zones. We can create aggregate neighbour and row standardized spatial weights objects, and aggregate the `NOX` variable taking means, and the `CHAS` Charles River dummy variable for observations on the river. Here we follow the principles outlined in @sec-extensiveintensive for spatially extensive and intensive variables; neither `NOX` nor `CHAS` can be summed as they are not count variables.
+The `NOX_ID` variable specifies the upper level aggregation, letting us aggregate the tracts to air pollution model output zones. We can create aggregate neighbour and row standardised spatial weights objects, and aggregate the `NOX` variable taking means, and the `CHAS` Charles River dummy variable for observations on the river. Here we follow the principles outlined in @sec-extensiveintensive for spatially extensive and intensive variables; neither `NOX` nor `CHAS` can be summed as they are not count variables.
 
 ```{r}
 agg_96 <- list(as.character(boston_506$NOX_ID))
@@ -289,7 +289,7 @@ ID2 <- as.integer(as.factor(boston_487$NOX_ID))
 
 The same sparse binary spatial weights matrix is used, and the intrinsic CAR representation is constructed internally:
 
-```{r, cache=TRUE}
+```{r, cache=TRUE,warning=FALSE}
 INLA_ss <- inla(update(form, . ~ . + f(ID2, model = "besag",
 									   graph = W)),
 				family = "gaussian", data = boston_487)
@@ -308,7 +308,7 @@ Cmatrix <- Diagonal(nrow(M), 1) -  M
 
 This model can be estimated using the `"generic1"` model with the specified precision matrix:
 
-```{r, cache=TRUE}
+```{r, cache=TRUE, warning=FALSE}
 INLA_lr <- inla(update(form, . ~ . + f(ID2, model = "generic1",
 									   Cmatrix = Cmatrix)),
 				family = "gaussian", data = boston_487)
@@ -353,7 +353,7 @@ boston_93$GAM_ss <- aggregate(ssre, list(boston_487$NOX_ID),
 
 ### Upper level random effects: summary
 
-In the cases of `hglm()`, `bayesx()`, `inla()` and `gam()`, we could also model discrete responses without further major difficulty, and `bayesx()`, `inla()` and `gam()` also facilitate the generalization of functional form fitting for included covariates.
+In the cases of `hglm()`, `bayesx()`, `inla()` and `gam()`, we could also model discrete responses without further major difficulty, and `bayesx()`, `inla()` and `gam()` also facilitate the generalisation of functional form fitting for included covariates.
 
 Unfortunately, the coefficient estimates for the air pollution variable for these multilevel models are not helpful. All are negative as expected, but the inclusion of the model output zone level effects, IID or spatially structured, makes it is hard to disentangle the influence of the scale of observation from that of covariates observed at that scale rather than at the tract level.
 

@@ -8,13 +8,14 @@ how geometries can be described using these coordinate systems. This
 chapter will explain:
 
 * _simple features_, a standard that describes point, line and polygon 
-geometries along with operations on them 
-* operations on geometries
-* coverages, subdivisions of larger regions into sub-regions
-* networks
+geometries along with operations on them,
+* operations on geometries,
+* coverages, functions of space or space-time,
+* tesselations, subdivisions of larger regions into sub-regions, and
+* networks.
 
-Geometries on the sphere are discussed in @sec-spherical,
-rasters and other rectangular subdivisions of space are discussed
+Geometries on the sphere are discussed in @sec-spherical, rasters and
+other rectangular subdivisions of space or space-time are discussed
 in @sec-datacube.
 
 ## Simple feature geometries {#sec-simplefeatures}
@@ -68,7 +69,7 @@ The most commonly used simple features geometries, used to represent a _single_ 
 | `GEOMETRYCOLLECTION`      | set of the geometries above  |
 
 ```{r fig-sfgeometries, echo=!knitr::is_latex_output(), message = FALSE}
-#| fig.cap: "sketches of the main simple feature geometry types"
+#| fig.cap: "Sketches of the main simple feature geometry types"
 #| code-fold: true
 library(sf) |> suppressPackageStartupMessages()
 par(mfrow = c(2,4))
@@ -268,7 +269,7 @@ There are 10 more geometry types which are more rare, but increasingly find impl
 
 | type                | description                                        |
 | ------------------- | -------------------------------------------------- |
-| `CIRCULARSTRING` | The CIRCULARSTRING is the basic curve type, similar to a LINESTRING in the linear world. A single segment requires three points, the start and end points (first and third) and any other point on the arc. The exception to this is for a closed circle, where the start and end points are the same. In this case the second point MUST be the center of the arc, i.e. the opposite side of the circle. To chain arcs together, the last point of the previous arc becomes the first point of the next arc, just like in LINESTRING. This means that a valid circular string must have an odd number of points greater than 1. |
+| `CIRCULARSTRING` | The CIRCULARSTRING is the basic curve type, similar to a LINESTRING in the linear world. A single segment requires three points, the start and end points (first and third) and any other point on the arc. The exception to this is for a closed circle, where the start and end points are the same. In this case the second point MUST be the centre of the arc, i.e. the opposite side of the circle. To chain arcs together, the last point of the previous arc becomes the first point of the next arc, just like in LINESTRING. This means that a valid circular string must have an odd number of points greater than 1. |
 | `COMPOUNDCURVE` | A compound curve is a single, continuous curve that has both curved (circular) segments and linear segments. That means that in addition to having well-formed components, the end point of every component (except the last) must be coincident with the start point of the following component. |
 | `CURVEPOLYGON` | Example compound curve in a curve polygon: CURVEPOLYGON(COMPOUNDCURVE(CIRCULARSTRING(0 0,2 0, 2 1, 2 3, 4 3),(4 3, 4 5, 1 4, 0 0)), CIRCULARSTRING(1.7 1, 1.4 0.4, 1.6 0.4, 1.6 0.5, 1.7 1) ) |
 | `MULTICURVE` |  A MultiCurve is a 1-dimensional GeometryCollection whose elements are Curves, it can include linear strings, circular strings or compound strings.  |
@@ -309,7 +310,7 @@ a binary encoding. The well-known text encoding, used above, is
 human-readable, the well-known binary encoding is machine-readable.
 Well-known binary (WKB) encodings are lossless and typically faster
 to work with than text encoding (and decoding), and are used for
-instance in all communications between R package `sf` and the GDAL,
+instance in all communications between R package **sf** and the GDAL,
 GEOS, liblwgeom and s2geometry libraries (@fig-gdal-fig-nodetails).
 
 ## Operations on geometries {#sec-opgeom}
@@ -324,7 +325,7 @@ of the operations entirely focusing on _geometrical_ properties.
 feature properties, in relationship to their geometries. Some of
 the material in this section appeared in @rjsf.
 
-We can categorize operations on geometries in terms of what they
+We can categorise operations on geometries in terms of what they
 take as input, and what they return as output. In terms of output
 we have operations that return:
 
@@ -561,13 +562,13 @@ Unary transformations work on a per-geometry basis, and for each geometry return
 |`triangulate`|with Delauney triangulated polygon(s) (@fig-vor) |
 |`voronoi`|with the Voronoi tessellation of an input geometry (@fig-vor) |
 |`zm`|with removed or added `Z` and/or `M` coordinates|
-|`collection_extract`|with subgeometries from a `GEOMETRYCOLLECTION` of a particular type|
+|`collection_extract`|with sub-geometries from a `GEOMETRYCOLLECTION` of a particular type|
 |`cast`|that is converted to another type|
 |`+`|that is shifted over a given vector|
 |`*`|that is multiplied by a scalar or matrix|
 
 ```{r fig-vor, echo = !knitr::is_latex_output()}
-#| fig.cap: "for a set of points, left: convex hull (red); middle: Voronoi polygons; right: Delauney triangulation"
+#| fig.cap: "For a set of points, left: convex hull (red); middle: Voronoi polygons; right: Delauney triangulation"
 #| code-fold: true
 #| out.width: 60%
 par(mar = rep(0,4), mfrow = c(1, 3))
@@ -654,11 +655,11 @@ of one, two, _or more_ geometries.
 ```{r fig-boxes, eval=TRUE, echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| out.width: 50%
-#| fig.cap: "left: three overlapping boxes -- how do we identify the small box where all three overlap? right: unique, non-overlapping n-ary intersections"
+#| fig.cap: "Left: three overlapping squares -- how do we identify the small box where all three overlap? right: unique, non-overlapping n-ary intersections"
 par(mar = rep(.1, 4), mfrow = c(1, 2))
 sq <- function(pt, sz = 1) st_polygon(list(rbind(c(pt - sz), 
   c(pt[1] + sz, pt[2] - sz), c(pt + sz), c(pt[1] - sz, pt[2] + sz), c(pt - sz))))
-x <- st_sf(box = 1:3, st_sfc(sq(c(0,0)), sq(c(1.7, -0.5)), sq(c(0.5, 1))))
+x <- st_sf(box = 1:3, st_sfc(sq(c(0, 0)), sq(c(1.7, -0.5)), sq(c(0.5, 1))))
 plot(st_geometry(x), col = NA, border = sf.colors(3, categorical = TRUE), lwd = 3)
 plot(st_intersection(st_geometry(x)), col = sf.colors(7, categorical=TRUE, alpha = .5))
 ```
@@ -673,7 +674,7 @@ resulting geometries do not overlap.
 ```{r fig-diff, echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| out.width: 50%
-#| fig.cap: "difference between subsequent boxes, left: in original order; right: in reverse order"
+#| fig.cap: "Difference between subsequent boxes, left: in original order; right: in reverse order"
 par(mar = rep(.1, 4), mfrow = c(1, 2)) 
 xg <- st_geometry(x)
 plot(st_difference(xg), col = sf.colors(3, alpha = .5, categorical=TRUE))
@@ -810,7 +811,7 @@ plot(ls, add = TRUE, col = "red", lwd = 2)
 
 Tessellating the time dimension with left-closed, right-open intervals
 is very common, and reflects the implicit assumption underlying
-time series software such as the `xts` package in R, where time
+time series software such as the **xts** package in R, where time
 stamps indicate the start of time intervals.  Different models can
 be combined: one could use simple feature polygons to tessellate
 space, and combine this with a regular tessellation of time in order
@@ -839,10 +840,10 @@ start or end points, forming a set of nodes and edges
 * edges may be directed, to only allow for connection (flow,
 transport) in one way
 
-R packages including `osmar` [@R-osmar], `stplanr` [@R-stplanr] and
-`sfnetworks` [@R-sfnetworks] provide functionality for constructing
+R packages including **osmar** [@R-osmar], **stplanr** [@R-stplanr] and
+**sfnetworks** [@R-sfnetworks] provide functionality for constructing
 network objects, and working with them, e.g. computing shortest or
-fastest routes through a network. Package `spatstat` [@R-spatstat;
+fastest routes through a network. Package **spatstat** [@R-spatstat;
 @baddeley2015spatial] has infrastructure for analysing point
 patterns on linear networks (@sec-pointpatterns). Chapter 12 of
 @geocomp has a transportation application using networks.
@@ -858,5 +859,5 @@ For the following exercises, use R where possible.
 5. Give the unary measure `dimension` for geometries `POINT Z (0 1 1)`, `LINESTRING Z (0 0 1,1 1 2)`, and `POLYGON Z ((0 0 0,1 0 0,1 1 0,0 0 0))`
 6. Give the DE-9IM relation between `LINESTRING(0 0,1 0)` and `LINESTRING(0.5 0,0.5 1)`; explain the individual characters.
 7. Can a set of simple feature polygons form a coverage? If so, under which constraints?
-8. For the `nc` counties in the dataset that comes with R package `sf`, find the points touched by four counties.
+8. For the `nc` counties in the dataset that comes with R package **sf**, find the points touched by four counties.
 9. How would @fig-rasterizeline  look like if $\delta$ for the $y$-coordinate was positive?

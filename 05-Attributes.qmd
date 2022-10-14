@@ -25,7 +25,7 @@ equal footing with geometry (e.g. in a data cube, see
 @sec-datacube).
 
 Spatial data science software implementing simple features
-typically organizes data in tables that contain both geometries and
+typically organises data in tables that contain both geometries and
 attributes for features; this is true for `geopandas` in Python,
 `PostGIS` tables in PostgreSQL, and `sf` objects in R.  The geometric
 operations described in @sec-opgeom operate
@@ -37,7 +37,7 @@ When, while manipulating geometries, attribute _values_ are retained
 unmodified, support problems may arise.
 If we look into a simple case of replacing a county polygon with
 the centroid of that polygon on a dataset that has attributes,
-we see that R package `sf` issues a warning:
+we see that R package **sf** issues a warning:
 ```{r fig-countycentroid, cache = FALSE, echo = !knitr::is_latex_output()}
 #| code-fold: true
 library(sf) |> suppressPackageStartupMessages()
@@ -59,7 +59,7 @@ In @sec-support we already described that for non-point
 geometries (lines, polygons), feature attribute values either
 have _point support_, meaning that the value applies to _every
 point_, or they have _block support_, meaning that the value
-_summarizes all points_ in the geometry. (More complex options,
+_summarises all points_ in the geometry. (More complex options,
 e.g. in between these two extremes, may also occur.) This chapter
 will describe different ways in which an attribute may relate to
 the geometry, its consequences on analysing such data, and ways to
@@ -187,7 +187,7 @@ Aggregating records in a table (or `data.frame`) involves two steps:
 
 * grouping records based on a grouping predicate, and
 * applying an aggregation function to the attribute values of a
-group to summarize them into a single number.
+group to summarise them into a single number.
 
 In SQL, this looks for instance like
 ```
@@ -196,9 +196,9 @@ SELECT GroupID, SUM(population) FROM table GROUP BY GroupID;
 indicating the aggregation _function_ (`SUM`) and the
 _grouping predicate_ (`GroupID`). 
 
-R package `dplyr` for instance uses two steps to accomplish this:
+R package **dplyr** for instance uses two steps to accomplish this:
 function `group_by` specifies the group membership of records,
-`summarize` computes data summaries (such as `sum` or `mean`)
+`summarise` computes data summaries (such as `sum` or `mean`)
 for each of the groups. The (base) R method `aggregate` combines
 both in a single function call that takes the table, the grouping
 predicate(s) and the aggregation function(s) as arguments.
@@ -217,12 +217,14 @@ have many duplicate boundaries, and hence not be _valid_
 ```{r fig-ncaggregation, echo = !knitr::is_latex_output()}
 #| code-fold: true
 #| fig.cap: "SID74 total incidences aggregated to four areas"
+#| fig.height: 4
 nc <- read_sf(system.file("gpkg/nc.gpkg", package = "sf"))
 # encode quadrant by two logicals:
 nc$lng <- st_coordinates(st_centroid(st_geometry(nc)))[,1] > -79
 nc$lat <- st_coordinates(st_centroid(st_geometry(nc)))[,2] > 35.5
 nc.grp <- aggregate(nc["SID74"], list(nc$lng, nc$lat), sum)
-plot(nc.grp["SID74"], axes = TRUE)
+nc.grp["SID74"] |> st_transform('EPSG:32119') |>
+  plot(graticule = TRUE, axes = TRUE)
 ```
 
 Plotting collated county polygons is technically not a problem, but
@@ -231,13 +233,13 @@ relate to individual counties, rather than to the grouped counties.
 
 One particular property of aggregation in this way is that each
 record is assigned to a single group; this has the advantage that
-the sum of the group-wise sums equals the sum of the ungrouped data:
+the sum of the group-wise sums equals the sum of the un-grouped data:
 for variables that reflect _amount_, nothing gets lost and nothing
 is added. The newly formed geometry is the result of unioning the
 geometries of the contributing records.
 
 ```{r fig-ncblocks, echo=!knitr::is_latex_output()}
-#| fig.cap: "Example target blocks layed out over North Carolina counties"
+#| fig.cap: "Example target blocks plotted over North Carolina counties"
 #| code-fold: true
 nc <- st_transform(nc, 2264)
 gr <- st_sf(
