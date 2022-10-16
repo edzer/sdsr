@@ -8,8 +8,12 @@ knitr::opts_chunk$set(echo = TRUE, paged.print = FALSE)
 ```{r echo=FALSE}
 load("ch14.RData")
 ```
-
-When analysing areal data, it has long been recognised that, if present, spatial autocorrelation changes how we may infer, relative to the default position of independent observations. In the presence of spatial autocorrelation, we can predict the values of observation $i$ from the values observed at $j \in N_i$, the set of its proximate neighbours. Early results [@moran48; @geary:54] entered into research practice gradually, for example the social sciences [@duncanetal61]. These results were then collated and extended to yield a set of basic tools of analysis [@cliff+ord:73; @cliff+ord:81]. 
+<!---
+might options("width") be set to a smaller value to prevent right margin 
+overruns in cals to  arg(), etc.? Maybe in each chapter? in R 80, 
+RStudio 82 for this session.
+--->
+When analysing areal data, it has long been recognised that, if present, spatial autocorrelation changes how we may infer, relative to the default assumption of independent observations. In the presence of spatial autocorrelation, we can predict the values of observation $i$ from the values observed at $j \in N_i$, the set of its proximate neighbours. Early results [@moran48; @geary:54] entered into research practice gradually, for example the social sciences [@duncanetal61]. These results were then collated and extended to yield a set of basic tools of analysis [@cliff+ord:73; @cliff+ord:81]. 
 
 Cliff and Ord [-@cliff+ord:73] generalised and extended the expression of the spatial weights matrix representation as part of the framework for establishing the distribution theory for join count, Moran's $I$ and Geary's $C$ statistics. This development of what have become known as global measures, returning a single value of autocorrelation for the total study area, has been supplemented by local measures returning values for each areal unit [@getis+ord:92; @anselin:95].
 
@@ -183,7 +187,7 @@ If we compare the Monte Carlo and analytical variances of $I$ under randomisatio
 c("Permutation bootstrap" = var(mmc$t), 
   "Analytical randomisation" = unname(mtr$estimate[3]))
 ```
-Geary's global $C$ is implemented in `geary.test()` largely following the same argument structure as `moran.test()`. The Getis-Ord $G$ test includes extra arguments to accommodate differences between implementations, as Bivand and Wong [-@Bivand2018] found multiple divergences from the original definitions, often to omit no-neighbour observations generated when using distance band neighbours. It is given by [@getis+ord:92, page 194]. For $G^*$, the $\sum_{(2)}$ constraint is relaxed by including $i$ as a neighbour of itself (thereby also removing the no-neighbour problem, because all observations have at least one neighbour).
+Geary's global $C$ is implemented in `geary.test()` largely following the same argument structure as `moran.test()`. The Getis-Ord $G$ test includes extra arguments to accommodate differences between implementations, as Bivand and Wong [-@Bivand2018] found multiple divergences from the original definitions, often to omit no-neighbour observations generated when using distance band neighbours. It is given by [@getis+ord:92, page 194]. For $G^*$, the $i \neq j$ summation constraint is relaxed by including $i$ as a neighbour of itself (thereby also removing the no-neighbour problem, because all observations have at least one neighbour).
 
 Finally, the empirical Bayes Moran's $I$ takes account of the denominator in assessing spatial autocorrelation in rates data [@assuncao+reis:99]. Until now, we have considered the proportion of valid votes cast in relation to the numbers entitled to vote by spatial entity, but using `EBImoran.mc()` we can try to accommodate uncertainty in extreme rates in entities with small numbers entitled to vote. There is, however, little impact on the outcome in this case.
 
@@ -218,7 +222,7 @@ tm_shape(pol_pres15) + tm_fill("hat_value")
 ### Local Moran's $I_i$
 \index{Moran's I!local}
 
-Bivand and Wong [-@Bivand2018] discuss issues impacting the use of local indicators, such as local Moran's $I_i$ and local Getis-Ord $G_i$. Some issues affect the calculation of the local indicators, others inference from their values. Because $n$ statistics may be being calculated from the same number of observations, there are multiple comparison problems that need to be addressed. @https://doi.org/10.1111/j.0016-7363.2006.00682.x  conclude, based on a typical dataset and a simulation exercise, that the false discovery rate (FDR) adjustment of probability values will certainly give a better picture of interesting clusters than no adjustment. Following this up, @https://doi.org/10.1111/gean.12164 explores the combination of FDR adjustments with the use of redefined "significance" cutoffs [@benjaminetal:18], for example $0.01$, $0.005$ and $0.001$ instead of $0.1$, $0.05$ and $0.01$; the use of the term *interesting* rather than *significant* is also preferred. This is discussed further in @bivand:22. As in the global case, miss-specification remains a source of confusion, and, further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging [@ord+getis:01; @tiefelsdorf:02; @bivandetal:09]. 
+Bivand and Wong [-@Bivand2018] discuss issues impacting the use of local indicators, such as local Moran's $I_i$ and local Getis-Ord $G_i$. Some issues affect the calculation of the local indicators, others inference from their values. Because $n$ statistics may be being calculated from the same number of observations, there are multiple comparison problems that need to be addressed. @https://doi.org/10.1111/j.0016-7363.2006.00682.x  conclude, based on a typical dataset and a simulation exercise, that the false discovery rate (FDR) adjustment of probability values will certainly give a better picture of interesting clusters than no adjustment. Following this up, @https://doi.org/10.1111/gean.12164 explores the combination of FDR adjustments with the use of redefined "significance" cutoffs [@benjaminetal:18], for example $0.01$, $0.005$ and $0.001$ instead of $0.1$, $0.05$ and $0.01$; the use of the term *interesting* rather than *significant* is also preferred. This is discussed further in @bivand:22. As in the global case, mis-specification remains a source of confusion, and, further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging [@ord+getis:01; @tiefelsdorf:02; @bivandetal:09]. 
 
 ```{r}
 args(localmoran)
@@ -302,7 +306,7 @@ tm_shape(pol_pres15) +
 							   "Permutation std. dev.",
 							   "Permutation rank"))
 ```
-Proceeding using the FDR adjustment and an *interesting* location cutoff of $0.005$, we can see from @fig-localmoranPr that the adjusted probability values for the analytical conditional approach, the approach using the moments of the sampled values from permutation sampling, and the approach using the ranks of observed values among permutation samples all yield similar maps, as the input variable is quite close to normal.
+Proceeding using the FDR adjustment and an *interesting* location cutoff of $0.005$, we can see from @fig-localmoranPr that the adjusted probability values for the analytical conditional approach, the approach using the moments of the sampled values from permutation sampling, and the approach using the ranks of observed values among permutation samples all yield similar maps, as the distribution of the input variable is quite close to normal.
 
 \index{hotspots}
 \index{Moran's I!hotspots}

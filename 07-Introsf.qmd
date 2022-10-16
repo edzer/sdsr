@@ -499,8 +499,8 @@ storage (the computer's hard drives), and doing this fast. Recent
 datasets however, including satellite imagery, climate model or
 weather forecasting data, often no longer fit in local storage
 (@sec-large).  Package **spacetime** [@spacetime2012; @R-spacetime]
-addresses the analysis of time series of vector geometries or raster
-grid cells, but does not extend to higher-dimensional arrays.
+did addresses the analysis of time series of vector geometries or raster
+grid cells, but did not extend to higher-dimensional arrays.
 
 \index{spacetime}
 \index{stars!data cube}
@@ -964,11 +964,13 @@ command line arguments of the binary utils.
 
 \index{air quality aggregation}
 
-Air quality data from package **spacetime** were
-obtained from the [airBase European air quality data
-base](https://www.eea.europa.eu/data-and-maps/data/aqereporting-8).
-Daily average PM$_{10}$ values were downloaded for rural background
-stations in Germany, 1998-2009.  
+An air quality data set excerpt from 
+the [airBase European air quality data
+base](https://www.eea.europa.eu/data-and-maps/data/aqereporting-9),
+as it was also used by @RJ-2016-014 (the same data source is used
+in @sec-interpolation and @sec-stgeostatistics).
+Here, daily average PM$_{10}$ values were computed for rural background
+stations in Germany, 1998-2009.
 
 We can create a `stars` object from the `air` matrix, the `dates`
 Date vector and the `stations` `SpatialPoints` objects by
@@ -980,10 +982,12 @@ options("rgdal_show_exportToProj4_warnings"="none") # led to:
 ```
 
 ```{r}
-library(spacetime)
-data(air) # this loads several datasets in .GlobalEnv
+load("data/air.rda") # this loads several datasets in .GlobalEnv
 dim(air)
-d <- st_dimensions(station = st_as_sfc(stations), time = dates)
+stations |>
+	st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
+	st_geometry() -> st
+d <- st_dimensions(station = st, time = dates)
 (aq <- st_as_stars(list(PM10 = air), dimensions = d))
 ```
 We can see from @fig-airst  that the time series are
@@ -994,7 +998,8 @@ along with mean PM$_{10}$ values.
 ```{r fig-airst, echo=!knitr::is_latex_output()}
 #| fig.cap: "Space-time diagram of PM$_{10}$ measurements by time and station"
 #| code-fold: true
-image(aperm(log(aq), 2:1), main = "NA pattern (white) in PM10 station time series")
+par(mar = c(5.1, 4.1, 0.3, 0.1))
+image(aperm(log(aq), 2:1), main = NULL)
 ```
 
 ```{r fig-airmap, echo=!knitr::is_latex_output()}
