@@ -16,3 +16,6 @@ push:
 
 purl:
 	Rscript -e 'knitr::purl("16-Geostatistics.Rmd")'
+
+clean:
+	rm -fr *_cache *_files _book/*
