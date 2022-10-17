@@ -1,6 +1,7 @@
 # Statistical modelling of spatial data {#sec-modelling}
 
 ```{r message=FALSE, echo=FALSE}
+#| code-fold: true
 library(tidyverse)
 library(sf)
 system.file("gpkg/nc.gpkg", package="sf") |>
@@ -50,7 +51,7 @@ a _model-based_ approach is needed. The remaining chapters in this
 part deal with model-based approaches.
 
 
-## Mapping with non-spatial regression and ML models
+## Mapping with non-spatial regression and ML models {#sec-lm}
 
 Regression models or other machine learning (ML) models can be
 applied to spatial and spatiotemporal data just the way they are
@@ -68,20 +69,25 @@ Objects of class `sf` need no special treatment, as they are
 values need to be added to the `sf` object, as e.g. done using the `nc`
 dataset loaded as in @sec-intro:
 ```{r sid, cache = FALSE}
-#| code-fold: true
 nc |> mutate(SID = SID74/BIR74, NWB = NWBIR74/BIR74) -> nc1
 lm(SID ~ NWB, nc1) |>
   predict(nc1, interval = "prediction") -> pr
 bind_cols(nc, pr) |> names()
 ```
-where we see that three columns: `fit` for predicted values and `lwr`
-and `upr` for the 95\% prediction intervals, have been added to the
-final object. In this case, the dataset used for model estimation
-was reused for prediction, but in general this does not have to be
-the case.  @sec-starspredict points out how this can be done with
-`stars` objects (essentially by going through a long `data.frame`
-representation of the datacube and converting the results back,
-potentially in a chunked fashion).
+where we see that 
+
+* `lm` estimates a linear model, and works directly on an `sf` object
+* the output is used for a `predict` model, which predicts values corresponding
+to the observations in `nc1`, the same `sf` object
+* `predict` creates three columns: `fit` for predicted values and `lwr`
+and `upr` for the 95\% prediction intervals
+* these three columns have been added to the final object using `bind_cols`.
+
+In general the dataset for model estimation and prediction do not
+have to be the same.  @sec-starspredict points out how this can
+be done with `stars` objects (essentially by going through a long
+`data.frame` representation of the datacube and converting the
+predicted results back, potentially in a chunked fashion).
 
 Because many regression and ML type problems share this same
 structure, packages like **caret** [@R-caret] or **tidymodels**
@@ -356,3 +362,20 @@ taken as performance measures for spatial prediction [@meyerpebesma;
 @meyerpebesmanc].  Adaptive cross validation measures, e.g. from
 spatial cross validation may help getting more relevant measures
 for predictive performance.
+
+## Exercises
+
+Use R to solve the following exercises.
+
+1. Following the `lm` example of @sec-lm use a random forest model
+to predict `SID` values (e.g. using package **randomForest**), and 
+plot the random forest predictions against observations, along
+with the $x=y$ line.
+1. Create a new dataset by randomly sampling 1000 points from the
+`nc` dataset, and rerun the linear regression model of section
+of @sec-lm on this dataset. What has changed?
+1. Redo the water-land classification of section @sec-starspredict
+using `class::knn` instead of `lda`.
+1. For the linear model using `nc` and for the `knn` example of the
+previous exercise, add a first and a second order linear model in
+the spatial coordinates and compare the results.

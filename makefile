@@ -19,3 +19,7 @@ purl:
 
 clean:
 	rm -fr *_cache *_files _book/*
+
+zip:
+	rm -fr sds.zip
+	zip -r sds.zip Spatial-Data-Science* *_files/ _book

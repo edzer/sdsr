@@ -764,10 +764,11 @@ object with the predicted values.
 
 We will illustrate this with a trivial two-class example mapping
 land from sea in the example Landsat dataset, using the sample
-points extracted above, shown in @fig-rsample .
+points extracted above, shown in @fig-rsample.
 ```{r fig-rsample, echo=!knitr::is_latex_output()}
 #| fig.cap: "Randomly chosen sample locations for training data; red: water, yellow: land"
 #| out.width: 80%
+#| code-fold: true
 plot(r[,,,1], reset = FALSE)
 col <- rep("yellow", 20)
 col[c(8, 14, 15, 18, 19)] = "red"
@@ -1005,9 +1006,10 @@ image(aperm(log(aq), 2:1), main = NULL)
 ```{r fig-airmap, echo=!knitr::is_latex_output()}
 #| fig.cap: "Locations of PM$_{10}$ measurement stations, showing mean values"
 #| code-fold: true
-plot(st_as_sf(st_apply(aq, 1, mean, na.rm = TRUE)), reset = FALSE, pch = 16,
-	ylim = st_bbox(DE)[c(2,4)])
-plot(DE, add=TRUE)
+de_nuts1 <- read_sf("data/de_nuts1.gpkg")
+st_as_sf(st_apply(aq, 1, mean, na.rm = TRUE)) |>
+    plot(reset = FALSE, pch = 16, extent = de_nuts1)
+st_union(de_nuts1) |> plot(add = TRUE)
 ```
 
 We can aggregate these station time series to area means, mostly
@@ -1015,7 +1017,7 @@ as a simple exercise.  For this, we use the `aggregate` method for
 `stars` objects
 
 ```{r}
-(a <- aggregate(aq, st_as_sf(DE_NUTS1), mean, na.rm = TRUE))
+(a <- aggregate(aq, de_nuts1, mean, na.rm = TRUE))
 ```
 
 and we can now show the maps for six arbitrarily chosen days
@@ -1032,7 +1034,7 @@ or create a time series plot of mean values for a single state
 ```{r fig-airts}
 #| fig.cap: "Areal mean PM$_{10}$ time series for a single state"
 library(xts) |> suppressPackageStartupMessages()
-plot(as.xts(a)[,4], main = DE_NUTS1$NAME_1[4])
+plot(as.xts(a)[,4], main = de_nuts1$NAME_1[4])
 ```
 
 ### Example: Bristol origin-destination datacube {#sec-oddc}
