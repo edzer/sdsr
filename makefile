@@ -22,4 +22,4 @@ clean:
 
 zip:
 	rm -fr sds.zip
-	zip -r sds.zip Spatial-Data-Science* *_files/ _book
+	zip -r sds.zip Spatial-Data-Science* krantz.cls images/ *_files/ _book
