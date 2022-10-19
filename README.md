@@ -1,1 +1,1 @@
-Early drafts of the book.
+quarto sources the "Spatial Data Science" book.
