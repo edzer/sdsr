@@ -3,6 +3,7 @@ FROM ubuntu:22.04
 # uses c2d4u for R binary packages to limit install time
 
 MAINTAINER "edzerpebesma" edzer.pebesma@uni-muenster.de
+ARG TZ # used by R package lubridate
 
 RUN apt-get update
 RUN apt-get -y install --no-install-recommends software-properties-common dirmngr wget gpg-agent
@@ -20,9 +21,11 @@ RUN export DEBIAN_FRONTEND=noninteractive; apt-get install -y \
 	r-cran-gstat \
 	r-cran-igraph \
 	r-cran-lme4 \
+	r-cran-lmtest \
 	r-cran-maps \
 	r-cran-mapview \
 	r-cran-mgcv \
+	r-cran-remotes \
 	r-cran-rgeoda \
 	r-cran-rnaturalearth \
 	r-cran-rnaturalearthdata \
@@ -52,25 +55,21 @@ RUN rm -fr sds.zip sds
 
 # install R packages not on c2d4u:
 ## 1. a few CRAN packages:
-RUN apt-get -y install libgsl-dev # for R2BayesX
-RUN R -e 'install.packages(c("spData", "hglm", "R2BayesX"))'
+RUN apt-get -y install libgsl-dev # SysReq for R2BayesX
+RUN R -q -e 'install.packages(c("spData", "hglm", "R2BayesX", "matrixStats"))'
 ## 2. INLA:
-RUN R -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
+RUN R -q -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
 ## 3. spDataLarge:
-RUN R -e 'options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/",type = "source")'
+RUN R -q -e 'options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/",type = "source")'
 ## 4. starsdata:
-RUN R -e 'options(timeout = 600); install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")'
+RUN R -q -e 'options(timeout = 600); install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")'
 
 # To be removed when sf 1.0-9 and stars 0.5-7 hit CRAN:
 RUN apt-get install -y  libudunits2-dev libgdal-dev libgeos-dev libproj-dev
-RUN export DEBIAN_FRONTEND=noninteractive; apt-get install -y r-cran-remotes
-RUN R -e 'remotes::install_github("r-spatial/sf")'
-RUN R -e 'remotes::install_github("r-spatial/stars")'
+RUN R -q -e 'remotes::install_github("r-spatial/sf")'
+RUN R -q -e 'remotes::install_github("r-spatial/stars")'
 
-RUN R -e 'install.packages(c("matrixStats"))'
-RUN export DEBIAN_FRONTEND=noninteractive; apt-get install -y \
-	r-cran-lmtest
-## generate html book; result found in sdsr/_book
+## compile and render html book; result found in sdsr/_book
 RUN (cd sdsr; quarto render --to html)
 
 ## serve the book on http://localhost:80

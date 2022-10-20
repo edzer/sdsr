@@ -5,15 +5,15 @@ The pdf version has been submitted to CRC/Chapman and Hall, for hardcopy publica
 
 To recreate/reproduce this book:
 
-* clone or fork this repository
-* download the data used in Ch 13 from https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn,  and extract the contents of the `aq` subdirectory into `sdsr/aq`
-* install the R packages listed below
+* git clone this repository
+* download the data used in Ch 13 from https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn, and extract the contents of the `aq` subdirectory into `sdsr/aq`
+* install all R packages listed under [Dependencies](#dependencies)
 * install [quarto](https://quarto.org/) 
 * run `quarto render --to html`
 
 See also the [Dockerfile](https://github.com/edzer/sdsr/tree/main/docker); building the image with
 ```
-docker build .  -t sdsr
+docker build . -t sdsr --build-arg TZ=`timedatectl show --property=Timezone | awk -F = '{print $2}'`
 ```
 and running it with
 ```
