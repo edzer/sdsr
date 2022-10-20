@@ -16,6 +16,7 @@ RUN apt-get upgrade -y
 # install r-base + r-cran-* packages
 RUN export DEBIAN_FRONTEND=noninteractive; apt-get install -y \
 	r-base \
+	r-cran-dbscan \
 	r-cran-gstat \
 	r-cran-igraph \
 	r-cran-lme4 \
@@ -38,7 +39,6 @@ RUN apt-get install -y \
 
 # install quarto:
 RUN wget -q https://github.com/quarto-dev/quarto-cli/releases/download/v1.1.251/quarto-1.1.251-linux-amd64.deb
-# COPY quarto-1.1.251-linux-amd64.deb quarto-1.1.251-linux-amd64.deb
 RUN dpkg -i quarto-1.1.251-linux-amd64.deb
 
 # install book source files:
@@ -46,7 +46,6 @@ RUN git clone https://github.com/edzer/sdsr.git
 
 # download & install sdsr data:
 RUN wget -q https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn/download -O sds.zip
-# COPY sds.zip sds.zip
 RUN unzip -q sds.zip
 RUN mv sds/aq/* sdsr/aq
 RUN rm -fr sds.zip sds
@@ -64,21 +63,19 @@ RUN R -e 'options(timeout = 600); install.packages("starsdata", repos = "http://
 
 # To be removed when sf 1.0-9 and stars 0.5-7 hit CRAN:
 RUN apt-get install -y  libudunits2-dev libgdal-dev libgeos-dev libproj-dev
+RUN export DEBIAN_FRONTEND=noninteractive; apt-get install -y r-cran-remotes
 RUN R -e 'remotes::install_github("r-spatial/sf")'
 RUN R -e 'remotes::install_github("r-spatial/stars")'
 
-RUN (cd sdsr; git pull)
+RUN R -e 'install.packages(c("matrixStats"))'
 RUN export DEBIAN_FRONTEND=noninteractive; apt-get install -y \
-	r-cran-dbscan
+	r-cran-lmtest
 ## generate html book; result found in sdsr/_book
 RUN (cd sdsr; quarto render --to html)
 
-## serve it?
+## serve the book on http://localhost:80
 EXPOSE 80
 STOPSIGNAL SIGQUIT
-# RUN systemctl start nginx
 COPY default /etc/nginx/sites-available/default
 EXPOSE 80/tcp
-#RUN systemctl status nginx
 CMD ["nginx", "-g", "daemon off;"]
-
