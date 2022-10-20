@@ -26,7 +26,7 @@ will serve the html book on http://localhost:80
 To locally process the book, install the following R packages from CRAN:
 
 ```
-install.package(c(
+install.packages(c(
   "dbscan",
   "gstat",
   "hglm",
@@ -74,7 +74,7 @@ remotes::install_github("r-spatial/stars")
 or as binary from `r-universe`:
 ```
 options(repos = c(
-  rspatial = 'https://r-spatial.r-universe.dev',
-  CRAN = 'https://cloud.r-project.org'))
-install.packages(c('sf', 'stars'))
+  rspatial = "https://r-spatial.r-universe.dev",
+  CRAN = "https://cloud.r-project.org"))
+install.packages(c("sf", "stars"))
 ```
