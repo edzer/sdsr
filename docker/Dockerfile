@@ -15,7 +15,7 @@ RUN apt-get update
 RUN apt-get upgrade -y
 
 # install r-base + r-cran-* packages
-RUN export DEBIAN_FRONTEND=noninteractive; apt-get install -y \
+RUN export DEBIAN_FRONTEND=noninteractive; apt-get update && apt-get install -y \
 	r-base \
 	r-cran-dbscan \
 	r-cran-gstat \
