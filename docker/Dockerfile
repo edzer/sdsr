@@ -75,6 +75,6 @@ RUN (cd sdsr; quarto render --to html)
 ## serve the book on http://localhost:80
 EXPOSE 80
 STOPSIGNAL SIGQUIT
-COPY default /etc/nginx/sites-available/default
+COPY nginx.default /etc/nginx/sites-available/default
 EXPOSE 80/tcp
 CMD ["nginx", "-g", "daemon off;"]
