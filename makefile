@@ -10,9 +10,9 @@ view:
 
 push:
 	# make
-	git add _book/*html _book/sds_files/figure-html/* _book/libs _book/search_index.json _book/style.css _book/images/*png
-	git commit -a -m 'commit'
-	git push || true
+	#git add _book/*html _book/sds_files/figure-html/* _book/libs _book/search_index.json _book/style.css _book/images/*png
+	#git commit -a -m 'commit'
+	#git push || true
 
 clean:
 	rm -fr *_cache *_files _book/*
