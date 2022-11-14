@@ -11,15 +11,26 @@ To recreate/reproduce this book:
 * install [quarto](https://quarto.org/) 
 * run `quarto render --to html`
 
-See also the [Dockerfile](https://github.com/edzer/sdsr/tree/main/docker); building the image with
+See also the [Dockerfile](https://github.com/edzer/sdsr/tree/main/docker); building the (18 Gb) image with
 ```
 docker build . -t sdsr --build-arg TZ=`timedatectl show --property=Timezone | awk -F = '{print $2}'`
 ```
 and running it with
 ```
-docker run -d -p 80:80 sdsr:latest
+docker run -p 8787:8787 -e EVAL_INLA=false -e DISABLE_AUTH=true -ti --rm sdsr
 ```
-will serve the html book on http://localhost:80
+will serve an Rstudio server instance on <http://localhost:8787/>
+(without authentication).  (For some reason, INLA doesn't work
+correctly on this docker image, so has to be disabled with
+`EVAL_INLA=false`))
+
+After running the docker image, and opening `rstudio` in the browser:
+
+* click on `01-hello.qmd` in the bottom-right pane
+* click on the `Render` button of the top-left pane to compile the whole book
+* this should open a new window with the book rendered (switch of popup blocker for localhost)
+* running individual code sections can be done by clicking the arrow symbols above the section
+(first: `Run All Chunks Above`, then: `Run Current Chunk`)
 
 ## Dependencies
 
