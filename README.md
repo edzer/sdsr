@@ -17,14 +17,11 @@ docker build . -t sdsr --build-arg TZ=`timedatectl show --property=Timezone | aw
 ```
 and running it with
 ```
-docker run -p 8787:8787 -e EVAL_INLA=false -e DISABLE_AUTH=true -ti --rm sdsr
+docker run -p 8787:8787 -e DISABLE_AUTH=true -ti --rm sdsr
 ```
-will serve an Rstudio server instance on <http://localhost:8787/>
-(without authentication).  (For some reason, INLA doesn't work
-correctly on this docker image, so has to be disabled with
-`EVAL_INLA=false`))
+will serve an Rstudio server instance on <http://localhost:8787/>, without authentication.
 
-After running the docker image, and opening `rstudio` in the browser:
+After running the docker image and opening `rstudio` in the browser:
 
 * click on `01-hello.qmd` in the bottom-right pane
 * click on the `Render` button of the top-left pane to compile the whole book
@@ -35,7 +32,7 @@ After running the docker image, and opening `rstudio` in the browser:
 
 ## Dependencies
 
-To locally process the book, install the following R packages from CRAN:
+To locally process the book, download (clone) this repository and install the following R packages from CRAN:
 
 ```
 install.packages(c(
@@ -73,10 +70,10 @@ options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad
 ```
 Install `starsdata`:
 ```
-options(timeout = 600); install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")
+options(timeout = 1200); install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")
 ```
 
-Install `stars` from source from github (not needed after stars 0.5-7 is available from CRAN):
+Install `stars` from source from github (not needed after stars >= 0.6-0 is available from CRAN), either from source:
 ```
 install.packages("remotes")
 remotes::install_github("r-spatial/stars")

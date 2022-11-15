@@ -26,10 +26,9 @@ RUN R -q -e 'options(timeout = 3600); install.packages("starsdata", repos = "htt
 
 ## 4. INLA:
 RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
+RUN chmod +x /usr/local/lib/R/site-library/INLA/bin/linux/64bit/*
 
 # 5. Install stars dev (can be removed when stars 0.5-7 hits CRAN):
 RUN R -q -e 'remotes::install_github("r-spatial/stars")'
-
-ARG EVAL_INLA # if false, do not run INLA code
 
 EXPOSE 8787
