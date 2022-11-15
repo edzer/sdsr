@@ -28,9 +28,10 @@ After running the docker image, and opening `rstudio` in the browser:
 
 * click on `01-hello.qmd` in the bottom-right pane
 * click on the `Render` button of the top-left pane to compile the whole book
-* this should open a new window with the book rendered (switch of popup blocker for localhost)
-* running individual code sections can be done by clicking the arrow symbols above the section
-(first: `Run All Chunks Above`, then: `Run Current Chunk`)
+* this should open a new browser window with the full book rendered (switch off popup blocker for localhost)
+* to run an individual code section, possibly after modification, click the small green arrow symbols on the top-left corner of code blocks:
+    * to prepare, first `Run All Chunks Above`,
+	* to run the actual section: `Run Current Chunk`
 
 ## Dependencies
 
@@ -75,11 +76,9 @@ Install `starsdata`:
 options(timeout = 600); install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")
 ```
 
-Install `sf` and `stars` from source from github (not needed after sf 1.0-9 and stars 0.5-7 are available from CRAN):
+Install `stars` from source from github (not needed after stars 0.5-7 is available from CRAN):
 ```
-# apt-get install -y  libudunits2-dev libgdal-dev libgeos-dev libproj-dev
 install.packages("remotes")
-remotes::install_github("r-spatial/sf")
 remotes::install_github("r-spatial/stars")
 ```
 or as binary from `r-universe`:
@@ -87,5 +86,5 @@ or as binary from `r-universe`:
 options(repos = c(
   rspatial = "https://r-spatial.r-universe.dev",
   CRAN = "https://cloud.r-project.org"))
-install.packages(c("sf", "stars"))
+install.packages(c("stars"))
 ```

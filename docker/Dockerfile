@@ -30,12 +30,6 @@ RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getO
 # 5. Install stars dev (can be removed when stars 0.5-7 hits CRAN):
 RUN R -q -e 'remotes::install_github("r-spatial/stars")'
 
-# 0. install book source files:
-RUN git clone https://github.com/edzer/sdsr.git
-RUN cp sdsr/*qmd /home/rstudio
-RUN rm -fr sdsr
-RUN chown -R rstudio:rstudio /home/rstudio/*
-
 ARG EVAL_INLA # if false, do not run INLA code
 
 EXPOSE 8787
