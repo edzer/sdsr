@@ -1,5 +1,9 @@
 # Spatial Regression {#sec-spatglmm}
 
+```{r echo = FALSE}
+eval_inla = Sys.getenv("EVAL_INLA") != "false"
+```
+
 \index{spatial regression}
 \index{regression!spatial}
 
@@ -272,12 +276,12 @@ library(INLA) |> suppressPackageStartupMessages()
 
 Although differing in details, the approach by updating the fixed model formula with an unstructured random effects term is very similar to that seen above:
 
-```{r, cache=TRUE}
+```{r, cache=TRUE, eval = eval_inla}
 INLA_iid <- inla(update(form, . ~ . + f(NOX_ID, model = "iid")),
 				 family = "gaussian", data = boston_487)
 ```
 
-```{r}
+```{r, eval = eval_inla}
 boston_93$INLA_re <- INLA_iid$summary.random$NOX_ID$mean
 ```
 
@@ -289,13 +293,13 @@ ID2 <- as.integer(as.factor(boston_487$NOX_ID))
 
 The same sparse binary spatial weights matrix is used, and the intrinsic CAR representation is constructed internally:
 
-```{r, cache=TRUE,warning=FALSE}
+```{r, cache=TRUE,warning=FALSE, eval = eval_inla}
 INLA_ss <- inla(update(form, . ~ . + f(ID2, model = "besag",
 									   graph = W)),
 				family = "gaussian", data = boston_487)
 ```
 
-```{r}
+```{r, eval = eval_inla}
 boston_93$INLA_ss <- INLA_ss$summary.random$ID2$mean
 ```
 
@@ -308,13 +312,13 @@ Cmatrix <- Diagonal(nrow(M), 1) -  M
 
 This model can be estimated using the `"generic1"` model with the specified precision matrix:
 
-```{r, cache=TRUE, warning=FALSE}
+```{r, cache=TRUE, warning=FALSE, eval = eval_inla}
 INLA_lr <- inla(update(form, . ~ . + f(ID2, model = "generic1",
 									   Cmatrix = Cmatrix)),
 				family = "gaussian", data = boston_487)
 ```
 
-```{r}
+```{r, eval = eval_inla}
 boston_93$INLA_lr <- INLA_lr$summary.random$ID2$mean
 ```
 
@@ -344,9 +348,6 @@ ssre <- predict(GAM_MRF, type = "terms",
 all(sapply(tapply(ssre, list(boston_487$NOX_ID), c),
 		   function(x) length(unique(round(x, 8))) == 1))
 ```
-<!---
-TRUE expected - I get TRUE locally, your renderings get FALSE (caused by caching?, odd, all determistic steps)
---->
 so we can return the first value for each upper-level unit:
 
 ```{r}
@@ -362,7 +363,7 @@ Unfortunately, the coefficient estimates for the air pollution variable for thes
 
 @fig-multi-levelmaps1 shows that the air pollution model output zone level IID random effects are very similar across the four model fitting functions reported. In all the maps, the central downtown zones have stronger negative random effect values, but strong positive values are also found in close proximity; suburban areas take values closer to zero.
 
-```{r fig-multi-levelmaps1, echo=!knitr::is_latex_output(), message=FALSE}
+```{r fig-multi-levelmaps1, echo=!knitr::is_latex_output(), message=FALSE, eval = eval_inla}
 #| code-fold: true
 #| fig.cap: "Air pollution model output zone level IID random effects estimated using **lme4**, **hglm**, **INLA** and **R2BayesX**; the range of the response, `log(median)` is 2.1893"
 library(tmap, warn.conflicts=FALSE)
@@ -376,7 +377,7 @@ tm_shape(boston_93) +
 
 @fig-multi-levelmaps2 shows that the spatially structured random effects are also very similar to each other, with the `"SAR"` spatial smooth being perhaps a little smoother than the `"CAR"` smooths when considering the range of values taken by the random effect term.
 
-```{r fig-multi-levelmaps2, echo=!knitr::is_latex_output(), message=FALSE}
+```{r fig-multi-levelmaps2, echo=!knitr::is_latex_output(), message=FALSE, eval = eval_inla}
 #| code-fold: true
 #| fig.cap: "Air pollution model output zone level spatially structured random effects estimated using **hglm**, **HSAR**, **INLA**, **R2BayesX** and **mgcv**"
 tm_shape(boston_93) +
@@ -401,3 +402,5 @@ Although there is still a great need for more thorough comparative studies of mo
 ```{r echo=FALSE}
 save(list = ls(), file = "ch16.RData")
 ```
+
+{{< include ga.qmd >}}

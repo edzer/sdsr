@@ -11,19 +11,28 @@ To recreate/reproduce this book:
 * install [quarto](https://quarto.org/) 
 * run `quarto render --to html`
 
-See also the [Dockerfile](https://github.com/edzer/sdsr/tree/main/docker); building the image with
+See also the [Dockerfile](https://github.com/edzer/sdsr/tree/main/docker); building the (18 Gb) image with
 ```
 docker build . -t sdsr --build-arg TZ=`timedatectl show --property=Timezone | awk -F = '{print $2}'`
 ```
 and running it with
 ```
-docker run -d -p 80:80 sdsr:latest
+docker run -p 8787:8787 -e DISABLE_AUTH=true -ti --rm sdsr
 ```
-will serve the html book on http://localhost:80
+will serve an Rstudio server instance on <http://localhost:8787/>, without authentication.
+
+After running the docker image and opening `rstudio` in the browser:
+
+* click on `01-hello.qmd` in the bottom-right pane
+* click on the `Render` button of the top-left pane to compile the whole book
+* this should open a new browser window with the full book rendered (switch off popup blocker for localhost)
+* to run an individual code section, possibly after modification, click the small green arrow symbols on the top-left corner of code blocks:
+    * to prepare, first `Run All Chunks Above`,
+	* to run the actual section: `Run Current Chunk`
 
 ## Dependencies
 
-To locally process the book, install the following R packages from CRAN:
+To locally process the book, download (clone) this repository and install the following R packages from CRAN:
 
 ```
 install.packages(c(
@@ -61,14 +70,12 @@ options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad
 ```
 Install `starsdata`:
 ```
-options(timeout = 600); install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")
+options(timeout = 1200); install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")
 ```
 
-Install `sf` and `stars` from source from github (not needed after sf 1.0-9 and stars 0.5-7 are available from CRAN):
+Install `stars` from source from github (not needed after stars >= 0.6-0 is available from CRAN), either from source:
 ```
-# apt-get install -y  libudunits2-dev libgdal-dev libgeos-dev libproj-dev
 install.packages("remotes")
-remotes::install_github("r-spatial/sf")
 remotes::install_github("r-spatial/stars")
 ```
 or as binary from `r-universe`:
@@ -76,5 +83,5 @@ or as binary from `r-universe`:
 options(repos = c(
   rspatial = "https://r-spatial.r-universe.dev",
   CRAN = "https://cloud.r-project.org"))
-install.packages(c("sf", "stars"))
+install.packages(c("stars"))
 ```
