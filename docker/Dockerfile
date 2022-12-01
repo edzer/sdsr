@@ -1,7 +1,7 @@
 FROM rocker/geospatial:latest
 
 MAINTAINER "edzerpebesma" edzer.pebesma@uni-muenster.de
-ARG TZ # avoids R package lubridate raises an ugly warning
+ARG TZ # avoids R package lubridate to raise an ugly warning
 
 ## Add CRAN packages:
 RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"))'
