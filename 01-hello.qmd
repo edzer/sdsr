@@ -12,6 +12,9 @@ all spatial data science language implementations.
 
 The typical way to graph spatial data is by creating a map. Let us consider
 a simple map, shown in @fig-first-map.
+
+::: panel-tabset
+#### R
 ```{r fig-first-map, cache = FALSE, message = FALSE, echo=!knitr::is_latex_output()}
 #| fig.cap: "A first map: birth counts 1974-78, North Carolina counties"
 #| code-fold: true
@@ -25,6 +28,26 @@ nc.32119 |>
 	select(BIR74) |>
 	plot(graticule = TRUE, axes = TRUE)
 ```
+#### Python
+```{python}
+#| fig.cap: "A first map: birth counts 1974-78, North Carolina counties"
+#| code-fold: true
+# https://geopandas.org/en/stable/docs/user_guide/mapping.html
+
+import geopandas as gpd
+import matplotlib.pyplot as plt
+
+gdf = gpd.read_file("https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg")
+
+fig, ax = plt.subplots(1, 1)
+plt.grid(True)
+plt.title("BIR74")
+gdf.plot(column="BIR74", ax=ax, legend=True)
+
+```
+
+:::
+
 A number of graphical elements are present here, in this case:
 
 \index{map}
@@ -63,11 +86,24 @@ Before plotting @fig-first-map  we had to read the data, in this
 case from a file (@sec-sfintro). Printing a data summary for the
 first three records of three attribute variables shows:
 
+::: panel-tabset
+
+#### R
 ```{r first_ten, echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| collapse: false
 nc |> select(AREA, BIR74, SID74) |> print(n = 3)
 ```
+#### Python
+```{python}
+#| code-fold: true
+#| collapse: false
+gdf_subset = gdf[["AREA", "BIR74", "SID74", "geometry"]]
+print(gdf_subset.head(3))
+gdf_subset.crs 
+```
+
+:::
 
 The printed output shows:
 
@@ -81,6 +117,8 @@ The printed output shows:
 More complicated plots can involve facet plots with a map in each
 facet, as shown in @fig-firstgather .
 
+::: panel-tabset
+#### R
 ```{r fig-firstgather, fig.cap="Facet maps of sudden infant death syndrome counts, 1974-78 and 1979-84, North Carolina counties", cache=FALSE, echo=!knitr::is_latex_output()}
 #| code-fold: true
 year_labels <- c("SID74" = "1974 - 1978", "SID79" = "1979 - 1984")
@@ -92,12 +130,34 @@ ggplot() + geom_sf(data = nc_longer, aes(fill = value), linewidth = 0.4) +
   scale_fill_gradientn(colors = sf.colors(20)) +
   theme(panel.grid.major = element_line(color = "white"))
 ```
+#### Python
+```{python}
+#| code-fold: true
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 
+gdf = gpd.read_file("https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg")
+plt.style.use('ggplot')
+
+fig, axes = plt.subplots(nrows=2, figsize=(10, 7))
+gdf.plot(column="SID74", ax=axes[0], legend=True)
+gdf.plot(column="SID79", ax=axes[1], legend=True)
+axes[0].set_title('1974-1978')
+axes[1].set_title('1979-1984')
+
+plt.show()
+
+```
+
+:::
 
 ::: {.content-visible when-format="html"}
 
 An interactive, leaflet-based map is obtained in @fig-mapviewfigure.
 
+::: panel-tabset
+#### R
 ```{r fig-mapviewfigure, cache = FALSE, echo = TRUE}
 #| code-fold: true
 #| fig.cap: "Interactive map created with **mapview**: pan and zoom move the map and change scale; clicking a county pops up window with the available county properties."
@@ -105,6 +165,13 @@ library(mapview) |> suppressPackageStartupMessages()
 mapviewOptions(fgb = FALSE)
 nc.32119 |> mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
 ```
+#### Python
+```{python}
+#| code-fold: true
+gdf.explore("BIR74", legend = True)
+
+```
+:::
 
 :::
 
@@ -193,6 +260,8 @@ usually square pixels. An example is shown in @fig-ras .
 \index{aggregation!spatial}
 \index[function]{aggregate}
 
+::: panel-tabset
+#### R
 ```{r fig-ras, message=FALSE, echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| fig.cap: "Raster maps (Olinda, Atlantic coast of Brazil): Landsat-7 blue band, with color values derived from data values (a), the top-left $10 \\times 10$ sub-image from (a) with numeric values shown (b), and overlayed by two different types of vector data: three sample points (c), and a 500m radius around the points represented as polygons (d)"
@@ -211,6 +280,59 @@ plot(pts, add = TRUE, pch = 3, col = 'blue')
 image(x, main = "(d)")
 plot(st_buffer(pts, 500), add = TRUE, pch = 3, border = 'blue', col = NA, lwd = 2)
 ```
+#### Python
+```{python}
+#| code-fold: true
+import numpy as np
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import rasterio
+import matplotlib as mpl
+from shapely.geometry import Point
+
+src = rasterio.open('https://github.com/r-spatial/stars/raw/main/inst/tif/L7_ETMs.tif')
+band1 = src.read(1)
+fig, axes = plt.subplots(2, 2, figsize=(10, 7))
+
+plt.sca(axes[0,0])
+plt.imshow(band1)
+plt.axis(False)
+plt.title('(a)')
+
+plt.sca(axes[0,1])
+b1_10x10 = band1[1:10, 1:10]
+plt.imshow(b1_10x10)
+plt.axis(False)
+for (j,i),label in np.ndenumerate(b1_10x10):
+    plt.text(i,j,label,ha='center',va='center')
+plt.title('(b)')
+
+np.random.seed(171)
+x = np.random.randint(0, (len(band1)-1), 3)
+y = np.random.randint(0, (len(band1[0])-1), 3)
+plt.sca(axes[1,0])
+plt.imshow(band1)
+plt.title('(c)')
+plt.axis(False)
+plt.plot(x, y, '+', color = 'red')
+
+plt.sca(axes[1,1])
+points = gpd.GeoSeries([Point(x[0], y[0]), Point(x[1], y[1]), Point(x[2], y[2])])    
+buffer_size = 500
+met = src.bounds[2]-src.bounds[0]
+res = met/src.width
+buf = buffer_size/res
+buff = int(buf)
+point_buf = points.buffer(buff)
+plt.imshow(band1)
+plt.title('(d)')
+plt.axis(False)
+point_buf.plot(ax = axes[1,1], color="none", edgecolor="red");
+
+```
+
+:::
 
 Vector and raster data can be combined in different ways; for instance we can query the raster at the three points of @fig-ras(c)
 or compute an aggregate, such as the average, over arbitrary regions such as the circles shown in @fig-ras(d).
@@ -230,11 +352,61 @@ Other raster-to-vector conversions are discussed in @sec-raster-to-vector and in
 \index{vector-to-raster}
 \index[function]{st\_rasterize}
 
+::: panel-tabset
+#### R
 ```{r fig-vectoras, echo=!knitr::is_latex_output()}
 #| fig.cap: "Map obtained by rasterizing county births counts for the period 1974-1978 shown in figure 1.1"
 #| code-fold: true
 plot(st_rasterize(nc["BIR74"], dx = 0.1), col = sf.colors(), breaks = "equal")
 ```
+#### Python
+```{python}
+#| code-fold: true
+
+import math
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import rasterio
+from rasterio import features
+from rasterio.enums import MergeAlg
+from rasterio.plot import show
+import numpy as np
+
+bounds = gdf.total_bounds
+
+res = 0.1
+transform = rasterio.transform.from_origin(
+    west=bounds[0], 
+    north=bounds[3], 
+    xsize=res, 
+    ysize=res
+)
+
+rows = math.ceil((bounds[3] - bounds[1]) / res)
+cols = math.ceil((bounds[2] - bounds[0]) / res)
+shape = (rows, cols)
+
+ch_raster3 = rasterio.features.rasterize(
+    ((g, v) for g, v in gdf[['geometry', 'BIR74']] \
+        .dropna(subset='BIR74')
+        .to_numpy() \
+        .tolist()),
+    out_shape=shape,
+    transform=transform,
+    merge_alg=rasterio.enums.MergeAlg.add
+)
+
+ch_raster3[ch_raster3==0] = np.nan
+fig, axes = plt.subplots(1, 1, figsize=(10, 3))
+show(ch_raster3, transform=transform, ax=axes)
+label = ax.imshow(ch_raster3)
+fig.colorbar(label, ax=axes)
+plt.axis(False)
+axes.set_title('BIR74');
+
+```
+
+:::
 
 Vector-to-raster conversions can be as simple as rasterizing
 polygons, as shown in @fig-vectoras . Other, more
