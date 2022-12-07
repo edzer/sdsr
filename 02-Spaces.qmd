@@ -598,6 +598,9 @@ spatial data with ellipsoidal coordinates would have axis order
 
 \index{datum!grids}
 
+::: panel-tabset
+
+####R
 ```{r fig-horizontalgrid, echo=!knitr::is_latex_output(), message = FALSE}
 #| out.width: 70%
 #| fig.cap: "UK horizontal datum grid, from datum OSGB 1936 (EPSG:4277) to datum ETRS89 (EPSG:4258); units arc-seconds"
@@ -620,7 +623,56 @@ hook <- function() {
 }
 plot(r[,,,1:2], axes = TRUE, hook = hook, key.pos = 4)
 ```
+####Python
+```{python}
+#| code-fold: true
+#| fig.cap: "UK horizontal datum grid, from datum OSGB 1936 (EPSG:4277) to datum ETRS89 (EPSG:4258); units arc-seconds"
 
+import os.path
+import rasterio as rio
+import rasterio.plot as rioplot
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import numpy
+
+filename = 'data/uk_os_OSTN15_NTv2_OSGBtoETRS.tif'
+isFile = os.path.isfile(filename)
+
+if isFile:
+    r = rio.open(filename)
+else:
+    r = rio.open("https://cdn.proj.org/uk_os_OSTN15_NTv2_OSGBtoETRS.tif")
+    
+gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+uk = gdf[gdf.name == 'United Kingdom']
+uk_transformed = uk.to_crs(r.crs)
+raster_extent = numpy.asarray(r.bounds)[[0,2,1,3]]
+r1 = r.read(1)
+r2 = r.read(2)
+int_r1 = r1.astype(int)
+int_r2 = r2.astype(int)
+
+fig, axes = plt.subplots(1, 2, figsize=(8, 5))
+plt.sca(axes[0])
+plt.imshow(int_r1, cmap='gray', extent=raster_extent)
+uk_transformed.plot(ax = axes[0], facecolor='none', edgecolor = 'orange')
+plt.title("latitude_offset")
+plt.axis(True)
+
+plt.sca(axes[1])
+plt.imshow(int_r2, cmap='gray', extent=raster_extent, )
+uk_transformed.plot(ax = axes[1], facecolor='none', edgecolor = 'orange')
+plt.title("longitude_offset")
+plt.axis(True)
+plt.colorbar()
+plt.show();
+
+```
+:::
+
+::: panel-tabset
+
+####R
 ```{r fig-verticalgrid, echo=!knitr::is_latex_output(), message = FALSE}
 #| out.width: 70%
 #| fig.cap: "UK vertical datum grid, from ETRS89 (EPSG:4937) to ODN height (EPSG:5701), units m"
@@ -634,6 +686,45 @@ h <- if (file.exists(filename)) {
 plot(h, axes = TRUE, reset = FALSE)
 plot(uk, border = "orange", col = NA, add = TRUE)
 ```
+####Python
+```{python}
+#| code-fold: true
+#| fig.cap: "UK vertical datum grid, from ETRS89 (EPSG:4937) to ODN height (EPSG:5701), units m"
+
+import os.path
+import rasterio as rio
+import rasterio.plot as rioplot
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+filename = 'data/uk_os_OSGM15_GB.tif'
+isFile = os.path.isfile(filename)
+
+if isFile:
+    r = rio.open(filename)
+else:
+    r = rio.open("https://cdn.proj.org/uk_os_OSGM15_GB.tif")
+    
+gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+uk = gdf[gdf.name == 'United Kingdom']
+uk_transformed = uk.to_crs(r.crs)
+raster_extent = numpy.asarray(r.bounds)[[0,2,1,3]]
+r1 = r.read(1)
+int_r1 = r1.astype(int)
+int_r1[int_r1==-32768] = 0
+
+fig, axes = plt.subplots(1, 1, figsize=(10, 5))
+plt.sca(axes)
+plt.imshow(int_r1, cmap = 'gray' ,vmin = 40, vmax = 60,extent = raster_extent)
+uk_transformed.plot(ax = axes, facecolor='none', edgecolor = 'blue')
+plt.axis(True)
+plt.colorbar()
+plt.show();
+
+```
+:::
 
 \index{coordinates!axis order}
 \index{axis order}
