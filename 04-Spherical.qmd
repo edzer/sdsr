@@ -6,7 +6,7 @@ coordinates in a local setting, is applied at the global scale_"
 [@chrisman]
 
 The previous chapter discussed geometries defined on the plane,
-$R^2$.  This chapter discusses what changes when we consider
+$R^2$.  This chapter discusses what changeas when we consider
 geometries not on the plane, but on the sphere ($S^2$).
 
 Although we learned in @sec-cs that the shape of the Earth
@@ -79,6 +79,9 @@ an area on a sphere that is more natural is the _bounding cap_,
 defined by its centre coordinates and a radius. For Antarctica,
 as depicted in @fig-antarctica (a) and (c), the
 bounding box formed by coordinate ranges is
+
+::: panel-tabset
+#### R
 ```{r fig-caprect, echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| collapse: false
@@ -91,6 +94,23 @@ map(fill = TRUE, plot = FALSE) |>
   filter(ID == "Antarctica") -> a
 st_bbox(a)
 ```
+#### Python
+
+```{python}
+#| code-fold: true
+#| collapse: false
+#| out.width: 100%
+import geopandas as gpd
+import matplotlib.pyplot as plt
+
+ne = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+antarctica = ne[ne["continent"] == "Antarctica"]
+bbox = antarctica.total_bounds
+bbox
+```
+:::
+
+
 which clearly does not contain the region (`ymin` being -90 and `xmax` 180).
 Two geometries that do contain the region are the bounding cap:
 ```{r echo=!knitr::is_latex_output()}
@@ -107,6 +127,9 @@ s2_bounds_rect(a)
 ```
 For an area spanning the antimeridian, here the Fiji island country,
 the bounding box:
+
+::: panel-tabset
+#### R
 ```{r echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| collapse: false
@@ -115,6 +138,14 @@ map(fill = TRUE, plot = FALSE) |>
   filter(ID == "Fiji") -> Fiji
 st_bbox(Fiji)
 ```
+#### Python
+```{python}
+ne = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+Fiji = ne[ne["name"] == "Fiji"]
+bbox = Fiji.total_bounds
+bbox
+```
+:::
 seems to span most of the Earth, as opposed to the bounding rectangle:
 ```{r echo=!knitr::is_latex_output()}
 #| code-fold: true
@@ -150,6 +181,9 @@ polygon (d) is not valid because it traverses the same edge to the
 South Pole twice.  On the sphere ($S^2$), polygon (a) is valid but
 (b) is not, for the same reason as (d) is not valid.
 
+
+::: panel-tabset
+#### R
 ```{r fig-antarctica, echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| out.height: 70%
@@ -179,6 +213,54 @@ ne |>
   plot()
 title("d (not valid)")
 ```
+
+#### Python
+```{python}
+#| code-fold: true
+#| out.height: 70%
+#| fig.cap: "Antarctica polygon, (a, c): _not_ passing through `POINT(-180 -90)`; (b, d): passing through `POINT(-180 -90)` and `POINT(180 -90)`"
+
+import matplotlib.pyplot as plt
+import geopandas as gpd
+
+# create a 2 by 2 grid of plots
+fig, axs = plt.subplots(2, 2)
+
+# get map data for Antarctica
+m = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+m = m[m['name'] == "Antarctica"]
+axs[0, 0].set_title("a (not valid)")
+m.geometry.plot(ax=axs[0, 0])
+axs[0, 0].set_aspect(2)
+axs[0,0].axis(False)
+
+# get country data for Antarctica
+ne = gpd.read_file('ne_110m_admin_0_countries.shp')
+ne = ne[ne['REGION_WB'] == "Antarctica"]
+ne.geometry.plot(ax=axs[0, 1])
+axs[0, 1].set_title("b (valid)")
+axs[0, 1].set_aspect(2)
+axs[0,1].axis(False)
+
+# transform the map data to EPSG:3031 projection and plot it
+m_conv = m.to_crs("EPSG:3031")
+m_conv.geometry.plot(ax=axs[1, 0])
+axs[1, 0].set_title("c (valid)")
+axs[1,0].axis(False)
+
+# transform the country data to EPSG:3031 projection and plot it
+ne_conv = ne.to_crs("EPSG:3031")
+ne_conv.geometry.plot(ax=axs[1, 1])
+axs[1, 1].set_title("d (not valid)")
+axs[1,1].axis(False)
+
+plt.show()
+
+```
+
+:::
+
+
 
 ## Exercises
 
