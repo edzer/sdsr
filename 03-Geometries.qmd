@@ -68,6 +68,10 @@ The most commonly used simple features geometries, used to represent a _single_ 
 | `MULTIPOLYGON`            | set of polygons |
 | `GEOMETRYCOLLECTION`      | set of the geometries above  |
 
+
+::: panel-tabset
+
+#### R 
 ```{r fig-sfgeometries, echo=!knitr::is_latex_output(), message = FALSE}
 #| fig.cap: "Sketches of the main simple feature geometry types"
 #| code-fold: true
@@ -123,6 +127,83 @@ plot(gc, border = 'black', col = '#ff6666', pch = 16, lwd = 2)
 title("geometrycollection")
 box(col = 'grey')
 ```
+#### Python
+```{python}
+#| fig.cap: "Sketches of the main simple feature geometry types"
+#| code-fold: true
+
+import matplotlib.pyplot as plt
+import geopandas as gpd
+from shapely.geometry import Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon
+
+# Set up a 2x4 grid of plots
+plt.figure(figsize=(12, 6))
+plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.4, hspace=0.4)
+
+# 1
+p = gpd.GeoSeries([Point(0, 1)])
+ax1 = plt.subplot(241)
+p.plot(ax=ax1, marker='o', markersize=10)
+ax1.set_title("point")
+ax1.set_axis_off()
+
+# 2
+mp = gpd.GeoSeries([MultiPoint([(1, 1), (2, 2), (4, 1), (2, 3), (1, 4)])])
+ax2 = plt.subplot(242)
+mp.plot(ax=ax2, marker='o', markersize=10)
+ax2.set_title("multipoint")
+ax2.set_axis_off()
+
+# 3
+ls = gpd.GeoSeries([LineString([(1, 1), (5, 5), (5, 6), (4, 6), (3, 4), (2, 3)])])
+ax3 = plt.subplot(243)
+ls.plot(ax=ax3, color='black', linewidth=2)
+ax3.set_title("linestring")
+ax3.set_axis_off()
+
+# 4
+mls = gpd.GeoSeries([
+    MultiLineString([
+        [(1, 1), (5, 5), (5, 6), (4, 6), (3, 4), (2, 3)],
+        [(3, 0), (4, 1), (2, 1)]
+    ])
+])
+ax4 = plt.subplot(244)
+mls.plot(ax=ax4, color='black', linewidth=2)
+ax4.set_title("multilinestring")
+ax4.set_axis_off()
+
+# 5 polygon
+po = gpd.GeoSeries([
+    Polygon([(2, 1), (3, 1), (5, 2), (6, 3), (5, 3), (4, 4), (3, 4), (1, 3), (2, 1)]),
+    Polygon([(2, 2), (3, 3), (4, 3), (4, 2), (2, 2)])
+])
+ax5 = plt.subplot(245)
+po.plot(ax=ax5, facecolor='#ff8888', edgecolor='black', linewidth=2)
+ax5.set_title("polygon")
+ax5.set_axis_off()
+
+# 6 multipolygon
+p1 = Polygon([(2, 1), (3, 1), (5, 2), (6, 3), (5, 3), (4, 4), (3, 4), (1, 3), (2, 1)])
+p2 = Polygon([(2, 2), (3, 3), (4, 3), (4, 2), (2, 2)])
+p3 = Polygon([(3, 7), (4, 7), (5, 8), (3, 9), (2, 8), (3, 7)])
+mpo = gpd.GeoSeries([MultiPolygon([p1, p2, p3])])
+ax6 = plt.subplot(246)
+mpo.plot(ax=ax6, linewidth=2, facecolor='#ff8888', edgecolor='k')
+ax6.set_title("multipolygon")
+ax6.set_axis_off()
+
+# 7 geometrycollection
+gc = GeometryCollection([po, ls]) #Issue Spotted here! in this line
+ax7 = plt.subplot(247)
+gc.plot(ax=ax7, markersize=10, marker='o', linewidth=2, facecolor='#ff6666', edgecolor='k')
+ax7.set_title("geometrycollection")
+
+plt.show()
+
+```
+
+:::
 
 @fig-sfgeometries  shows examples of these basic
 geometry types. The human-readable, "well-known-text" (WKT) representation
@@ -135,6 +216,9 @@ of the geometries plotted are:
 \index{WKT}
 \index{encoding!WKT}
 
+
+:::panel-tabset
+#### R
 ```{r echo=!knitr::is_latex_output(), eval=FALSE}
 #| code-fold: true
 p
@@ -145,7 +229,12 @@ po
 mpo
 gc
 ```
-
+#### Python
+```{python}
+#| code-fold: true
+print(p, mp, ls, mls, po, mpo, gc)
+```
+:::
 ```
 POINT (0 1)
 MULTIPOINT ((1 1), (2 2), (4 1), (2 3), (1 4))
@@ -183,12 +272,24 @@ respectively, although sometimes to latitude and longitude (see
 \index{simple geometry}
 
 Linestrings are called _simple_ when they do not self-intersect:
+
+::: panel-tabset
+#### R
 ```{r echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| collapse: false
 (ls <- st_linestring(rbind(c(0,0), c(1,1), c(2,2), c(0,2), c(1,1), c(2,0))))
 c(is_simple = st_is_simple(ls))
 ```
+#### Python
+```{python}
+#| code-fold: true
+#| collapse: false
+line = LineString([(0, 0), (1, 1), (2, 2), (0, 2), (1, 1), (2, 0)])
+print(line.is_simple)
+```
+
+:::
 
 Valid polygons and multipolygons obey all of the following properties:
 
@@ -230,6 +331,9 @@ happens when only `X` and `Y` are considered for self-intersections.
 Both `Z` and `M` are not found often, and software support
 to do something useful with them is (still) rare. Their
 WKT representation are fairly easily understood:
+
+::: panel-tabset
+#### R
 ```{r echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| collapse: false
@@ -237,6 +341,14 @@ st_point(c(1,3,2))
 st_point(c(1,3,2), dim = "XYM")
 st_linestring(rbind(c(3,1,2,4), c(4,4,2,2)))
 ```
+#### Python
+```{python}
+#| code-fold: true
+#| collapse: false
+point = Point(1, 3, 2)
+print(point)
+```
+:::
 
 ### Empty geometries
 
@@ -248,10 +360,22 @@ empty geometry.
 Empty geometries arise naturally when we do geometrical
 operations (@sec-opgeom), for instance when we want to
 know the intersection of `POINT (0 0)` and `POINT (1 1)`: 
+
+::: panel-tabset
+#### R
 ```{r echo=!knitr::is_latex_output()}
 #| code-fold: true
 (e <- st_intersection(st_point(c(0,0)), st_point(c(1,1))))
 ```
+#### Python
+```{python}
+#| code-fold: true
+point1 = Point(0, 0)
+point2 = Point(1, 1)
+intersection = point1.intersection(point2)
+print(intersection)
+```
+:::
 and it represents essentially the empty set: when combining
 (unioning) an empty point it with other non-empty geometries,
 it vanishes.
@@ -444,11 +568,29 @@ B and E components of a polygon and a linestring indicated by red;
 the sub-plot title gives the dimension of these intersections (0,
 1, 2 or F). The relationship between the polygon and the line geometry is the
 concatenation of these dimensions:
+
+::: panel-tabset
+#### R
 ```{r echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| collapse: false
 st_relate(polygon, line)
 ```
+#### Python
+```{python}
+#| code-fold: true
+#| collapse: false
+from shapely.geometry import Polygon, LineString
+
+polygon = Polygon([(0,0), (1,0), (1,1), (0,1), (0,0)])
+line = LineString([(0.5, -0.5), (0.5, 0.5)])
+
+# Find the spatial relationship between the polygon and line string
+relation = polygon.relate(line)
+print(relation)
+```
+
+:::
 where the first three characters are associated with the inside
 of the _first_ geometry (the polygon): @fig-de9im  is
 summarised row-wise.
