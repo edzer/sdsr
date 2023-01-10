@@ -46,16 +46,51 @@ plot(st_transform(st_as_sfc(co), "+proj=ortho +lat_0=-10 +lon_0=-30"), col = NA,
 ```
 
 The left plot of @fig-world  was obtained by
+
+::: panel-tabset
+#### R
 ```{r eval=FALSE}
 library(sf)
 library(rnaturalearth)
 w <- ne_countries(scale = "medium", returnclass = "sf")
 plot(st_geometry(w))
 ```
+#### Python
+```{python}
+# The shapefile can be downloaded at https://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-admin-0-countries/
+
+import geopandas as gpd
+
+w = gpd.read_file('ne_110m_admin_0_countries.shp')
+
+# Set up the figure and plot the countries
+fig, ax = plt.subplots()
+w.plot(ax=ax)
+ax.axis(False)
+```
+:::
+
+
 indicating that this is the default projection for global data with ellipsoidal coordinates:
+
+::: panel-tabset
+#### R
 ```{r}
 st_is_longlat(w)
 ```
+#### Python
+```{python}
+import geopandas as gpd
+
+# create a GeoSeries with some coordinate tuples
+w = gpd.read_file('ne_110m_admin_0_countries.shp')
+geom = w.geometry
+valid = geom.is_valid
+print(valid)
+
+```
+
+:::
 
 The projection taken in @fig-world (left) is the equirectangular
 (or equidistant cylindrical) projection, which maps longitude and
@@ -70,24 +105,54 @@ unprojected `sf` or `stars` datasets, as well as the default for
 We can also carry out this projection before plotting. Say we want to
 plot Germany, then after loading the (rough) country outline,
 we use `st_transform` to project:
+
+::: panel-tabset
+#### R
 ```{r}
 DE <- st_geometry(ne_countries(country = "germany",
 							  returnclass = "sf"))
 DE |> st_transform("+proj=eqc +lat_ts=51.14 +lon_0=90w") ->
     DE.eqc
 ```
+#### Python
+
+```{python}
+import geopandas as gpd
+
+ne = gpd.read_file('ne_110m_admin_0_countries.shp')
+DE = ne[ne['NAME'] == "Germany"]
+DE = DE.geometry
+DE_eqc = DE.to_crs("+proj=eqc +lat_ts=51.14 +lon_0=90w")
+```
+
+:::
 The `eqc` refers to the "equidistant cylindrical" projection of PROJ;
 the projection parameter here is `lat_ts`, the latitude of true
 scale (i.e., where one length unit N-S equals one length unit E-W),
 which was here chosen at the middle of the bounding box latitudes
+
+::: panel-tabset
+#### R
 ```{r, echo=!knitr::is_latex_output()}
 #| code-fold: true
 print(mean(st_bbox(DE)[c("ymin", "ymax")]), digits = 4)
 ```
+#### Python
+```{python}
+#| code-fold: true
+bbox = DE.total_bounds
+mean_y = (bbox[1] + bbox[3]) / 2
+round_mean_y = round(mean_y, 2)
+print(round_mean_y)
+```
+:::
+
 When we now plot both maps (@fig-eqc) , they look
 identical up to the values along the axes: degrees for ellipsoidal
 (left), and metres for projected (Cartesian) coordinates.
 
+::: panel-tabset
+#### R
 ```{r fig-eqc, echo=!knitr::is_latex_output()}
 #| fig.height: 4.5
 #| out.width: 70%
@@ -97,6 +162,30 @@ par(mfrow = c(1, 2), mar = c(2.2, 2.2, 0.3, 0.5))
 plot(DE, axes = TRUE)
 plot(DE.eqc, axes = TRUE)
 ```
+#### Python
+```{python}
+#| fig.height: 4.5
+#| out.width: 70%
+#| code-fold: true
+#| fig.cap: "Germany in equirectangular projection: with axis units degrees (left) and metres in the equidistant cylindrical projection (right)"
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+plt.style.use('ggplot')
+
+ne = gpd.read_file('ne_110m_admin_0_countries.shp')
+DE = ne[ne['NAME'] == "Germany"]
+DE_eqc = DE.to_crs("+proj=eqc +lat_ts=51.14 +lon_0=90w")
+
+fig, axes = plt.subplots(ncols=2, figsize=(7, 10))
+DE.geometry.plot(ax=axes[0])
+DE_eqc.geometry.plot(ax=axes[1])
+
+plt.show()
+```
+
+:::
 
 ### What is a good projection for my data?
 
@@ -181,6 +270,9 @@ When plotting continuous geometry attributes using a limited set
 of colours (or symbols), classes need to be made from the data.
 R package **classInt** [@R-classInt] provides a number of methods to
 do so. The default method is "quantile":
+
+::: panel-tabset
+#### R
 ```{r}
 library(classInt)
 # set.seed(1) needed ?
@@ -188,6 +280,21 @@ r <- rnorm(100)
 (cI <- classIntervals(r))
 cI$brks
 ```
+#### Python
+```{python}
+
+import pandas as pd
+import numpy as np
+
+np.random.seed(1)
+r = np.random.normal(size=100)
+n_classes = 8
+breaks = pd.cut(r, n_classes, retbins=True)[1]
+print(breaks)
+
+```
+:::
+
 it takes argument `n` for the number of intervals, and a `style`
 that can be one of "fixed", "sd", "equal", "pretty", "quantile",
 "kmeans", "hclust", "bclust", "fisher" or "jenks".  Style "pretty"

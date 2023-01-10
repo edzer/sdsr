@@ -95,6 +95,9 @@ Geometry columns in `sf` objects can be set or replaced using
 
 \index{sf!create from scratch}
 An `sf` object can be created from scratch by e.g.
+
+::: panel-tabset
+#### R
 ```{r echo=TRUE}
 library(sf)
 p1 <- st_point(c(7.35, 52.42))
@@ -104,6 +107,24 @@ sfc <- st_sfc(list(p1, p2, p3), crs = 'OGC:CRS84')
 st_sf(elev = c(33.2, 52.1, 81.2), 
 	  marker = c("Id01", "Id02", "Id03"), geom = sfc)
 ```
+#### Python
+```{python}
+import geopandas as gpd
+from shapely.geometry import Point
+
+p1 = Point(7.35, 52.42)
+p2 = Point(7.22, 52.18)
+p3 = Point(7.44, 52.19)
+
+gdf = gpd.GeoDataFrame(
+    {'elev': [33.2, 52.1, 81.2], 'marker': ["Id01", "Id02", "Id03"]},
+    geometry=[p1, p2, p3],
+    crs='OGC:CRS84'
+)
+print(gdf)
+```
+
+:::
 
 ```{r fig-sfobj, echo = FALSE}
 #| fig-cap: components of an `sf` object
@@ -133,11 +154,21 @@ or even string) is done using `st_read`:
 
 \index{sf!read from file}
 
+::: panel-tabset
+#### R
 ```{r stread}
 library(sf)
 (file <- system.file("gpkg/nc.gpkg", package = "sf"))
 nc <- st_read(file)
 ```
+#### Python
+```{python}
+import geopandas as gpd
+
+nc = gpd.read_file("https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg")
+```
+
+:::
 Here, the file name and path `file` is read from the **sf** package,
 which has a different path on every machine, and hence is guaranteed
 to be present on every **sf** installation.
@@ -212,12 +243,31 @@ all pairs whether the predicate is `TRUE` or `FALSE`. For large
 sets this would potentially result in a huge matrix, typically filled 
 mostly with `FALSE` values and for that reason a sparse representation 
 is returned by default:
+
+::: panel-tabset
+#### R
 ```{r}
 nc5 <- nc[1:5, ]
 nc7 <- nc[1:7, ]
 (i <- st_intersects(nc5, nc7))
 ```
+#### Python
+```{python}
+import geopandas as gpd
 
+nc = gpd.read_file("https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg")
+
+nc5 = nc[:5]
+nc7 = nc[:7]
+
+i = nc5.intersects(nc7)
+i
+```
+:::
+
+
+::: panel-tabset
+#### R
 ```{r fig-fig57, echo=!knitr::is_latex_output()}
 #| fig.cap: "First seven North Carolina counties"
 #| code-fold: true
@@ -227,12 +277,54 @@ plot(st_geometry(nc5), add = TRUE, border = "brown")
 cc = st_coordinates(st_centroid(st_geometry(nc7)))
 text(cc, labels = 1:nrow(nc7), col = "blue")
 ```
+#### Python
+```{python}
+#| fig.cap: "First seven North Carolina counties"
+#| code-fold: true
+#| fig.height: 2.5
+import matplotlib.pyplot as plt
+import geopandas as gpd
+
+nc = gpd.read_file("https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg")
+
+nc5 = nc[:5]
+nc7 = nc[:7]
+
+i = nc5.intersects(nc7)
+
+ax = nc7.plot()
+nc5.plot(ax=ax, color='brown')
+
+for x, y, label in zip(nc7.geometry.centroid.x, nc7.geometry.centroid.y, nc7.index):
+    plt.text(x, y, label, fontsize=12)
+
+plt.axis(False)    
+plt.show()
+
+```
+
+:::
+
+
 @fig-fig57  shows how the intersections of the first
 five with the first seven counties can be understood.
 We can transform the sparse logical matrix into a dense matrix by
+
+::: panel-tabset
+#### R
 ```{r}
 as.matrix(i)
 ```
+#### Python
+```{python}
+import numpy as np
+
+matrix = np.matrix(i.values)
+matrix
+
+```
+:::
+
 The number of counties that each of `nc5` intersects with is
 ```{r}
 lengths(i)
@@ -297,10 +389,19 @@ the metadata of `sf` objects, and make sure the geometry remains
 present. In case a user wants the geometry to be removed, one can
 use `st_drop_geometry()` or simply coerce to a `tibble` or 
 `data.frame` before selecting:
+
+::: panel-tabset
+#### R
 ```{r}
 library(tidyverse) |> suppressPackageStartupMessages()
 nc |> as_tibble() |> select(BIR74) |> head(3)
 ```
+#### Python
+```{python}
+nc[['BIR74']].head(3)
+```
+:::
+
 
 \index[function]{summarise}
 
@@ -430,17 +531,43 @@ default, **sf** uses geometrical operations from the `s2geometry`
 library, interfaced through the **s2** package [@R-s2], and we see
 for instance that the point
 
+::: panel-tabset
+#### R
 ```{r}
 "POINT(50 50.1)" |> st_as_sfc(crs = "OGC:CRS84") -> pt
 ```
+#### Python
+```{python}
+import geopandas as gpd
+from shapely.geometry import Point, Polygon
+
+pt = gpd.GeoSeries([Point(50, 50.1)])
+pt = pt.set_crs("OGC:CRS84")
+```
+:::
+
 falls _inside_ the polygon:
+
+::: panel-tabset
+#### R
 ```{r}
 "POLYGON((40 40, 60 40, 60 50, 40 50, 40 40))" |>
   st_as_sfc(crs = "OGC:CRS84") -> pol
 st_intersects(pt, pol)
 ```
-as illustrated by @fig-figs2 (left: straight lines on an orthographic projection centred at the plot area).
+#### Python
+```{python}
+import geopandas as gpd
+from shapely.geometry import Point, Polygon
 
+pol = gpd.GeoSeries([Polygon([(40,40), (60,40), (60,50), (40,50), (40,40)])])
+pol = pol.set_crs("OGC:CRS84")
+```
+:::
+
+as illustrated by @fig-figs2 (left: straight lines on an orthographic projection centred at the plot area).
+::: panel-tabset
+#### R
 ```{r fig-figs2, echo=!knitr::is_latex_output()}
 #| fig.cap: "Intersection depends on whether we use geodesics/great circle arcs (left: s2) or Cartesian coordinates (right)"
 #| code-fold: true
@@ -454,6 +581,46 @@ pt |> st_transform(ortho) |> plot(add = TRUE, pch = 16, col = 'red')
 plot(pol, axes = TRUE, graticule = TRUE, main = 'GEOS')
 plot(pt, add = TRUE, pch = 16, col = 'red')
 ```
+#### Python
+```{python}
+#| fig.cap: "Intersection depends on whether we use geodesics/great circle arcs (left: s2) or Cartesian coordinates (right)"
+#| code-fold: true
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from descartes import PolygonPatch
+from shapely.geometry import Point, Polygon
+
+point = Point(50, 50.1)
+polygon = Polygon([(40, 40), (60, 40), (60, 50), (40, 50), (40, 40)])
+
+gdf_point = gpd.GeoDataFrame(geometry=[point])
+gdf_poly = gpd.GeoDataFrame(geometry=[polygon])
+
+print(gdf_point.intersects(gdf_poly))
+
+ortho = "+proj=ortho +lon_0=50 +lat_0=45"
+
+fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+
+gdf_poly.set_crs(ortho).plot(ax=axs[0], color='none', edgecolor='black')
+gdf_point.set_crs(ortho).plot(ax=axs[0], color='red', marker='o')
+axs[0].set_xlim(39, 61)
+axs[0].set_ylim(33, 56)
+axs[0].grid(True)
+axs[0].set_title('s2geometry')
+
+gdf_poly.set_crs("OGC:CRS84").plot(ax=axs[1], color='none', edgecolor='black')
+gdf_point.set_crs("OGC:CRS84").plot(ax=axs[1], color='red', marker='o')
+axs[1].set_xlim(39, 61)
+axs[1].set_ylim(34, 56)
+axs[1].set_title('GEOS')
+axs[1].grid(True)
+
+plt.show()
+```
+
+:::
+
 
 If one wants **sf** to use ellipsoidal coordinates as if they are Cartesian coordinates, the use of **s2** can be switched off:
 ```{r}
@@ -536,11 +703,23 @@ containing a section of Landsat 7 scene, with the 6 30m-resolution
 bands (bands 1-5 and 7) for a region covering the city of Olinda,
 Brazil. We can read the example GeoTIFF file holding a regular,
 non-rotated grid from the package **stars**:
+
+::: panel-tabset
+#### R
 ```{r}
 tif <- system.file("tif/L7_ETMs.tif", package = "stars")
 library(stars)
 (r <- read_stars(tif))
 ```
+#### Python
+```{python}
+import rasterio
+
+src = rasterio.open('https://github.com/r-spatial/stars/raw/main/inst/tif/L7_ETMs.tif')
+
+```
+:::
+
 where we see the offset, cell size, coordinate reference system,
 and dimensions. The dimension table contains the following fields
 for each dimension:
@@ -566,11 +745,24 @@ property contains one of:
 
 The object `r` is of class `stars` and is a simple list of length
 one, holding a three-dimensional array:
+
+::: panel-tabset
+#### R
 ```{r}
 length(r)
 class(r[[1]])
 dim(r[[1]])
 ```
+#### Python
+```{python}
+import rasterio
+
+src = rasterio.open('https://github.com/r-spatial/stars/raw/main/inst/tif/L7_ETMs.tif')
+print(src.count)
+print(src.width)
+print(src.height)
+```
+:::
 and in addition holds an attribute with a dimensions table with all the metadata
 required to know what the array dimensions refer to, obtained by
 ```{r eval=FALSE}
@@ -608,10 +800,19 @@ can be used. For dimensions, logical vectors are not supported;
 Selecting discontinuous ranges is supported only when it is a regular
 sequence. By default, `drop` is FALSE, when set to `TRUE` dimensions
 with a single value are dropped:
+
+::: panel-tabset
+#### R
 ```{r}
 r[,1:100, seq(1, 250, 5), 4] |> dim()
 r[,1:100, seq(1, 250, 5), 4, drop = TRUE] |> dim()
 ```
+#### Python
+```{python}
+band = src.read(4)
+subset = band[:100, :250:5]
+```
+:::
 
 For selecting particular ranges of dimension _values_, one can use
 `filter` (after loading `dplyr`):
