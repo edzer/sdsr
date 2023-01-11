@@ -1,10 +1,10 @@
 FROM rocker/geospatial:latest
 
 MAINTAINER "edzerpebesma" edzer.pebesma@uni-muenster.de
-ARG TZ # used by R package lubridate
+ARG TZ # avoids R package lubridate to raise an ugly warning
 
-## Add some CRAN packages:
-RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData"))'
+## Add CRAN packages:
+RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"))'
 
 # 0. install book source files:
 RUN git clone https://github.com/edzer/sdsr.git
@@ -27,8 +27,5 @@ RUN R -q -e 'options(timeout = 3600); install.packages("starsdata", repos = "htt
 ## 4. INLA:
 RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
 RUN chmod +x /usr/local/lib/R/site-library/INLA/bin/linux/64bit/*
-
-# 5. Install stars dev (can be removed when stars 0.5-7 hits CRAN):
-RUN R -q -e 'remotes::install_github("r-spatial/stars")'
 
 EXPOSE 8787
