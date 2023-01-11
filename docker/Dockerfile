@@ -3,20 +3,28 @@ FROM rocker/geospatial:latest
 MAINTAINER "edzerpebesma" edzer.pebesma@uni-muenster.de
 ARG TZ # avoids R package lubridate to raise an ugly warning
 
-## Add CRAN packages:
-RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"))'
+RUN apt-get update && apt-get install -y python3-pip
 
-# 0. install book source files:
+RUN chown -R rstudio:rstudio /home/rstudio
+USER rstudio
+WORKDIR /home/rstudio
+
+## Add R packages:
+RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "reticulate", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"))'
+
+# Add Python packages:
+RUN pip3 install geopandas descartes rasterio folium matplotlib mapclassify
+
+# 0. install book source files, use python branch:
 RUN git clone https://github.com/edzer/sdsr.git
-RUN mv sdsr/* /home/rstudio
-RUN rm -fr sdsr
+RUN cd sdsr && git checkout python
 
 ## 1. download & install sdsr data:
 RUN wget -q https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn/download -O sds.zip
 RUN unzip -q sds.zip
-RUN mv sds/aq/* /home/rstudio/aq
+RUN mv sds/aq/* sdsr/aq
 RUN rm -fr sds.zip sds
-RUN chown -R rstudio:rstudio /home/rstudio/*
+RUN mv sdsr/* .
 
 ## 2. spDataLarge:
 RUN R -q -e 'options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")'
@@ -26,6 +34,7 @@ RUN R -q -e 'options(timeout = 3600); install.packages("starsdata", repos = "htt
 
 ## 4. INLA:
 RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
-RUN chmod +x /usr/local/lib/R/site-library/INLA/bin/linux/64bit/*
+
+USER root
 
 EXPOSE 8787
