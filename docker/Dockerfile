@@ -16,7 +16,7 @@ RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph
 RUN pip3 install geopandas descartes rasterio folium matplotlib mapclassify
 
 # 0. install book source files, use python branch:
-RUN git clone https://github.com/edzer/sdsr.git
+RUN git clone  https://github.com/edzer/sdsr.git
 RUN cd sdsr && git checkout python
 
 ## 1. download & install sdsr data:
@@ -25,11 +25,6 @@ RUN unzip -q sds.zip
 RUN mv sds/aq/* sdsr/aq
 RUN rm -fr sds.zip sds
 RUN mv sdsr/* .
-
-# install naturalearth, "de facto" country boundaries:
-RUN cd data && \
-  wget https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/110m/cultural/ne_110m_admin_0_countries.zip -O ne.zip && \
-  unzip ne.zip
 
 ## 2. spDataLarge:
 RUN R -q -e 'options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")'
