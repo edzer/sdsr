@@ -26,9 +26,9 @@ After running the docker image and opening `rstudio` in the browser:
 * click on `01-hello.qmd` in the bottom-right pane
 * click on the `Render` button of the top-left pane to compile the whole book
 * this should open a new browser window with the full book rendered (switch off popup blocker for localhost)
-* to run an individual code section, possibly after modification, click the small green arrow symbols on the top-left corner of code blocks:
-    * to prepare, first `Run All Chunks Above`,
-	* to run the actual section: `Run Current Chunk`
+* to run a selected code section, possibly after modification, find the selected code section in the corresponding `.qmd` file, and click the small green arrow symbols on the top-right corner of the code blocks:
+    * to prepare, first click `Run All Chunks Above`,
+	* to run the selected section: click `Run Current Chunk`
 
 ## Dependencies
 
