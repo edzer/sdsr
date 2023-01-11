@@ -26,6 +26,11 @@ RUN mv sds/aq/* sdsr/aq
 RUN rm -fr sds.zip sds
 RUN mv sdsr/* .
 
+# install naturalearth, "de facto" country boundaries:
+RUN cd data && \
+  wget https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/110m/cultural/ne_110m_admin_0_countries.zip -O ne.zip && \
+  unzip ne.zip
+
 ## 2. spDataLarge:
 RUN R -q -e 'options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")'
 
