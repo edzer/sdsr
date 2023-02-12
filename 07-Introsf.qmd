@@ -5,7 +5,7 @@
 This chapter introduces R packages **sf** and **stars**.  **sf** provides
 a table format for simple features, where feature geometries are
 stored in a list-column.  R package **stars** was written to support
-raster and vector datacubes (@sec-datacube), supporting
+raster and vector data cubes (@sec-datacube), supporting
 raster layers, raster stacks and feature time series as special cases.  **sf**
 first appeared on CRAN in 2016, **stars** in 2018.  Development of both
 packages received support from the R Consortium as well as strong
@@ -27,14 +27,14 @@ move spatial data analysis in R closer to standards-based approaches
 seen in the industry and open source projects, to build upon more
 modern versions of the open source geospatial software stack
 (@fig-gdal-fig-nodetails), and to allow for integration of R spatial
-software with the tidyverse [@wickham2019welcome], if desired.
+software with the tidyverse [@welcome], if desired.
 
 \index{tidyverse}
 
 To do so, R package **sf** provides simple features access
 [@herring2011opengis], natively, to R. It provides an interface
 to several **tidyverse** packages, in particular to **ggplot2**,
-**dplyr** and **tidyr**. It can read and write data through GDAL, execute
+**dplyr**, and **tidyr**. It can read and write data through GDAL, execute
 geometrical operations using GEOS (for projected coordinates)
 or s2geometry (for ellipsoidal coordinates), and carry out
 coordinate transformations or conversions using PROJ. External C++
@@ -49,13 +49,13 @@ a sub-class of a `data.frame` or tibble. `sf` objects contain at
 least one _geometry list-column_ of class `sfc`, which for each
 element contains the geometry as an R object of class `sfg`.
 A geometry list-column acts as a variable in a `data.frame`
-or tibble, but has a more complex structure than e.g. numeric or
-character variables.  
+or tibble, but has a more complex structure than basic vectors
+such as numeric or character variables [@sec-dissecting].
 
 \index{sfc, class}
 \index{sfg, class}
 
-An `sf` object has the following meta-data:
+An `sf` object has the following metadata:
 
 * the name of the (active) geometry column, held in attribute `sf_column`
 * for each non-geometry variable, the attribute-geometry
@@ -67,12 +67,12 @@ relationship (@sec-agr), held in attribute `agr`
 \index[function]{st\_geometry}
 
 An `sfc` geometry list-column is extracted from an `sf` object with
-`st_geometry` and has the following meta-data:
+`st_geometry` and has the following metadata:
 
-* the coordinate reference system held in attribute `crs`
-* the bounding box held in attribute `bbox`
-* the precision held in attribute `precision`
-* the number of empty geometries held in attribute `n_empty`
+* coordinate reference system held in attribute `crs`
+* bounding box held in attribute `bbox`
+* precision held in attribute `precision`
+* number of empty geometries held in attribute `n_empty`
 
 \index{crs!attribute}
 \index{bbox!attribute}
@@ -93,8 +93,9 @@ Geometry columns in `sf` objects can be set or replaced using
 
 ### Creation
 
+An `sf` object can be created from scratch by
+
 \index{sf!create from scratch}
-An `sf` object can be created from scratch by e.g.
 
 ::: panel-tabset
 #### R
@@ -132,18 +133,18 @@ print(gdf)
 knitr::include_graphics("images/sf_obj.png")
 ```
 
-@fig-sfobj  gives an explanation of the components
-printed.  Rather than creating objects from scratch, spatial data
+@fig-sfobj gives an explanation of the components
+printed. Rather than creating objects from scratch, spatial data
 in R are typically read from an external source, which can be:
 
 \index{sf!components figure}
 
-* an external file
-* a table (or set of tables) in a database
-* a request to a web service
-* a dataset held in some form in another R package
+* external file
+* table (or set of tables) in a database
+* request to a web service
+* dataset held in some form in another R package
 
-The next section introduces reading from files; 
+The next section introduces reading from files. 
 @sec-largesf discusses handling of datasets too large to fit into
 working memory.
 
@@ -179,8 +180,8 @@ Command `st_read` has two arguments: the _data source name_ (`dsn`)
 and the _layer_.  In the example above, the _geopackage_  (GPKG) file
 contains only a single layer that is being read. If it had contained
 multiple layers, then the first layer would have been read and a 
-warning would have been emitted. The available layers of a data
-set can be queried by
+warning would have been emitted. The available layers of a dataset 
+can be queried by
 ```{r}
 st_layers(file)
 ```
@@ -192,10 +193,11 @@ st_write(nc, file, layer = "layer_nc")
 ```
 where the file format (GPKG) is derived from the file name extension.
 Using argument `append`, `st_write` can either append records
-to an existing layer or replace it; if unset it will error if a
+to an existing layer or replace it; if unset, it will err if a
 layer already exists. The tidyverse-style `write_sf` will replace
-silently if `append` has not been set.  Layers can also be deleted,
-e.g. from a database, using `st_delete`.
+silently if `append` has not been set.  Layers can also be deleted
+using `st_delete`, which is convenient in particular when they are associated
+with tables in a database.
 
 For file formats supporting a WKT2 coordinate reference system,
 `sf_read` and `sf_write` will read and write it. For simple formats
@@ -217,7 +219,7 @@ only a very limited encoding of the CRS.
 
 A very common operation is to subset objects; base R can use `[`
 for this. The rules that apply to `data.frame` objects also apply to
-`sf` objects, e.g. that records 2-5 and columns 3-7 are selected by
+`sf` objects: records 2-5 and columns 3-7 are selected by
 ```{r eval=FALSE}
 nc[2:5, 3:7]
 ```
@@ -225,19 +227,19 @@ but with a few additional features, in particular:
 
 * the `drop` argument is by default `FALSE` meaning that the
   geometry column is _always_ selected, and an `sf` object is
-  returned; when it is set to `TRUE` and the geometry column _not_ selected,
+  returned; when it is set to `TRUE` and the geometry column is _not_ selected,
   it is dropped and a `data.frame` is returned
 * selection with a spatial (`sf`, `sfc` or `sfg`) object as first argument leads to
   selection of the features that spatially _intersect_ with that
   object (see next section); other predicates than _intersects_ can be chosen by setting
-  parameter `op` to a function such as `st_covers` or or any other
-  binary predicate function listed in @sec-de9im
+  parameter `op` to a function such as `st_covers` or any other
+  binary predicate function listed in @sec-de9im.
 
 ### Binary predicates
 
 \index{sf!select using predicates}
 
-Binary predicates like `st_intersects`, `st_covers` etc (@sec-de9im)
+Binary predicates like `st_intersects`, `st_covers` and such (@sec-de9im)
 take two sets of features or feature geometries and return for
 all pairs whether the predicate is `TRUE` or `FALSE`. For large
 sets this would potentially result in a huge matrix, typically filled 
@@ -372,7 +374,7 @@ where the only `Ops` method available is `!`, the negation operation.
 \index[function]{sample\_frac}
 
 The **tidyverse** package loads a collection of data science packages that work
-together, described e.g. in [@r4ds; @welcome]. Package **sf** has
+well together [@r4ds; @welcome]. Package **sf** has
 **tidyverse**-style read and write functions, `read_sf` and `write_sf`
 that 
 
@@ -385,9 +387,9 @@ Further **tidyverse** generics with methods for `sf` objects include
 `rowwise`, `rename`, `slice`, `summarise`, `distinct`, `gather`, `pivot_longer`,
 `spread`, `nest`, `unnest`, `unite`, `separate`, `separate_rows`,
 `sample_n`, and `sample_frac`. Most of these methods simply manage
-the metadata of `sf` objects, and make sure the geometry remains
+the metadata of `sf` objects and make sure the geometry remains
 present. In case a user wants the geometry to be removed, one can
-use `st_drop_geometry()` or simply coerce to a `tibble` or 
+use `st_drop_geometry` or simply coerce to a `tibble` or 
 `data.frame` before selecting:
 
 ::: panel-tabset
@@ -414,8 +416,8 @@ The `distinct` method selects distinct records, where `st_equals`
 is used to evaluate distinctness of geometries.
 
 `filter` can be used with the usual predicates; when one wants to
-use it with a spatial predicate, e.g. to select all counties less
-than 50 km away from Orange county, one could use
+use it with a spatial predicate, for instance to select all counties less
+than 50 km away from Orange County, one could use
 ```{r}
 orange <- nc |> dplyr::filter(NAME == "Orange")
 wd <- st_is_within_distance(nc, orange, 
@@ -427,11 +429,11 @@ nrow(o50)
 with `filter` from base R.)
 
 @fig-orangebuffer  shows the results of this analysis,
-and in addition a buffer around the county borders; note that this buffer
-serves for illustration, it was _not_ used to select the counties. 
+and in addition a buffer around the county borders. Note that this buffer
+serves for illustration: it was _not_ used to select the counties. 
 
 ```{r fig-orangebuffer, echo=!knitr::is_latex_output()}
-#| fig.cap: "Orange county (orange), counties within a 50 km radius (black), a 50 km buffer around Orange county (brown), and remaining counties (grey)"
+#| fig.cap: "Orange County (orange), counties within a 50 km radius (black), a 50~km buffer around Orange County (brown), and remaining counties (grey)"
 #| code-fold: true
 og <- st_geometry(orange)
 buf50 <- st_buffer(og, units::set_units(50, km))
@@ -447,21 +449,21 @@ plot(st_geometry(nc), add = TRUE, border = 'grey')
 \index{sf!spatial join}
 \index[function]{st\_join}
 
-In regular (left, right or inner) joins, _joined_ records from a
+In regular (left, right, or inner) joins, _joined_ records from a
 pair of tables are reported when one or more selected attributes
 match (are identical) in both tables. A spatial join is similar,
 but the criterion to join records is not equality of attributes but
 a spatial predicate. This leaves a wide variety of options in order
 to define _spatially_ matching records, using binary predicates
 listed in @sec-de9im. The concepts of "left", "right",
-"inner" or "full" joins remain identical to the non-spatial join
+"inner", or "full" joins remain identical to the non-spatial join
 as the options for handling records that have no spatial match.
 
 When using spatial joins, each record may have several matched
 records, yielding a large result table. A way to reduce this
 complexity may be to select from the matching records the one with
 the largest overlap with the target geometry.  An example of this
-is shown (visually) in @fig-largest ; this is done using
+is shown (visually) in @fig-largest; this is done using
 `st_join` with argument `largest = TRUE`.
 
 ```{r fig-largest, echo=!knitr::is_latex_output()}
@@ -502,15 +504,15 @@ see @sec-updownscaling.
 Several convenience functions are available in package **sf**, some
 of which will be discussed here. Function `st_sample` generates
 a sample of points randomly sampled from target geometries, where
-target geometries can be point, line or polygon geometries. Sampling
-strategies can be (completely) random, regular or (with polygons)
+target geometries can be point, line, or polygon geometries. Sampling
+strategies can be (completely) random, regular, or (with polygons)
 triangular.  @sec-pointpatterns explains how spatial sampling
 (or point pattern simulation) methods available in package **spatstat**
 are interfaced through `st_sample`.
 
-Function `st_make_grid` creates a square, rectangular or hexagonal
+Function `st_make_grid` creates a square, rectangular, or hexagonal
 grid over a region, or points with the grid centres or corners. It
-was used to create the rectangular grid in @fig-largest .
+was used to create the rectangular grid in @fig-largest.
 
 \index[function]{st\_make\_grid}
 
@@ -519,10 +521,10 @@ as explained in @sec-area-weighted, both for intensive
 and extensive variables.
 
 \index[function]{st\_interpolate\_aw}
-\index{interpolation!area weighted}
+\index{interpolation!area-weighted}
 \index{area-weighted interpolation}
 
-## Ellipsoidal coordinates
+## Ellipsoidal coordinates {#sec-ccw}
 
 Unprojected data have ellipsoidal coordinates, expressed in degrees
 east and north. As explained in @sec-straight, "straight" lines
@@ -632,14 +634,18 @@ and the intersection is empty, as illustrated by @fig-figs2 (right:
 straight lines on an equidistant cylindrical projection). The
 warning indicates the planar assumption for ellipsoidal coordinates.
 
-Use of **s2** can be switched of for reasons of performance
+Use of **s2** can be switched off for reasons of performance
 or compatibility with legacy implementations.  The underlying
 libraries, **GEOS** for Cartesian and **s2geometry** for spherical
 geometry (@fig-gdal-fig-nodetails) were developed with different
 motivations, and their use through **sf** differs in some respects:
 
-* certain operations may be much faster in one compared to the other, e.g. by using spatial indexes not available or not (yet) interfaced in the other
-* certain functions may be available in only one of them (like `st_relate` being only present in GEOS).
+* certain operations may be much faster in one compared to the other,
+* certain functions may be available in only one of them (like `st_relate` being only present in GEOS),
+* when using transformers, **GEOS** returns exterior polygon rings
+  noded clockwise (`st_sfc(..., check_ring_dir = TRUE)` can be used
+  to revert to counter-clockwise), **s2geometry** retuns them
+  counter-clockwise
 
 ## Package **stars**
 
@@ -649,10 +655,10 @@ motivations, and their use through **sf** differs in some respects:
 
 Although package **sp** has always had limited support for raster data,
 over the last decade R package **raster** [@R-raster] has clearly been
-dominant as the prime package for powerful, flexible and scalable
+dominant as the prime package for powerful, flexible, and scalable
 raster analysis.  The raster data model of package **raster** (and
 its successor, **terra** [@R-terra]) is that of a 2D regular raster,
-or a set of raster layers (a "raster stack"). This aligns with
+or a set of raster layers ("raster stack"). This aligns with
 the classical static "GIS view", where the world is modelled
 as a set of layers, each representing a different theme. A lot of
 data available today however is dynamic, and comes as time series
@@ -660,14 +666,15 @@ of rasters or raster stacks. A raster stack does not meaningfully
 reflect this, requiring the user to keep a register of which layer
 represents what.
 
-Also, the **raster** package, and its successor **terra** do an excellent
+Also, the **raster** package and its successor **terra** do an excellent
 job in scaling computations up to data sizes no larger than the local
 storage (the computer's hard drives), and doing this fast. Recent
-datasets however, including satellite imagery, climate model or
+datasets, however, including satellite imagery, climate model or
 weather forecasting data, often no longer fit in local storage
 (@sec-large).  Package **spacetime** [@spacetime2012; @R-spacetime]
-did addresses the analysis of time series of vector geometries or raster
-grid cells, but did not extend to higher-dimensional arrays.
+did address the analysis of time series of vector geometries or
+raster grid cells, but did not extend to higher-dimensional arrays
+or datasets too large to fit in main memory.
 
 \index{spacetime}
 \index{stars!data cube}
@@ -679,9 +686,9 @@ data cubes. The package:
 * aims at being scalable, also beyond local disk size
 * provides a strong integration of raster functions in the GDAL
 library
-* in addition to regular grids handles rotated, sheared, rectilinear and curvilinear rasters (@fig-rastertypes01) 
+* handles, in addition to regular grids, rotated, sheared, rectilinear, and curvilinear rasters (@fig-rastertypes01) 
 * provides a tight integration with package **sf**
-* also handles array data with non-raster spatial dimensions, the _vector data cubes_
+* handles array data with non-raster spatial dimensions, the _vector data cubes_
 * follows the tidyverse design principles
 
 Vector data cubes include for instance time series for simple
@@ -699,7 +706,7 @@ objects with a time column (@sec-stgeos).
 \index[function]{read\_stars}
 
 Raster data typically are read from a file. We use a dataset
-containing a section of Landsat 7 scene, with the 6 30m-resolution
+containing a section of Landsat 7 scene, with the six 30~m-resolution
 bands (bands 1-5 and 7) for a region covering the city of Olinda,
 Brazil. We can read the example GeoTIFF file holding a regular,
 non-rotated grid from the package **stars**:
@@ -724,21 +731,21 @@ where we see the offset, cell size, coordinate reference system,
 and dimensions. The dimension table contains the following fields
 for each dimension:
 
-* `from`: the starting index
-* `to`: the ending index
-* `offset`: the dimension value at the start (edge) of the first pixel
-* `delta`: the cell size; negative `delta` values indicate that pixel index increases with decreasing dimension values
-* `refsys`: the reference system
-* `point`: boolean, indicating whether cell values have point support or cell support
-* `x/y`: an indicator whether a dimension is associated with a spatial raster x- or y-axis
+* `from`: starting index
+* `to`: ending index
+* `offset`: dimension value at the start (edge) of the first pixel
+* `delta`: cell size; negative `delta` values indicate that pixel index increases with decreasing dimension values
+* `refsys`: reference system
+* `point`: logical, indicates whether cell values have point support or cell support
+* `x/y`: indicates whether a dimension is associated with a spatial raster x- or y-axis
 
-One further field, `values` is hidden as it is not used.  For
-regular, rotated or sheared grids or other regularly discretised
-dimensions (e.g. time), `offset` and `delta` are not `NA`; for for
+One further field, `values`, is hidden here as it is not used.  For
+regular, rotated, or sheared grids or other regularly discretised
+dimensions (such as time), `offset` and `delta` are not `NA`; for
 irregular cases, `offset` and `delta` are `NA` and the `values`
 property contains one of:
 
-* the sequence of values, or intervals, in case of a rectilinear spatial raster or irregular time dimension
+* in case of a rectilinear spatial raster or irregular time dimension, the sequence of values or intervals
 * in case of a vector data cube, geometries associated with the spatial dimension
 * in case of a curvilinear raster, the matrix with coordinate values for each raster cell
 * in case of a discrete dimension, the band names or labels associated with the dimension values
@@ -772,7 +779,7 @@ We can get the spatial extent of the array by
 ```{r}
 st_bbox(r)
 ```
-Raster data can be written to local disk using `write_stars`:
+Raster data can be written to the local disk using `write_stars`:
 ```{r}
 tf <- tempfile(fileext = ".tif")
 write_stars(r, tf)
@@ -790,13 +797,17 @@ st_drivers("raster")
 \index{stars!subset}
 \index{stars!filter}
 
-Data cubes can be subsetted using `[`, or using tidyverse verbs. The
-first options, `[` uses for the arguments: attributes first,
-followed by dimension. This means that `r[1:2, 101:200, , 5:10]`
+Data cubes can be subsetted using the `[` operator, or using tidyverse verbs. The
+first option uses `[` with the following comma-separated arguments:
+
+* attributes first (by name, index, or logical vector)
+* followed by each dimension. 
+
+This means that `r[1:2, 101:200,, 5:10]`
 selects from `r` attributes 1-2, index 101-200 for dimension 1, and index
 5-10 for dimension 3; omitting dimension 2 means that no subsetting
-takes place. For attributes, attributes names or logical vectors
-can be used. For dimensions, logical vectors are not supported;
+takes place. For attributes, attribute name, index or logical vectors
+can be used. For dimensions, logical vectors are not supported.
 Selecting discontinuous ranges is supported only when it is a regular
 sequence. By default, `drop` is FALSE, when set to `TRUE` dimensions
 with a single value are dropped:
@@ -821,7 +832,7 @@ library(dplyr, warn.conflicts = FALSE)
 filter(r, x > 289000, x < 290000)
 ```
 which changes the offset of the $x$ dimension. Particular cube slices
-can also be obtained with `slice`, e.g.
+can also be obtained with `slice`, as in
 ```{r}
 slice(r, band, 3)
 ```
@@ -836,7 +847,7 @@ drops existing ones.
 \index[function]{st\_crop}
 
 Further subsetting can be done using spatial objects of class `sf`, `sfc`
-or `bbox`, e.g. when using the sample raster,
+or `bbox`, for instance
 ```{r}
 b <- st_bbox(r) |>
 	st_as_sfc() |>
@@ -844,8 +855,8 @@ b <- st_bbox(r) |>
 	st_buffer(units::set_units(500, m))
 r[b]
 ```
-selects the circular centre region with a diameter of 500 metre, for
-the first band shown in @fig-circr ,
+selects the circular centre region with a diameter of 500 metre, which for
+the first band is shown in @fig-circr,
 ```{r fig-circr, echo=!knitr::is_latex_output()}
 #| fig.cap: "Circular centre region of the Landsat 7 scene (band 1)"
 #| code-fold: true
@@ -889,8 +900,8 @@ Attributes and dimensions can be swapped, using `split` and `merge`:
 (rs <- split(r))
 merge(rs, name = "band") |> setNames("L7_ETMs")
 ```
-split distributes the `band` dimension over 6 attributes of a
-2-dimensional array, `merge` reverses this operation. `st_redimension`
+split distributes the `band` dimension over six attributes of a
+two-dimensional array, `merge` reverses this operation. `st_redimension`
 can be used for more generic operations, such as splitting a single array
 dimension over two new dimensions:
 ```{r}
@@ -927,12 +938,10 @@ reproducing, it should not be set generate further randomly
 generated points.)
 
 Another way of extracting information from data cubes is by
-aggregating it. One way of doing is by spatial aggregation,
-e.g. to values for spatial polygons or lines (@sec-vectordatacubes).
-We can for instance compute the maximum
-pixel value for each band for each of the circles shown in figure
-@fig-ras (d) by
-
+aggregating it. One way of doing this is by spatially aggregating
+values over spatial polygons or lines (@sec-vectordatacubes).
+We can for instance compute the maximum pixel value for each of the
+six bands and for each of the three circles shown in @fig-ras (d) by
 ```{r echo=FALSE}
 set.seed(131)
 ```
@@ -941,12 +950,13 @@ circles <- st_sample(st_as_sfc(st_bbox(r)), 3) |>
     st_buffer(500)
 aggregate(r, circles, max)
 ```
-which gives a data cube with 3 geometries and 6 bands.  Aggregation
+which gives a (vector) data cube with three geometries and six bands. Aggregation
 over a temporal dimension is done by passing a time variable as the
-second argument to `aggregate`, as
+second argument to `aggregate`, as a
 
-* a set of time stamps indicating the start of time intervals or
-* a time period like `"weeks"`, `"5 days"` or `"years"`
+* set of time stamps indicating the start of time intervals,
+* set of time intervals defined by `make_intervals`, or
+* time period like `"weeks"`, `"5 days"`, or `"years"`.
 
 ### Predictive models {#sec-starspredict}
 
@@ -976,7 +986,7 @@ col <- rep("yellow", 20)
 col[c(8, 14, 15, 18, 19)] = "red"
 st_as_sf(e) |> st_coordinates() |> text(labels = 1:20, col = col)
 ```
-From this figure, we read "by eye" that the points 8, 14, 15, 18 and
+From this figure, we read "by eye" that the points 8, 14, 15, 18, and
 19 are on water, the others on land. Using a linear discriminant
 ("maximum likelihood") classifier, we find model predictions as
 shown in @fig-lda by
@@ -1011,18 +1021,18 @@ We also see that the layer plotted in @fig-lda is a `factor` variable, with clas
 \index{plot!star}
 
 ```{r fig-firststars, echo=!knitr::is_latex_output(), message=FALSE}
-#| fig.cap: "Six 30m Landsat bands downsampled to 90m for Olinda, Br."
+#| fig.cap: "Six 30 m Landsat bands downsampled to 90m for Olinda, Br."
 #| code-fold: true
 plot(r)
 ```
 
 We can use the base `plot` method for `stars` objects, where
 the plot created with `plot(r)` is shown in @fig-firststars.
-The default colour scale uses grey tones, and stretches these such
+The default colour scale uses grey tones and stretches them such
 that colour breaks correspond to data quantiles over all bands
 ("histogram equalization"). Setting `breaks = "equal"` gives equal
-colour breaks, alternatively a numeric sequence of breaks can be
-given.  A more familiar view may the RGB or false colour composite
+width colour breaks; alternatively a sequence of numeric break values can be
+given.  A more familiar view may be the RGB or false colour composite
 shown in @fig-starsrgb.
 
 ```{r fig-starsrgb, echo=!knitr::is_latex_output(), message=FALSE}
@@ -1053,7 +1063,7 @@ r2 <- r
 r2[r < 50] <- NA
 r2
 ```
-or un-mask areas:
+or unmask areas:
 ```{r}
 r2[is.na(r2)] <- 0
 r2
@@ -1063,13 +1073,13 @@ r2
 \index[function]{st\_apply}
 
 Dimension-wise, we can apply functions to selected array dimensions
-(@sec-reducedimension))
+(@sec-reducedimension)
 of stars objects similar to how `apply` does this to arrays. For
-instance, we can compute for each pixel the mean of the 6 band values by
+instance, we can compute for each pixel the mean of the six band values by
 ```{r}
 st_apply(r, c("x", "y"), mean)
 ```
-A more meaningful function would e.g. compute the NDVI (normalised
+A more meaningful function would for instance compute the NDVI (normalised
 differenced vegetation index):
 ```{r}
 ndvi <- function(b1, b2, b3, b4, b5, b6) (b4 - b3)/(b4 + b3)
@@ -1080,7 +1090,7 @@ Alternatively, one could have defined
 ndvi2 <- function(x) (x[4]-x[3])/(x[4]+x[3])
 ```
 which is more convenient if the number of bands is large,
-but which is also much slower than `ndvi` as it
+but also much slower than `ndvi` as it
 needs to be called for every pixel whereas `ndvi` can be called
 once for all pixels, or for large chunks of pixels.
 The mean for each band over the whole image is computed by
@@ -1094,7 +1104,7 @@ happen (@sec-applydimension); we can for instance compute the three quartiles fo
 st_apply(r, c("band"), quantile, c(.25, .5, .75))
 ```
 and see that this _creates_ a new dimension, `quantile`, with three values.
-Alternatively, the three quantiles over the 6 bands for each pixel are
+Alternatively, the three quantiles over the six bands for each pixel are
 obtained by
 ```{r}
 st_apply(r, c("x", "y"), quantile, c(.25, .5, .75))
@@ -1114,10 +1124,10 @@ curved. Other reasons are:
 coordinate reference system, it will become curvilinear unless we
 resample (warp; @sec-warp); warping always comes at the 
 cost of some loss of data and is not reversible
-* observation may lead to irregular rasters; e.g. for satellite swaths, we
+* observation may lead to irregular rasters: for lower-level satellite products, we
 may have a regular raster in the direction of the satellite (not
 aligned with $x$ or $y$), and rectilinear in the direction perpendicular to that
-(e.g. if the sensor discretises the viewing _angle_ in equal sections)
+(e.g., when the sensor discretises the viewing _angle_ in equal parts)
 
 ### GDAL utils
 
@@ -1134,7 +1144,7 @@ it means that the user no longer needs to install any GDAL binary
 command line utilities in addition to the R package.
 
 Package **sf** allows calling these C API algorithms through function
-`gdal_utils()`, where the first argument is the name of the utility
+`gdal_utils`, where the first argument is the name of the utility
 (stripped from the `gdal` prefix):
 
 * `info` prints information on GDAL (raster) datasets
@@ -1146,16 +1156,16 @@ Package **sf** allows calling these C API algorithms through function
 * `demprocessing` does various processing steps of digital elevation models (dems)
 * `nearblack` converts nearly black/white borders to black
 * `grid` creates a regular grid from scattered data
-* `mdiminfo` prints information on a multidimensional array
-* `mdimtranslate` translates a multidimensional array into another format
+* `mdiminfo` prints information on a multi-dimensional array
+* `mdimtranslate` translates a multi-dimensional array into another format
 
-These utilities work on files, and not not directly on `sf` or
+These utilities work on files, and not directly on `sf` or
 `stars` objects.  However, `stars_proxy` objects are essentially
 pointers to files, and other objects can be written to file. Several
-of these utilities are (always or optionally) used, e.g. by
-`st_mosaic`, `st_warp` or `st_write`. R package **gdalUtilities**
+of these utilities are (always or optionally) used, for example by
+`st_mosaic`, `st_warp`, or `st_write`. R package **gdalUtilities**
 [@R-gdalUtilities] provides further wrapper functions around
-`sf::gdal_utils` with function arguments identical to the
+`sf::gdal_utils` with function argument names matching the
 command line arguments of the binary utils.
 
 ## Vector data cube examples
@@ -1167,13 +1177,13 @@ command line arguments of the binary utils.
 
 \index{air quality aggregation}
 
-An air quality data set excerpt from 
-the [airBase European air quality data
-base](https://www.eea.europa.eu/data-and-maps/data/aqereporting-9),
-as it was also used by @RJ-2016-014 (the same data source is used
-in @sec-interpolation and @sec-stgeostatistics).
-Here, daily average PM$_{10}$ values were computed for rural background
-stations in Germany, 1998-2009.
+We use a small excert from the
+[European air quality data base](https://www.eea.europa.eu/data-and-maps/data/aqereporting-9) 
+to illustrate aggregation operations on vector data cubes. The same
+data source was used by @RJ-2016-014, and will be used
+in @sec-interpolation and @sec-stgeostatistics.  Daily average
+PM$_{10}$ values were computed for rural background stations in
+Germany, over the period 1998-2009.
 
 We can create a `stars` object from the `air` matrix, the `dates`
 Date vector and the `stations` `SpatialPoints` objects by
@@ -1199,7 +1209,7 @@ quite long, but also have large missing value gaps.
 along with mean PM$_{10}$ values.
 
 ```{r fig-airst, echo=!knitr::is_latex_output()}
-#| fig.cap: "Space-time diagram of PM$_{10}$ measurements by time and station"
+#| fig.cap: "Space time diagram of PM$_{10}$ measurements by time and station"
 #| code-fold: true
 par(mar = c(5.1, 4.1, 0.3, 0.1))
 image(aperm(log(aq), 2:1), main = NULL)
@@ -1239,7 +1249,7 @@ library(xts) |> suppressPackageStartupMessages()
 plot(as.xts(a)[,4], main = de_nuts1$NAME_1[4])
 ```
 
-### Example: Bristol origin-destination datacube {#sec-oddc}
+### Example: Bristol origin-destination data cube {#sec-oddc}
 
 \index{origin-destination matrix}
 \index{data cube!origin-destination matrix}
@@ -1258,20 +1268,19 @@ library(spDataLarge)
 plot(st_geometry(bristol_zones), axes = TRUE, graticule = TRUE)
 plot(st_geometry(bristol_zones)[33], col = 'red', add = TRUE)
 ```
-and the OD counts come in a table `bristol_od`
-with OD pairs as records, and transportation mode as variables:
+OD counts come in a table `bristol_od`
+with non-zero OD pairs as records, and transportation mode as variables:
 ```{r}
 head(bristol_od)
 ```
-We see that many combinations of origin and destination are implicit
-zeroes, otherwise these two numbers would have been similar:
+The number of zero OD values is found by subtracting the number of
+non-zero records from the total number of OD combinations:
 ```{r}
-nrow(bristol_zones)^2 # all combinations
-nrow(bristol_od) # non-zero combinations
+nrow(bristol_zones)^2 - nrow(bristol_od) 
 ```
 
-We will form a three-dimensional vector datacube with origin,
-destination and transportation mode as dimensions. For this, we
+We will form a three-dimensional vector data cube with origin,
+destination, and transportation mode as dimensions. For this, we
 first "tidy" the `bristol_od` table to have origin (o), destination (d),
 transportation mode (mode), and count (n) as variables, using 
 `pivot_longer`:
@@ -1295,7 +1304,7 @@ dim(a)
 We see that the dimensions are named with the zone names (o, d)
 and the transportation mode name (mode). 
 Every row of `bristol_tidy` denotes a single array entry, and we can
-use this to to fill the non-zero entries of `a` using the `bristol_tidy` 
+use this to fill the non-zero entries of `a` using the `bristol_tidy` 
 table to provide index (`o`, `d` and `mode`)  and value (`n`):
 ```{r}
 a[as.matrix(bristol_tidy[c("o", "d", "mode")])] <- 
@@ -1310,7 +1319,7 @@ order <- match(od, bristol_zones$geo_code)
 zones <- st_geometry(bristol_zones)[order]
 ```
 (It happens that the order is already correct, but it is good
-practice to not assume this).
+practice to not assume this.)
 
 Next, with zones and modes we can create a stars dimensions object:
 ```{r}
@@ -1318,18 +1327,18 @@ library(stars)
 (d <- st_dimensions(o = zones, d = zones, mode = mode))
 ```
 
-and finally build or stars object from `a` and `d`:
+and finally build a stars object from `a` and `d`:
 ```{r}
 (odm <- st_as_stars(list(N = a), dimensions = d))
 ```
 
 We can take a single slice through this three-dimensional
-array, e.g. for zone 33 (@fig-bristol1) , by `odm[ , , 33]`, 
+array, for instance for zone 33 (@fig-bristol1), by `odm[ , , 33]`, 
 and plot it with
 ```{r fig-odm33, fig.cap = "OD matrix sliced for destination zone 33, by transportation mode"}
 plot(adrop(odm[,,33]) + 1, logz = TRUE)
 ```
-the result of which is shown in @fig-odm33 .
+the result of which is shown in @fig-odm33.
 Subsetting this way, we take all attributes (there is only one: N)
 since the first argument is empty, we take all origin regions (second
 argument empty), we take destination zone 33 (third argument),
@@ -1343,8 +1352,9 @@ d <- st_apply(odm, 2, sum)
 which.max(d[[1]])
 ```
 
-Other aggregations we can carry out include: total transportation
-by OD (102 x 102):
+Other aggregations we can carry out include: 
+
+Total transportation by OD (102 x 102):
 ```{r}
 st_apply(odm, 1:2, sum)
 ```
@@ -1365,17 +1375,17 @@ Destination totals, summed over modes (we had this):
 d <- st_apply(odm, 2, sum)
 ```
 We plot `o` and `d` together after joining them by
-```{r fig-odjoined, out.height = '90%', fig.cap = "total commutes, summed by origin (left) or destination (right)."}
+```{r fig-odjoined, out.height = '90%', fig.cap = "Total commutes, summed by origin (left) or destination (right)"}
 x <- (c(o, d, along = list(od = c("origin", "destination"))))
 plot(x, logz = TRUE)
 ```
-the result of which is shown in @fig-odjoined .
+the result of which is shown in @fig-odjoined.
 
 There is something to say for the argument that such maps
 give the wrong message, as both amount (colour) and polygon
 size give an impression of amount. To take out the amount
 in the count, we can compute densities (count / km$^2$), by
-```{r fig-odbykm, out.height = '90%', fig.cap = "total commutes per square km, by area of origin (left) or destination (right)", message=FALSE}
+```{r fig-odbykm, out.height = '90%', fig.cap = "Total commutes per square km, by area of origin (left) or destination (right)", message=FALSE}
 library(units)
 a <- set_units(st_area(st_as_sf(o)), km^2)
 o$sum_km <- o$sum / a
@@ -1384,18 +1394,18 @@ od <- c(o["sum_km"], d["sum_km"], along =
 		list(od = c("origin", "destination")))
 plot(od, logz = TRUE)
 ```
-shown in @fig-odbykm . Another way to normalize these
+shown in @fig-odbykm. Another way to normalize these
 totals would be to divide them by population size.
 
 ### Tidy array data
 
 \index{data cube!tidy}
 
-The _tidy data_ paper [@tidy] may suggest that such array data should be processed not as an array, but in a long (unnormalised) table form where each row holds (region, class, year, value), and it is always good to be able to do this. For primary handling and storage however,
+The _tidy data_ paper [@tidy] may suggest that such array data should be processed not as an array, but in a long (unnormalised) table form where each row holds (region, class, year, value), and it is always good to be able to do this. For primary handling and storage, however,
 this is often not an option, because:
 
-* a lot of array data are collected or generated as array data, e.g.
-by imagery or other sensory devices, or e.g. by climate models
+* a lot of array data are collected or generated as array data, for instance
+by imagery or other sensory devices, or by climate models
 * it is easier to derive the long table form from the array than
 vice versa
 * the long table form requires much more memory, since the space
@@ -1414,12 +1424,12 @@ form -- at the cost of using dense arrays, in package **stars**.
 
 Package **stars** tries to follow the [tidy
 manifesto](https://cran.r-project.org/web/packages/tidyverse/vignettes/manifesto.html)
-to handle array sets, and has particularly developed support for the
-case where one or more of the dimensions refer to space, and/or time.
+to handle array sets and has particularly developed support for the
+case where one or more of the dimensions refer to space and/or time.
 
 ### File formats for vector data cubes
 
-Regular table forms, including the long table form are
+Regular table forms, including the long table form, are
 possible but clumsy to use: the origin-destination data example above
 and @sec-stgeostatistics illustrate the complexity of recreating
 a vector data cube from table forms. Array formats like NetCDF or
@@ -1434,13 +1444,13 @@ read and write vector data cubes following these conventions.
 \index[function]{read\_mdim}
 \index[function]{write\_mdim}
 
-## raster-to-vector, vector-to-raster {#sec-raster-to-vector}
+## Raster-to-vector, vector-to-raster {#sec-raster-to-vector}
 
 @sec-rasterize already showed some examples of raster-to-vector
 and vector-to-raster conversions. This section will add some code
 details and examples.
 
-### vector-to-raster
+### Vector-to-raster
 
 \index{vector to raster}
 \index[function]{st\_as\_stars}
@@ -1450,8 +1460,8 @@ objects. However, not all stars objects are `raster` objects,
 and the method for `sf` objects creates a vector data cube with
 the geometry as its spatial (vector) dimension, and attributes
 as attributes.  When given a feature _geometry_ (`sfc`) object,
-`st_as_stars` will rasterize it, as shown in @sec-warp,
-and in @fig-asstars .
+`st_as_stars` will rasterise it, as shown in @sec-warp
+and in @fig-asstars.
 
 
 ```{r fig-asstars}
@@ -1467,7 +1477,7 @@ number of cells, and/or extent. The cell values returned are 0 for
 cells with centre point outside the geometry and 1 for cell with
 centre point inside or on the border of the geometry.  Rasterising
 existing features is done using `st_rasterize`, as also shown in
-@fig-vectoras :
+@fig-vectoras:
 
 ```{r}
 library(dplyr)
@@ -1477,10 +1487,10 @@ read_sf(file) |>
 	st_rasterize()
 ```
 Similarly, line and point geometries can be rasterised, as shown
-in @fig-lineras .
+in @fig-lineras.
 
 ```{r fig-lineras}
-#| fig.cap: "Rasterising North Carolina county boundaries"
+#| fig.cap: "Rasterising the North Carolina county boundaries"
 read_sf(file) |>
 	st_cast("MULTILINESTRING") |>
 	select(CNTY_ID) |>
@@ -1498,12 +1508,12 @@ read_sf(file) |>
 \index[function]{st\_crs}
 
 Spatial objects of class `sf` or `stars` contain a coordinate
-reference system that can be retrieved or replaced with `st_crs`, or be
+reference system that can be retrieved or replaced with `st_crs`, or can be
 set or replaced in a pipe with `st_set_crs`. Coordinate reference
 systems can be set with an EPSG code, like `st_crs(4326)` which
 will be converted to `st_crs('EPSG:4326')`, or with a PROJ.4 string
 like `"+proj=utm +zone=25 +south"`, a name like "WGS84", or a name
-preceded by an authority like "OGC:CRS84"; alternatives include
+preceded by an authority like "OGC:CRS84". Alternatives include
 a coordinate reference system definition in WKT, WKT-2 (@sec-wkt2)
 or [PROJJSON](https://proj.org/specifications/projjson.html).
 The object returned by `st_crs` contains two fields: 
@@ -1540,35 +1550,35 @@ to it with `st_crs`). When PROJ finds more than one possibility
 to transform or convert from the source `crs` to the target `crs`,
 it chooses the one with the highest declared accuracy. More fine-grained
 control over the options is explained in @sec-pipelines.
-For `stars` object with regular raster dimensions, `st_transform`
-will _only_ transform coordinate and always result in a curvilinear
+For `stars` objects with regular raster dimensions, `st_transform`
+will _only_ transform coordinates and always result in a curvilinear
 grid. `st_warp` can be used to create a regular raster in a new
-coordinate reference system, by regridding (@sec-warp).
+coordinate reference system, using regridding (@sec-warp).
 
 A lower-level function to transform or convert coordinates _not_
 in `sf` or `stars` objects is `sf_project`: it takes a matrix with
-coordinates and a source and target `crs`, and returns transformed
+coordinates and a source and target `crs`, and it returns transformed
 or converted coordinates.
 
 ### `sf_proj_info`
 
 \index[function]{sf\_proj\_info}
 
-Function `sf_proj_info` can be used to query available projections,
+Function `sf_proj_info` can be used to query the available projections,
 ellipsoids, units and prime meridians available in the PROJ
 software. It takes a single parameter, `type`, which can have the
 following values:
 
 * `type = "proj"` lists the short and long names of available
 projections; short names can be used in a "+proj=name" string
-* `type = "ellps"` lists available ellipses, with name, long name,
+* `type = "ellps"` lists the available ellipses, with name, long name,
 and ellipsoidal parameters
 * `type = "units"` lists the available length units, with conversion
 constant to meters
 * `type = "prime_meridians"` lists the prime meridians with their
 position with respect to the Greenwich meridian
 
-### proj.db, datum grids, cdn.proj.org, local cache
+### Datum grids, proj.db, cdn.proj.org, local cache
 
 \index{proj.db}
 \index{datum!grids}
@@ -1605,18 +1615,18 @@ returns `TRUE`. By default it is set to `FALSE`, but
 ```{r}
 sf_proj_network(TRUE)
 ```
-sets it to `TRUE` and returns the URL of the network resource used;
-this resource can also be set to another resource, that may be
+sets it to `TRUE` and returns the URL of the network resource used.
+This resource can also be set to another resource, that may be
 faster or less limited.
 
 After querying a datum grid on the CDN, PROJ writes the _portion_ of
 the grid queried (not, by default, the entire grid) to a local cache,
-which is another sqlite3 database found locally in a user directory,
-e.g. at
+which is another sqlite3 database found locally in a user directory
+that is listed by
 ```{r}
 list.files(sf_proj_search_paths()[1], full.names = TRUE)
 ```
-that will be searched first in subsequent datum grid queries.
+and that will be searched first in subsequent datum grid queries.
 
 ### Transformation pipelines {#sec-pipelines}
 
@@ -1626,7 +1636,7 @@ Internally, PROJ uses a so-called _coordinate operation pipeline_,
 to represent the sequence of operations to get from a source CRS to
 a target CRS.  Given multiple options to go from source to target,
 `st_transform` chooses the one with highest accuracy. We can query
-the options available by e.g.
+the options available by `sf_proj_pipelines`:
 ```{r}
 (p <- sf_proj_pipelines("OGC:CRS84", "EPSG:22525"))
 ```
@@ -1655,7 +1665,7 @@ The default, most accurate pipeline chosen by `st_transform` can
 be overridden by specifying `pipeline` argument, as selected from
 the set of options in `p$definition`.
 
-### Axis order {#sec-axisorder}
+### Axis order and direction {#sec-axisorder}
 
 \index{axis order}
 \index{coordinates!axis order}
@@ -1667,22 +1677,35 @@ second with longitude; this is also the case for a number of other
 ellipsoidal coordinate reference systems. Although this is how
 the authority (EPSG) prescribes this, it is not how most datasets
 are currently stored. As most other software, package **sf** by default
-ignores this, and interprets ellipsoidal coordinate pairs as (longitude,
-latitude) by default. If however data needs to be read e.g. from a
-WFS service that wants to be compliant to the authority, one can set
+ignores this and interprets ellipsoidal coordinate pairs as (longitude,
+latitude) by default. If however data needs to be read from a data source
+that is compliant to the authority, for instance from a WFS service,
+one can set
 ```{r eval=FALSE}
 st_axis_order(TRUE)
 ```
 to globally instruct **sf**, when calling GDAL and PROJ routines, that
 authority compliance (latitude, longitude order) is assumed. It is
 anticipated that problems may happen in case of authority compliance,
-e.g. with plotting data.  The `plot` method for `sf` objects
+for instance when with plotting data.  The `plot` method for `sf` objects
 respects the axis order flag and will swap coordinates using the
 transformation pipeline `"+proj=pipeline +step +proj=axisswap
-+order=2,1"` before plotting them, but e.g. `geom_sf()` in
++order=2,1"` before plotting them, but `geom_sf` in
 `ggplot2` has not been modified to do this.  As mentioned earlier,
 the axis order ambiguity of `EPSG:4326` is resolved by replacing
 it with `OGC:CRS84`.
+
+Independent from the axis order, not all coordinate reference systems
+have an axis direction that is positive in North and East directions.
+Most plotting functions in R will not work with data that have axes
+defined in opposite directions.  Information on axes directions
+and units can be retrieved by 
+```{r}
+st_crs(4326)$axes
+st_crs(4326)$ud_unit
+st_crs("EPSG:2053")$axes
+st_crs("EPSG:2053")$ud_unit
+```
 
 ## Transforming and warping rasters {#sec-warp}
 
@@ -1692,7 +1715,7 @@ it with `OGC:CRS84`.
 \index{stars!warp}
 \index[function]{st\_warp}
 
-When using `st_transform` on a raster dataset, as e.g. in
+When using `st_transform` on a raster dataset, as in
 ```{r}
 tif <- system.file("tif/L7_ETMs.tif", package = "stars")
 read_stars(tif) |>
@@ -1707,9 +1730,9 @@ values remain identical after the projection.
 
 When we start with a raster on a regular grid and want to obtain
 a _regular_ grid in a new coordinate reference system, we need
-to _warp_ the grid: we need to recreate a grid at new locations,
+to _warp_ the grid: we need to recreate a grid at new locations
 and use some rule to assign values to new grid cells. Rules can
-involve using the nearest value, or using some form of interpolation.
+involve using the nearest value or using some form of interpolation.
 This operation is not lossless and not invertible. 
 
 The best approach for warping is to specify the target grid as a
@@ -1725,7 +1748,7 @@ read_stars(tif) |>
 which creates a pretty close raster, but then the transformation
 is also relatively modest.  For a workflow that creates a target 
 raster first, here with exactly the same number of rows and columns
-as the original raster one could use:
+as the original raster, one could use:
 ```{r}
 r <- read_stars(tif)
 grd <- st_bbox(r) |>
@@ -1742,11 +1765,11 @@ varies.
 
 Use R to solve the following exercises.
 
-1. Find the names of the `nc` counties that intersect `LINESTRING(-84 35,-78 35)`; use `[` for this, and as an alternative use `st_join()` for this.
-1. Repeat this after setting `sf_use_s2(FALSE)`, and _compute_ the difference (hint: use `setdiff()`), and colour the counties of the difference using color '#88000088'.
-1. Plot the two different lines in a single plot; note that R will plot a straight line always straight in the projection currently used; `st_segmentize` can be used to add points on straight line, or on a great circle for ellipsoidal coordinates.
+1. Find the names of the `nc` counties that intersect `LINESTRING(-84 35,-78 35)`; use `[` for this, and as an alternative use `st_join` for this.
+1. Repeat this after setting `sf_use_s2(FALSE)`, and _compute_ the difference (hint: use `setdiff`), and colour the counties of the difference using colour '#88000088'.
+1. Plot the two different lines in a single plot; note that R will plot a straight line always straight in the projection currently used; `st_segmentize` can be used to add points on a straight line, or on a great circle for ellipsoidal coordinates.
 1. NDVI, normalised differenced vegetation index, is computed as `(NIR-R)/(NIR+R)`, with NIR the near infrared and R the red band.  Read the `L7_ETMs.tif` file into object `x`, and distribute the band dimensions over attributes by `split(x, "band")`. Then, add attribute NDVI to this object by using an expression that uses the NIR (band 4) and R (band 3) attributes directly.
-1. Compute NDVI for the `L7_ETMs.tif` image by reducing the band dimension, using `st_apply` and an a function `ndvi = function(x) { (x[4]-x[3])/(x[4]+x[3]) }`. Plot the result, and write the result to a GeoTIFF. 
+1. Compute NDVI for the `L7_ETMs.tif` image by reducing the band dimension, using `st_apply` and a function `ndvi = function(x) { (x[4]-x[3])/(x[4]+x[3]) }`. Plot the result, and write the result to a GeoTIFF. 
 1. Use `st_transform` to transform the `stars` object read from `L7_ETMs.tif` to `OGC:CRS84`. Print the object. Is this a regular grid? Plot the first band using arguments `axes=TRUE` and `border=NA`, and explain why this takes such a long time.
 1. Use `st_warp` to warp the `L7_ETMs.tif` object to `OGC:CRS84`, and plot the resulting object with `axes=TRUE`. Why is the plot created much faster than after `st_transform`?
 1. Using a vector representation of the raster `L7_ETMs`, plot the
