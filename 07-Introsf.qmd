@@ -49,8 +49,8 @@ a sub-class of a `data.frame` or tibble. `sf` objects contain at
 least one _geometry list-column_ of class `sfc`, which for each
 element contains the geometry as an R object of class `sfg`.
 A geometry list-column acts as a variable in a `data.frame`
-or tibble, but has a more complex structure than, e.g., numeric or
-character variables.  
+or tibble, but has a more complex structure than basic vectors
+such as numeric or character variables [@sec-dissecting].
 
 \index{sfc, class}
 \index{sfg, class}
@@ -94,7 +94,7 @@ Geometry columns in `sf` objects can be set or replaced using
 ### Creation
 
 \index{sf!create from scratch}
-An `sf` object can be created from scratch by e.g.
+An `sf` object can be created from scratch by
 ```{r echo=TRUE}
 library(sf)
 p1 <- st_point(c(7.35, 52.42))
@@ -111,8 +111,8 @@ st_sf(elev = c(33.2, 52.1, 81.2),
 knitr::include_graphics("images/sf_obj.png")
 ```
 
-@fig-sfobj  gives an explanation of the components
-printed.  Rather than creating objects from scratch, spatial data
+@fig-sfobj gives an explanation of the components
+printed. Rather than creating objects from scratch, spatial data
 in R are typically read from an external source, which can be:
 
 \index{sf!components figure}
@@ -163,8 +163,9 @@ where the file format (GPKG) is derived from the file name extension.
 Using argument `append`, `st_write` can either append records
 to an existing layer or replace it; if unset, it will err if a
 layer already exists. The tidyverse-style `write_sf` will replace
-silently if `append` has not been set.  Layers can also be deleted,
-e.g., from a database, using `st_delete`.
+silently if `append` has not been set.  Layers can also be deleted
+using `st_delete`, which is convenient in particular when they are associated
+with tables in a database.
 
 For file formats supporting a WKT2 coordinate reference system,
 `sf_read` and `sf_write` will read and write it. For simple formats
@@ -186,7 +187,7 @@ only a very limited encoding of the CRS.
 
 A very common operation is to subset objects; base R can use `[`
 for this. The rules that apply to `data.frame` objects also apply to
-`sf` objects, e.g., that records 2-5 and columns 3-7 are selected by
+`sf` objects: records 2-5 and columns 3-7 are selected by
 ```{r eval=FALSE}
 nc[2:5, 3:7]
 ```
@@ -194,7 +195,7 @@ but with a few additional features, in particular:
 
 * the `drop` argument is by default `FALSE` meaning that the
   geometry column is _always_ selected, and an `sf` object is
-  returned; when it is set to `TRUE` and the geometry column _not_ selected,
+  returned; when it is set to `TRUE` and the geometry column is _not_ selected,
   it is dropped and a `data.frame` is returned
 * selection with a spatial (`sf`, `sfc` or `sfg`) object as first argument leads to
   selection of the features that spatially _intersect_ with that
@@ -313,7 +314,7 @@ The `distinct` method selects distinct records, where `st_equals`
 is used to evaluate distinctness of geometries.
 
 `filter` can be used with the usual predicates; when one wants to
-use it with a spatial predicate, e.g., to select all counties less
+use it with a spatial predicate, for instance to select all counties less
 than 50 km away from Orange County, one could use
 ```{r}
 orange <- nc |> dplyr::filter(NAME == "Orange")
@@ -421,7 +422,7 @@ and extensive variables.
 \index{interpolation!area-weighted}
 \index{area-weighted interpolation}
 
-## Ellipsoidal coordinates
+## Ellipsoidal coordinates {#sec-ccw}
 
 Unprojected data have ellipsoidal coordinates, expressed in degrees
 east and north. As explained in @sec-straight, "straight" lines
@@ -471,8 +472,12 @@ libraries, **GEOS** for Cartesian and **s2geometry** for spherical
 geometry (@fig-gdal-fig-nodetails) were developed with different
 motivations, and their use through **sf** differs in some respects:
 
-* certain operations may be much faster in one compared to the other, e.g., by using spatial indexes not available or not (yet) interfaced in the other
-* certain functions may be available in only one of them (like `st_relate` being only present in GEOS).
+* certain operations may be much faster in one compared to the other,
+* certain functions may be available in only one of them (like `st_relate` being only present in GEOS),
+* when using transformers, **GEOS** returns exterior polygon rings
+  noded clockwise (`st_sfc(..., check_ring_dir = TRUE)` can be used
+  to revert to counter-clockwise), **s2geometry** retuns them
+  counter-clockwise
 
 ## Package **stars**
 
@@ -556,7 +561,7 @@ for each dimension:
 
 One further field, `values`, is hidden here as it is not used.  For
 regular, rotated, or sheared grids or other regularly discretised
-dimensions (e.g., time), `offset` and `delta` are not `NA`; for
+dimensions (such as time), `offset` and `delta` are not `NA`; for
 irregular cases, `offset` and `delta` are `NA` and the `values`
 property contains one of:
 
@@ -625,7 +630,7 @@ library(dplyr, warn.conflicts = FALSE)
 filter(r, x > 289000, x < 290000)
 ```
 which changes the offset of the $x$ dimension. Particular cube slices
-can also be obtained with `slice`, e.g.
+can also be obtained with `slice`, as in
 ```{r}
 slice(r, band, 3)
 ```
@@ -640,7 +645,7 @@ drops existing ones.
 \index[function]{st\_crop}
 
 Further subsetting can be done using spatial objects of class `sf`, `sfc`
-or `bbox`, e.g., when using the sample raster,
+or `bbox`, for instance
 ```{r}
 b <- st_bbox(r) |>
 	st_as_sfc() |>
@@ -731,11 +736,10 @@ reproducing, it should not be set generate further randomly
 generated points.)
 
 Another way of extracting information from data cubes is by
-aggregating it. One way of doing is by spatial aggregation,
-e.g., to values for spatial polygons or lines (@sec-vectordatacubes).
+aggregating it. One way of doing this is by spatially aggregating
+values over spatial polygons or lines (@sec-vectordatacubes).
 We can for instance compute the maximum pixel value for each of the
 six bands and for each of the three circles shown in @fig-ras (d) by
-
 ```{r echo=FALSE}
 set.seed(131)
 ```
@@ -744,11 +748,12 @@ circles <- st_sample(st_as_sfc(st_bbox(r)), 3) |>
     st_buffer(500)
 aggregate(r, circles, max)
 ```
-which gives a data cube with three geometries and six bands.  Aggregation
+which gives a (vector) data cube with three geometries and six bands. Aggregation
 over a temporal dimension is done by passing a time variable as the
 second argument to `aggregate`, as a
 
-* set of time stamps indicating the start of time intervals or
+* set of time stamps indicating the start of time intervals,
+* set of time intervals defined by `make_intervals`, or
 * time period like `"weeks"`, `"5 days"`, or `"years"`.
 
 ### Predictive models {#sec-starspredict}
@@ -917,10 +922,10 @@ curved. Other reasons are:
 coordinate reference system, it will become curvilinear unless we
 resample (warp; @sec-warp); warping always comes at the 
 cost of some loss of data and is not reversible
-* observation may lead to irregular rasters; e.g., for satellite swaths, we
+* observation may lead to irregular rasters: for lower-level satellite products, we
 may have a regular raster in the direction of the satellite (not
 aligned with $x$ or $y$), and rectilinear in the direction perpendicular to that
-(e.g., if the sensor discretises the viewing _angle_ in equal sections)
+(e.g., when the sensor discretises the viewing _angle_ in equal parts)
 
 ### GDAL utils
 
@@ -955,10 +960,10 @@ Package **sf** allows calling these C API algorithms through function
 These utilities work on files, and not directly on `sf` or
 `stars` objects.  However, `stars_proxy` objects are essentially
 pointers to files, and other objects can be written to file. Several
-of these utilities are (always or optionally) used, e.g., by
-`st_mosaic`, `st_warp` or `st_write`. R package **gdalUtilities**
+of these utilities are (always or optionally) used, for example by
+`st_mosaic`, `st_warp`, or `st_write`. R package **gdalUtilities**
 [@R-gdalUtilities] provides further wrapper functions around
-`sf::gdal_utils` with function arguments identical to the
+`sf::gdal_utils` with function argument names matching the
 command line arguments of the binary utils.
 
 ## Vector data cube examples
@@ -1126,7 +1131,7 @@ and finally build a stars object from `a` and `d`:
 ```
 
 We can take a single slice through this three-dimensional
-array, e.g., for zone 33 (@fig-bristol1), by `odm[ , , 33]`, 
+array, for instance for zone 33 (@fig-bristol1), by `odm[ , , 33]`, 
 and plot it with
 ```{r fig-odm33, fig.cap = "OD matrix sliced for destination zone 33, by transportation mode"}
 plot(adrop(odm[,,33]) + 1, logz = TRUE)
@@ -1197,7 +1202,7 @@ totals would be to divide them by population size.
 The _tidy data_ paper [@tidy] may suggest that such array data should be processed not as an array, but in a long (unnormalised) table form where each row holds (region, class, year, value), and it is always good to be able to do this. For primary handling and storage, however,
 this is often not an option, because:
 
-* a lot of array data are collected or generated as array data, e.g.
+* a lot of array data are collected or generated as array data, for instance
 by imagery or other sensory devices, or by climate models
 * it is easier to derive the long table form from the array than
 vice versa
@@ -1414,12 +1419,12 @@ faster or less limited.
 
 After querying a datum grid on the CDN, PROJ writes the _portion_ of
 the grid queried (not, by default, the entire grid) to a local cache,
-which is another sqlite3 database found locally in a user directory,
-e.g., at
+which is another sqlite3 database found locally in a user directory
+that is listed by
 ```{r}
 list.files(sf_proj_search_paths()[1], full.names = TRUE)
 ```
-that will be searched first in subsequent datum grid queries.
+and that will be searched first in subsequent datum grid queries.
 
 ### Transformation pipelines {#sec-pipelines}
 
@@ -1429,7 +1434,7 @@ Internally, PROJ uses a so-called _coordinate operation pipeline_,
 to represent the sequence of operations to get from a source CRS to
 a target CRS.  Given multiple options to go from source to target,
 `st_transform` chooses the one with highest accuracy. We can query
-the options available by e.g.
+the options available by `sf_proj_pipelines`:
 ```{r}
 (p <- sf_proj_pipelines("OGC:CRS84", "EPSG:22525"))
 ```
@@ -1458,7 +1463,7 @@ The default, most accurate pipeline chosen by `st_transform` can
 be overridden by specifying `pipeline` argument, as selected from
 the set of options in `p$definition`.
 
-### Axis order {#sec-axisorder}
+### Axis order and direction {#sec-axisorder}
 
 \index{axis order}
 \index{coordinates!axis order}
@@ -1471,21 +1476,34 @@ ellipsoidal coordinate reference systems. Although this is how
 the authority (EPSG) prescribes this, it is not how most datasets
 are currently stored. As most other software, package **sf** by default
 ignores this and interprets ellipsoidal coordinate pairs as (longitude,
-latitude) by default. If however data needs to be read, e.g., from a
-WFS service that wants to be compliant to the authority, one can set
+latitude) by default. If however data needs to be read from a data source
+that is compliant to the authority, for instance from a WFS service,
+one can set
 ```{r eval=FALSE}
 st_axis_order(TRUE)
 ```
 to globally instruct **sf**, when calling GDAL and PROJ routines, that
 authority compliance (latitude, longitude order) is assumed. It is
 anticipated that problems may happen in case of authority compliance,
-e.g., with plotting data.  The `plot` method for `sf` objects
+for instance when with plotting data.  The `plot` method for `sf` objects
 respects the axis order flag and will swap coordinates using the
 transformation pipeline `"+proj=pipeline +step +proj=axisswap
-+order=2,1"` before plotting them, but, e.g., `geom_sf` in
++order=2,1"` before plotting them, but `geom_sf` in
 `ggplot2` has not been modified to do this.  As mentioned earlier,
 the axis order ambiguity of `EPSG:4326` is resolved by replacing
 it with `OGC:CRS84`.
+
+Independent from the axis order, not all coordinate reference systems
+have an axis direction that is positive in North and East directions.
+Most plotting functions in R will not work with data that have axes
+defined in opposite directions.  Information on axes directions
+and units can be retrieved by 
+```{r}
+st_crs(4326)$axes
+st_crs(4326)$ud_unit
+st_crs("EPSG:2053")$axes
+st_crs("EPSG:2053")$ud_unit
+```
 
 ## Transforming and warping rasters {#sec-warp}
 
