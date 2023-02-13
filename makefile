@@ -1,5 +1,5 @@
 all:
-	# quarto render --to pdf
+	quarto render --to pdf
 	make sed
 	make 3
 	awk -f repl.awk sds.toc > x.toc
@@ -18,6 +18,11 @@ sed:
 	pdflatex sds.tex
 
 # bookdown::gitbook
+
+cp:
+	make zip
+	cp sds.zip ~/sciebo/sds_pdf/sds_2023_02_13.zip
+	cp sds.pdf ~/sciebo/sds_pdf/sds_2023_02_13.pdf
 
 view:
 	google-chrome _book/index.html
