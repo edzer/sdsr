@@ -21,8 +21,8 @@ sed:
 
 cp:
 	make zip
-	cp sds.zip ~/sciebo/sds_pdf/sds_2023_02_14.zip
-	cp sds.pdf ~/sciebo/sds_pdf/sds_2023_02_14.pdf
+	cp sds.zip ~/sciebo/sds_pdf/sds_2023_02_15.zip
+	cp sds.pdf ~/sciebo/sds_pdf/sds_2023_02_15.pdf
 
 view:
 	google-chrome _book/index.html
