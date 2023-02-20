@@ -60,6 +60,9 @@ include
 
 Point patterns have an observation window. Consider the points generated randomly by 
 
+::: panel-tabset
+
+#### R
 ```{r}
 library(sf)
 n <- 30
@@ -67,18 +70,58 @@ set.seed(13531) # remove this to create another random sequence
 xy <- data.frame(x = runif(n), y = runif(n)) |> 
     st_as_sf(coords = c("x", "y"))
 ```
+#### Python
+```{python}
+import geopandas as gpd
+from shapely.geometry import Point
+import random
+
+random.seed(13531)
+n = 30
+x = [random.uniform(0, 1) for i in range(n)]
+y = [random.uniform(0, 1) for i in range(n)]
+xy = gpd.GeoDataFrame(geometry=[Point(x, y) for x, y in zip(x, y)])
+xy.crs = "EPSG:4326"
+
+# Print the GeoDataFrame
+print(xy)
+
+```
+:::
 
 then these points are (by construction) uniformly distributed,
 or completely spatially random, over the domain $[0,1] \times [0,1]$. For
 a larger domain, they are not uniform, for the two square windows
 `w1` and `w2` created by 
+
+::: panel-tabset
+
+#### R
 ```{r}
 w1 <- st_bbox(c(xmin = 0, ymin = 0, xmax = 1, ymax = 1)) |> 
 		st_as_sfc() 
 w2 <- st_sfc(st_point(c(1, 0.5))) |> st_buffer(1.2)
 ```
+#### Python
+
+```{python}
+import geopandas as gpd
+from shapely.geometry import box, Point
+
+bbox = box(0, 0, 1, 1)
+w1 = gpd.GeoDataFrame(geometry=[bbox])
+point = Point(1, 0.5)
+buffer = point.buffer(1.2)
+w2 = gpd.GeoDataFrame(geometry=[buffer])
+print(w1, w2)
+```
+:::
+
 this is shown in @fig-pp1.
 
+::: panel-tabset
+
+#### R
 ```{r fig-pp1, echo=!knitr::is_latex_output()}
 #| fig.height: 3.3
 #| fig.cap: "Depending on the observation window (grey), the same point pattern can appear completely spatially random (left), or clustered (right)"
@@ -89,6 +132,36 @@ plot(xy, add = TRUE)
 plot(w2, axes = TRUE, col = 'grey')
 plot(xy, add = TRUE, cex = .5)
 ```
+#### Python
+
+```{python}
+#| fig.height: 3.3
+#| fig.cap: "Depending on the observation window (grey), the same point pattern can appear completely spatially random (left), or clustered (right)"
+#| code-fold: true
+import geopandas as gpd
+import matplotlib.pyplot as plt
+
+# Set the plot parameters
+fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+axs[0].set_xlim([0, 1])
+axs[0].set_ylim([0, 1])
+axs[1].set_xlim([-0.2, 2.2])
+axs[1].set_ylim([-0.2, 1.2])
+
+# Plot the first map
+w1.plot(ax=axs[0], color='grey', alpha=0.5, edgecolor='black')
+xy.plot(ax=axs[0], markersize=50, color='red')
+
+# Plot the second map
+w2.plot(ax=axs[1], color='grey', alpha=0.5, edgecolor='black')
+xy.plot(ax=axs[1], markersize=25, color='red')
+
+# Show the plot
+plt.show()
+
+```
+:::
+
 
 \index{ppp}
 \index{sf!as.ppp}
@@ -96,10 +169,21 @@ plot(xy, add = TRUE, cex = .5)
 Point patterns in **spatstat** are objects of class `ppp` that contain
 points and an observation window (an object of class `owin`).
 We can create a `ppp` from points by
+
+::: panel-tabset
+#### R
 ```{r}
 library(spatstat) |> suppressPackageStartupMessages()
 as.ppp(xy)
 ```
+#### Python
+```{python}
+from pointpats import PointPattern
+coords = [(point.x, point.y) for point in xy.geometry]
+p1 = PointPattern(coords)
+p1.summary()
+```
+:::
 where we see that the bounding box of the points is used as observation
 window when no window is specified. If we add a polygonal geometry as the
 first feature of the dataset, then this is used as observation window:

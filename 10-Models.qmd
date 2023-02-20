@@ -69,12 +69,39 @@ Objects of class `sf` need no special treatment, as they are
 `data.frame`s. To create maps of the resulting predictions, predicted
 values need to be added to the `sf` object, which can be done using the `nc`
 dataset loaded as in @sec-intro by:
+
+::: panel-tabset
+
+#### R
 ```{r sid, cache = FALSE}
 nc |> mutate(SID = SID74/BIR74, NWB = NWBIR74/BIR74) -> nc1
 lm(SID ~ NWB, nc1) |>
   predict(nc1, interval = "prediction") -> pr
 bind_cols(nc, pr) |> names()
 ```
+#### Python
+```{python}
+import geopandas as gpd
+import statsmodels.formula.api as smf
+
+# Read the 'nc' dataset from the GeoPackage file
+file = gpd.read_file("https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg")
+
+# Create the new columns and fit the linear model
+nc1 = file.assign(SID=file["SID74"]/file["BIR74"], NWB=file["NWBIR74"]/file["BIR74"])
+model = smf.ols(formula="SID ~ NWB", data=nc1).fit()
+
+# Compute the predictions and prediction intervals
+pr = model.get_prediction(nc1).summary_frame()
+
+# Combine the original data with the predictions
+result = pd.concat([file, pr], axis=1)
+
+# Print the column names
+print(result.columns)
+```
+
+:::
 where we see that 
 
 * `lm` estimates a linear model and works directly on an `sf` object
