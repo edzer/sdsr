@@ -1,13 +1,13 @@
-# quarto sources the "Spatial Data Science" book.
+# quarto sources for "Spatial Data Science: with applications in R"
 
+The print version of this book is available from [CRC/Chapman and Hall](https://www.routledge.com/Spatial-Data-Science-With-Applications-in-R/Pebesma-Bivand/p/book/9781138311183)
 A rendered (html) version of this book is available [here](https://r-spatial.org/book).
-The pdf version has been submitted to CRC/Chapman and Hall, for hardcopy publication.
 
 To recreate/reproduce this book:
 
 * git clone this repository
-* download the data used in Ch 13 from https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn, and extract the contents of the `aq` subdirectory into `sdsr/aq`
-* install all R packages listed under [Dependencies](#dependencies)
+* download the [data used in Ch 13](https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn), and extract the contents of the `aq` subdirectory into `sdsr/aq`
+* install R package dependencies [listed below](#dependencies)
 * install [quarto](https://quarto.org/) 
 * run `quarto render --to html`
 
