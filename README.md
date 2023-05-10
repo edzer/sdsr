@@ -1,7 +1,6 @@
 # quarto sources for "Spatial Data Science: with applications in R"
 
-The print version of this book is available from [CRC/Chapman and Hall](https://www.routledge.com/Spatial-Data-Science-With-Applications-in-R/Pebesma-Bivand/p/book/9781138311183)
-A rendered (html) version of this book is available [here](https://r-spatial.org/book).
+The print version of this book is available from [CRC/Chapman and Hall](https://www.routledge.com/Spatial-Data-Science-With-Applications-in-R/Pebesma-Bivand/p/book/9781138311183). A rendered (html) version of this book is available [online](https://r-spatial.org/book).
 
 To recreate/reproduce this book:
 
