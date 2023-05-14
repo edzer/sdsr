@@ -12,7 +12,7 @@ To recreate/reproduce this book:
 
 See also the [Dockerfile](https://github.com/edzer/sdsr/tree/main/docker); building the (18 Gb) image with
 ```
-docker build . -t sdsr --build-arg TZ=`timedatectl show --property=Timezone | awk -F = '{print $2}'`
+docker build . -t sdsr
 ```
 and running it with
 ```
@@ -20,14 +20,22 @@ docker run -p 8787:8787 -e DISABLE_AUTH=true -ti --rm sdsr
 ```
 will serve an Rstudio server instance on <http://localhost:8787/>, without authentication.
 
+
+## Compiling the whole book
+
 After running the docker image and opening `rstudio` in the browser:
 
 * click on `01-hello.qmd` in the bottom-right pane
 * click on the `Render` button of the top-left pane to compile the whole book
-* this should open a new browser window with the full book rendered (switch off popup blocker for localhost)
-* to run a selected code section, possibly after modification, find the selected code section in the corresponding `.qmd` file, and click the small green arrow symbols on the top-right corner of the code blocks:
-    * to prepare, first click `Run All Chunks Above`,
-	* to run the selected section: click `Run Current Chunk`
+
+this should open a new browser window with the full book rendered (you may need to switch off popup blockers for localhost)
+
+## Running selected chunks 
+
+To run a selected code section, possibly after modification, find the selected code section in the corresponding `.qmd` file, and click the small green arrow symbols on the top-right corner of the code blocks:
+
+* to prepare, first click `Run All Chunks Above`,
+* to run a selected code chunk: click `Run Current Chunk`
 
 ## Dependencies
 
@@ -69,7 +77,7 @@ options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad
 ```
 Install `starsdata`:
 ```
-options(timeout = 1200); install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")
+options(timeout = 1200); install.packages("starsdata", repos = "http://cran.uni-muenster.de/pebesma", type = "source")
 ```
 
 Install `stars` from source from github (not needed after stars >= 0.6-0 is available from CRAN), either from source:
