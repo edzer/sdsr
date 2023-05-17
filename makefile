@@ -42,3 +42,15 @@ zip:
 
 veryclean: 
 	rm -fr data/new_int.RData data/new_ts.RData data/vst.RData
+
+install:
+	sudo apt install r-cran-tidyverse r-cran-r2bayesx r-cran-cubelyr r-cran-dbscan r-cran-igraph r-cran-lme4 r-cran-lmtest r-cran-matrixstats r-cran-mgcv r-cran-rgeoda r-cran-rnaturalearth r-cran-rnaturalearthdata r-cran-spdata r-cran-stars r-cran-tmap r-cran-spatstat r-cran-spdep r-cran-spatialreg
+	R -q -e 'options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")'
+	R -q -e 'options(timeout = 3600); install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")'
+	R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
+	R -q -e 'install.packages("hglm")'
+	R -q -e 'remotes::install_github("r-spatial/gstat")' # for external/no2.csv
+	wget https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn/download -O sds.zip
+	unzip sds.zip
+	mv sds/aq .
+	quarto render --to html

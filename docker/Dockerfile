@@ -1,7 +1,6 @@
 FROM rocker/geospatial:latest
 
 MAINTAINER "edzerpebesma" edzer.pebesma@uni-muenster.de
-ARG TZ # avoids R package lubridate to raise an ugly warning
 
 RUN apt-get update && apt-get install -y python3-pip
 
@@ -17,12 +16,13 @@ RUN pip3 install geopandas descartes rasterio folium matplotlib mapclassify
 
 # 0. install book source files, use python branch:
 RUN git clone  https://github.com/edzer/sdsr.git
-RUN cd sdsr && git checkout python
+RUN cd sdsr && git checkout python && cd ..
+RUN mv sdsr /home/rstudio
 
 ## 1. download & install sdsr data:
 RUN wget -q https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn/download -O sds.zip
 RUN unzip -q sds.zip
-RUN mv sds/aq/* sdsr/aq
+RUN cp -r sds/aq /home/rstudio/sdsr
 RUN rm -fr sds.zip sds
 RUN mv sdsr/* .
 
@@ -30,7 +30,7 @@ RUN mv sdsr/* .
 RUN R -q -e 'options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")'
 
 ## 3. starsdata:
-RUN R -q -e 'options(timeout = 3600); install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")'
+RUN R -q -e 'options(timeout = 3600); install.packages("starsdata", repos = "http://cran.uni-muenster.de/pebesma", type = "source")'
 
 ## 4. INLA:
 RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
