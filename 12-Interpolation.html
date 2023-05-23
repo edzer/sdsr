@@ -777,11 +777,13 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 <span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>    units<span class="sc">::</span><span class="fu">set_units</span>(grd<span class="sc">$</span>values, m<span class="sc">^</span><span class="dv">2</span>)</span>
 <span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>area[iii<span class="sc">$</span>ID] <span class="ot">&lt;-</span> <span class="fu">st_area</span>(iii)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Instead of doing the two-stage procedure above, first finding cells that have a border crossing it then computing its area, we could also directly use <code>st_intersection</code> on all cells, but that takes considerably longer. From the counts and areas we can compute densities (<span class="quarto-unresolved-ref">?fig-popdens</span>) and verify totals</p>
+<p>Instead of doing the two-stage procedure above, first finding cells that have a border crossing it then computing its area, we could also directly use <code>st_intersection</code> on all cells, but that takes considerably longer. From the counts and areas we can compute densities (<a href="#fig-popdens">Figure&nbsp;<span>12.10</span></a>) and verify totals</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>pop_dens <span class="ot">&lt;-</span> a<span class="sc">$</span>Einwohner <span class="sc">/</span> grd<span class="sc">$</span>area</span>
 <span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(grd<span class="sc">$</span>pop_dens <span class="sc">*</span> grd<span class="sc">$</span>area, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="co"># verify</span></span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(b<span class="sc">$</span>Einwohner)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="co"># 80323301 [1]</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(b<span class="sc">$</span>Einwohner)</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] 0</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>which indicates strong agreement. Using <code>st_interpolate_aw</code> would have given an exact match.</p>
 <div class="cell">
@@ -789,6 +791,14 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>g <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> grd, <span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">sqrt</span>(pop_dens), <span class="at">x =</span> x, <span class="at">y =</span> y))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
+<div class="cell-output-display">
+<div id="fig-popdens" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="12-Interpolation_files/figure-html/fig-popdens-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
+<figcaption class="figure-caption">Figure&nbsp;12.10: Population density for 100 m <span class="math inline">\(\times\)</span> 100 m grid cells</figcaption>
+</figure>
+</div>
+</div>
 </div>
 <p>We need to divide the number of inhabitants by the number of 100 m <span class="math inline">\(\times\)</span> 100 m grid cells contributing to it, in order to convert population counts into population density.</p>
 <p> To obtain population density values at monitoring network stations, we can use <code>st_extract</code>:</p>
@@ -801,7 +811,25 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 </div>
 <p>We can then investigate the linear relationship between NO<span class="math inline">\(_2\)</span> and population density at monitoring station locations:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(<span class="fu">lm</span>(NO2<span class="sc">~</span><span class="fu">sqrt</span>(pop_dens), no2.sf))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(<span class="fu">lm</span>(NO2<span class="sc">~</span><span class="fu">sqrt</span>(pop_dens), no2.sf))</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Call:</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="co"># lm(formula = NO2 ~ sqrt(pop_dens), data = no2.sf)</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Residuals:</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="co">#    Min     1Q Median     3Q    Max </span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a><span class="co"># -7.990 -2.052 -0.505  1.610  8.095 </span></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Coefficients:</span></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a><span class="co">#                Estimate Std. Error t value Pr(&gt;|t|)    </span></span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a><span class="co"># (Intercept)       4.537      0.685    6.62  5.5e-09 ***</span></span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a><span class="co"># sqrt(pop_dens)  326.154     49.366    6.61  5.8e-09 ***</span></span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a><span class="co"># ---</span></span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Residual standard error: 3.13 on 72 degrees of freedom</span></span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Multiple R-squared:  0.377,   Adjusted R-squared:  0.369 </span></span>
+<span id="cb29-19"><a href="#cb29-19" aria-hidden="true" tabindex="-1"></a><span class="co"># F-statistic: 43.7 on 1 and 72 DF,  p-value: 5.82e-09</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>for which the corresponding scatterplot is shown in <span class="quarto-unresolved-ref">?fig-no2scat</span>.</p>
 <div class="cell">
@@ -822,11 +850,20 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(vr, vr.m, <span class="at">plot.numbers =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
+<div class="cell-output-display">
+<div id="fig-predictusingpopulationdensity" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="12-Interpolation_files/figure-html/fig-predictusingpopulationdensity-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
+<figcaption class="figure-caption">Figure&nbsp;12.11: Residual variogram after subtracting population density trend</figcaption>
+</figure>
 </div>
-<p>which is shown in <span class="quarto-unresolved-ref">?fig-predictusingpopulationdensity</span>. Subsequently, kriging prediction (<span class="quarto-unresolved-ref">?fig-residualkriging</span>) is done by</p>
+</div>
+</div>
+<p>which is shown in <a href="#fig-predictusingpopulationdensity">Figure&nbsp;<span>12.11</span></a>. Subsequently, kriging prediction (<a href="#fig-residualkriging">Figure&nbsp;<span>12.12</span></a>) is done by</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>kr <span class="ot">&lt;-</span> <span class="fu">krige</span>(NO2 <span class="sc">~</span> <span class="fu">sqrt</span>(pop_dens), no2.sf, </span>
-<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>            grd[<span class="st">"pop_dens"</span>], vr.m)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>            grd[<span class="st">"pop_dens"</span>], vr.m)</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a><span class="co"># [using universal kriging]</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
 <details>
@@ -841,6 +878,14 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 <span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> no2.sf) <span class="sc">+</span> <span class="fu">facet_wrap</span>(<span class="sc">~</span>what) <span class="sc">+</span></span>
 <span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_sf</span>(<span class="at">lims_method =</span> <span class="st">"geometry_bbox"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
+<div class="cell-output-display">
+<div id="fig-residualkriging" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="12-Interpolation_files/figure-html/fig-residualkriging-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
+<figcaption class="figure-caption">Figure&nbsp;12.12: Kriging NO<span class="math inline">\(_2\)</span> values using population density as a trend variable</figcaption>
+</figure>
+</div>
+</div>
 </div>
 <p>where, critically, the <code>pop_dens</code> values are now available for prediction locations in the <code>newdata</code> object <code>grd</code>.</p>
 <p>Compared to (ordinary) kriging We see some clear differences: the map using population density in the trend follows the extremes of the population density rather than those of the measurement stations, and has a value range that extends that of ordinary kriging. It should be taken with a large grain of salt however, since the stations used were filtered for the category “rural background”, indicating that they only represent conditions of lower populations density. The scatter-plot of <span class="quarto-unresolved-ref">?fig-no2scat</span> reveals that the the population density at the locations of stations is much more limited than that in the population density map, and hence the right-hand side map is based on strongly extrapolating the relationship shown in <span class="quarto-unresolved-ref">?fig-no2scat</span>.</p>
@@ -849,7 +894,7 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 <section id="exercises" class="level2" data-number="12.8">
 <h2 data-number="12.8" class="anchored" data-anchor-id="exercises"><span class="header-section-number">12.8</span> Exercises</h2>
 <ol type="1">
-<li>Create a plot like the one in <span class="quarto-unresolved-ref">?fig-residualkriging</span> that has the inverse distance interpolated map of <a href="#fig-idw">Figure&nbsp;<span>12.2</span></a> added on the left side.</li>
+<li>Create a plot like the one in <a href="#fig-residualkriging">Figure&nbsp;<span>12.12</span></a> that has the inverse distance interpolated map of <a href="#fig-idw">Figure&nbsp;<span>12.2</span></a> added on the left side.</li>
 <li>Create a scatter-plot of the map values of the idw and kriging map, and a scatter-plot of map values of idw and residual kriging.</li>
 <li>Carry out a <em>block kriging</em>, predicting block averages for blocks centred over grid cells, by setting the <code>block</code> argument in <code>krige()</code>, and do this for block sizes of 10 km (grid cell size), 50 km, and 200 km. Compare the resulting maps of estimates for these three block sizes with those obtained by point kriging, and do the same thing for all associated kriging standard errors.</li>
 <li>Based on the residual kriging results obtained above, compute maps of the lower and upper boundary of a 95% confidence interval, when assuming that the kriging error is normally distributed, and show them in a plot with a single (joint) legend.</li>
@@ -1244,7 +1289,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-39"><a href="#cb35-39" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-40"><a href="#cb35-40" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-41"><a href="#cb35-41" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
-<span id="cb35-42"><a href="#cb35-42" aria-hidden="true" tabindex="-1"></a>GA<span class="ot">=</span><span class="cn">FALSE</span></span>
+<span id="cb35-42"><a href="#cb35-42" aria-hidden="true" tabindex="-1"></a>CI <span class="ot">&lt;-</span> <span class="fu">Sys.getenv</span>(<span class="st">"CI"</span>) <span class="sc">==</span> <span class="st">"true"</span> <span class="co"># we're in GitHub CI</span></span>
 <span id="cb35-43"><a href="#cb35-43" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-44"><a href="#cb35-44" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-45"><a href="#cb35-45" aria-hidden="true" tabindex="-1"></a><span class="fu">## A first dataset</span></span>
@@ -1654,7 +1699,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-461"><a href="#cb35-461" aria-hidden="true" tabindex="-1"></a>density. NO$_2$ is mostly caused by traffic, and traffic is more intense</span>
 <span id="cb35-462"><a href="#cb35-462" aria-hidden="true" tabindex="-1"></a>in densely populated areas.</span>
 <span id="cb35-463"><a href="#cb35-463" aria-hidden="true" tabindex="-1"></a>Population density is obtained from the <span class="co">[</span><span class="ot">2011 census</span><span class="co">](https://www.zensus2011.de/DE/Home/Aktuelles/DemografischeGrunddaten.html)</span> and is downloaded as a csv file with the number of inhabitants per 100 m $\times$ 100 m grid cell. We can aggregate these data to the target grid cells by summing the inhabitants:</span>
-<span id="cb35-464"><a href="#cb35-464" aria-hidden="true" tabindex="-1"></a><span class="in">```{r vroom1, message=FALSE, eval=GA}</span></span>
+<span id="cb35-464"><a href="#cb35-464" aria-hidden="true" tabindex="-1"></a><span class="in">```{r vroom1, message=FALSE, eval=!CI}</span></span>
 <span id="cb35-465"><a href="#cb35-465" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> vroom<span class="sc">::</span><span class="fu">vroom</span>(<span class="st">"aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv"</span>)</span>
 <span id="cb35-466"><a href="#cb35-466" aria-hidden="true" tabindex="-1"></a>v <span class="sc">|&gt;</span> <span class="fu">filter</span>(Einwohner <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="sc">|&gt;</span> </span>
 <span id="cb35-467"><a href="#cb35-467" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(<span class="sc">-</span>Gitter_ID_100m) <span class="sc">|&gt;</span></span>
@@ -1662,141 +1707,145 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-469"><a href="#cb35-469" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_transform</span>(<span class="fu">st_crs</span>(grd)) <span class="ot">-&gt;</span> b</span>
 <span id="cb35-470"><a href="#cb35-470" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">aggregate</span>(b, <span class="fu">st_as_sf</span>(grd, <span class="at">na.rm =</span> <span class="cn">FALSE</span>), sum)</span>
 <span id="cb35-471"><a href="#cb35-471" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-472"><a href="#cb35-472" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-473"><a href="#cb35-473" aria-hidden="true" tabindex="-1"></a>Now we have the population counts per grid cell in <span class="in">`a`</span>. To get to</span>
-<span id="cb35-474"><a href="#cb35-474" aria-hidden="true" tabindex="-1"></a>population density, we need to find the area of each cell; for cells</span>
-<span id="cb35-475"><a href="#cb35-475" aria-hidden="true" tabindex="-1"></a>crossing the country border, this will be less than 10 $\times$ 10 km:</span>
-<span id="cb35-476"><a href="#cb35-476" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, message=FALSE, eval=GA}</span></span>
-<span id="cb35-477"><a href="#cb35-477" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>ID <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">prod</span>(<span class="fu">dim</span>(grd)) <span class="co"># to identify grid cells</span></span>
-<span id="cb35-478"><a href="#cb35-478" aria-hidden="true" tabindex="-1"></a>ii <span class="ot">&lt;-</span> <span class="fu">st_intersects</span>(grd[<span class="st">"ID"</span>],</span>
-<span id="cb35-479"><a href="#cb35-479" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_cast</span>(<span class="fu">st_union</span>(de), <span class="st">"MULTILINESTRING"</span>), <span class="at">as_points =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb35-480"><a href="#cb35-480" aria-hidden="true" tabindex="-1"></a>grd_sf <span class="ot">&lt;-</span> <span class="fu">st_as_sf</span>(grd[<span class="st">"ID"</span>], <span class="at">na.rm =</span> <span class="cn">FALSE</span>)[<span class="fu">lengths</span>(ii) <span class="sc">&gt;</span> <span class="dv">0</span>,]</span>
-<span id="cb35-481"><a href="#cb35-481" aria-hidden="true" tabindex="-1"></a><span class="fu">st_agr</span>(grd_sf) <span class="ot">=</span> <span class="st">"identity"</span></span>
-<span id="cb35-482"><a href="#cb35-482" aria-hidden="true" tabindex="-1"></a>iii <span class="ot">&lt;-</span> <span class="fu">st_intersection</span>(grd_sf, <span class="fu">st_union</span>(de))</span>
-<span id="cb35-483"><a href="#cb35-483" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>area <span class="ot">&lt;-</span> <span class="fu">st_area</span>(grd)[[<span class="dv">1</span>]] <span class="sc">+</span> </span>
-<span id="cb35-484"><a href="#cb35-484" aria-hidden="true" tabindex="-1"></a>    units<span class="sc">::</span><span class="fu">set_units</span>(grd<span class="sc">$</span>values, m<span class="sc">^</span><span class="dv">2</span>)</span>
-<span id="cb35-485"><a href="#cb35-485" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>area[iii<span class="sc">$</span>ID] <span class="ot">&lt;-</span> <span class="fu">st_area</span>(iii)</span>
-<span id="cb35-486"><a href="#cb35-486" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-487"><a href="#cb35-487" aria-hidden="true" tabindex="-1"></a>Instead of doing the two-stage procedure above, first finding cells that</span>
-<span id="cb35-488"><a href="#cb35-488" aria-hidden="true" tabindex="-1"></a>have a border crossing it then computing its area, we could also directly</span>
-<span id="cb35-489"><a href="#cb35-489" aria-hidden="true" tabindex="-1"></a>use <span class="in">`st_intersection`</span> on all cells, but that takes considerably longer.</span>
-<span id="cb35-490"><a href="#cb35-490" aria-hidden="true" tabindex="-1"></a>From the counts and areas we can compute densities (@fig-popdens)</span>
-<span id="cb35-491"><a href="#cb35-491" aria-hidden="true" tabindex="-1"></a>and verify totals </span>
-<span id="cb35-492"><a href="#cb35-492" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, eval=GA}</span></span>
-<span id="cb35-493"><a href="#cb35-493" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>pop_dens <span class="ot">&lt;-</span> a<span class="sc">$</span>Einwohner <span class="sc">/</span> grd<span class="sc">$</span>area</span>
-<span id="cb35-494"><a href="#cb35-494" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(grd<span class="sc">$</span>pop_dens <span class="sc">*</span> grd<span class="sc">$</span>area, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="co"># verify</span></span>
-<span id="cb35-495"><a href="#cb35-495" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(b<span class="sc">$</span>Einwohner)</span>
-<span id="cb35-496"><a href="#cb35-496" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-497"><a href="#cb35-497" aria-hidden="true" tabindex="-1"></a>which indicates strong agreement. Using <span class="in">`st_interpolate_aw`</span> would</span>
-<span id="cb35-498"><a href="#cb35-498" aria-hidden="true" tabindex="-1"></a>have given an exact match.</span>
-<span id="cb35-499"><a href="#cb35-499" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-popdens, echo = !knitr::is_latex_output(), eval=GA}</span></span>
-<span id="cb35-500"><a href="#cb35-500" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Population density for 100 m $\\times$ 100 m grid cells"</span></span>
-<span id="cb35-501"><a href="#cb35-501" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-502"><a href="#cb35-502" aria-hidden="true" tabindex="-1"></a>g <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> grd, <span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">sqrt</span>(pop_dens), <span class="at">x =</span> x, <span class="at">y =</span> y))</span>
-<span id="cb35-503"><a href="#cb35-503" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-504"><a href="#cb35-504" aria-hidden="true" tabindex="-1"></a>We need to divide the number of inhabitants by the number of 100</span>
-<span id="cb35-505"><a href="#cb35-505" aria-hidden="true" tabindex="-1"></a>m $\times$ 100 m grid cells contributing to it, in order to convert population</span>
-<span id="cb35-506"><a href="#cb35-506" aria-hidden="true" tabindex="-1"></a>counts into population density.</span>
-<span id="cb35-507"><a href="#cb35-507" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-508"><a href="#cb35-508" aria-hidden="true" tabindex="-1"></a>\index{st<span class="sc">\_</span>extract}</span>
-<span id="cb35-509"><a href="#cb35-509" aria-hidden="true" tabindex="-1"></a>To obtain population density values at monitoring network stations,</span>
-<span id="cb35-510"><a href="#cb35-510" aria-hidden="true" tabindex="-1"></a>we can use <span class="in">`st_extract`</span>:</span>
-<span id="cb35-511"><a href="#cb35-511" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, eval=GA}</span></span>
-<span id="cb35-512"><a href="#cb35-512" aria-hidden="true" tabindex="-1"></a>grd <span class="sc">|&gt;</span></span>
-<span id="cb35-513"><a href="#cb35-513" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="st">"pop_dens"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb35-514"><a href="#cb35-514" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_extract</span>(no2.sf) <span class="sc">|&gt;</span></span>
-<span id="cb35-515"><a href="#cb35-515" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(<span class="st">"pop_dens"</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb35-516"><a href="#cb35-516" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(no2.sf, <span class="at">pop_dens =</span> _) <span class="ot">-&gt;</span> no2.sf</span>
-<span id="cb35-517"><a href="#cb35-517" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-518"><a href="#cb35-518" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-519"><a href="#cb35-519" aria-hidden="true" tabindex="-1"></a>We can then investigate the linear relationship between NO$_2$ and</span>
-<span id="cb35-520"><a href="#cb35-520" aria-hidden="true" tabindex="-1"></a>population density at monitoring station locations:</span>
-<span id="cb35-521"><a href="#cb35-521" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, eval=GA}</span></span>
-<span id="cb35-522"><a href="#cb35-522" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(<span class="fu">lm</span>(NO2<span class="sc">~</span><span class="fu">sqrt</span>(pop_dens), no2.sf))</span>
-<span id="cb35-523"><a href="#cb35-523" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-524"><a href="#cb35-524" aria-hidden="true" tabindex="-1"></a>for which the corresponding scatterplot is shown in @fig-no2scat.</span>
-<span id="cb35-525"><a href="#cb35-525" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-no2scat, echo=!knitr::is_latex_output(), eval=GA}</span></span>
-<span id="cb35-526"><a href="#cb35-526" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Scatter plot of 2017 annual mean NO$_2$ concentration against population density, for rural background air quality stations"</span></span>
-<span id="cb35-527"><a href="#cb35-527" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-528"><a href="#cb35-528" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(NO2 <span class="sc">~</span> <span class="fu">sqrt</span>(pop_dens), no2.sf)</span>
-<span id="cb35-529"><a href="#cb35-529" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="fu">lm</span>(NO2 <span class="sc">~</span> <span class="fu">sqrt</span>(pop_dens), no2.sf))</span>
-<span id="cb35-530"><a href="#cb35-530" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-531"><a href="#cb35-531" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-532"><a href="#cb35-532" aria-hidden="true" tabindex="-1"></a>\index{variogram!residual}</span>
-<span id="cb35-533"><a href="#cb35-533" aria-hidden="true" tabindex="-1"></a>Prediction under this new model involves first modelling a residual</span>
-<span id="cb35-534"><a href="#cb35-534" aria-hidden="true" tabindex="-1"></a>variogram </span>
-<span id="cb35-535"><a href="#cb35-535" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, eval=GA}</span></span>
-<span id="cb35-536"><a href="#cb35-536" aria-hidden="true" tabindex="-1"></a>no2.sf <span class="ot">&lt;-</span> no2.sf[<span class="sc">!</span><span class="fu">is.na</span>(no2.sf<span class="sc">$</span>pop_dens),]</span>
-<span id="cb35-537"><a href="#cb35-537" aria-hidden="true" tabindex="-1"></a>vr <span class="ot">&lt;-</span> <span class="fu">variogram</span>(NO2<span class="sc">~</span><span class="fu">sqrt</span>(pop_dens), no2.sf)</span>
-<span id="cb35-538"><a href="#cb35-538" aria-hidden="true" tabindex="-1"></a>vr.m <span class="ot">&lt;-</span> <span class="fu">fit.variogram</span>(vr, <span class="fu">vgm</span>(<span class="dv">1</span>, <span class="st">"Exp"</span>, <span class="dv">50000</span>, <span class="dv">1</span>))</span>
+<span id="cb35-472"><a href="#cb35-472" aria-hidden="true" tabindex="-1"></a><span class="in">```{r vroom0, echo=FALSE, eval=CI}</span></span>
+<span id="cb35-473"><a href="#cb35-473" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"data/ch12.rda"</span>) <span class="co"># instead of reading v &amp; processing b and a, load object a</span></span>
+<span id="cb35-474"><a href="#cb35-474" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-475"><a href="#cb35-475" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-476"><a href="#cb35-476" aria-hidden="true" tabindex="-1"></a>Now we have the population counts per grid cell in <span class="in">`a`</span>. To get to</span>
+<span id="cb35-477"><a href="#cb35-477" aria-hidden="true" tabindex="-1"></a>population density, we need to find the area of each cell; for cells</span>
+<span id="cb35-478"><a href="#cb35-478" aria-hidden="true" tabindex="-1"></a>crossing the country border, this will be less than 10 $\times$ 10 km:</span>
+<span id="cb35-479"><a href="#cb35-479" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, message=FALSE}</span></span>
+<span id="cb35-480"><a href="#cb35-480" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>ID <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">prod</span>(<span class="fu">dim</span>(grd)) <span class="co"># to identify grid cells</span></span>
+<span id="cb35-481"><a href="#cb35-481" aria-hidden="true" tabindex="-1"></a>ii <span class="ot">&lt;-</span> <span class="fu">st_intersects</span>(grd[<span class="st">"ID"</span>],</span>
+<span id="cb35-482"><a href="#cb35-482" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_cast</span>(<span class="fu">st_union</span>(de), <span class="st">"MULTILINESTRING"</span>), <span class="at">as_points =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb35-483"><a href="#cb35-483" aria-hidden="true" tabindex="-1"></a>grd_sf <span class="ot">&lt;-</span> <span class="fu">st_as_sf</span>(grd[<span class="st">"ID"</span>], <span class="at">na.rm =</span> <span class="cn">FALSE</span>)[<span class="fu">lengths</span>(ii) <span class="sc">&gt;</span> <span class="dv">0</span>,]</span>
+<span id="cb35-484"><a href="#cb35-484" aria-hidden="true" tabindex="-1"></a><span class="fu">st_agr</span>(grd_sf) <span class="ot">=</span> <span class="st">"identity"</span></span>
+<span id="cb35-485"><a href="#cb35-485" aria-hidden="true" tabindex="-1"></a>iii <span class="ot">&lt;-</span> <span class="fu">st_intersection</span>(grd_sf, <span class="fu">st_union</span>(de))</span>
+<span id="cb35-486"><a href="#cb35-486" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>area <span class="ot">&lt;-</span> <span class="fu">st_area</span>(grd)[[<span class="dv">1</span>]] <span class="sc">+</span> </span>
+<span id="cb35-487"><a href="#cb35-487" aria-hidden="true" tabindex="-1"></a>    units<span class="sc">::</span><span class="fu">set_units</span>(grd<span class="sc">$</span>values, m<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb35-488"><a href="#cb35-488" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>area[iii<span class="sc">$</span>ID] <span class="ot">&lt;-</span> <span class="fu">st_area</span>(iii)</span>
+<span id="cb35-489"><a href="#cb35-489" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-490"><a href="#cb35-490" aria-hidden="true" tabindex="-1"></a>Instead of doing the two-stage procedure above, first finding cells that</span>
+<span id="cb35-491"><a href="#cb35-491" aria-hidden="true" tabindex="-1"></a>have a border crossing it then computing its area, we could also directly</span>
+<span id="cb35-492"><a href="#cb35-492" aria-hidden="true" tabindex="-1"></a>use <span class="in">`st_intersection`</span> on all cells, but that takes considerably longer.</span>
+<span id="cb35-493"><a href="#cb35-493" aria-hidden="true" tabindex="-1"></a>From the counts and areas we can compute densities (@fig-popdens)</span>
+<span id="cb35-494"><a href="#cb35-494" aria-hidden="true" tabindex="-1"></a>and verify totals </span>
+<span id="cb35-497"><a href="#cb35-497" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-498"><a href="#cb35-498" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>pop_dens <span class="ot">&lt;-</span> a<span class="sc">$</span>Einwohner <span class="sc">/</span> grd<span class="sc">$</span>area</span>
+<span id="cb35-499"><a href="#cb35-499" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(grd<span class="sc">$</span>pop_dens <span class="sc">*</span> grd<span class="sc">$</span>area, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="co"># verify</span></span>
+<span id="cb35-500"><a href="#cb35-500" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(b<span class="sc">$</span>Einwohner)</span>
+<span id="cb35-501"><a href="#cb35-501" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-502"><a href="#cb35-502" aria-hidden="true" tabindex="-1"></a>which indicates strong agreement. Using <span class="in">`st_interpolate_aw`</span> would</span>
+<span id="cb35-503"><a href="#cb35-503" aria-hidden="true" tabindex="-1"></a>have given an exact match.</span>
+<span id="cb35-504"><a href="#cb35-504" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-popdens, echo = !knitr::is_latex_output()}</span></span>
+<span id="cb35-505"><a href="#cb35-505" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Population density for 100 m $\\times$ 100 m grid cells"</span></span>
+<span id="cb35-506"><a href="#cb35-506" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb35-507"><a href="#cb35-507" aria-hidden="true" tabindex="-1"></a>g <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> grd, <span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">sqrt</span>(pop_dens), <span class="at">x =</span> x, <span class="at">y =</span> y))</span>
+<span id="cb35-508"><a href="#cb35-508" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-509"><a href="#cb35-509" aria-hidden="true" tabindex="-1"></a>We need to divide the number of inhabitants by the number of 100</span>
+<span id="cb35-510"><a href="#cb35-510" aria-hidden="true" tabindex="-1"></a>m $\times$ 100 m grid cells contributing to it, in order to convert population</span>
+<span id="cb35-511"><a href="#cb35-511" aria-hidden="true" tabindex="-1"></a>counts into population density.</span>
+<span id="cb35-512"><a href="#cb35-512" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-513"><a href="#cb35-513" aria-hidden="true" tabindex="-1"></a>\index{st<span class="sc">\_</span>extract}</span>
+<span id="cb35-514"><a href="#cb35-514" aria-hidden="true" tabindex="-1"></a>To obtain population density values at monitoring network stations,</span>
+<span id="cb35-515"><a href="#cb35-515" aria-hidden="true" tabindex="-1"></a>we can use <span class="in">`st_extract`</span>:</span>
+<span id="cb35-518"><a href="#cb35-518" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-519"><a href="#cb35-519" aria-hidden="true" tabindex="-1"></a>grd <span class="sc">|&gt;</span></span>
+<span id="cb35-520"><a href="#cb35-520" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="st">"pop_dens"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb35-521"><a href="#cb35-521" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_extract</span>(no2.sf) <span class="sc">|&gt;</span></span>
+<span id="cb35-522"><a href="#cb35-522" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(<span class="st">"pop_dens"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb35-523"><a href="#cb35-523" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(no2.sf, <span class="at">pop_dens =</span> _) <span class="ot">-&gt;</span> no2.sf</span>
+<span id="cb35-524"><a href="#cb35-524" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-525"><a href="#cb35-525" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-526"><a href="#cb35-526" aria-hidden="true" tabindex="-1"></a>We can then investigate the linear relationship between NO$_2$ and</span>
+<span id="cb35-527"><a href="#cb35-527" aria-hidden="true" tabindex="-1"></a>population density at monitoring station locations:</span>
+<span id="cb35-530"><a href="#cb35-530" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-531"><a href="#cb35-531" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(<span class="fu">lm</span>(NO2<span class="sc">~</span><span class="fu">sqrt</span>(pop_dens), no2.sf))</span>
+<span id="cb35-532"><a href="#cb35-532" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-533"><a href="#cb35-533" aria-hidden="true" tabindex="-1"></a>for which the corresponding scatterplot is shown in @fig-no2scat.</span>
+<span id="cb35-534"><a href="#cb35-534" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-no2scat, echo=!knitr::is_latex_output(), eval=!CI}</span></span>
+<span id="cb35-535"><a href="#cb35-535" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Scatter plot of 2017 annual mean NO$_2$ concentration against population density, for rural background air quality stations"</span></span>
+<span id="cb35-536"><a href="#cb35-536" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb35-537"><a href="#cb35-537" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(NO2 <span class="sc">~</span> <span class="fu">sqrt</span>(pop_dens), no2.sf)</span>
+<span id="cb35-538"><a href="#cb35-538" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="fu">lm</span>(NO2 <span class="sc">~</span> <span class="fu">sqrt</span>(pop_dens), no2.sf))</span>
 <span id="cb35-539"><a href="#cb35-539" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-540"><a href="#cb35-540" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-predictusingpopulationdensity,echo=!knitr::is_latex_output(), eval=GA}</span></span>
-<span id="cb35-541"><a href="#cb35-541" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Residual variogram after subtracting population density trend"</span></span>
-<span id="cb35-542"><a href="#cb35-542" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-543"><a href="#cb35-543" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(vr, vr.m, <span class="at">plot.numbers =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb35-544"><a href="#cb35-544" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-545"><a href="#cb35-545" aria-hidden="true" tabindex="-1"></a>which is shown in @fig-predictusingpopulationdensity.</span>
-<span id="cb35-546"><a href="#cb35-546" aria-hidden="true" tabindex="-1"></a>Subsequently, kriging prediction (@fig-residualkriging) is done by </span>
-<span id="cb35-547"><a href="#cb35-547" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, eval=GA}</span></span>
-<span id="cb35-548"><a href="#cb35-548" aria-hidden="true" tabindex="-1"></a>kr <span class="ot">&lt;-</span> <span class="fu">krige</span>(NO2 <span class="sc">~</span> <span class="fu">sqrt</span>(pop_dens), no2.sf, </span>
-<span id="cb35-549"><a href="#cb35-549" aria-hidden="true" tabindex="-1"></a>            grd[<span class="st">"pop_dens"</span>], vr.m)</span>
+<span id="cb35-540"><a href="#cb35-540" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-541"><a href="#cb35-541" aria-hidden="true" tabindex="-1"></a>\index{variogram!residual}</span>
+<span id="cb35-542"><a href="#cb35-542" aria-hidden="true" tabindex="-1"></a>Prediction under this new model involves first modelling a residual</span>
+<span id="cb35-543"><a href="#cb35-543" aria-hidden="true" tabindex="-1"></a>variogram </span>
+<span id="cb35-546"><a href="#cb35-546" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-547"><a href="#cb35-547" aria-hidden="true" tabindex="-1"></a>no2.sf <span class="ot">&lt;-</span> no2.sf[<span class="sc">!</span><span class="fu">is.na</span>(no2.sf<span class="sc">$</span>pop_dens),]</span>
+<span id="cb35-548"><a href="#cb35-548" aria-hidden="true" tabindex="-1"></a>vr <span class="ot">&lt;-</span> <span class="fu">variogram</span>(NO2<span class="sc">~</span><span class="fu">sqrt</span>(pop_dens), no2.sf)</span>
+<span id="cb35-549"><a href="#cb35-549" aria-hidden="true" tabindex="-1"></a>vr.m <span class="ot">&lt;-</span> <span class="fu">fit.variogram</span>(vr, <span class="fu">vgm</span>(<span class="dv">1</span>, <span class="st">"Exp"</span>, <span class="dv">50000</span>, <span class="dv">1</span>))</span>
 <span id="cb35-550"><a href="#cb35-550" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-551"><a href="#cb35-551" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-552"><a href="#cb35-552" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-residualkriging, echo=!knitr::is_latex_output(), message=FALSE, eval=GA}</span></span>
-<span id="cb35-553"><a href="#cb35-553" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Kriging NO$_2$ values using population density as a trend variable"</span></span>
-<span id="cb35-554"><a href="#cb35-554" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-555"><a href="#cb35-555" aria-hidden="true" tabindex="-1"></a>k<span class="sc">$</span>kr1 <span class="ot">&lt;-</span> k<span class="sc">$</span>var1.pred</span>
-<span id="cb35-556"><a href="#cb35-556" aria-hidden="true" tabindex="-1"></a>k<span class="sc">$</span>kr2 <span class="ot">&lt;-</span> kr<span class="sc">$</span>var1.pred</span>
-<span id="cb35-557"><a href="#cb35-557" aria-hidden="true" tabindex="-1"></a><span class="fu">st_redimension</span>(k[<span class="fu">c</span>(<span class="st">"kr1"</span>, <span class="st">"kr2"</span>)], </span>
-<span id="cb35-558"><a href="#cb35-558" aria-hidden="true" tabindex="-1"></a>    <span class="at">along =</span> <span class="fu">list</span>(<span class="at">what =</span> <span class="fu">c</span>(<span class="st">"kriging"</span>, <span class="st">"residual kriging"</span>))) <span class="sc">|&gt;</span></span>
-<span id="cb35-559"><a href="#cb35-559" aria-hidden="true" tabindex="-1"></a>    <span class="fu">setNames</span>(<span class="st">"NO2"</span>) <span class="ot">-&gt;</span> km</span>
-<span id="cb35-560"><a href="#cb35-560" aria-hidden="true" tabindex="-1"></a>g <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> km, <span class="fu">aes</span>(<span class="at">fill =</span> NO2, <span class="at">x =</span> x, <span class="at">y =</span> y)) <span class="sc">+</span> </span>
-<span id="cb35-561"><a href="#cb35-561" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> <span class="fu">st_cast</span>(de, <span class="st">"MULTILINESTRING"</span>)) <span class="sc">+</span> </span>
-<span id="cb35-562"><a href="#cb35-562" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> no2.sf) <span class="sc">+</span> <span class="fu">facet_wrap</span>(<span class="sc">~</span>what) <span class="sc">+</span></span>
-<span id="cb35-563"><a href="#cb35-563" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_sf</span>(<span class="at">lims_method =</span> <span class="st">"geometry_bbox"</span>)</span>
-<span id="cb35-564"><a href="#cb35-564" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-565"><a href="#cb35-565" aria-hidden="true" tabindex="-1"></a>where, critically, the <span class="in">`pop_dens`</span> values are now available for</span>
-<span id="cb35-566"><a href="#cb35-566" aria-hidden="true" tabindex="-1"></a>prediction locations in the <span class="in">`newdata`</span> object <span class="in">`grd`</span>.  </span>
-<span id="cb35-567"><a href="#cb35-567" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-568"><a href="#cb35-568" aria-hidden="true" tabindex="-1"></a>Compared to (ordinary) kriging We see some clear differences:</span>
-<span id="cb35-569"><a href="#cb35-569" aria-hidden="true" tabindex="-1"></a>the map using population density in the trend follows the extremes of</span>
-<span id="cb35-570"><a href="#cb35-570" aria-hidden="true" tabindex="-1"></a>the population density rather than those of the measurement stations,</span>
-<span id="cb35-571"><a href="#cb35-571" aria-hidden="true" tabindex="-1"></a>and has a value range that extends that of ordinary kriging. It</span>
-<span id="cb35-572"><a href="#cb35-572" aria-hidden="true" tabindex="-1"></a>should be taken with a large grain of salt however, since the</span>
-<span id="cb35-573"><a href="#cb35-573" aria-hidden="true" tabindex="-1"></a>stations used were filtered for the category "rural background",</span>
-<span id="cb35-574"><a href="#cb35-574" aria-hidden="true" tabindex="-1"></a>indicating that they only represent conditions of lower populations</span>
-<span id="cb35-575"><a href="#cb35-575" aria-hidden="true" tabindex="-1"></a>density. The scatter-plot of @fig-no2scat  reveals that the the</span>
-<span id="cb35-576"><a href="#cb35-576" aria-hidden="true" tabindex="-1"></a>population density at the locations of stations is much more limited</span>
-<span id="cb35-577"><a href="#cb35-577" aria-hidden="true" tabindex="-1"></a>than that in the population density map, and hence the right-hand</span>
-<span id="cb35-578"><a href="#cb35-578" aria-hidden="true" tabindex="-1"></a>side map is based on strongly extrapolating the relationship shown</span>
-<span id="cb35-579"><a href="#cb35-579" aria-hidden="true" tabindex="-1"></a>in @fig-no2scat.</span>
+<span id="cb35-551"><a href="#cb35-551" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-predictusingpopulationdensity,echo=!knitr::is_latex_output()}</span></span>
+<span id="cb35-552"><a href="#cb35-552" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Residual variogram after subtracting population density trend"</span></span>
+<span id="cb35-553"><a href="#cb35-553" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb35-554"><a href="#cb35-554" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(vr, vr.m, <span class="at">plot.numbers =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb35-555"><a href="#cb35-555" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-556"><a href="#cb35-556" aria-hidden="true" tabindex="-1"></a>which is shown in @fig-predictusingpopulationdensity.</span>
+<span id="cb35-557"><a href="#cb35-557" aria-hidden="true" tabindex="-1"></a>Subsequently, kriging prediction (@fig-residualkriging) is done by </span>
+<span id="cb35-560"><a href="#cb35-560" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-561"><a href="#cb35-561" aria-hidden="true" tabindex="-1"></a>kr <span class="ot">&lt;-</span> <span class="fu">krige</span>(NO2 <span class="sc">~</span> <span class="fu">sqrt</span>(pop_dens), no2.sf, </span>
+<span id="cb35-562"><a href="#cb35-562" aria-hidden="true" tabindex="-1"></a>            grd[<span class="st">"pop_dens"</span>], vr.m)</span>
+<span id="cb35-563"><a href="#cb35-563" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-564"><a href="#cb35-564" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-565"><a href="#cb35-565" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-residualkriging, echo=!knitr::is_latex_output(), message=FALSE}</span></span>
+<span id="cb35-566"><a href="#cb35-566" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Kriging NO$_2$ values using population density as a trend variable"</span></span>
+<span id="cb35-567"><a href="#cb35-567" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb35-568"><a href="#cb35-568" aria-hidden="true" tabindex="-1"></a>k<span class="sc">$</span>kr1 <span class="ot">&lt;-</span> k<span class="sc">$</span>var1.pred</span>
+<span id="cb35-569"><a href="#cb35-569" aria-hidden="true" tabindex="-1"></a>k<span class="sc">$</span>kr2 <span class="ot">&lt;-</span> kr<span class="sc">$</span>var1.pred</span>
+<span id="cb35-570"><a href="#cb35-570" aria-hidden="true" tabindex="-1"></a><span class="fu">st_redimension</span>(k[<span class="fu">c</span>(<span class="st">"kr1"</span>, <span class="st">"kr2"</span>)], </span>
+<span id="cb35-571"><a href="#cb35-571" aria-hidden="true" tabindex="-1"></a>    <span class="at">along =</span> <span class="fu">list</span>(<span class="at">what =</span> <span class="fu">c</span>(<span class="st">"kriging"</span>, <span class="st">"residual kriging"</span>))) <span class="sc">|&gt;</span></span>
+<span id="cb35-572"><a href="#cb35-572" aria-hidden="true" tabindex="-1"></a>    <span class="fu">setNames</span>(<span class="st">"NO2"</span>) <span class="ot">-&gt;</span> km</span>
+<span id="cb35-573"><a href="#cb35-573" aria-hidden="true" tabindex="-1"></a>g <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> km, <span class="fu">aes</span>(<span class="at">fill =</span> NO2, <span class="at">x =</span> x, <span class="at">y =</span> y)) <span class="sc">+</span> </span>
+<span id="cb35-574"><a href="#cb35-574" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> <span class="fu">st_cast</span>(de, <span class="st">"MULTILINESTRING"</span>)) <span class="sc">+</span> </span>
+<span id="cb35-575"><a href="#cb35-575" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> no2.sf) <span class="sc">+</span> <span class="fu">facet_wrap</span>(<span class="sc">~</span>what) <span class="sc">+</span></span>
+<span id="cb35-576"><a href="#cb35-576" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_sf</span>(<span class="at">lims_method =</span> <span class="st">"geometry_bbox"</span>)</span>
+<span id="cb35-577"><a href="#cb35-577" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-578"><a href="#cb35-578" aria-hidden="true" tabindex="-1"></a>where, critically, the <span class="in">`pop_dens`</span> values are now available for</span>
+<span id="cb35-579"><a href="#cb35-579" aria-hidden="true" tabindex="-1"></a>prediction locations in the <span class="in">`newdata`</span> object <span class="in">`grd`</span>.  </span>
 <span id="cb35-580"><a href="#cb35-580" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-581"><a href="#cb35-581" aria-hidden="true" tabindex="-1"></a><span class="fu">## Exercises </span></span>
-<span id="cb35-582"><a href="#cb35-582" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-583"><a href="#cb35-583" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Create a plot like the one in @fig-residualkriging </span>
-<span id="cb35-584"><a href="#cb35-584" aria-hidden="true" tabindex="-1"></a>that has the inverse distance interpolated map of </span>
-<span id="cb35-585"><a href="#cb35-585" aria-hidden="true" tabindex="-1"></a>@fig-idw added on the left side.</span>
-<span id="cb35-586"><a href="#cb35-586" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>Create a scatter-plot of the map values of the idw and kriging</span>
-<span id="cb35-587"><a href="#cb35-587" aria-hidden="true" tabindex="-1"></a>map, and a scatter-plot of map values of idw and residual kriging.</span>
-<span id="cb35-588"><a href="#cb35-588" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>Carry out a _block kriging_, predicting block averages for blocks</span>
-<span id="cb35-589"><a href="#cb35-589" aria-hidden="true" tabindex="-1"></a>centred over grid cells, by setting the <span class="in">`block`</span> argument in</span>
-<span id="cb35-590"><a href="#cb35-590" aria-hidden="true" tabindex="-1"></a><span class="in">`krige()`</span>, and do this for block sizes of 10 km (grid cell size),</span>
-<span id="cb35-591"><a href="#cb35-591" aria-hidden="true" tabindex="-1"></a>50 km, and 200 km. Compare the resulting maps of estimates for these</span>
-<span id="cb35-592"><a href="#cb35-592" aria-hidden="true" tabindex="-1"></a>three block sizes with those obtained by point kriging, and</span>
-<span id="cb35-593"><a href="#cb35-593" aria-hidden="true" tabindex="-1"></a>do the same thing for all associated kriging standard errors.</span>
-<span id="cb35-594"><a href="#cb35-594" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>Based on the residual kriging results obtained above, compute</span>
-<span id="cb35-595"><a href="#cb35-595" aria-hidden="true" tabindex="-1"></a>maps of the lower and upper boundary of a 95% confidence interval,</span>
-<span id="cb35-596"><a href="#cb35-596" aria-hidden="true" tabindex="-1"></a>when assuming that the kriging error is normally distributed,</span>
-<span id="cb35-597"><a href="#cb35-597" aria-hidden="true" tabindex="-1"></a>and show them in a plot with a single (joint) legend.</span>
-<span id="cb35-598"><a href="#cb35-598" aria-hidden="true" tabindex="-1"></a><span class="ss">5. </span>Compute and show the map with the probabilities that NO$_2$ point</span>
-<span id="cb35-599"><a href="#cb35-599" aria-hidden="true" tabindex="-1"></a>values exceed the level of 15 ppm, assuming normally distributed</span>
-<span id="cb35-600"><a href="#cb35-600" aria-hidden="true" tabindex="-1"></a>kriging errors.</span>
-<span id="cb35-601"><a href="#cb35-601" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-602"><a href="#cb35-602" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE, eval=GA}</span></span>
-<span id="cb35-603"><a href="#cb35-603" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="fu">ls</span>(), <span class="at">file =</span> <span class="st">"ch12.RData"</span>)</span>
-<span id="cb35-604"><a href="#cb35-604" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb35-605"><a href="#cb35-605" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-606"><a href="#cb35-606" aria-hidden="true" tabindex="-1"></a>{{&lt; include ga.qmd &gt;}}</span>
+<span id="cb35-581"><a href="#cb35-581" aria-hidden="true" tabindex="-1"></a>Compared to (ordinary) kriging We see some clear differences:</span>
+<span id="cb35-582"><a href="#cb35-582" aria-hidden="true" tabindex="-1"></a>the map using population density in the trend follows the extremes of</span>
+<span id="cb35-583"><a href="#cb35-583" aria-hidden="true" tabindex="-1"></a>the population density rather than those of the measurement stations,</span>
+<span id="cb35-584"><a href="#cb35-584" aria-hidden="true" tabindex="-1"></a>and has a value range that extends that of ordinary kriging. It</span>
+<span id="cb35-585"><a href="#cb35-585" aria-hidden="true" tabindex="-1"></a>should be taken with a large grain of salt however, since the</span>
+<span id="cb35-586"><a href="#cb35-586" aria-hidden="true" tabindex="-1"></a>stations used were filtered for the category "rural background",</span>
+<span id="cb35-587"><a href="#cb35-587" aria-hidden="true" tabindex="-1"></a>indicating that they only represent conditions of lower populations</span>
+<span id="cb35-588"><a href="#cb35-588" aria-hidden="true" tabindex="-1"></a>density. The scatter-plot of @fig-no2scat  reveals that the the</span>
+<span id="cb35-589"><a href="#cb35-589" aria-hidden="true" tabindex="-1"></a>population density at the locations of stations is much more limited</span>
+<span id="cb35-590"><a href="#cb35-590" aria-hidden="true" tabindex="-1"></a>than that in the population density map, and hence the right-hand</span>
+<span id="cb35-591"><a href="#cb35-591" aria-hidden="true" tabindex="-1"></a>side map is based on strongly extrapolating the relationship shown</span>
+<span id="cb35-592"><a href="#cb35-592" aria-hidden="true" tabindex="-1"></a>in @fig-no2scat.</span>
+<span id="cb35-593"><a href="#cb35-593" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-594"><a href="#cb35-594" aria-hidden="true" tabindex="-1"></a><span class="fu">## Exercises </span></span>
+<span id="cb35-595"><a href="#cb35-595" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-596"><a href="#cb35-596" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Create a plot like the one in @fig-residualkriging </span>
+<span id="cb35-597"><a href="#cb35-597" aria-hidden="true" tabindex="-1"></a>that has the inverse distance interpolated map of </span>
+<span id="cb35-598"><a href="#cb35-598" aria-hidden="true" tabindex="-1"></a>@fig-idw added on the left side.</span>
+<span id="cb35-599"><a href="#cb35-599" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>Create a scatter-plot of the map values of the idw and kriging</span>
+<span id="cb35-600"><a href="#cb35-600" aria-hidden="true" tabindex="-1"></a>map, and a scatter-plot of map values of idw and residual kriging.</span>
+<span id="cb35-601"><a href="#cb35-601" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>Carry out a _block kriging_, predicting block averages for blocks</span>
+<span id="cb35-602"><a href="#cb35-602" aria-hidden="true" tabindex="-1"></a>centred over grid cells, by setting the <span class="in">`block`</span> argument in</span>
+<span id="cb35-603"><a href="#cb35-603" aria-hidden="true" tabindex="-1"></a><span class="in">`krige()`</span>, and do this for block sizes of 10 km (grid cell size),</span>
+<span id="cb35-604"><a href="#cb35-604" aria-hidden="true" tabindex="-1"></a>50 km, and 200 km. Compare the resulting maps of estimates for these</span>
+<span id="cb35-605"><a href="#cb35-605" aria-hidden="true" tabindex="-1"></a>three block sizes with those obtained by point kriging, and</span>
+<span id="cb35-606"><a href="#cb35-606" aria-hidden="true" tabindex="-1"></a>do the same thing for all associated kriging standard errors.</span>
+<span id="cb35-607"><a href="#cb35-607" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>Based on the residual kriging results obtained above, compute</span>
+<span id="cb35-608"><a href="#cb35-608" aria-hidden="true" tabindex="-1"></a>maps of the lower and upper boundary of a 95% confidence interval,</span>
+<span id="cb35-609"><a href="#cb35-609" aria-hidden="true" tabindex="-1"></a>when assuming that the kriging error is normally distributed,</span>
+<span id="cb35-610"><a href="#cb35-610" aria-hidden="true" tabindex="-1"></a>and show them in a plot with a single (joint) legend.</span>
+<span id="cb35-611"><a href="#cb35-611" aria-hidden="true" tabindex="-1"></a><span class="ss">5. </span>Compute and show the map with the probabilities that NO$_2$ point</span>
+<span id="cb35-612"><a href="#cb35-612" aria-hidden="true" tabindex="-1"></a>values exceed the level of 15 ppm, assuming normally distributed</span>
+<span id="cb35-613"><a href="#cb35-613" aria-hidden="true" tabindex="-1"></a>kriging errors.</span>
+<span id="cb35-614"><a href="#cb35-614" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-615"><a href="#cb35-615" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE, eval=!CI}</span></span>
+<span id="cb35-616"><a href="#cb35-616" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(v, b)</span>
+<span id="cb35-617"><a href="#cb35-617" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="fu">ls</span>(), <span class="at">file =</span> <span class="st">"ch12.RData"</span>)</span>
+<span id="cb35-618"><a href="#cb35-618" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-619"><a href="#cb35-619" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-620"><a href="#cb35-620" aria-hidden="true" tabindex="-1"></a>{{&lt; include ga.qmd &gt;}}</span>
 </code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
