@@ -38,6 +38,10 @@ datasets is given in @Heaton2018.
 write_csv(right_join(a2, tb), "no2.csv")
 ```
 
+```{r echo=FALSE}
+GA=FALSE
+```
+
 ## A first dataset
 
 We can read station mean NO$_2$ values, a dataset that is prepared 
@@ -445,7 +449,7 @@ As a potential predictor for NO$_2$ in the air, we use population
 density. NO$_2$ is mostly caused by traffic, and traffic is more intense
 in densely populated areas.
 Population density is obtained from the [2011 census](https://www.zensus2011.de/DE/Home/Aktuelles/DemografischeGrunddaten.html) and is downloaded as a csv file with the number of inhabitants per 100 m $\times$ 100 m grid cell. We can aggregate these data to the target grid cells by summing the inhabitants:
-```{r vroom1, message=FALSE}
+```{r vroom1, message=FALSE, eval=GA}
 v <- vroom::vroom("aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv")
 v |> filter(Einwohner > 0) |> 
 	select(-Gitter_ID_100m) |>
@@ -457,7 +461,7 @@ a <- aggregate(b, st_as_sf(grd, na.rm = FALSE), sum)
 Now we have the population counts per grid cell in `a`. To get to
 population density, we need to find the area of each cell; for cells
 crossing the country border, this will be less than 10 $\times$ 10 km:
-```{r, message=FALSE}
+```{r, message=FALSE, eval=GA}
 grd$ID <- 1:prod(dim(grd)) # to identify grid cells
 ii <- st_intersects(grd["ID"],
   st_cast(st_union(de), "MULTILINESTRING"), as_points = FALSE)
@@ -473,14 +477,14 @@ have a border crossing it then computing its area, we could also directly
 use `st_intersection` on all cells, but that takes considerably longer.
 From the counts and areas we can compute densities (@fig-popdens)
 and verify totals 
-```{r}
+```{r, eval=GA}
 grd$pop_dens <- a$Einwohner / grd$area
 sum(grd$pop_dens * grd$area, na.rm = TRUE) # verify
 sum(b$Einwohner)
 ```
 which indicates strong agreement. Using `st_interpolate_aw` would
 have given an exact match.
-```{r fig-popdens, echo = !knitr::is_latex_output()}
+```{r fig-popdens, echo = !knitr::is_latex_output(), eval=GA}
 #| fig.cap: "Population density for 100 m $\\times$ 100 m grid cells"
 #| code-fold: true
 g + geom_stars(data = grd, aes(fill = sqrt(pop_dens), x = x, y = y))
@@ -492,7 +496,7 @@ counts into population density.
 \index{st\_extract}
 To obtain population density values at monitoring network stations,
 we can use `st_extract`:
-```{r}
+```{r, eval=GA}
 grd |>
   select("pop_dens") |>
   st_extract(no2.sf) |>
@@ -502,11 +506,11 @@ grd |>
 
 We can then investigate the linear relationship between NO$_2$ and
 population density at monitoring station locations:
-```{r}
+```{r, eval=GA}
 summary(lm(NO2~sqrt(pop_dens), no2.sf))
 ```
 for which the corresponding scatterplot is shown in @fig-no2scat.
-```{r fig-no2scat, echo=!knitr::is_latex_output()}
+```{r fig-no2scat, echo=!knitr::is_latex_output(), eval=GA}
 #| fig.cap: "Scatter plot of 2017 annual mean NO$_2$ concentration against population density, for rural background air quality stations"
 #| code-fold: true
 plot(NO2 ~ sqrt(pop_dens), no2.sf)
@@ -516,24 +520,24 @@ abline(lm(NO2 ~ sqrt(pop_dens), no2.sf))
 \index{variogram!residual}
 Prediction under this new model involves first modelling a residual
 variogram 
-```{r}
+```{r, eval=GA}
 no2.sf <- no2.sf[!is.na(no2.sf$pop_dens),]
 vr <- variogram(NO2~sqrt(pop_dens), no2.sf)
 vr.m <- fit.variogram(vr, vgm(1, "Exp", 50000, 1))
 ```
-```{r fig-predictusingpopulationdensity,echo=!knitr::is_latex_output()}
+```{r fig-predictusingpopulationdensity,echo=!knitr::is_latex_output(), eval=GA}
 #| fig.cap: "Residual variogram after subtracting population density trend"
 #| code-fold: true
 plot(vr, vr.m, plot.numbers = TRUE)
 ```
 which is shown in @fig-predictusingpopulationdensity.
 Subsequently, kriging prediction (@fig-residualkriging) is done by 
-```{r}
+```{r, eval=GA}
 kr <- krige(NO2 ~ sqrt(pop_dens), no2.sf, 
 			grd["pop_dens"], vr.m)
 ```
 
-```{r fig-residualkriging, echo=!knitr::is_latex_output(), message=FALSE}
+```{r fig-residualkriging, echo=!knitr::is_latex_output(), message=FALSE, eval=GA}
 #| fig.cap: "Kriging NO$_2$ values using population density as a trend variable"
 #| code-fold: true
 k$kr1 <- k$var1.pred
@@ -583,7 +587,7 @@ and show them in a plot with a single (joint) legend.
 values exceed the level of 15 ppm, assuming normally distributed
 kriging errors.
 
-```{r echo=FALSE}
+```{r echo=FALSE, eval=GA}
 save(list = ls(), file = "ch12.RData")
 ```
 
