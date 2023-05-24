@@ -37,4 +37,7 @@ RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getO
 
 USER root
 
+## 5. dev version of spatialreg:
+RUN R -q -e 'remotes::nstall_github("r-spatial/spatialreg")'
+
 EXPOSE 8787

@@ -38,6 +38,10 @@ datasets is given in @Heaton2018.
 write_csv(right_join(a2, tb), "no2.csv")
 ```
 
+```{r echo=FALSE}
+CI <- Sys.getenv("CI") == "true" # TRUE when inside GitHub Actions
+```
+
 ## A first dataset
 
 We can read station mean NO$_2$ values, a dataset that is prepared 
@@ -445,13 +449,16 @@ As a potential predictor for NO$_2$ in the air, we use population
 density. NO$_2$ is mostly caused by traffic, and traffic is more intense
 in densely populated areas.
 Population density is obtained from the [2011 census](https://www.zensus2011.de/DE/Home/Aktuelles/DemografischeGrunddaten.html) and is downloaded as a csv file with the number of inhabitants per 100 m $\times$ 100 m grid cell. We can aggregate these data to the target grid cells by summing the inhabitants:
-```{r vroom1, message=FALSE}
+```{r vroom1, message=FALSE, eval=!CI}
 v <- vroom::vroom("aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv")
 v |> filter(Einwohner > 0) |> 
 	select(-Gitter_ID_100m) |>
 	st_as_sf(coords = c("x_mp_100m", "y_mp_100m"), crs = 3035) |>
 	st_transform(st_crs(grd)) -> b
 a <- aggregate(b, st_as_sf(grd, na.rm = FALSE), sum)
+```
+```{r vroom0, echo=FALSE, eval=CI}
+load("data/ch12.rda") # instead of reading v & processing b and a, load object a
 ```
 
 Now we have the population counts per grid cell in `a`. To get to
@@ -583,9 +590,9 @@ and show them in a plot with a single (joint) legend.
 values exceed the level of 15 ppm, assuming normally distributed
 kriging errors.
 
-```{r echo=FALSE}
+```{r echo=FALSE, eval=!CI}
+rm(v, b)
 save(list = ls(), file = "ch12.RData")
 ```
 
 {{< include ga.qmd >}}
-
