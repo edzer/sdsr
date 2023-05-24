@@ -1,0 +1,55 @@
+on:
+  workflow_dispatch:
+  push:
+    branches: python
+  pull_request:
+    branches: python
+# schedule:
+#   - cron: "0 4 * * *"
+
+name: SDSwRandPython
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Install R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.3.0'
+          use-public-rspm: true
+      - run: /usr/bin/sudo apt install libudunits2-dev libgdal-dev libgeos-dev libproj-dev libglpk-dev
+      - run: R -q -e 'install.packages(c("dbscan", "cubelyr", "gstat", "hglm", "igraph", "lme4", "lmtest", "maps", "mapview", "matrixStats", "mgcv", "R2BayesX", "rgeoda", "rnaturalearth", "rnaturalearthdata", "sf", "spatstat", "spatialreg", "spdep", "spData", "stars", "tidyverse", "tmap"))'
+      - run: R -q -e 'options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")'
+      - run: R -q -e 'options(timeout = 3600); install.packages("starsdata", repos = "http://cran.uni-muenster.de/pebesma", type = "source")'
+      - run: R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
+      - run: wget -q https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn/download -O sds.zip
+      - run: unzip -q sds.zip
+      - run: cp -rp sds/aq .
+      - run: rm -fr sds      
+      - run: R -q -e 'install.packages("spatialreg", repos = c("https://r-spatial.r-universe.dev", "https://cloud.r-project.org"))' # to be removed
+
+      - name: Install Python and Dependencies
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      - run: pip install geopandas descartes rasterio folium matplotlib mapclassify
+      - run: mkdir python
+      - run: cp -r *qmd *yml data aq python
+
+      - name: Render and Publish
+        uses: quarto-dev/quarto-actions/publish@v2
+        with:
+          target: gh-pages
+          path: python
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
