@@ -80,15 +80,15 @@ Install `starsdata`:
 options(timeout = 1200); install.packages("starsdata", repos = "http://cran.uni-muenster.de/pebesma", type = "source")
 ```
 
-Install `stars` from source from github (not needed after stars >= 0.6-0 is available from CRAN), either from source:
+Install `spatialreg` from source from github, either from source:
 ```
 install.packages("remotes")
-remotes::install_github("r-spatial/stars")
+remotes::install_github("r-spatial/spatialreg")
 ```
 or as binary from `r-universe`:
 ```
 options(repos = c(
   rspatial = "https://r-spatial.r-universe.dev",
   CRAN = "https://cloud.r-project.org"))
-install.packages(c("stars"))
+install.packages(c("spatialreg"))
 ```
