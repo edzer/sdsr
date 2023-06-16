@@ -1,6 +1,6 @@
-# quarto sources for "Spatial Data Science: with applications in R"
+# [quarto](https://quarto.org/) sources for ["Spatial Data Science: With Applications in R"](https://r-spatial.org/book)
 
-The print version of this book is available from [CRC/Chapman and Hall](https://www.routledge.com/Spatial-Data-Science-With-Applications-in-R/Pebesma-Bivand/p/book/9781138311183). A rendered (html) version of this book is available [online](https://r-spatial.org/book).
+The print version of this book is available from [CRC/Chapman and Hall](https://www.routledge.com/Spatial-Data-Science-With-Applications-in-R/Pebesma-Bivand/p/book/9781138311183). A complete online version of this book [is available](https://r-spatial.org/book).
 
 To recreate/reproduce this book:
 
@@ -80,15 +80,23 @@ Install `starsdata`:
 options(timeout = 1200); install.packages("starsdata", repos = "http://cran.uni-muenster.de/pebesma", type = "source")
 ```
 
-Install `stars` from source from github (not needed after stars >= 0.6-0 is available from CRAN), either from source:
+Install `spatialreg` from source from github, either from source:
 ```
 install.packages("remotes")
-remotes::install_github("r-spatial/stars")
+remotes::install_github("r-spatial/spatialreg")
 ```
 or as binary from `r-universe`:
 ```
 options(repos = c(
   rspatial = "https://r-spatial.r-universe.dev",
   CRAN = "https://cloud.r-project.org"))
-install.packages(c("stars"))
+install.packages(c("spatialreg"))
 ```
+
+## Daily rendered version
+
+The entire book is recreated from source nightly with the latest released R and all updated [CRAN]() packages by a [Github Action](https://github.com/edzer/sdsr/actions) using this [script](https://github.com/edzer/sdsr/blob/main/.github/workflows/publish.yml). The online version thus rendered is found [here](https://edzer.github.io/sdsr/). As this output is not checked daily it is not automatically copied to the "official" online version, at https://r-spatial.org/book/ .
+
+## Python version
+
+A version "With Applications in R and Python" is under construction; the sources are in the python branch of this repository, a rendered online version is found at https://r-spatial.org/python/ .
