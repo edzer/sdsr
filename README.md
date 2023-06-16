@@ -1,4 +1,4 @@
-# [quarto](https://quarto.org/) sources for ["Spatial Data Science: With Applications in R"](https://r-spatial.org/book)
+# [quarto](https://quarto.org/) sources for ["Spatial Data Science: With Applications in R and Python"](https://r-spatial.org/python)
 
 The print version of this book is available from [CRC/Chapman and Hall](https://www.routledge.com/Spatial-Data-Science-With-Applications-in-R/Pebesma-Bivand/p/book/9781138311183). A complete online version of this book [is available](https://r-spatial.org/book).
 
@@ -99,4 +99,4 @@ The entire book is recreated from source nightly with the latest released R and 
 
 ## Python version
 
-A version "With Applications in R and Python" is under construction; the sources are in the python branch of this repository, a rendered online version is found at https://r-spatial.org/python/ .
+The version with subtitle "With Applications in R and Python" is under construction; the sources are in the python branch of this repository, a rendered online version is found at https://r-spatial.org/python/ .
