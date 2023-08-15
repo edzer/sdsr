@@ -1,5 +1,5 @@
 all:
-	quarto render --to pdf
+	OPENSSL_CONF=/dev/null quarto render --to pdf
 	make sed
 	make 3
 	awk -f repl.awk sds.toc > x.toc
@@ -34,7 +34,7 @@ push:
 	#git push || true
 
 clean:
-	rm -fr *_cache *_files _book/*
+	rm -fr *_cache *_files _book/* .quarto/_freeze
 
 zip:
 	rm -fr sds.zip _book/Spatial-Data-Science.pdf
