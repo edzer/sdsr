@@ -93,9 +93,9 @@ options(repos = c(
 install.packages(c("spatialreg"))
 ```
 
-## Daily rendered version
+## Daily rendered version on GA
 
-The entire book is recreated from source nightly with the latest released R and all updated [CRAN]() packages by a [Github Action](https://github.com/edzer/sdsr/actions) using this [script](https://github.com/edzer/sdsr/blob/main/.github/workflows/publish.yml). The online version thus rendered is found [here](https://edzer.github.io/sdsr/). As this output is not checked daily it is not automatically copied to the "official" online version, at https://r-spatial.org/book/ .
+The entire book is recreated from source nightly with the latest released R and all updated [CRAN]() packages by a [Github Action](https://github.com/edzer/sdsr/actions) using this [script](https://github.com/edzer/sdsr/blob/main/.github/workflows/publish.yml). The online version thus rendered is found [here](https://edzer.github.io/sdsr/). As this output is not checked daily it is not automatically copied to the "official" online version, at https://r-spatial.org/book/ ; it also lacks portions that require a running PostGIS instance.
 
 ## Python version
 
