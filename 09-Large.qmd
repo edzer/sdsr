@@ -106,38 +106,45 @@ some computational cost.
 \index{sf\_read!from database connection}
 
 ```{r, echo=FALSE}
-has_PG <- any("PostgreSQL" %in% st_drivers()$name) &&
+has_PG <- Sys.getenv("DB_USERNAME") != "" && Sys.getenv("DB_HOST") != "" &&
+	"PostgreSQL" %in% st_drivers()$name &&
 	!inherits(try(DBI::dbConnect( 
     	RPostgres::Postgres(),
-    	host = "localhost",
+    	host = Sys.getenv("DB_HOST"),
+		user = Sys.getenv("DB_USERNAME"),
     	dbname = "postgis"), silent = TRUE), "try-error")
 ```
 
 ```{r echo=FALSE, eval=has_PG}
 nc <- read_sf(file)
-write_sf(nc, "PG:dbname=postgis", "nc")
+# write nc to postgis:
+write_sf(nc, paste0("PG:dbname=postgis user=", Sys.getenv("DB_USERNAME"), " host=", Sys.getenv("DB_HOST")), "nc")
 ```
 
 Although GDAL has support for several spatial databases, and as
 mentioned above it passes on SQL in the `query` argument to the
 database, it is sometimes beneficial to directly read from and 
-write to a spatial database using the DBI R database drivers for this. An
-example of this is:
+write to a spatial database using the DBI R database drivers for this. 
+An example of this is:
 ```{r, eval=has_PG}
 pg <- DBI::dbConnect(
     RPostgres::Postgres(),
-    host = "localhost",
+    host = Sys.getenv("DB_HOST"),
+    user = Sys.getenv("DB_USERNAME"),
     dbname = "postgis")
 read_sf(pg, query = 
 		"select BIR74,wkb_geometry from nc limit 3") |> nrow()
 ```
+where the database host and user name are obtained from environment
+variables, and the database name is `postgis`.
+
 A spatial query might look like
 ```{r, eval=has_PG}
 q <- "SELECT BIR74,wkb_geometry FROM nc WHERE \
 ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.50 36.43)');"
 read_sf(pg, query = q) |> nrow()
 ```
-Here, the intersection is done in the database, and uses the spatial
+Here, the intersection is carried out inside the database, and uses a spatial
 index when present.  The same mechanism works when using `dplyr`
 with a database backend:
 
@@ -158,7 +165,7 @@ nc_db |> filter(ST_Area(wkb_geometry) > 0.1) |> head(3)
 ```
 (Note that PostGIS' `ST_Area` computes the same area as
 the `AREA` field in `nc`, which is the meaningless value obtained by
-assuming the coordinates are projected, where they are ellipsoidal.)
+interpreting the coordinates as projected, where they are ellipsoidal.)
 
 ### Reading from online resources or web services {#sec-vsi}
 
@@ -329,9 +336,9 @@ provides `stars_proxy` objects.  To demonstrate its use, we will
 use the **starsdata** package, an R data package with larger datasets
 (around 1 GB total). It can be installed by
 ```{r eval=FALSE}
-options(timeout = 600) # or large in case of slow network
+options(timeout = 600) # or larger in case of slow network
 install.packages("starsdata", 
-    repos = "http://pebesma.staff.ifgi.de", type = "source")
+  repos = "http://cran.uni-muenster.de/pebesma/", type = "source")
 ```
 We can "load" a Sentinel-2 image from it by
 ```{r}
@@ -596,5 +603,3 @@ Plot the results. Explore the effect of setting argument `crop = FALSE`
 1.  With the downsampled image, compute the logical layer where all four
 bands have pixel values higher than 1000. Use a raster algebra expression
 on the four bands (use `split` first), or use `st_apply` for this.
-
-{{< include ga.qmd >}}
