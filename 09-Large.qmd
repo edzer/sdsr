@@ -106,7 +106,8 @@ some computational cost.
 \index{sf\_read!from database connection}
 
 ```{r, echo=FALSE}
-has_PG <- any("PostgreSQL" %in% st_drivers()$name) &&
+has_PG <- Sys.getenv("DB_USERNAME") != "" && Sys.getenv("DB_HOST") != "" &&
+	"PostgreSQL" %in% st_drivers()$name &&
 	!inherits(try(DBI::dbConnect( 
     	RPostgres::Postgres(),
     	host = Sys.getenv("DB_HOST"),
@@ -114,26 +115,17 @@ has_PG <- any("PostgreSQL" %in% st_drivers()$name) &&
     	dbname = "postgis"), silent = TRUE), "try-error")
 ```
 
-```{r}
-"PostgreSQL" %in% st_drivers()$name
-any("PostgreSQL" %in% st_drivers()$name)
-DBI::dbConnect( 
-    	RPostgres::Postgres(),
-    	host = Sys.getenv("DB_HOST"),
-		user = Sys.getenv("DB_USERNAME"),
-    	dbname = "postgis")
-```
-
 ```{r echo=FALSE, eval=has_PG}
 nc <- read_sf(file)
+# write nc to postgis:
 write_sf(nc, paste0("PG:dbname=postgis user=", Sys.getenv("DB_USERNAME"), " host=", Sys.getenv("DB_HOST")), "nc")
 ```
 
 Although GDAL has support for several spatial databases, and as
 mentioned above it passes on SQL in the `query` argument to the
 database, it is sometimes beneficial to directly read from and 
-write to a spatial database using the DBI R database drivers for this. An
-example of this is:
+write to a spatial database using the DBI R database drivers for this. 
+An example of this is:
 ```{r, eval=has_PG}
 pg <- DBI::dbConnect(
     RPostgres::Postgres(),
@@ -143,13 +135,16 @@ pg <- DBI::dbConnect(
 read_sf(pg, query = 
 		"select BIR74,wkb_geometry from nc limit 3") |> nrow()
 ```
+where the database host and user name are obtained from environment
+variables, and the database name is `postgis`.
+
 A spatial query might look like
 ```{r, eval=has_PG}
 q <- "SELECT BIR74,wkb_geometry FROM nc WHERE \
 ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.50 36.43)');"
 read_sf(pg, query = q) |> nrow()
 ```
-Here, the intersection is done in the database, and uses the spatial
+Here, the intersection is carried out inside the database, and uses a spatial
 index when present.  The same mechanism works when using `dplyr`
 with a database backend:
 
