@@ -3,7 +3,7 @@ FROM rocker/geospatial:latest
 MAINTAINER "edzerpebesma" edzer.pebesma@uni-muenster.de
 
 ## Add CRAN packages:
-RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"))'
+RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"), repos = "https://cloud.r-project.org/")'
 
 # 0. install book source files:
 RUN git clone https://github.com/edzer/sdsr.git
