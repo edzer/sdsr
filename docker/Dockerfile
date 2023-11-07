@@ -3,7 +3,7 @@ FROM rocker/geospatial:latest
 MAINTAINER "edzerpebesma" edzer.pebesma@uni-muenster.de
 
 ## Add CRAN packages:
-RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"))'
+RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"), repos = "https://cloud.r-project.org/")'
 
 # 0. install book source files:
 RUN git clone https://github.com/edzer/sdsr.git
@@ -27,6 +27,6 @@ RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getO
 RUN chmod +x /usr/local/lib/R/site-library/INLA/bin/linux/64bit/*
 
 ## 5. dev version of spatialreg:
-RUN R -q -e 'remotes::nstall_github("r-spatial/spatialreg")'
+RUN R -q -e 'remotes::install_github("r-spatial/spatialreg")'
 
 EXPOSE 8787
