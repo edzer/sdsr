@@ -59,6 +59,9 @@ include
 \index{observation window}
 
 Point patterns have an observation window. Consider the points generated randomly by 
+::: panel-tabset
+
+####R
 
 ```{r}
 library(sf)
@@ -66,6 +69,21 @@ n <- 30
 set.seed(13531) # remove this to create another random sequence
 xy <- data.frame(x = runif(n), y = runif(n)) |> 
     st_as_sf(coords = c("x", "y"))
+```
+
+####Python
+
+```{python}
+import geopandas as gpd
+from shapely.geometry import box, Point
+import matplotlib.pyplot as plt
+
+# Generate random points similar to R code
+import numpy as np
+np.random.seed(13531)
+n = 30
+xy = gpd.GeoDataFrame(geometry=gpd.points_from_xy(np.random.rand(n), np.random.rand(n)))
+
 ```
 
 then these points are (by construction) uniformly distributed,
@@ -78,6 +96,9 @@ w1 <- st_bbox(c(xmin = 0, ymin = 0, xmax = 1, ymax = 1)) |>
 w2 <- st_sfc(st_point(c(1, 0.5))) |> st_buffer(1.2)
 ```
 this is shown in @fig-pp1.
+::: panel-tabset
+
+####R
 
 ```{r fig-pp1, echo=!knitr::is_latex_output()}
 #| fig.height: 3.3
@@ -88,6 +109,34 @@ plot(w1, axes = TRUE, col = 'grey')
 plot(xy, add = TRUE)
 plot(w2, axes = TRUE, col = 'grey')
 plot(xy, add = TRUE, cex = .5)
+```
+
+####Python
+
+```{python}
+# Define w1 (bounding box) and w2 (buffered point) as in the R code
+w1 = box(0, 0, 1, 1)
+point = Point(1, 0.5)
+w2 = point.buffer(1.2)
+
+# Create subplots using Matplotlib
+fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+
+# Plot w1 and xy on the first subplot
+axs[0].set_aspect('equal')
+gpd.GeoSeries(w1).plot(ax=axs[0], color='grey')
+xy.plot(ax=axs[0], markersize=20, color='black', alpha=0.5)
+axs[0].set_title('Bounding Box (w1)')
+
+# Plot w2 and xy on the second subplot
+axs[1].set_aspect('equal')
+gpd.GeoSeries(w2).plot(ax=axs[1], color='grey')
+xy.plot(ax=axs[1], markersize=10, color='black', alpha=0.5)
+axs[1].set_title('Buffered Point (w2)')
+
+plt.tight_layout()
+plt.show()
+
 ```
 
 \index{ppp}
@@ -289,6 +338,11 @@ number of requested points, for other types this is approximate.
 **spatstat**, when other values for sampling type are chosen. For instance
 the **spatstat** function `rThomas` is invoked when setting `type = Thomas`
 (@fig-rThomas):
+
+::: panel-tabset
+
+####R
+
 ```{r}
 kappa <- 30 / st_area(w2) # intensity
 th <- st_sample(w2, kappa = kappa, mu = 3, scale = 0.05, 
@@ -304,6 +358,33 @@ par(mar = rep(0, 4))
 plot(w2)
 plot(th, add = TRUE)
 ```
+
+####Python
+
+```{python}
+import geopandas as gpd
+from shapely.geometry import Point
+import numpy as np
+
+# Create a bounding box polygon 'w2'
+w2 = gpd.GeoSeries([Point(1, 0.5)]).buffer(1.2)
+kappa = 30 / w2.area
+
+# Simulate a Thomas point process with specified intensity (kappa)
+n2 = 90
+th_points = []
+for _ in range(n2):
+    centroid = w2.centroid.values[0]
+    x = np.random.normal(centroid.x, scale=0.05)
+    y = np.random.normal(centroid.y, scale=0.05)
+    th_points.append(Point(x, y))
+
+th = gpd.GeoDataFrame({'geometry': th_points}, crs=w2.crs)
+
+print(len(th))
+
+```
+
 The help function obtained by `?rThomas` details the meaning of the
 parameters `kappa`, `mu`, and `scale`. Simulating point processes
 means that the intensity is given, not the sample size. The sample
