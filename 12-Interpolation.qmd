@@ -42,12 +42,39 @@ write_csv(right_join(a2, tb), "no2.csv")
 
 We can read station mean NO$_2$ values, a dataset that is prepared 
 in @sec-stgeostatistics, by loading it from package **gstat** using
+
+::: panel-tabset
+
+#### R
+
 ```{r, message=FALSE}
 library(tidyverse) |> suppressPackageStartupMessages()
 no2 <- read_csv(system.file("external/no2.csv", 
     package = "gstat"), show_col_types = FALSE)
 ```
+
+#### Python
+
+```{python}
+import pandas as pd
+
+# Load the CSV file from the 'gstat' package (assuming it's stored locally)
+
+file_path = 'C:/Users/Administrator/Documents/sdsr/data/no2.csv'  # Replace this with the actual file path
+
+# Read the CSV file into a DataFrame
+no2 = pd.read_csv(file_path)
+
+# Display the DataFrame (if needed)
+print(no2)
+```
+
 and convert it into an `sf` object with an appropriate UTM projection using
+
+::: panel-tabset
+
+#### R
+
 ```{r}
 library(sf)
 crs <- st_crs("EPSG:32632")
@@ -69,6 +96,41 @@ ggplot() + geom_sf(data = de) +
 	geom_sf(data = no2.sf, mapping = aes(col = NO2))
 ```
 
+#### Python
+
+```{python}
+import pandas as pd
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from shapely.geometry import Point
+
+
+# Convert to GeoDataFrame and set geometry based on latitude and longitude
+geometry = [Point(lon, lat) for lon, lat in zip(no2['station_longitude_deg'], no2['station_latitude_deg'])]
+crs = "EPSG:4326"  # Assuming the original data's CRS is EPSG:4326
+no2_gdf = gpd.GeoDataFrame(no2, geometry=geometry, crs=crs)
+
+# Load 'de' data into a GeoDataFrame
+de_file_path = "C:/Users/Administrator/Documents/sdsr/data/de_nuts1.gpkg"
+de = gpd.read_file(de_file_path)
+
+# Plotting the data
+fig, ax = plt.subplots(figsize=(10, 10))
+
+# Plot 'de' GeoDataFrame
+de.plot(ax=ax, color='lightgrey', edgecolor='black')
+
+# Plot 'no2' GeoDataFrame with different colors based on NO2 concentration levels
+no2_gdf.plot(ax=ax, column='NO2', legend=True, markersize=20, cmap='Blues', legend_kwds={'label': "NO2 Concentration"})
+
+# Display the legend
+plt.legend()
+
+plt.show()
+
+
+```
+
 \index{interpolation!target grid}
 \index{st\_as\_stars!for generating a grid}
 
@@ -77,12 +139,60 @@ is typically done on a regular grid covering the area of
 interest. Starting with the country outline in object `de` we can
 create a regular 10 km $\times$ 10 km grid over Germany by
 
+::: panel-tabset 
+
+#### R
+
 ```{r buildgridgermany}
 library(stars) |> suppressPackageStartupMessages()
 st_bbox(de) |>
   st_as_stars(dx = 10000) |>
   st_crop(de) -> grd
 grd
+```
+
+#### Python
+
+```{python}
+import pandas as pd
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from pykrige import OrdinaryKriging
+import numpy as np
+
+# Create a regular grid using the bounding box of 'de'
+bbox = de.total_bounds
+x = np.linspace(bbox[0], bbox[2], num=65)
+y = np.linspace(bbox[1], bbox[3], num=87)
+xx, yy = np.meshgrid(x, y)
+grid_points = np.vstack([xx.flatten(), yy.flatten()]).T
+
+# Perform inverse distance weighted interpolation using Ordinary Kriging
+OK = OrdinaryKriging(
+    no2_gdf['station_longitude_deg'],
+    no2_gdf['station_latitude_deg'],
+    no2_gdf['NO2']
+)
+z, ss = OK.execute('grid', x, y)
+
+# Create a new GeoDataFrame for the interpolated values
+interpolated_gdf = gpd.GeoDataFrame(
+    {'interpolated': z.flatten()},
+    geometry=gpd.points_from_xy(grid_points[:, 0], grid_points[:, 1]),
+    crs=crs
+)
+
+# Clip the interpolated GeoDataFrame to the extent of the Germany map
+clipped_interpolated_gdf = gpd.clip(interpolated_gdf, de)
+
+# Plot the interpolated values and Germany map
+fig, ax = plt.subplots(figsize=(10, 10))
+de.plot(ax=ax, color='black', edgecolor='black')
+clipped_interpolated_gdf.plot(ax=ax, column='interpolated', cmap='Blues', legend=True, legend_kwds={'label': "Interpolated NO2 Concentration"})
+no2_gdf.plot(ax=ax, column='NO2', markersize=20, cmap='Reds', legend=True, legend_kwds={'label': "Original NO2 Concentration"})
+plt.xlabel(None)
+plt.ylabel(None)
+plt.show()
 ```
 
 Here, we chose grid cells not too fine, so that we still see
