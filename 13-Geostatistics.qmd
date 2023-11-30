@@ -36,11 +36,38 @@ single measurement station. These files were downloaded and converted
 to the right encoding using the `dos2unix` command line utility.
 
 In the following, we will read all the files into a list,
+
+::: panel-tabset
+
+#### R
+
 ```{r readallcsvfiles}
 files <- list.files("aq", pattern = "*.csv", full.names = TRUE)
 r <- lapply(files[-1], function(f) read.csv(f))
 ```
+
+#### Python
+
+```{python}
+import os
+import pandas as pd
+
+# Directory containing CSV files
+directory = 'aq'
+
+# List all files in the directory ending with '.csv'
+files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.csv')]
+
+# Read each CSV file into a list of DataFrames
+data_frames = [pd.read_csv(file) for file in files[1:]]  
+```
+
 then convert the time variable into a `POSIXct` variable, and put them in time order by
+
+::: panel-tabset
+
+#### R
+
 ```{r fixtimes}
 Sys.setenv(TZ = "UTC") # don't use local time zone
 r <- lapply(r, function(f) {
@@ -49,13 +76,53 @@ r <- lapply(r, function(f) {
 	}
 )
 ```
+
+#### Python
+
+```{python}
+import pandas as pd
+
+# Assuming 'data_frames' is the list of DataFrames obtained from reading CSV files
+
+# Iterate over each DataFrame and convert 'DatetimeBegin' column to datetime and sort by it
+for df in data_frames:
+    df['t'] = pd.to_datetime(df['DatetimeBegin'])
+    df.sort_values(by='t', inplace=True)
+
+# 'data_frames' now contains DataFrames with the 't' column representing the sorted datetime values
+
+```
+
 We remove smaller sub-datasets, which for this dataset have no hourly data:
+
+::: panel-tabset
+
+#### R
+
 ```{r deselect_smaller_datasets}
 r <- r[sapply(r, nrow) > 1000]
 names(r) <- sapply(r,
 			   function(f) unique(f$AirQualityStationEoICode))
 length(r) == length(unique(names(r)))
 ```
+
+#### Python
+
+```{python}
+# Assuming 'data_frames' is the list of DataFrames obtained previously
+
+# Filter DataFrames with more than 1000 rows
+filtered_data_frames = [df for df in data_frames if len(df) > 1000]
+
+# Assign unique names to the DataFrames based on 'AirQualityStationEoICode'
+names = [df['AirQualityStationEoICode'].unique()[0] for df in filtered_data_frames]
+names_dict = {name: df for name, df in zip(names, filtered_data_frames)}
+
+# 'names_dict' contains unique names as keys and corresponding DataFrames as values
+len(filtered_data_frames) == len(names_dict)
+# Output will be True if the number of filtered DataFrames matches the number of unique names
+```
+
 \index{xts}
 and then merge all files using `xts::cbind`, so that records are combined based on matching times:
 ```{r converttoxts}
