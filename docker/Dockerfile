@@ -2,19 +2,14 @@ FROM rocker/geospatial:latest
 
 MAINTAINER "edzerpebesma" edzer.pebesma@uni-muenster.de
 
-<<<<<<< HEAD
 RUN apt-get update && apt-get install -y python3-pip
-=======
-## Add CRAN packages:
-RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"), repos = "https://cloud.r-project.org/")'
->>>>>>> main
 
 RUN chown -R rstudio:rstudio /home/rstudio
 USER rstudio
 WORKDIR /home/rstudio
 
 ## Add R packages:
-RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "reticulate", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"))'
+RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "reticulate", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"), repos = "https://cloud.r-project.org/")'
 
 # Add Python packages:
 RUN pip3 install geopandas descartes rasterio folium matplotlib mapclassify
@@ -41,8 +36,5 @@ RUN R -q -e 'options(timeout = 3600); install.packages("starsdata", repos = "htt
 RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
 
 USER root
-
-## 5. dev version of spatialreg:
-RUN R -q -e 'remotes::install_github("r-spatial/spatialreg")'
 
 EXPOSE 8787
