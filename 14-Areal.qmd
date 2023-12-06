@@ -13,7 +13,7 @@ When the intrinsic support of the data is represented as points, but the underly
 
 \index{footprint, spatial}
 
-In order to explore and analyse areal data of these kinds in Chapters -@sec-spatautocorr - -@sec-spatecon, methods are needed to represent the proximity of observations. This chapter considers a subset of such methods, where the spatial processes are considered as working through proximity understood in the first instance as contiguity, as a graph linking observations taken as neighbours. This graph is typically undirected and unweighted, but may be directed and/or weighted in certain settings, which then leads to further issues with regard to symmetry. In principle, proximity would be expected to operate symmetrically in space, that is that the influence of $i$ on $j$ and of $j$ on $i$ based on their relative positions should be equivalent. Edge effects are not considered in standard treatments.
+In order to explore and analyse areal data of these kinds in Chapters [-@sec-spatautocorr]-[-@sec-spatecon], methods are needed to represent the proximity of observations. This chapter considers a subset of such methods, where the spatial processes are considered as working through proximity understood in the first instance as contiguity, as a graph linking observations taken as neighbours. This graph is typically undirected and unweighted, but may be directed and/or weighted in certain settings, which then leads to further issues with regard to symmetry. In principle, proximity would be expected to operate symmetrically in space, that is that the influence of $i$ on $j$ and of $j$ on $i$ based on their relative positions should be equivalent. Edge effects are not considered in standard treatments.
 
 \index{neighbourhood graph}
 
@@ -94,7 +94,7 @@ library(spdep) |> suppressPackageStartupMessages()
 \index{contiguous neighbours}
 \index[function]{poly2nb}
 
-The `poly2nb` function in **spdep** takes the boundary points making up the polygon boundaries in the object passed as the `pl=` argument, typically an `"sf"` or `"sfc"` object with `"POLYGON"` or `"MULTIPOLYGON"` geometries. For each observation, the function checks whether at least one (`queen=TRUE`, default), or at least two (rook, `queen=FALSE`) points are within `snap=` distance units of each other. The distances are planar in the raw coordinate units, ignoring geographical projections. Once the required number of sufficiently close points is found, the search is stopped.
+The `poly2nb` function in **spdep** takes the boundary points making up the polygon boundaries in the object passed as the `pl` argument, typically an `"sf"` or `"sfc"` object with `"POLYGON"` or `"MULTIPOLYGON"` geometries. For each observation, the function checks whether at least one (`queen=TRUE`, default), or at least two (rook, `queen=FALSE`) points are within `snap` distance units of each other. The distances are planar in the raw coordinate units, ignoring geographical projections. Once the required number of sufficiently close points is found, the search is stopped.
 
 ```{r, echo=TRUE, eval=FALSE}
 args(poly2nb)
@@ -142,7 +142,7 @@ all.equal(nb_q, nb_q_s2, check.attributes=FALSE)
 
 Note that `nb` objects record both symmetric neighbour relationships `i` to `j` and `j` to `i`, because these objects admit asymmetric relationships as well, but these duplications are not needed for object construction.
 
-Most of the **spdep** functions for constructing neighbour objects take a `row.names=` argument, the value of which is stored as a `region.id` attribute. If not given, the values are taken from `row.names()` of the first argument. These can be used to check that the neighbours object is in the same order as data. If `nb` objects are subsetted, the indices change to continue to be within `1:length(subsetted_nb)`, but the `region.id` attribute values point back to the object from which it was constructed. This is used in out-of-sample prediction from spatial regression models discussed briefly in @sec-spateconpred.
+Most of the **spdep** functions for constructing neighbour objects take a `row.names` argument, the value of which is stored as a `region.id` attribute. If not given, the values are taken from `row.names()` of the first argument. These can be used to check that the neighbours object is in the same order as data. If `nb` objects are subsetted, the indices change to continue to be within `1:length(subsetted_nb)`, but the `region.id` attribute values point back to the object from which it was constructed. This is used in out-of-sample prediction from spatial regression models discussed briefly in @sec-spateconpred.
 
 We can also check that this undirected graph is connected using the `n.comp.nb` function; while some model estimation techniques do not support graphs that are not connected, it is helpful to be aware of possible problems [@FRENISTERRANTINO201825]:
 ```{r}
@@ -181,7 +181,7 @@ write.nb.gal(nb_q, tf)
 
 If areal units are an appropriate representation, but only points on the plane have been observed, contiguity relationships may be approximated using graph-based neighbours. In this case, the imputed boundaries tessellate the plane such that points closer to one observation than any other fall within its polygon. The simplest form is by using triangulation, here using the `deldir` function in the **deldir** package. Because the function returns from $i$ and to $j$ identifiers, it is easy to construct a long representation of a `listw` object, as used in the S-Plus SpatialStats module and the `sn2listw` function internally to construct an `nb` object (ragged wide representation). Alternatives such as GEOS often fail to return sufficient information to permit the neighbours to be identified.
 
-The output of these functions is then converted to the `nb` representation using `graph2nb`, with the possible use of the `sym=` argument to coerce to symmetry. We take the centroids of the largest component polygon for each observation as the point representation; population-weighted centroids might have been a better choice if they were available:
+The output of these functions is then converted to the `nb` representation using `graph2nb`, with the possible use of the `sym` argument to coerce to symmetry. We take the centroids of the largest component polygon for each observation as the point representation; population-weighted centroids might have been a better choice if they were available:
 
 ```{r}
 pol_pres15 |> 
@@ -262,7 +262,7 @@ par(opar)
 \index{distance-based neighbours}
 \index[function]{dnearneigh}
 
-Distance-based neighbours can be constructed using `dnearneigh`, with a distance band with lower `d1=` and upper `d2=` bounds controlled by the `bounds=` argument. If spherical coordinates are used and either specified in the coordinates object `x` or with `x` as a two-column matrix and `longlat=TRUE`, great circle distances in kilometre will be calculated assuming the WGS84 reference ellipsoid, or if `use_s2=TRUE` (the default value) using the spheroid (see @sec-spherical). If `dwithin=` is `FALSE` and the version of **s2** is greater than `1.0.7`, `s2_closest_edges` may be used, if `TRUE` and `use_s2=TRUE`, `s2_dwithin_matrix` is used; both of these methods use fast spherical spatial indexing, but because `s2_closest_edges` takes minimum and maximum bounds, it only needs one pass in the R code of `dnearneigh`. 
+Distance-based neighbours can be constructed using `dnearneigh`, with a distance band with lower `d1` and upper `d2` bounds controlled by the `bounds` argument. If spherical coordinates are used and either specified in the coordinates object `x` or with `x` as a two-column matrix and `longlat=TRUE`, great circle distances in kilometre will be calculated assuming the WGS84 reference ellipsoid, or if `use_s2=TRUE` (the default value) using the spheroid (see @sec-spherical). If `dwithin` is `FALSE` and the version of **s2** is greater than `1.0.7`, `s2_closest_edges` may be used, if `TRUE` and `use_s2=TRUE`, `s2_dwithin_matrix` is used; both of these methods use fast spherical spatial indexing, but because `s2_closest_edges` takes minimum and maximum bounds, it only needs one pass in the R code of `dnearneigh`. 
 
 \index[function]{s2\_closest\_edges}
 
@@ -273,7 +273,7 @@ Arguments have been added to use functionality in the **dbscan** package [@R-dbs
 \index[function]{knearneigh}
 \index[function]{knn2nb}
 
-The `knearneigh` function for $k$-nearest neighbours returns a `knn` object, converted to an `nb` object using `knn2nb`. It can also use great circle distances, not least because nearest neighbours may differ when unprojected coordinates are treated as planar. `k=` should be a small number. For projected coordinates, the **dbscan** package is used to compute nearest neighbours more efficiently. Note that `nb` objects constructed in this way are most unlikely to be symmetric hence `knn2nb` has a `sym=` argument to permit the imposition of symmetry, which will mean that all units have at least `k=` neighbours, not that all units will have exactly `k=` neighbours. When `sf_use_s2()` is `TRUE`, `knearneigh` will use fast spherical spatial indexing when the input object is of class `"sf"` or `"sfc"`.
+The `knearneigh` function for $k$-nearest neighbours returns a `knn` object, converted to an `nb` object using `knn2nb`. It can also use great circle distances, not least because nearest neighbours may differ when unprojected coordinates are treated as planar. `k` should be a small number. For projected coordinates, the **dbscan** package is used to compute nearest neighbours more efficiently. Note that `nb` objects constructed in this way are most unlikely to be symmetric hence `knn2nb` has a `sym` argument to permit the imposition of symmetry, which will mean that all units have at least `k` neighbours, not that all units will have exactly `k` neighbours. When `sf_use_s2()` is `TRUE`, `knearneigh` will use fast spherical spatial indexing when the input object is of class `"sf"` or `"sfc"`.
 
 \index[function]{nbdists}
 
@@ -339,7 +339,7 @@ or imposing symmetry:
 (knn_k6 |> knn2nb(sym = TRUE) -> nb_k6s)
 ```
 
-Here the size of `k=` is sufficient to ensure connectedness, although the graph is not planar as edges cross at locations other than nodes, which is not the case for contiguous or graph-based neighbours.
+Here the size of `k` is sufficient to ensure connectedness, although the graph is not planar as edges cross at locations other than nodes, which is not the case for contiguous or graph-based neighbours.
 ```{r}
 (nb_k6s |> n.comp.nb())$nc
 ```
@@ -411,7 +411,7 @@ sf_use_s2(old_use_s2)
 
 ## Weights specification
 
-Once neighbour objects are available, further choices need to be made in specifying the weights objects. The `nb2listw` function is used to create a `listw` weights object with an `nb` object, a matching list of weights vectors, and a style specification. Because handling no-neighbour observations now begins to matter, the `zero.policy=` argument is introduced. By default, this is `FALSE`, indicating that no-neighbour observations will cause an error, as the spatially lagged value for an observation with no neighbours is not available. By convention, zero is substituted for the lagged value, as the cross-product of a vector of zero-valued weights and a data vector, hence the name of `zero.policy`.
+Once neighbour objects are available, further choices need to be made in specifying the weights objects. The `nb2listw` function is used to create a `listw` weights object with an `nb` object, a matching list of weights vectors, and a style specification. Because handling no-neighbour observations now begins to matter, the `zero.policy` argument is introduced. By default, this is `FALSE`, indicating that no-neighbour observations will cause an error, as the spatially lagged value for an observation with no neighbours is not available. By convention, zero is substituted for the lagged value, as the cross-product of a vector of zero-valued weights and a data vector, hence the name of `zero.policy`.
 
 \index[function]{nb2listw}
 \index{weights!objects}
@@ -455,7 +455,7 @@ The `"W"` row-standardised style up-weights units around the edge of the study a
 ```
 \index{weights!inverse distance}
 
-Inverse distance weights are used in a number of scientific fields. Some use dense inverse distance matrices, but many of the inverse distances are close to zero, have little practical contribution, especially as the spatial process matrix is itself dense. Inverse distance weights may be constructed by taking the lengths of edges, changing units to avoid most weights being too large or small (here from metre to kilometre), taking the inverse, and passing through the `glist=` argument to `nb2listw`:
+Inverse distance weights are used in a number of scientific fields. Some use dense inverse distance matrices, but many of the inverse distances are close to zero, have little practical contribution, especially as the spatial process matrix is itself dense. Inverse distance weights may be constructed by taking the lengths of edges, changing units to avoid most weights being too large or small (here from metre to kilometre), taking the inverse, and passing through the `glist` argument to `nb2listw`:
 
 ```{r}
 nb_d183 |> 
@@ -471,7 +471,7 @@ No-neighbour handling is by default to prevent the construction of a weights obj
 ```{r}
 try(nb_d16 |> nb2listw(style="B") -> lw_d16_B)
 ```
-Use can be made of the `zero.policy=` argument to many functions used with `nb` and `listw` objects.
+Use can be made of the `zero.policy` argument to many functions used with `nb` and `listw` objects.
 
 ```{r}
 nb_d16 |> 
@@ -480,7 +480,7 @@ nb_d16 |>
     data.frame() |> 
     subset(select=c(n, S0, S1, S2))
 ```
-Note that by default the `adjust.n=` argument to `spweights.constants` is set by default to `TRUE`, subtracting the count of no-neighbour observations from the observation count, so $n$ is smaller with possible consequences for inference. The complete count can be retrieved by changing the argument.
+Note that by default the `adjust.n` argument to `spweights.constants` is set by default to `TRUE`, subtracting the count of no-neighbour observations from the observation count, so $n$ is smaller with possible consequences for inference. The complete count can be retrieved by changing the argument.
 
 ## Higher order neighbours
 

@@ -2,7 +2,12 @@ FROM rocker/geospatial:latest
 
 MAINTAINER "edzerpebesma" edzer.pebesma@uni-muenster.de
 
+<<<<<<< HEAD
 RUN apt-get update && apt-get install -y python3-pip
+=======
+## Add CRAN packages:
+RUN R -q -e 'install.packages(c("R2BayesX", "cubelyr", "dbscan", "hglm", "igraph", "lme4", "lmtest", "matrixStats", "mgcv", "rgeoda", "rnaturalearth", "rnaturalearthdata", "spData", "stars"), repos = "https://cloud.r-project.org/")'
+>>>>>>> main
 
 RUN chown -R rstudio:rstudio /home/rstudio
 USER rstudio
@@ -38,6 +43,6 @@ RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getO
 USER root
 
 ## 5. dev version of spatialreg:
-RUN R -q -e 'remotes::nstall_github("r-spatial/spatialreg")'
+RUN R -q -e 'remotes::install_github("r-spatial/spatialreg")'
 
 EXPOSE 8787
