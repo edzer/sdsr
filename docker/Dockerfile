@@ -26,7 +26,4 @@ RUN R -q -e 'options(timeout = 3600); install.packages("starsdata", repos = "htt
 RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
 RUN chmod +x /usr/local/lib/R/site-library/INLA/bin/linux/64bit/*
 
-## 5. dev version of spatialreg:
-RUN R -q -e 'remotes::install_github("r-spatial/spatialreg")'
-
 EXPOSE 8787
