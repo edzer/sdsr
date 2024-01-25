@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.3.450">
+<meta name="generator" content="quarto-1.4.549">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <title>Spatial Data Science - 15&nbsp; Measures of Spatial Autocorrelation</title>
 <style>
@@ -19,7 +19,7 @@ ul.task-list li input[type="checkbox"] {
 }
 /* CSS for syntax highlighting */
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -55,6 +55,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 div.csl-bib-body { }
 div.csl-entry {
   clear: both;
+  margin-bottom: 0em;
 }
 .hanging-indent div.csl-entry {
   margin-left:2em;
@@ -95,7 +96,13 @@ div.csl-indent {
   "collapse-after": 3,
   "panel-placement": "start",
   "type": "textbox",
-  "limit": 20,
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
   "language": {
     "search-no-results-text": "No results",
     "search-matching-documents-text": "matching documents",
@@ -104,6 +111,7 @@ div.csl-indent {
     "search-more-match-text": "more match in this document",
     "search-more-matches-text": "more matches in this document",
     "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
     "search-detached-cancel-button-title": "Cancel",
     "search-submit-button-title": "Submit",
     "search-label": "Search"
@@ -119,29 +127,54 @@ gtag('js', new Date());
     'analytics_storage': 'denied'
   });
 gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
-</script><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+</script><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script><script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 </head>
 <body class="nav-sidebar floating">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top"><nav class="quarto-secondary-nav"><div class="container-fluid d-flex">
-      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./part-3.html">Models for Spatial Data</a></li><li class="breadcrumb-item"><a href="./15-Measures.html"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Measures of Spatial Autocorrelation</span></a></li></ol></nav>
-      <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
-      </a>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./part-3.html">Models for Spatial Data</a></li><li class="breadcrumb-item"><a href="./15-Measures.html"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Measures of Spatial Autocorrelation</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
       <button type="button" class="btn quarto-search-button" aria-label="" onclick="window.quartoOpenSearch();">
         <i class="bi bi-search"></i>
       </button>
     </div>
   </nav></header><!-- content --><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal sidebar-navigation floating overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
     <div class="sidebar-title mb-0 py-0">
       <a href="./">Spatial Data Science</a> 
         <div class="sidebar-tools-main">
-    <a href="https://github.com/edzer/sdsr/" rel="" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+    <a href="https://github.com/edzer/sdsr/" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
 </div>
     </div>
       </div>
@@ -330,7 +363,7 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 </li>
     </ul>
 </div>
-</nav><div id="quarto-sidebar-glass" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass"></div>
+</nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
@@ -354,10 +387,10 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
   </ul>
 </li>
   <li><a href="#exercises" id="toc-exercises" class="nav-link" data-scroll-target="#exercises"><span class="header-section-number">15.4</span> Exercises</a></li>
-  </ul><div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/edzer/sdsr/edit/main/15-Measures.qmd" class="toc-action">Edit this page</a></p></div></div></nav>
+  </ul><div class="toc-actions"><ul><li><a href="https://github.com/edzer/sdsr/edit/main/15-Measures.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><div class="quarto-title">
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./part-3.html">Models for Spatial Data</a></li><li class="breadcrumb-item"><a href="./15-Measures.html"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Measures of Spatial Autocorrelation</span></a></li></ol></nav><div class="quarto-title">
 <div class="quarto-title-block"><div><h1 class="title"><span id="sec-spatautocorr" class="quarto-section-identifier"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Measures of Spatial Autocorrelation</span></span></h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">View Source</a></li></ul></div></div>
 </div>
 
@@ -370,6 +403,7 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
     
   </div>
   
+
 
 </header><p></p>
 <!---
@@ -573,21 +607,25 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 </section></section><section id="local-measures" class="level2" data-number="15.3"><h2 data-number="15.3" class="anchored" data-anchor-id="local-measures">
 <span class="header-section-number">15.3</span> Local measures</h2>
 <p> Building on insights from the weaknesses of global measures, local indicators of spatial association began to appear in the first half of the 1990s <span class="citation" data-cites="anselin:95 getis+ord:92 getis+ord:96">(<a href="references.html#ref-anselin:95" role="doc-biblioref">Anselin 1995</a>; <a href="references.html#ref-getis+ord:92" role="doc-biblioref">Getis and Ord 1992</a>, <a href="references.html#ref-getis+ord:96" role="doc-biblioref">1996</a>)</span>.</p>
-<p>In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable <span class="citation" data-cites="anselin:96">(<a href="references.html#ref-anselin:96" role="doc-biblioref">Anselin 1996</a>)</span>. The <code>moran.plot</code> function also returns an influence measures object used to label observations exerting more than proportional influence on the slope of the line representing global Moran’s <span class="math inline">\(I\)</span>. In <a href="#fig-moranplot">Figure&nbsp;<span>15.1</span></a>, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. In <code>moran.plot</code>, the quadrants are split on the means of the variable and its spatial lag; alternative splits are on zero for the centred variable and the spatial lag of the centred variable.</p>
+<p>In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable <span class="citation" data-cites="anselin:96">(<a href="references.html#ref-anselin:96" role="doc-biblioref">Anselin 1996</a>)</span>. The <code>moran.plot</code> function also returns an influence measures object used to label observations exerting more than proportional influence on the slope of the line representing global Moran’s <span class="math inline">\(I\)</span>. In <a href="#fig-moranplot" class="quarto-xref">Figure&nbsp;<span>15.1</span></a>, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. In <code>moran.plot</code>, the quadrants are split on the means of the variable and its spatial lag; alternative splits are on zero for the centred variable and the spatial lag of the centred variable.</p>
 <p></p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">I_turnout</span> <span class="op">|&gt;</span> </span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">I_turnout</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/moran.plot.html">moran.plot</a></span><span class="op">(</span>listw <span class="op">=</span> <span class="va">lw_q_W</span>, labels <span class="op">=</span> <span class="va">pol_pres15</span><span class="op">$</span><span class="va">TERYT</span>, </span>
 <span>               cex <span class="op">=</span> <span class="fl">1</span>, pch <span class="op">=</span> <span class="st">"."</span>, xlab <span class="op">=</span> <span class="st">"I round turnout"</span>, </span>
 <span>               ylab <span class="op">=</span> <span class="st">"lagged turnout"</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">infl_W</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-moranplot" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="15-Measures_files/figure-html/fig-moranplot-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;15.1: Moran plot of I round turnout, row standardised weights</figcaption></figure>
+<div id="fig-moranplot" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-moranplot-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="15-Measures_files/figure-html/fig-moranplot-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-moranplot-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15.1: Moran plot of I round turnout, row standardised weights
+</figcaption></figure>
 </div>
 </div>
 </div>
-<p>If we extract the hat value influence measure from the returned object, <a href="#fig-moranhat">Figure&nbsp;<span>15.2</span></a> suggests that some edge entities exert more than proportional influence (perhaps because of row standardisation), as do entities in or near larger urban areas.</p>
+<p>If we extract the hat value influence measure from the returned object, <a href="#fig-moranhat" class="quarto-xref">Figure&nbsp;<span>15.2</span></a> suggests that some edge entities exert more than proportional influence (perhaps because of row standardisation), as do entities in or near larger urban areas.</p>
 <div class="cell">
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://r-tmap.github.io/tmap/">tmap</a></span><span class="op">)</span></span>
 <span><span class="co"># Breaking News: tmap 3.x is retiring. Please test v4, e.g. with</span></span>
@@ -595,9 +633,13 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">hat_value</span> <span class="op">&lt;-</span> <span class="va">infl_W</span><span class="op">$</span><span class="va">hat</span></span>
 <span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_polygons.html">tm_fill</a></span><span class="op">(</span><span class="st">"hat_value"</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<div id="fig-moranhat" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="15-Measures_files/figure-html/fig-moranhat-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;15.2: Moran plot hat values, row standardised neighbours</figcaption></figure>
+<div id="fig-moranhat" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-moranhat-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="15-Measures_files/figure-html/fig-moranhat-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-moranhat-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15.2: Moran plot hat values, row standardised neighbours
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -640,7 +682,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 </div>
 <p>In the global measure case, bootstrap permutations may be used as an alternative to analytical methods for possible inference, where both the theoretical development of the analytical variance of the measure, and the permutation scheme, shuffle all of the observed values. In the local case, conditional permutation should be used, fixing the value at observation <span class="math inline">\(i\)</span> and randomly sampling from the remaining <span class="math inline">\(n-1\)</span> values to find randomised values at neighbours. Conditional permutation is provided as function <code>localmoran_perm</code>, which may use multiple compute nodes to sample in parallel if provided, and permits the setting of a seed for the random number generator across the compute nodes. The number of simulations <code>nsim</code> also controls the precision of the ranked estimates of the probability value based on the rank of observed <span class="math inline">\(I_i\)</span> among the simulated values:</p>
 <p></p>
-<div class="cell" data-hash="15-Measures_cache/html/unnamed-chunk-23_1f682c07a6d9d5736e83df71173cfd45">
+<div class="cell">
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">parallel</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html">invisible</a></span><span class="op">(</span><span class="fu">spdep</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/spdep/reference/set.mcOption.html">set.coresOption</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">-</span><span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">I_turnout</span> <span class="op">|&gt;</span> </span>
@@ -674,7 +716,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>                                 <span class="st">"fdr"</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb28"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb28"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
 <span>        <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_polygons.html">tm_fill</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"locm_pv"</span>, <span class="st">"locm_std_pv"</span>, <span class="st">"locm_p_pv"</span><span class="op">)</span>, </span>
 <span>                breaks<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.0005</span>, <span class="fl">0.001</span>, <span class="fl">0.005</span>, <span class="fl">0.01</span>, </span>
 <span>                         <span class="fl">0.05</span>, <span class="fl">0.1</span>, <span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>, <span class="fl">1</span><span class="op">)</span>, </span>
@@ -685,14 +727,18 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>                               <span class="st">"Permutation std. dev."</span>,</span>
 <span>                               <span class="st">"Permutation rank"</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-localmoranPr" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="15-Measures_files/figure-html/fig-localmoranPr-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;15.3: Local Moran’s I FDR probability values: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours</figcaption></figure>
+<div id="fig-localmoranPr" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-localmoranPr-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="15-Measures_files/figure-html/fig-localmoranPr-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-localmoranPr-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15.3: Local Moran’s I FDR probability values: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours
+</figcaption></figure>
 </div>
 </div>
 </div>
-<p>Proceeding using the FDR adjustment and an <em>interesting</em> location cutoff of <span class="math inline">\(0.005\)</span>, we can see from <a href="#fig-localmoranPr">Figure&nbsp;<span>15.3</span></a> that the adjusted probability values for the analytical conditional approach, the approach using the moments of the sampled values from permutation sampling, and the approach using the ranks of observed values among permutation samples all yield similar maps, as the distribution of the input variable is quite close to normal.</p>
-<p> In presenting local Moran’s <span class="math inline">\(I\)</span>, use is often made of “hotspot” maps. Because <span class="math inline">\(I_i\)</span> takes high values both for strong positive autocorrelation of low and high values of the input variable, it is hard to show where “clusters” of similar neighbours with low or high values of the input variable occur. The quadrants of the Moran plot are used, by creating a categorical quadrant variable interacting the input variable and its spatial lag split at their means. The quadrant categories are then set to NA if, for the chosen probability value and adjustment, <span class="math inline">\(I_i\)</span> would not be considered <em>interesting</em>. Here, for the FDR adjusted conditional analytical probability values (<a href="#fig-localmoranPr">Figure&nbsp;<span>15.3</span></a>, upper left panel), 53 observations belong to <code>"Low-Low"</code> cluster cores, and 96 to <code>"High-High"</code> cluster cores, similarly for the standard deviate-based permutation p-values (<a href="#fig-localmoranPr">Figure&nbsp;<span>15.3</span></a>, upper right panel), but the rank-based permutation p-values reduce the <code>"High-High"</code> count and increase the <code>"Low-Low"</code> count <a href="#fig-localmoranPr">Figure&nbsp;<span>15.3</span></a> lower left panel:</p>
+<p>Proceeding using the FDR adjustment and an <em>interesting</em> location cutoff of <span class="math inline">\(0.005\)</span>, we can see from <a href="#fig-localmoranPr" class="quarto-xref">Figure&nbsp;<span>15.3</span></a> that the adjusted probability values for the analytical conditional approach, the approach using the moments of the sampled values from permutation sampling, and the approach using the ranks of observed values among permutation samples all yield similar maps, as the distribution of the input variable is quite close to normal.</p>
+<p> In presenting local Moran’s <span class="math inline">\(I\)</span>, use is often made of “hotspot” maps. Because <span class="math inline">\(I_i\)</span> takes high values both for strong positive autocorrelation of low and high values of the input variable, it is hard to show where “clusters” of similar neighbours with low or high values of the input variable occur. The quadrants of the Moran plot are used, by creating a categorical quadrant variable interacting the input variable and its spatial lag split at their means. The quadrant categories are then set to NA if, for the chosen probability value and adjustment, <span class="math inline">\(I_i\)</span> would not be considered <em>interesting</em>. Here, for the FDR adjusted conditional analytical probability values (<a href="#fig-localmoranPr" class="quarto-xref">Figure&nbsp;<span>15.3</span></a>, upper left panel), 53 observations belong to <code>"Low-Low"</code> cluster cores, and 96 to <code>"High-High"</code> cluster cores, similarly for the standard deviate-based permutation p-values (<a href="#fig-localmoranPr" class="quarto-xref">Figure&nbsp;<span>15.3</span></a>, upper right panel), but the rank-based permutation p-values reduce the <code>"High-High"</code> count and increase the <code>"Low-Low"</code> count <a href="#fig-localmoranPr" class="quarto-xref">Figure&nbsp;<span>15.3</span></a> lower left panel:</p>
 <div class="cell">
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">quadr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html">attr</a></span><span class="op">(</span><span class="va">locm</span>, <span class="st">"quadr"</span><span class="op">)</span><span class="op">$</span><span class="va">mean</span></span>
 <span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html">addNA</a></span><span class="op">(</span><span class="va">quadr</span><span class="op">)</span><span class="op">)</span></span>
@@ -726,7 +772,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">hs_cp_q</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/droplevels.html">droplevels</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">hs_cp_q</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_polygons.html">tm_fill</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"hs_an_q"</span>, <span class="st">"hs_ac_q"</span>, <span class="st">"hs_cp_q"</span><span class="op">)</span>,</span>
 <span>        colorNA <span class="op">=</span> <span class="st">"grey95"</span>, textNA<span class="op">=</span><span class="st">"Not \"interesting\""</span>,</span>
 <span>        title <span class="op">=</span> <span class="st">"Turnout hotspot status \nLocal Moran's I"</span>,</span>
@@ -736,26 +782,30 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>                               <span class="st">"Permutation std. cond."</span>,</span>
 <span>                               <span class="st">"Permutation rank cond."</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-Iihotspots" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="15-Measures_files/figure-html/fig-Iihotspots-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;15.4: Local Moran's I FDR hotspot cluster core maps <span class="math inline">\(\alpha = 0.005\)</span>: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours</figcaption></figure>
+<div id="fig-Iihotspots" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-Iihotspots-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="15-Measures_files/figure-html/fig-Iihotspots-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-Iihotspots-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15.4: Local Moran's I FDR hotspot cluster core maps <span class="math inline">\(\alpha = 0.005\)</span>: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours
+</figcaption></figure>
 </div>
 </div>
 </div>
-<p><a href="#fig-Iihotspots">Figure&nbsp;<span>15.4</span></a> shows that there is very little difference between the FDR-adjusted <em>interesting</em> clusters with a choice of an <span class="math inline">\(\alpha=0.005\)</span> probability value cutoff for the three approaches of analytical conditional standard deviates, permutation-based standard deviates, and rank-based probability values; the <code>"High-High"</code> cluster cores are metropolitan areas.</p>
+<p><a href="#fig-Iihotspots" class="quarto-xref">Figure&nbsp;<span>15.4</span></a> shows that there is very little difference between the FDR-adjusted <em>interesting</em> clusters with a choice of an <span class="math inline">\(\alpha=0.005\)</span> probability value cutoff for the three approaches of analytical conditional standard deviates, permutation-based standard deviates, and rank-based probability values; the <code>"High-High"</code> cluster cores are metropolitan areas.</p>
 <p><span class="citation" data-cites="tiefelsdorf:02">Tiefelsdorf (<a href="references.html#ref-tiefelsdorf:02" role="doc-biblioref">2002</a>)</span> argues that standard approaches to the calculation of the standard deviates of local Moran’s <span class="math inline">\(I_i\)</span> should be supplemented by numerical estimates, and shows that saddlepoint approximations are a computationally efficient way of achieving this goal. The <code>localmoran.sad</code> function takes a fitted linear model as its first argument, so we first fit a null (intercept only) model, but use case weights because the numbers entitled to vote vary greatly between observations:</p>
 <p> </p>
 <div class="cell">
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html">lm</a></span><span class="op">(</span><span class="va">I_turnout</span> <span class="op">~</span> <span class="fl">1</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">lm_null</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Saddlepoint approximation is as computationally intensive as conditional permutation, because, rather than computing a simple measure on many samples, a good deal of numerical calculation is needed for each local approximation:</p>
-<div class="cell" data-hash="15-Measures_cache/html/unnamed-chunk-30_aa8b77e42f14fc31feaea2f0ab7ae89d">
+<div class="cell">
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">lm_null</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/localmoran.sad.html">localmoran.sad</a></span><span class="op">(</span>nb <span class="op">=</span> <span class="va">nb_q</span>, style <span class="op">=</span> <span class="st">"W"</span>,</span>
 <span>                                  alternative <span class="op">=</span> <span class="st">"two.sided"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>        <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">locm_sad_null</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>The chief advantage of the saddlepoint approximation is that it takes a fitted linear model rather than simply a numerical variable, so the residuals are analysed. With an intercept-only model, the results are similar to local Moran’s <span class="math inline">\(I_i\)</span>, but we can weight the observations, here by the count of those entitled to vote, which should down-weight small units of observation:</p>
-<div class="cell" data-hash="15-Measures_cache/html/unnamed-chunk-31_d59db3eecda19bcc2653af4b56f3e4f8">
+<div class="cell">
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html">lm</a></span><span class="op">(</span><span class="va">I_turnout</span> <span class="op">~</span> <span class="fl">1</span>, weights <span class="op">=</span> <span class="va">pol_pres15</span><span class="op">$</span><span class="va">I_entitled_to_vote</span><span class="op">)</span> <span class="op">-&gt;</span></span>
 <span>        <span class="va">lm_null_weights</span></span>
 <span><span class="va">lm_null_weights</span> <span class="op">|&gt;</span></span>
@@ -764,7 +814,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>        <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">locm_sad_null_weights</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Next we add the categorical variable distinguishing between rural, urban and other types of observational unit:</p>
-<div class="cell" data-hash="15-Measures_cache/html/unnamed-chunk-32_b2c3aa8b083aa89f83a83c621af56daf">
+<div class="cell">
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html">lm</a></span><span class="op">(</span><span class="va">I_turnout</span> <span class="op">~</span> <span class="va">Types</span>, weights<span class="op">=</span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">I_entitled_to_vote</span><span class="op">)</span> <span class="op">-&gt;</span></span>
 <span>        <span class="va">lm_types</span></span>
 <span><span class="va">lm_types</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/localmoran.sad.html">localmoran.sad</a></span><span class="op">(</span>nb <span class="op">=</span> <span class="va">nb_q</span>, style <span class="op">=</span> <span class="st">"W"</span>,</span>
@@ -780,7 +830,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>                     cutoff <span class="op">=</span> <span class="fl">0.005</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">pol_pres15</span><span class="op">$</span><span class="va">locm_sad2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_polygons.html">tm_fill</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"hs_cp_q"</span>, <span class="st">"locm_sad0"</span>, <span class="st">"locm_sad1"</span>,  <span class="st">"locm_sad2"</span><span class="op">)</span>,</span>
 <span>    colorNA <span class="op">=</span> <span class="st">"grey95"</span>, textNA <span class="op">=</span> <span class="st">"Not \"interesting\""</span>,</span>
 <span>    title <span class="op">=</span> <span class="st">"Turnout hotspot status \nLocal Moran's I"</span>,</span>
@@ -790,9 +840,13 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>     <span class="st">"saddlepoint null"</span>, <span class="st">"saddlepoint weighted null"</span>, </span>
 <span>     <span class="st">"saddlepoint weighted types"</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-localmoranHsad" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="15-Measures_files/figure-html/fig-localmoranHsad-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;15.5: Local Moran's I FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left upper panel: permutation rank conditional p-values; right upper panel: null (intercept only) model saddlepoint p-values; left lower panel: weighted null (intercept only) model saddlepoint p-values; right lower panel: weighted types model saddlepoint p-values, for first-round turnout, row-standardised neighbours</figcaption></figure>
+<div id="fig-localmoranHsad" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-localmoranHsad-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="15-Measures_files/figure-html/fig-localmoranHsad-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-localmoranHsad-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15.5: Local Moran's I FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left upper panel: permutation rank conditional p-values; right upper panel: null (intercept only) model saddlepoint p-values; left lower panel: weighted null (intercept only) model saddlepoint p-values; right lower panel: weighted types model saddlepoint p-values, for first-round turnout, row-standardised neighbours
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -809,9 +863,9 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span><span class="co"># type_weighted      13        0        81 2401</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div style="page-break-after: always;"></div>
-<p><a href="#fig-localmoranHsad">Figure&nbsp;<span>15.5</span></a> includes the permutation rank cluster cores for comparison (upper left panel). Because saddlepoint approximation permits richer mean models to be used, and possibly because the approximation approach is inherently local, relating regression residual values at <span class="math inline">\(i\)</span> to those of its neighbours, the remaining three panels diverge somewhat. The intercept-only (null) model is fairly similar to standard local Moran’s <span class="math inline">\(I_i\)</span>, but weighting by counts of eligible voters removes most of the <code>"Low-Low"</code> cluster cores. Adding the type categorical variable strengthens the urban <code>"High-High"</code> cluster cores but removes the Warsaw boroughs as <em>interesting</em> cluster cores. The central boroughs are surrounded by other boroughs, all with high turnout, not driven by autocorrelation but by being metropolitan boroughs. It is also possible to use saddlepoint approximation where the global spatial process has been incorporated, removing the conflation of global and local spatial autocorrelation in standard approaches.</p>
+<p><a href="#fig-localmoranHsad" class="quarto-xref">Figure&nbsp;<span>15.5</span></a> includes the permutation rank cluster cores for comparison (upper left panel). Because saddlepoint approximation permits richer mean models to be used, and possibly because the approximation approach is inherently local, relating regression residual values at <span class="math inline">\(i\)</span> to those of its neighbours, the remaining three panels diverge somewhat. The intercept-only (null) model is fairly similar to standard local Moran’s <span class="math inline">\(I_i\)</span>, but weighting by counts of eligible voters removes most of the <code>"Low-Low"</code> cluster cores. Adding the type categorical variable strengthens the urban <code>"High-High"</code> cluster cores but removes the Warsaw boroughs as <em>interesting</em> cluster cores. The central boroughs are surrounded by other boroughs, all with high turnout, not driven by autocorrelation but by being metropolitan boroughs. It is also possible to use saddlepoint approximation where the global spatial process has been incorporated, removing the conflation of global and local spatial autocorrelation in standard approaches.</p>
 <p>The same can also be accomplished using exact methods, but may require more tuning as numerical integration may fail, returning <code>NaN</code> rather than the exact estimate of the standard deviate <span class="citation" data-cites="bivandetal:09">(<a href="references.html#ref-bivandetal:09" role="doc-biblioref">Bivand, Müller, and Reder 2009</a>)</span>:</p>
-<div class="cell" data-hash="15-Measures_cache/html/unnamed-chunk-35_69ee1aa234fb3d5ebdded7a7a02f05fc">
+<div class="cell">
 <div class="sourceCode" id="cb39"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">lm_types</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/localmoran.exact.html">localmoran.exact</a></span><span class="op">(</span>nb <span class="op">=</span> <span class="va">nb_q</span>, style <span class="op">=</span> <span class="st">"W"</span>, </span>
 <span>    alternative <span class="op">=</span> <span class="st">"two.sided"</span>, useTP<span class="op">=</span><span class="cn">TRUE</span>, truncErr<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html">as.data.frame</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">locm_ex_types</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -821,7 +875,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>                         cutoff <span class="op">=</span> <span class="fl">0.005</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">pol_pres15</span><span class="op">$</span><span class="va">locm_ex</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_polygons.html">tm_fill</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"locm_sad2"</span>, <span class="st">"locm_ex"</span><span class="op">)</span>, colorNA <span class="op">=</span> <span class="st">"grey95"</span>,</span>
 <span>        textNA <span class="op">=</span> <span class="st">"Not \"interesting\""</span>, </span>
 <span>        title <span class="op">=</span> <span class="st">"Turnout hotspot status \nLocal Moran's I"</span>,</span>
@@ -830,13 +884,17 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>    <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_layout.html">tm_layout</a></span><span class="op">(</span>panel.labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"saddlepoint weighted types"</span>,</span>
 <span>                               <span class="st">"Exact weighted types"</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-localmoranHsadex" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="15-Measures_files/figure-html/fig-localmoranHsadex-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;15.6: Local Moran’s I FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left panel: weighted types model saddlepoint p-values; right panel: weighted types model exact p-values, for first-round turnout, row-standardised neighbours</figcaption></figure>
+<div id="fig-localmoranHsadex" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-localmoranHsadex-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="15-Measures_files/figure-html/fig-localmoranHsadex-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-localmoranHsadex-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15.6: Local Moran’s I FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left panel: weighted types model saddlepoint p-values; right panel: weighted types model exact p-values, for first-round turnout, row-standardised neighbours
+</figcaption></figure>
 </div>
 </div>
 </div>
-<p>As <a href="#fig-localmoranHsadex">Figure&nbsp;<span>15.6</span></a> shows, the exact and saddlepoint approximation methods yield almost identical cluster classifications from the same regression residuals, multiple comparison adjustment method, and cutoff level, with the exact method returning four more <em>interesting</em> observations:</p>
+<p>As <a href="#fig-localmoranHsadex" class="quarto-xref">Figure&nbsp;<span>15.6</span></a> shows, the exact and saddlepoint approximation methods yield almost identical cluster classifications from the same regression residuals, multiple comparison adjustment method, and cutoff level, with the exact method returning four more <em>interesting</em> observations:</p>
 <div class="cell">
 <div class="sourceCode" id="cb42"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span>Saddlepoint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">addNA</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">locm_sad2</span><span class="op">)</span>,</span>
 <span>      exact <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">addNA</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">locm_ex</span><span class="op">)</span><span class="op">)</span></span>
@@ -855,7 +913,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>        <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/localG.html">localG</a></span><span class="op">(</span><span class="va">lw_q_W</span>, return_internals <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">locG</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Permutation inference is also available for this measure:</p>
-<div class="cell" data-hash="15-Measures_cache/html/unnamed-chunk-39_e014c94a6b35b189655014138b6f9ee5">
+<div class="cell">
 <div class="sourceCode" id="cb44"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">I_turnout</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/localG.html">localG_perm</a></span><span class="op">(</span><span class="va">lw_q_W</span>, nsim <span class="op">=</span> <span class="fl">9999</span>, iseed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">locG_p</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
@@ -873,7 +931,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 </h3>
 <p> </p>
 <p><span class="citation" data-cites="https://doi.org/10.1111/gean.12164">Anselin (<a href="references.html#ref-https://doi.org/10.1111/gean.12164" role="doc-biblioref">2019</a>)</span> extends <span class="citation" data-cites="anselin:95">Anselin (<a href="references.html#ref-anselin:95" role="doc-biblioref">1995</a>)</span> and has been recently added to <strong>spdep</strong> thanks to contributions by Josiah Parry (pull request https://github.com/r-spatial/spdep/pull/66). The conditional permutation framework used for <span class="math inline">\(I_i\)</span> and <span class="math inline">\(G_i\)</span> is also used for <span class="math inline">\(C_i\)</span>:</p>
-<div class="cell" data-hash="15-Measures_cache/html/unnamed-chunk-41_58ecbe5872dbcde64f927ecf7d5f100c">
+<div class="cell">
 <div class="sourceCode" id="cb46"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">I_turnout</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/localC.html">localC_perm</a></span><span class="op">(</span><span class="va">lw_q_W</span>, nsim<span class="op">=</span><span class="fl">9999</span>, iseed<span class="op">=</span><span class="fl">1</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">locC_p</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
@@ -892,7 +950,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>                  cutoff <span class="op">=</span> <span class="fl">0.005</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">pol_pres15</span><span class="op">$</span><span class="va">hs_G</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_polygons.html">tm_fill</a></span><span class="op">(</span><span class="st">"hs_cp_q"</span>, </span>
 <span>            palette <span class="op">=</span> <span class="fu">RColorBrewer</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/RColorBrewer/man/ColorBrewer.html">brewer.pal</a></span><span class="op">(</span><span class="fl">4</span>, <span class="st">"Set3"</span><span class="op">)</span><span class="op">[</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">2</span>,<span class="fl">3</span><span class="op">)</span><span class="op">]</span>,</span>
 <span>            colorNA <span class="op">=</span> <span class="st">"grey95"</span>, textNA <span class="op">=</span> <span class="st">"Not \"interesting\""</span>,</span>
@@ -912,15 +970,19 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>    <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_layout.html">tm_layout</a></span><span class="op">(</span>legend.outside<span class="op">=</span><span class="cn">TRUE</span>, legend.outside.position<span class="op">=</span><span class="st">"bottom"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tmap_arrange.html">tmap_arrange</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">m2</span>, <span class="va">m3</span>, nrow<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-localIGC" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="15-Measures_files/figure-html/fig-localIGC-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;15.7: FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left panel: local Moran's <span class="math inline">\(I_i\)</span>; centre panel: local Getis-Ord <span class="math inline">\(G_i\)</span>; right panel: local Geary's <span class="math inline">\(C_i\)</span>; first-round turnout, row-standardised neighbours</figcaption></figure>
+<div id="fig-localIGC" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-localIGC-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="15-Measures_files/figure-html/fig-localIGC-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-localIGC-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15.7: FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left panel: local Moran's <span class="math inline">\(I_i\)</span>; centre panel: local Getis-Ord <span class="math inline">\(G_i\)</span>; right panel: local Geary's <span class="math inline">\(C_i\)</span>; first-round turnout, row-standardised neighbours
+</figcaption></figure>
 </div>
 </div>
 </div>
-<p><a href="#fig-localIGC">Figure&nbsp;<span>15.7</span></a> shows that the cluster cores identified as <em>interesting</em> using <span class="math inline">\(I_i\)</span>, <span class="math inline">\(G_i\)</span> and <span class="math inline">\(C_i\)</span> for the same variable, first-round turnout, and the same spatial weights, for rank-based permutation FDR adjusted probability values and an <span class="math inline">\(\alpha = 0.005\)</span> cutoff, are very similar. In most cases, the <code>"High-High"</code> cluster cores are urban areas, and <code>"Low-Low"</code> cores are sparsely populated rural areas in the North, in addition to the German national minority areas close to the southern border. The three measures use slightly different strategies for naming cluster cores: <span class="math inline">\(I_i\)</span> uses quadrants of the Moran scatterplot, <span class="math inline">\(G_i\)</span> splits into <code>"Low"</code> and <code>"High"</code> on the mean of the input variable (which is the same as the first component in the <span class="math inline">\(I_i\)</span> tuple), and univariate <span class="math inline">\(C_i\)</span> on the mean of the input variable and zero for its lag. As before, cluster categories that do not occur are dropped.</p>
+<p><a href="#fig-localIGC" class="quarto-xref">Figure&nbsp;<span>15.7</span></a> shows that the cluster cores identified as <em>interesting</em> using <span class="math inline">\(I_i\)</span>, <span class="math inline">\(G_i\)</span> and <span class="math inline">\(C_i\)</span> for the same variable, first-round turnout, and the same spatial weights, for rank-based permutation FDR adjusted probability values and an <span class="math inline">\(\alpha = 0.005\)</span> cutoff, are very similar. In most cases, the <code>"High-High"</code> cluster cores are urban areas, and <code>"Low-Low"</code> cores are sparsely populated rural areas in the North, in addition to the German national minority areas close to the southern border. The three measures use slightly different strategies for naming cluster cores: <span class="math inline">\(I_i\)</span> uses quadrants of the Moran scatterplot, <span class="math inline">\(G_i\)</span> splits into <code>"Low"</code> and <code>"High"</code> on the mean of the input variable (which is the same as the first component in the <span class="math inline">\(I_i\)</span> tuple), and univariate <span class="math inline">\(C_i\)</span> on the mean of the input variable and zero for its lag. As before, cluster categories that do not occur are dropped.</p>
 <p>For comparison, and before moving to multivariate <span class="math inline">\(C_i\)</span>, let us take the univariate <span class="math inline">\(C_i\)</span> for the second (final) round turnout. One would expect that the run-off between the two top candidates from the first-round might mobilise some voters who did not have a clear first-round preference, but that it discourages some of those with strong loyalty to a candidate eliminated after the first round:</p>
-<div class="cell" data-hash="15-Measures_cache/html/unnamed-chunk-44_a4e5f4fe88d4744dedf35be360786d4c">
+<div class="cell">
 <div class="sourceCode" id="cb50"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pol_pres15</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span>select <span class="op">=</span> <span class="va">II_turnout</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
@@ -931,7 +993,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>                     cutoff <span class="op">=</span> <span class="fl">0.005</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">pol_pres15</span><span class="op">$</span><span class="va">hs_C_II</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Multivariate <span class="math inline">\(C_i\)</span> <span class="citation" data-cites="https://doi.org/10.1111/gean.12164">(<a href="references.html#ref-https://doi.org/10.1111/gean.12164" role="doc-biblioref">Anselin 2019</a>)</span> is taken as the sum of univariate <span class="math inline">\(C_i\)</span> divided by the number of variables, but permutation is fixed so that the correlation between the variables is unchanged:</p>
-<div class="cell" data-hash="15-Measures_cache/html/unnamed-chunk-46_347a5c5348c7180da093667c35fe5315">
+<div class="cell">
 <div class="sourceCode" id="cb52"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pol_pres15</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span>select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">I_turnout</span>, <span class="va">II_turnout</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -948,7 +1010,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>                    cutoff <span class="op">=</span> <span class="fl">0.005</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">pol_pres15</span><span class="op">$</span><span class="va">hs_MvC</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb55"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">m3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb55"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">m3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_polygons.html">tm_fill</a></span><span class="op">(</span><span class="st">"hs_C"</span>, </span>
 <span>    palette <span class="op">=</span> <span class="fu">RColorBrewer</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/RColorBrewer/man/ColorBrewer.html">brewer.pal</a></span><span class="op">(</span><span class="fl">4</span>, <span class="st">"Set3"</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">2</span><span class="op">)</span><span class="op">]</span>,</span>
 <span>    colorNA <span class="op">=</span> <span class="st">"grey95"</span>, textNA <span class="op">=</span> <span class="st">"Not \"interesting\""</span>,</span>
@@ -968,13 +1030,17 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>    <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_layout.html">tm_layout</a></span><span class="op">(</span>legend.outside<span class="op">=</span><span class="cn">TRUE</span>, legend.outside.position<span class="op">=</span><span class="st">"bottom"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tmap_arrange.html">tmap_arrange</a></span><span class="op">(</span><span class="va">m3</span>, <span class="va">m4</span>, <span class="va">m5</span>, nrow<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-localCmulti" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="15-Measures_files/figure-html/fig-localCmulti-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;15.8: FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left panel: local <span class="math inline">\(C_i\)</span>, first-round turnout; centre panel: local <span class="math inline">\(C_i\)</span>, second-round turnout; right panel: local multivariate <span class="math inline">\(C_i\)</span>, both turnout rounds; row-standardised neighbours</figcaption></figure>
+<div id="fig-localCmulti" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-localCmulti-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="15-Measures_files/figure-html/fig-localCmulti-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-localCmulti-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15.8: FDR hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.005\)</span>: left panel: local <span class="math inline">\(C_i\)</span>, first-round turnout; centre panel: local <span class="math inline">\(C_i\)</span>, second-round turnout; right panel: local multivariate <span class="math inline">\(C_i\)</span>, both turnout rounds; row-standardised neighbours
+</figcaption></figure>
 </div>
 </div>
 </div>
-<p><a href="#fig-localCmulti">Figure&nbsp;<span>15.8</span></a> indicates that the multivariate measure picks up aggregated elements of observations found <em>interesting</em> in the two univariate measures. We can break this down by interacting the first- and second-round univariate measures, and tabulating against the multivariate measure.</p>
+<p><a href="#fig-localCmulti" class="quarto-xref">Figure&nbsp;<span>15.8</span></a> indicates that the multivariate measure picks up aggregated elements of observations found <em>interesting</em> in the two univariate measures. We can break this down by interacting the first- and second-round univariate measures, and tabulating against the multivariate measure.</p>
 <div class="cell">
 <div class="sourceCode" id="cb56"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/droplevels.html">droplevels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interaction.html">interaction</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html">addNA</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">hs_C</span><span class="op">)</span>,</span>
 <span>                             <span class="fu"><a href="https://rdrr.io/r/base/factor.html">addNA</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">hs_C_II</span><span class="op">)</span>, sep<span class="op">=</span><span class="st">":"</span><span class="op">)</span><span class="op">)</span>, </span>
@@ -1063,7 +1129,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span><span class="co">#   Sum           322 2173 2495</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb65"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">m5</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb65"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">m5</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_shape.html">tm_shape</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tm_polygons.html">tm_fill</a></span><span class="op">(</span><span class="st">"hs_MvCa"</span>, </span>
 <span>        palette <span class="op">=</span> <span class="fu">RColorBrewer</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/RColorBrewer/man/ColorBrewer.html">brewer.pal</a></span><span class="op">(</span><span class="fl">4</span>, <span class="st">"Set3"</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">1</span><span class="op">)</span><span class="op">]</span>,</span>
 <span>        colorNA <span class="op">=</span> <span class="st">"grey95"</span>, textNA <span class="op">=</span> <span class="st">"Not \"interesting\""</span>,</span>
@@ -1075,18 +1141,22 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 <span>  title<span class="op">=</span><span class="st">"Both rounds turnout rgeoda\nLocal Multivariate Geary C"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://r-tmap.github.io/tmap/reference/tmap_arrange.html">tmap_arrange</a></span><span class="op">(</span><span class="va">m5</span>, <span class="va">m6</span>, nrow<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-localCmultix" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="15-Measures_files/figure-html/fig-localCmultix-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;15.9: FDR local multivariate <span class="math inline">\(C_i\)</span> hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.0025\)</span> over <span class="math inline">\([0, 0.5]\)</span>: left panel: <strong>spdep</strong>, both turnout rounds; right panel: <strong>rgeoda</strong>, both turnout rounds; row-standardised neighbours</figcaption></figure>
+<div id="fig-localCmultix" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-localCmultix-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="15-Measures_files/figure-html/fig-localCmultix-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-localCmultix-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;15.9: FDR local multivariate <span class="math inline">\(C_i\)</span> hotspot cluster core maps, two-sided, <em>interesting</em> cutoff <span class="math inline">\(\alpha = 0.0025\)</span> over <span class="math inline">\([0, 0.5]\)</span>: left panel: <strong>spdep</strong>, both turnout rounds; right panel: <strong>rgeoda</strong>, both turnout rounds; row-standardised neighbours
+</figcaption></figure>
 </div>
 </div>
 </div>
-<p><a href="#fig-localCmultix">Figure&nbsp;<span>15.9</span></a> shows that while almost all of the 242 observations found <em>interesting</em> in the <strong>spdep</strong> implementation were also <em>interesting</em> for <strong>rgeoda</strong>, the latter found a further 86 <em>interesting</em>. Of course, permutation outcomes are bound to vary, but it remains to establish whether either or both implementations require revision.</p>
+<p><a href="#fig-localCmultix" class="quarto-xref">Figure&nbsp;<span>15.9</span></a> shows that while almost all of the 242 observations found <em>interesting</em> in the <strong>spdep</strong> implementation were also <em>interesting</em> for <strong>rgeoda</strong>, the latter found a further 86 <em>interesting</em>. Of course, permutation outcomes are bound to vary, but it remains to establish whether either or both implementations require revision.</p>
 </section></section><section id="exercises" class="level2" data-number="15.4"><h2 data-number="15.4" class="anchored" data-anchor-id="exercises">
 <span class="header-section-number">15.4</span> Exercises</h2>
 <ol type="1">
 <li>Why are join-count measures on a chessboard so different between <code>rook</code> and <code>queen</code> neighbours?</li>
-<li>Please repeat the simulation shown in <a href="#sec-measprocmisspec"><span>Section&nbsp;15.1</span></a> using the chessboard polygons and the row-standardised <code>queen</code> contiguity neighbours. Why is it important to understand that spatial autocorrelation usually signals (unavoidable) misspecification in our data?</li>
+<li>Please repeat the simulation shown in <a href="#sec-measprocmisspec" class="quarto-xref"><span>Section 15.1</span></a> using the chessboard polygons and the row-standardised <code>queen</code> contiguity neighbours. Why is it important to understand that spatial autocorrelation usually signals (unavoidable) misspecification in our data?</li>
 <li>Why is false discovery rate adjustment recommended for local measures of spatial autocorrelation?</li>
 <li>Compare the local Moran’s <span class="math inline">\(I_i\)</span> standard deviate values for the simulated data from exercise 2 (above) for the analytical conditional approach, and saddlepoint approximation. Consider the advantages and disadvantages of the saddlepoint approximation approach.</li>
 </ol>
@@ -1094,7 +1164,7 @@ I = \frac{n \sum_{(2)} w_{ij} z_i z_j}{S_0 \sum_{i=1}^{n} z_i^2}
 
 <!-- -->
 
-<div id="refs" class="references csl-bib-body hanging-indent" role="list" style="display: none">
+<div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">
 <div id="ref-anselin:95" class="csl-entry" role="listitem">
 Anselin, Luc. 1995. <span>“<span class="nocase">Local indicators of spatial association - LISA</span>.”</span> <em><span>Geographical Analysis</span></em> <span>27</span> (<span>2</span>): 93–115.
 </div>
@@ -1322,10 +1392,9 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   if (showAllCode) {
     showAllCode.addEventListener("click", toggleCodeHandler(true));
   }
-  function tippyHover(el, contentFn) {
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
     const config = {
       allowHTML: true,
-      content: contentFn,
       maxWidth: 500,
       delay: 100,
       arrow: false,
@@ -1335,8 +1404,17 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       interactive: true,
       interactiveBorder: 10,
       theme: 'quarto',
-      placement: 'bottom-start'
+      placement: 'bottom-start',
     };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
     window.tippy(el, config); 
   }
   const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
@@ -1349,6 +1427,125 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       const id = href.replace(/^#\/?/, "");
       const note = window.document.getElementById(id);
       return note.innerHTML;
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
     });
   }
       let selectedAnnoteEl;
@@ -1392,6 +1589,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
             }
             div.style.top = top - 2 + "px";
             div.style.height = height + 4 + "px";
+            div.style.left = 0;
             let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
             if (gutterDiv === null) {
               gutterDiv = window.document.createElement("div");
@@ -1417,6 +1615,32 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
         });
         selectedAnnoteEl = undefined;
       };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
       // Attach click handler to the DT
       const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
       for (const annoteDlNode of annoteDls) {
@@ -1476,12 +1700,12 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   }
 });
 </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
-      <a href="./14-Areal.html" class="pagination-link">
+      <a href="./14-Areal.html" class="pagination-link  aria-label=" and="" areal="" data="">
         <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Proximity and Areal Data</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./16-SpatialRegression.html" class="pagination-link">
+      <a href="./16-SpatialRegression.html" class="pagination-link" aria-label="<span class='chapter-number'>16</span>&nbsp; <span class='chapter-title'>Spatial Regression</span>">
         <span class="nav-page-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Spatial Regression</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
@@ -1491,17 +1715,17 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-3"><a href="#cb66-3" aria-hidden="true" tabindex="-1"></a>\index{spatial autocorrelation!measures of}</span>
 <span id="cb66-4"><a href="#cb66-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-5"><a href="#cb66-5" aria-hidden="true" tabindex="-1"></a><span class="in">```{r setup_sa1, include=FALSE}</span></span>
-<span id="cb66-6"><a href="#cb66-6" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span>opts_chunk<span class="sc">$</span><span class="fu">set</span>(<span class="at">echo =</span> <span class="cn">TRUE</span>, <span class="at">paged.print =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb66-7"><a href="#cb66-7" aria-hidden="true" tabindex="-1"></a>owidth <span class="ot">&lt;-</span> <span class="fu">getOption</span>(<span class="st">"width"</span>)</span>
-<span id="cb66-8"><a href="#cb66-8" aria-hidden="true" tabindex="-1"></a>xargs <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
-<span id="cb66-9"><a href="#cb66-9" aria-hidden="true" tabindex="-1"></a>    o <span class="ot">&lt;-</span> <span class="fu">capture.output</span>(<span class="fu">args</span>(x))</span>
-<span id="cb66-10"><a href="#cb66-10" aria-hidden="true" tabindex="-1"></a>    oo <span class="ot">&lt;-</span> <span class="fu">gsub</span>(<span class="st">"  *"</span>, <span class="st">" "</span>, <span class="fu">paste</span>(o[<span class="sc">-</span><span class="fu">length</span>(o)], <span class="at">collapse=</span><span class="st">""</span>))</span>
-<span id="cb66-11"><a href="#cb66-11" aria-hidden="true" tabindex="-1"></a>    ooo <span class="ot">&lt;-</span> <span class="fu">strwrap</span>(oo, <span class="at">width=</span><span class="fu">getOption</span>(<span class="st">"width"</span>), <span class="at">indent=</span><span class="dv">1</span>, <span class="at">exdent=</span><span class="dv">3</span>)</span>
-<span id="cb66-12"><a href="#cb66-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="fu">paste</span>(ooo, <span class="at">collapse=</span><span class="st">"</span><span class="sc">\n</span><span class="st">"</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
-<span id="cb66-13"><a href="#cb66-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb66-6"><a href="#cb66-6" aria-hidden="true" tabindex="-1"></a><span class="in">knitr::opts_chunk$set(echo = TRUE, paged.print = FALSE)</span></span>
+<span id="cb66-7"><a href="#cb66-7" aria-hidden="true" tabindex="-1"></a><span class="in">owidth &lt;- getOption("width")</span></span>
+<span id="cb66-8"><a href="#cb66-8" aria-hidden="true" tabindex="-1"></a><span class="in">xargs &lt;- function(x) {</span></span>
+<span id="cb66-9"><a href="#cb66-9" aria-hidden="true" tabindex="-1"></a><span class="in">    o &lt;- capture.output(args(x))</span></span>
+<span id="cb66-10"><a href="#cb66-10" aria-hidden="true" tabindex="-1"></a><span class="in">    oo &lt;- gsub("  *", " ", paste(o[-length(o)], collapse=""))</span></span>
+<span id="cb66-11"><a href="#cb66-11" aria-hidden="true" tabindex="-1"></a><span class="in">    ooo &lt;- strwrap(oo, width=getOption("width"), indent=1, exdent=3)</span></span>
+<span id="cb66-12"><a href="#cb66-12" aria-hidden="true" tabindex="-1"></a><span class="in">    cat(paste(ooo, collapse="\n"), "\n")</span></span>
+<span id="cb66-13"><a href="#cb66-13" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
 <span id="cb66-14"><a href="#cb66-14" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-15"><a href="#cb66-15" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
-<span id="cb66-16"><a href="#cb66-16" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"ch14.RData"</span>)</span>
+<span id="cb66-16"><a href="#cb66-16" aria-hidden="true" tabindex="-1"></a><span class="in">load("ch14.RData")</span></span>
 <span id="cb66-17"><a href="#cb66-17" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-18"><a href="#cb66-18" aria-hidden="true" tabindex="-1"></a><span class="co">&lt;!---</span></span>
 <span id="cb66-19"><a href="#cb66-19" aria-hidden="true" tabindex="-1"></a><span class="co">might options("width") be set to a smaller value to prevent right margin </span></span>
@@ -1593,10 +1817,10 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-111"><a href="#cb66-111" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{joincount.test}</span>
 <span id="cb66-112"><a href="#cb66-112" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-113"><a href="#cb66-113" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=TRUE, eval=FALSE}</span></span>
-<span id="cb66-114"><a href="#cb66-114" aria-hidden="true" tabindex="-1"></a><span class="fu">args</span>(joincount.test)</span>
+<span id="cb66-114"><a href="#cb66-114" aria-hidden="true" tabindex="-1"></a><span class="in">args(joincount.test)</span></span>
 <span id="cb66-115"><a href="#cb66-115" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-116"><a href="#cb66-116" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, eval=TRUE}</span></span>
-<span id="cb66-117"><a href="#cb66-117" aria-hidden="true" tabindex="-1"></a><span class="fu">xargs</span>(joincount.test)</span>
+<span id="cb66-117"><a href="#cb66-117" aria-hidden="true" tabindex="-1"></a><span class="in">xargs(joincount.test)</span></span>
 <span id="cb66-118"><a href="#cb66-118" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-119"><a href="#cb66-119" aria-hidden="true" tabindex="-1"></a>The function takes an <span class="in">`alternative`</span> argument for hypothesis testing, a <span class="in">`sampling`</span> argument showing the basis for the construction of the variance of the measure, where the default <span class="in">`"nonfree"`</span> choice corresponds to analytical permutation; the <span class="in">`spChk`</span> argument is retained for backward compatibility. For reference, the counts of factor levels for the type of municipality or Warsaw borough are:</span>
 <span id="cb66-120"><a href="#cb66-120" aria-hidden="true" tabindex="-1"></a></span>
@@ -1628,10 +1852,10 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-152"><a href="#cb66-152" aria-hidden="true" tabindex="-1"></a>The implementation of Moran's $I$ in **spdep** in the <span class="in">`moran.test`</span> function has similar arguments to those of <span class="in">`joincount.test`</span>, but <span class="in">`sampling`</span> is replaced by <span class="in">`randomisation`</span> to indicate the underlying analytical approach used for calculating the variance of the measure. It is also possible to use ranks rather than numerical values <span class="co">[</span><span class="ot">@cliff+ord:81, p. 46</span><span class="co">]</span>. The <span class="in">`drop.EI2`</span> argument may be used to reproduce results where the final component of the variance term is omitted as found in some legacy software implementations.</span>
 <span id="cb66-153"><a href="#cb66-153" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-154"><a href="#cb66-154" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=TRUE, eval=FALSE}</span></span>
-<span id="cb66-155"><a href="#cb66-155" aria-hidden="true" tabindex="-1"></a><span class="fu">args</span>(moran.test)</span>
+<span id="cb66-155"><a href="#cb66-155" aria-hidden="true" tabindex="-1"></a><span class="in">args(moran.test)</span></span>
 <span id="cb66-156"><a href="#cb66-156" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-157"><a href="#cb66-157" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, eval=TRUE}</span></span>
-<span id="cb66-158"><a href="#cb66-158" aria-hidden="true" tabindex="-1"></a><span class="fu">xargs</span>(moran.test)</span>
+<span id="cb66-158"><a href="#cb66-158" aria-hidden="true" tabindex="-1"></a><span class="in">xargs(moran.test)</span></span>
 <span id="cb66-159"><a href="#cb66-159" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-160"><a href="#cb66-160" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-161"><a href="#cb66-161" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{moran.test}</span>
@@ -1704,20 +1928,20 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-240"><a href="#cb66-240" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-241"><a href="#cb66-241" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{moran.plot}</span>
 <span id="cb66-242"><a href="#cb66-242" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-moranplot, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb66-243"><a href="#cb66-243" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Moran plot of I round turnout, row standardised weights"</span></span>
-<span id="cb66-244"><a href="#cb66-244" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb66-245"><a href="#cb66-245" aria-hidden="true" tabindex="-1"></a>I_turnout <span class="sc">|&gt;</span> </span>
-<span id="cb66-246"><a href="#cb66-246" aria-hidden="true" tabindex="-1"></a>    <span class="fu">moran.plot</span>(<span class="at">listw =</span> lw_q_W, <span class="at">labels =</span> pol_pres15<span class="sc">$</span>TERYT, </span>
-<span id="cb66-247"><a href="#cb66-247" aria-hidden="true" tabindex="-1"></a>               <span class="at">cex =</span> <span class="dv">1</span>, <span class="at">pch =</span> <span class="st">"."</span>, <span class="at">xlab =</span> <span class="st">"I round turnout"</span>, </span>
-<span id="cb66-248"><a href="#cb66-248" aria-hidden="true" tabindex="-1"></a>               <span class="at">ylab =</span> <span class="st">"lagged turnout"</span>) <span class="ot">-&gt;</span> infl_W</span>
+<span id="cb66-243"><a href="#cb66-243" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Moran plot of I round turnout, row standardised weights"</span></span>
+<span id="cb66-244"><a href="#cb66-244" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb66-245"><a href="#cb66-245" aria-hidden="true" tabindex="-1"></a><span class="in">I_turnout |&gt; </span></span>
+<span id="cb66-246"><a href="#cb66-246" aria-hidden="true" tabindex="-1"></a><span class="in">    moran.plot(listw = lw_q_W, labels = pol_pres15$TERYT, </span></span>
+<span id="cb66-247"><a href="#cb66-247" aria-hidden="true" tabindex="-1"></a><span class="in">               cex = 1, pch = ".", xlab = "I round turnout", </span></span>
+<span id="cb66-248"><a href="#cb66-248" aria-hidden="true" tabindex="-1"></a><span class="in">               ylab = "lagged turnout") -&gt; infl_W</span></span>
 <span id="cb66-249"><a href="#cb66-249" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-250"><a href="#cb66-250" aria-hidden="true" tabindex="-1"></a>If we extract the hat value influence measure from the returned object, @fig-moranhat suggests that some edge entities exert more than proportional influence (perhaps because of row standardisation), as do entities in or near larger urban areas.</span>
 <span id="cb66-251"><a href="#cb66-251" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-252"><a href="#cb66-252" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-moranhat, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb66-253"><a href="#cb66-253" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Moran plot hat values, row standardised neighbours"</span></span>
-<span id="cb66-254"><a href="#cb66-254" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tmap)</span>
-<span id="cb66-255"><a href="#cb66-255" aria-hidden="true" tabindex="-1"></a>pol_pres15<span class="sc">$</span>hat_value <span class="ot">&lt;-</span> infl_W<span class="sc">$</span>hat</span>
-<span id="cb66-256"><a href="#cb66-256" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span> <span class="fu">tm_fill</span>(<span class="st">"hat_value"</span>)</span>
+<span id="cb66-253"><a href="#cb66-253" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Moran plot hat values, row standardised neighbours"</span></span>
+<span id="cb66-254"><a href="#cb66-254" aria-hidden="true" tabindex="-1"></a><span class="in">library(tmap)</span></span>
+<span id="cb66-255"><a href="#cb66-255" aria-hidden="true" tabindex="-1"></a><span class="in">pol_pres15$hat_value &lt;- infl_W$hat</span></span>
+<span id="cb66-256"><a href="#cb66-256" aria-hidden="true" tabindex="-1"></a><span class="in">tm_shape(pol_pres15) + tm_fill("hat_value")</span></span>
 <span id="cb66-257"><a href="#cb66-257" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-258"><a href="#cb66-258" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-259"><a href="#cb66-259" aria-hidden="true" tabindex="-1"></a><span class="fu">### Local Moran's $I_i$</span></span>
@@ -1726,10 +1950,10 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-262"><a href="#cb66-262" aria-hidden="true" tabindex="-1"></a>@Bivand2018 discuss issues impacting the use of local indicators, such as local Moran's $I_i$ and local Getis-Ord $G_i$. Some issues affect the calculation of the local indicators, others inference from their values. Because $n$ statistics may be calculated from the same number of observations, there are multiple comparison problems that need to be addressed. @https://doi.org/10.1111/j.0016-7363.2006.00682.x  conclude, based on a typical dataset and a simulation exercise, that the false discovery rate (FDR) adjustment of probability values will certainly give a better picture of interesting clusters than no adjustment. Following this up, @https://doi.org/10.1111/gean.12164 explores the combination of FDR adjustments with the use of redefined "significance" cutoffs <span class="co">[</span><span class="ot">@benjaminetal:18</span><span class="co">]</span>, for example $0.01$, $0.005$, and $0.001$ instead of $0.1$, $0.05$, and $0.01$; the use of the term *interesting* rather than *significant* is also preferred. This is discussed further in @bivand:22. As in the global case, misspecification remains a source of confusion, and, further, interpreting local spatial autocorrelation in the presence of global spatial autocorrelation is challenging <span class="co">[</span><span class="ot">@ord+getis:01; @tiefelsdorf:02; @bivandetal:09</span><span class="co">]</span>. </span>
 <span id="cb66-263"><a href="#cb66-263" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-264"><a href="#cb66-264" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=TRUE, eval=FALSE}</span></span>
-<span id="cb66-265"><a href="#cb66-265" aria-hidden="true" tabindex="-1"></a><span class="fu">args</span>(localmoran)</span>
+<span id="cb66-265"><a href="#cb66-265" aria-hidden="true" tabindex="-1"></a><span class="in">args(localmoran)</span></span>
 <span id="cb66-266"><a href="#cb66-266" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-267"><a href="#cb66-267" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, eval=TRUE}</span></span>
-<span id="cb66-268"><a href="#cb66-268" aria-hidden="true" tabindex="-1"></a><span class="fu">xargs</span>(localmoran)</span>
+<span id="cb66-268"><a href="#cb66-268" aria-hidden="true" tabindex="-1"></a><span class="in">xargs(localmoran)</span></span>
 <span id="cb66-269"><a href="#cb66-269" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-270"><a href="#cb66-270" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{localmoran}</span>
 <span id="cb66-271"><a href="#cb66-271" aria-hidden="true" tabindex="-1"></a></span>
@@ -1763,11 +1987,11 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-305"><a href="#cb66-305" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{localmoran<span class="sc">\_</span>perm}</span>
 <span id="cb66-306"><a href="#cb66-306" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-307"><a href="#cb66-307" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, message=FALSE, cache=TRUE}</span></span>
-<span id="cb66-308"><a href="#cb66-308" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(parallel)</span>
-<span id="cb66-309"><a href="#cb66-309" aria-hidden="true" tabindex="-1"></a><span class="fu">invisible</span>(spdep<span class="sc">::</span><span class="fu">set.coresOption</span>(<span class="fu">max</span>(<span class="fu">detectCores</span>()<span class="sc">-</span>1L, 1L)))</span>
-<span id="cb66-310"><a href="#cb66-310" aria-hidden="true" tabindex="-1"></a>I_turnout <span class="sc">|&gt;</span> </span>
-<span id="cb66-311"><a href="#cb66-311" aria-hidden="true" tabindex="-1"></a>    <span class="fu">localmoran_perm</span>(<span class="at">listw =</span> lw_q_W, <span class="at">nsim =</span> <span class="dv">9999</span>, </span>
-<span id="cb66-312"><a href="#cb66-312" aria-hidden="true" tabindex="-1"></a>                    <span class="at">iseed =</span> <span class="dv">1</span>) <span class="ot">-&gt;</span> locm_p</span>
+<span id="cb66-308"><a href="#cb66-308" aria-hidden="true" tabindex="-1"></a><span class="in">library(parallel)</span></span>
+<span id="cb66-309"><a href="#cb66-309" aria-hidden="true" tabindex="-1"></a><span class="in">invisible(spdep::set.coresOption(max(detectCores()-1L, 1L)))</span></span>
+<span id="cb66-310"><a href="#cb66-310" aria-hidden="true" tabindex="-1"></a><span class="in">I_turnout |&gt; </span></span>
+<span id="cb66-311"><a href="#cb66-311" aria-hidden="true" tabindex="-1"></a><span class="in">    localmoran_perm(listw = lw_q_W, nsim = 9999, </span></span>
+<span id="cb66-312"><a href="#cb66-312" aria-hidden="true" tabindex="-1"></a><span class="in">                    iseed = 1) -&gt; locm_p</span></span>
 <span id="cb66-313"><a href="#cb66-313" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-314"><a href="#cb66-314" aria-hidden="true" tabindex="-1"></a>The outcome is that over 15\% of observations have two sided p-values &lt; 0.005 without multiple comparison adjustment, and about 1.5\% with Bonferroni adjustment, when the p-values are calculated using the standard deviate of the permutation samples and the normal distribution.</span>
 <span id="cb66-315"><a href="#cb66-315" aria-hidden="true" tabindex="-1"></a></span>
@@ -1797,18 +2021,18 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-345"><a href="#cb66-345" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-346"><a href="#cb66-346" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-347"><a href="#cb66-347" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-localmoranPr, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb66-348"><a href="#cb66-348" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb66-349"><a href="#cb66-349" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Local Moran's I FDR probability values: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours"</span></span>
-<span id="cb66-350"><a href="#cb66-350" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-351"><a href="#cb66-351" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tm_fill</span>(<span class="fu">c</span>(<span class="st">"locm_pv"</span>, <span class="st">"locm_std_pv"</span>, <span class="st">"locm_p_pv"</span>), </span>
-<span id="cb66-352"><a href="#cb66-352" aria-hidden="true" tabindex="-1"></a>                <span class="at">breaks=</span><span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.0005</span>, <span class="fl">0.001</span>, <span class="fl">0.005</span>, <span class="fl">0.01</span>, </span>
-<span id="cb66-353"><a href="#cb66-353" aria-hidden="true" tabindex="-1"></a>                         <span class="fl">0.05</span>, <span class="fl">0.1</span>, <span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>, <span class="dv">1</span>), </span>
-<span id="cb66-354"><a href="#cb66-354" aria-hidden="true" tabindex="-1"></a>                <span class="at">title =</span> <span class="st">"Pseudo p-values</span><span class="sc">\n</span><span class="st">Local Moran's I"</span>,</span>
-<span id="cb66-355"><a href="#cb66-355" aria-hidden="true" tabindex="-1"></a>                <span class="at">palette=</span><span class="st">"-YlOrBr"</span>) <span class="sc">+</span></span>
-<span id="cb66-356"><a href="#cb66-356" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_facets</span>(<span class="at">free.scales =</span> <span class="cn">FALSE</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb66-357"><a href="#cb66-357" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">panel.labels =</span> <span class="fu">c</span>(<span class="st">"Analytical conditional"</span>,</span>
-<span id="cb66-358"><a href="#cb66-358" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"Permutation std. dev."</span>,</span>
-<span id="cb66-359"><a href="#cb66-359" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"Permutation rank"</span>))</span>
+<span id="cb66-348"><a href="#cb66-348" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb66-349"><a href="#cb66-349" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Local Moran's I FDR probability values: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours"</span></span>
+<span id="cb66-350"><a href="#cb66-350" aria-hidden="true" tabindex="-1"></a><span class="in">tm_shape(pol_pres15) +</span></span>
+<span id="cb66-351"><a href="#cb66-351" aria-hidden="true" tabindex="-1"></a><span class="in">        tm_fill(c("locm_pv", "locm_std_pv", "locm_p_pv"), </span></span>
+<span id="cb66-352"><a href="#cb66-352" aria-hidden="true" tabindex="-1"></a><span class="in">                breaks=c(0, 0.0005, 0.001, 0.005, 0.01, </span></span>
+<span id="cb66-353"><a href="#cb66-353" aria-hidden="true" tabindex="-1"></a><span class="in">                         0.05, 0.1, 0.2, 0.5, 0.75, 1), </span></span>
+<span id="cb66-354"><a href="#cb66-354" aria-hidden="true" tabindex="-1"></a><span class="in">                title = "Pseudo p-values\nLocal Moran's I",</span></span>
+<span id="cb66-355"><a href="#cb66-355" aria-hidden="true" tabindex="-1"></a><span class="in">                palette="-YlOrBr") +</span></span>
+<span id="cb66-356"><a href="#cb66-356" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_facets(free.scales = FALSE, ncol = 2) +</span></span>
+<span id="cb66-357"><a href="#cb66-357" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_layout(panel.labels = c("Analytical conditional",</span></span>
+<span id="cb66-358"><a href="#cb66-358" aria-hidden="true" tabindex="-1"></a><span class="in">                               "Permutation std. dev.",</span></span>
+<span id="cb66-359"><a href="#cb66-359" aria-hidden="true" tabindex="-1"></a><span class="in">                               "Permutation rank"))</span></span>
 <span id="cb66-360"><a href="#cb66-360" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-361"><a href="#cb66-361" aria-hidden="true" tabindex="-1"></a>Proceeding using the FDR adjustment and an *interesting* location cutoff of $0.005$, we can see from @fig-localmoranPr that the adjusted probability values for the analytical conditional approach, the approach using the moments of the sampled values from permutation sampling, and the approach using the ranks of observed values among permutation samples all yield similar maps, as the distribution of the input variable is quite close to normal.</span>
 <span id="cb66-362"><a href="#cb66-362" aria-hidden="true" tabindex="-1"></a></span>
@@ -1839,17 +2063,17 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-391"><a href="#cb66-391" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-392"><a href="#cb66-392" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-393"><a href="#cb66-393" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-Iihotspots, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb66-394"><a href="#cb66-394" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb66-395"><a href="#cb66-395" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps $\\alpha = 0.005$: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours"</span></span>
-<span id="cb66-396"><a href="#cb66-396" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-397"><a href="#cb66-397" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_fill</span>(<span class="fu">c</span>(<span class="st">"hs_an_q"</span>, <span class="st">"hs_ac_q"</span>, <span class="st">"hs_cp_q"</span>),</span>
-<span id="cb66-398"><a href="#cb66-398" aria-hidden="true" tabindex="-1"></a>        <span class="at">colorNA =</span> <span class="st">"grey95"</span>, <span class="at">textNA=</span><span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>,</span>
-<span id="cb66-399"><a href="#cb66-399" aria-hidden="true" tabindex="-1"></a>        <span class="at">title =</span> <span class="st">"Turnout hotspot status </span><span class="sc">\n</span><span class="st">Local Moran's I"</span>,</span>
-<span id="cb66-400"><a href="#cb66-400" aria-hidden="true" tabindex="-1"></a>        <span class="at">palette =</span> RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="sc">-</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">3</span>)]) <span class="sc">+</span></span>
-<span id="cb66-401"><a href="#cb66-401" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_facets</span>(<span class="at">free.scales =</span> <span class="cn">FALSE</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb66-402"><a href="#cb66-402" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">panel.labels =</span> <span class="fu">c</span>(<span class="st">"Analytical conditional"</span>,</span>
-<span id="cb66-403"><a href="#cb66-403" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"Permutation std. cond."</span>,</span>
-<span id="cb66-404"><a href="#cb66-404" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"Permutation rank cond."</span>))</span>
+<span id="cb66-394"><a href="#cb66-394" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb66-395"><a href="#cb66-395" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps $\\alpha = 0.005$: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours"</span></span>
+<span id="cb66-396"><a href="#cb66-396" aria-hidden="true" tabindex="-1"></a><span class="in">tm_shape(pol_pres15) +</span></span>
+<span id="cb66-397"><a href="#cb66-397" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_fill(c("hs_an_q", "hs_ac_q", "hs_cp_q"),</span></span>
+<span id="cb66-398"><a href="#cb66-398" aria-hidden="true" tabindex="-1"></a><span class="in">        colorNA = "grey95", textNA="Not \"interesting\"",</span></span>
+<span id="cb66-399"><a href="#cb66-399" aria-hidden="true" tabindex="-1"></a><span class="in">        title = "Turnout hotspot status \nLocal Moran's I",</span></span>
+<span id="cb66-400"><a href="#cb66-400" aria-hidden="true" tabindex="-1"></a><span class="in">        palette = RColorBrewer::brewer.pal(4, "Set3")[-c(2,3)]) +</span></span>
+<span id="cb66-401"><a href="#cb66-401" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_facets(free.scales = FALSE, ncol = 2) +</span></span>
+<span id="cb66-402"><a href="#cb66-402" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_layout(panel.labels = c("Analytical conditional",</span></span>
+<span id="cb66-403"><a href="#cb66-403" aria-hidden="true" tabindex="-1"></a><span class="in">                               "Permutation std. cond.",</span></span>
+<span id="cb66-404"><a href="#cb66-404" aria-hidden="true" tabindex="-1"></a><span class="in">                               "Permutation rank cond."))</span></span>
 <span id="cb66-405"><a href="#cb66-405" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-406"><a href="#cb66-406" aria-hidden="true" tabindex="-1"></a>@fig-Iihotspots  shows that there is very little difference between the FDR-adjusted *interesting* clusters with a choice of an $\alpha=0.005$ probability value cutoff for the three approaches of analytical conditional standard deviates, permutation-based standard deviates, and rank-based probability values; the <span class="in">`"High-High"`</span> cluster cores are metropolitan areas.</span>
 <span id="cb66-407"><a href="#cb66-407" aria-hidden="true" tabindex="-1"></a></span>
@@ -1864,28 +2088,28 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-418"><a href="#cb66-418" aria-hidden="true" tabindex="-1"></a>Saddlepoint approximation is as computationally intensive as conditional permutation, because, rather than computing a simple measure on many samples, a good deal of numerical calculation is needed for each local approximation:</span>
 <span id="cb66-419"><a href="#cb66-419" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-420"><a href="#cb66-420" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, cache=TRUE}</span></span>
-<span id="cb66-421"><a href="#cb66-421" aria-hidden="true" tabindex="-1"></a>lm_null <span class="sc">|&gt;</span> <span class="fu">localmoran.sad</span>(<span class="at">nb =</span> nb_q, <span class="at">style =</span> <span class="st">"W"</span>,</span>
-<span id="cb66-422"><a href="#cb66-422" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">alternative =</span> <span class="st">"two.sided"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb66-423"><a href="#cb66-423" aria-hidden="true" tabindex="-1"></a>        <span class="fu">summary</span>() <span class="ot">-&gt;</span> locm_sad_null</span>
+<span id="cb66-421"><a href="#cb66-421" aria-hidden="true" tabindex="-1"></a><span class="in">lm_null |&gt; localmoran.sad(nb = nb_q, style = "W",</span></span>
+<span id="cb66-422"><a href="#cb66-422" aria-hidden="true" tabindex="-1"></a><span class="in">                                  alternative = "two.sided") |&gt;</span></span>
+<span id="cb66-423"><a href="#cb66-423" aria-hidden="true" tabindex="-1"></a><span class="in">        summary() -&gt; locm_sad_null</span></span>
 <span id="cb66-424"><a href="#cb66-424" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-425"><a href="#cb66-425" aria-hidden="true" tabindex="-1"></a>The chief advantage of the saddlepoint approximation is that it takes a fitted linear model rather than simply a numerical variable, so the residuals are analysed. With an intercept-only model, the results are similar to local Moran's $I_i$, but we can weight the observations, here by the count of those entitled to vote, which should down-weight small units of observation:</span>
 <span id="cb66-426"><a href="#cb66-426" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-427"><a href="#cb66-427" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, cache=TRUE}</span></span>
-<span id="cb66-428"><a href="#cb66-428" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(I_turnout <span class="sc">~</span> <span class="dv">1</span>, <span class="at">weights =</span> pol_pres15<span class="sc">$</span>I_entitled_to_vote) <span class="ot">-&gt;</span></span>
-<span id="cb66-429"><a href="#cb66-429" aria-hidden="true" tabindex="-1"></a>        lm_null_weights</span>
-<span id="cb66-430"><a href="#cb66-430" aria-hidden="true" tabindex="-1"></a>lm_null_weights <span class="sc">|&gt;</span></span>
-<span id="cb66-431"><a href="#cb66-431" aria-hidden="true" tabindex="-1"></a>            <span class="fu">localmoran.sad</span>(<span class="at">nb =</span> nb_q, <span class="at">style =</span> <span class="st">"W"</span>,</span>
-<span id="cb66-432"><a href="#cb66-432" aria-hidden="true" tabindex="-1"></a>                           <span class="at">alternative =</span> <span class="st">"two.sided"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb66-433"><a href="#cb66-433" aria-hidden="true" tabindex="-1"></a>        <span class="fu">summary</span>() <span class="ot">-&gt;</span> locm_sad_null_weights</span>
+<span id="cb66-428"><a href="#cb66-428" aria-hidden="true" tabindex="-1"></a><span class="in">lm(I_turnout ~ 1, weights = pol_pres15$I_entitled_to_vote) -&gt;</span></span>
+<span id="cb66-429"><a href="#cb66-429" aria-hidden="true" tabindex="-1"></a><span class="in">        lm_null_weights</span></span>
+<span id="cb66-430"><a href="#cb66-430" aria-hidden="true" tabindex="-1"></a><span class="in">lm_null_weights |&gt;</span></span>
+<span id="cb66-431"><a href="#cb66-431" aria-hidden="true" tabindex="-1"></a><span class="in">            localmoran.sad(nb = nb_q, style = "W",</span></span>
+<span id="cb66-432"><a href="#cb66-432" aria-hidden="true" tabindex="-1"></a><span class="in">                           alternative = "two.sided") |&gt;</span></span>
+<span id="cb66-433"><a href="#cb66-433" aria-hidden="true" tabindex="-1"></a><span class="in">        summary() -&gt; locm_sad_null_weights</span></span>
 <span id="cb66-434"><a href="#cb66-434" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-435"><a href="#cb66-435" aria-hidden="true" tabindex="-1"></a>Next we add the categorical variable distinguishing between rural, urban and other types of observational unit:</span>
 <span id="cb66-436"><a href="#cb66-436" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-437"><a href="#cb66-437" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, cache=TRUE}</span></span>
-<span id="cb66-438"><a href="#cb66-438" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(I_turnout <span class="sc">~</span> Types, <span class="at">weights=</span>pol_pres15<span class="sc">$</span>I_entitled_to_vote) <span class="ot">-&gt;</span></span>
-<span id="cb66-439"><a href="#cb66-439" aria-hidden="true" tabindex="-1"></a>        lm_types</span>
-<span id="cb66-440"><a href="#cb66-440" aria-hidden="true" tabindex="-1"></a>lm_types <span class="sc">|&gt;</span> <span class="fu">localmoran.sad</span>(<span class="at">nb =</span> nb_q, <span class="at">style =</span> <span class="st">"W"</span>,</span>
-<span id="cb66-441"><a href="#cb66-441" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">alternative =</span> <span class="st">"two.sided"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb66-442"><a href="#cb66-442" aria-hidden="true" tabindex="-1"></a>        <span class="fu">summary</span>() <span class="ot">-&gt;</span> locm_sad_types</span>
+<span id="cb66-438"><a href="#cb66-438" aria-hidden="true" tabindex="-1"></a><span class="in">lm(I_turnout ~ Types, weights=pol_pres15$I_entitled_to_vote) -&gt;</span></span>
+<span id="cb66-439"><a href="#cb66-439" aria-hidden="true" tabindex="-1"></a><span class="in">        lm_types</span></span>
+<span id="cb66-440"><a href="#cb66-440" aria-hidden="true" tabindex="-1"></a><span class="in">lm_types |&gt; localmoran.sad(nb = nb_q, style = "W",</span></span>
+<span id="cb66-441"><a href="#cb66-441" aria-hidden="true" tabindex="-1"></a><span class="in">                                  alternative = "two.sided") |&gt;</span></span>
+<span id="cb66-442"><a href="#cb66-442" aria-hidden="true" tabindex="-1"></a><span class="in">        summary() -&gt; locm_sad_types</span></span>
 <span id="cb66-443"><a href="#cb66-443" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-444"><a href="#cb66-444" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-447"><a href="#cb66-447" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
@@ -1898,17 +2122,17 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-454"><a href="#cb66-454" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-455"><a href="#cb66-455" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-456"><a href="#cb66-456" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-localmoranHsad, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb66-457"><a href="#cb66-457" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb66-458"><a href="#cb66-458" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left upper panel: permutation rank conditional p-values; right upper panel:  null (intercept only) model saddlepoint p-values; left lower panel: weighted null (intercept only) model saddlepoint p-values; right lower panel: weighted types model saddlepoint p-values, for first-round turnout, row-standardised neighbours"</span></span>
-<span id="cb66-459"><a href="#cb66-459" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-460"><a href="#cb66-460" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="fu">c</span>(<span class="st">"hs_cp_q"</span>, <span class="st">"locm_sad0"</span>, <span class="st">"locm_sad1"</span>,  <span class="st">"locm_sad2"</span>),</span>
-<span id="cb66-461"><a href="#cb66-461" aria-hidden="true" tabindex="-1"></a>    <span class="at">colorNA =</span> <span class="st">"grey95"</span>, <span class="at">textNA =</span> <span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>,</span>
-<span id="cb66-462"><a href="#cb66-462" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Turnout hotspot status </span><span class="sc">\n</span><span class="st">Local Moran's I"</span>,</span>
-<span id="cb66-463"><a href="#cb66-463" aria-hidden="true" tabindex="-1"></a>    <span class="at">palette =</span>RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">2</span>)]) <span class="sc">+</span></span>
-<span id="cb66-464"><a href="#cb66-464" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_facets</span>(<span class="at">free.scales =</span> <span class="cn">FALSE</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span> </span>
-<span id="cb66-465"><a href="#cb66-465" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_layout</span>(<span class="at">panel.labels =</span> <span class="fu">c</span>(<span class="st">"Permutation rank"</span>, </span>
-<span id="cb66-466"><a href="#cb66-466" aria-hidden="true" tabindex="-1"></a>     <span class="st">"saddlepoint null"</span>, <span class="st">"saddlepoint weighted null"</span>, </span>
-<span id="cb66-467"><a href="#cb66-467" aria-hidden="true" tabindex="-1"></a>     <span class="st">"saddlepoint weighted types"</span>))</span>
+<span id="cb66-457"><a href="#cb66-457" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb66-458"><a href="#cb66-458" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left upper panel: permutation rank conditional p-values; right upper panel:  null (intercept only) model saddlepoint p-values; left lower panel: weighted null (intercept only) model saddlepoint p-values; right lower panel: weighted types model saddlepoint p-values, for first-round turnout, row-standardised neighbours"</span></span>
+<span id="cb66-459"><a href="#cb66-459" aria-hidden="true" tabindex="-1"></a><span class="in">tm_shape(pol_pres15) +</span></span>
+<span id="cb66-460"><a href="#cb66-460" aria-hidden="true" tabindex="-1"></a><span class="in">  tm_fill(c("hs_cp_q", "locm_sad0", "locm_sad1",  "locm_sad2"),</span></span>
+<span id="cb66-461"><a href="#cb66-461" aria-hidden="true" tabindex="-1"></a><span class="in">    colorNA = "grey95", textNA = "Not \"interesting\"",</span></span>
+<span id="cb66-462"><a href="#cb66-462" aria-hidden="true" tabindex="-1"></a><span class="in">    title = "Turnout hotspot status \nLocal Moran's I",</span></span>
+<span id="cb66-463"><a href="#cb66-463" aria-hidden="true" tabindex="-1"></a><span class="in">    palette =RColorBrewer::brewer.pal(4, "Set3")[c(1, 4, 2)]) +</span></span>
+<span id="cb66-464"><a href="#cb66-464" aria-hidden="true" tabindex="-1"></a><span class="in">  tm_facets(free.scales = FALSE, ncol = 2) + </span></span>
+<span id="cb66-465"><a href="#cb66-465" aria-hidden="true" tabindex="-1"></a><span class="in">  tm_layout(panel.labels = c("Permutation rank", </span></span>
+<span id="cb66-466"><a href="#cb66-466" aria-hidden="true" tabindex="-1"></a><span class="in">     "saddlepoint null", "saddlepoint weighted null", </span></span>
+<span id="cb66-467"><a href="#cb66-467" aria-hidden="true" tabindex="-1"></a><span class="in">     "saddlepoint weighted types"))</span></span>
 <span id="cb66-468"><a href="#cb66-468" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-471"><a href="#cb66-471" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
 <span id="cb66-472"><a href="#cb66-472" aria-hidden="true" tabindex="-1"></a><span class="fu">rbind</span>(<span class="at">null =</span> <span class="fu">append</span>(<span class="fu">table</span>(<span class="fu">addNA</span>(pol_pres15<span class="sc">$</span>locm_sad0)),</span>
@@ -1925,9 +2149,9 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-483"><a href="#cb66-483" aria-hidden="true" tabindex="-1"></a>The same can also be accomplished using exact methods, but may require more tuning as numerical integration may fail, returning <span class="in">`NaN`</span> rather than the exact estimate of the standard deviate <span class="co">[</span><span class="ot">@bivandetal:09</span><span class="co">]</span>:</span>
 <span id="cb66-484"><a href="#cb66-484" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-485"><a href="#cb66-485" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, cache=TRUE}</span></span>
-<span id="cb66-486"><a href="#cb66-486" aria-hidden="true" tabindex="-1"></a>lm_types <span class="sc">|&gt;</span> <span class="fu">localmoran.exact</span>(<span class="at">nb =</span> nb_q, <span class="at">style =</span> <span class="st">"W"</span>, </span>
-<span id="cb66-487"><a href="#cb66-487" aria-hidden="true" tabindex="-1"></a>    <span class="at">alternative =</span> <span class="st">"two.sided"</span>, <span class="at">useTP=</span><span class="cn">TRUE</span>, <span class="at">truncErr=</span><span class="fl">1e-8</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb66-488"><a href="#cb66-488" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>() <span class="ot">-&gt;</span> locm_ex_types</span>
+<span id="cb66-486"><a href="#cb66-486" aria-hidden="true" tabindex="-1"></a><span class="in">lm_types |&gt; localmoran.exact(nb = nb_q, style = "W", </span></span>
+<span id="cb66-487"><a href="#cb66-487" aria-hidden="true" tabindex="-1"></a><span class="in">    alternative = "two.sided", useTP=TRUE, truncErr=1e-8) |&gt; </span></span>
+<span id="cb66-488"><a href="#cb66-488" aria-hidden="true" tabindex="-1"></a><span class="in">    as.data.frame() -&gt; locm_ex_types</span></span>
 <span id="cb66-489"><a href="#cb66-489" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-490"><a href="#cb66-490" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-493"><a href="#cb66-493" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
@@ -1937,16 +2161,16 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-497"><a href="#cb66-497" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-498"><a href="#cb66-498" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-499"><a href="#cb66-499" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-localmoranHsadex, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb66-500"><a href="#cb66-500" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb66-501"><a href="#cb66-501" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Local Moran's I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel: weighted types model saddlepoint p-values; right panel: weighted types model exact p-values, for first-round turnout, row-standardised neighbours"</span></span>
-<span id="cb66-502"><a href="#cb66-502" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-503"><a href="#cb66-503" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_fill</span>(<span class="fu">c</span>(<span class="st">"locm_sad2"</span>, <span class="st">"locm_ex"</span>), <span class="at">colorNA =</span> <span class="st">"grey95"</span>,</span>
-<span id="cb66-504"><a href="#cb66-504" aria-hidden="true" tabindex="-1"></a>        <span class="at">textNA =</span> <span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>, </span>
-<span id="cb66-505"><a href="#cb66-505" aria-hidden="true" tabindex="-1"></a>        <span class="at">title =</span> <span class="st">"Turnout hotspot status </span><span class="sc">\n</span><span class="st">Local Moran's I"</span>,</span>
-<span id="cb66-506"><a href="#cb66-506" aria-hidden="true" tabindex="-1"></a>        <span class="at">palette =</span> RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">2</span>)]) <span class="sc">+</span></span>
-<span id="cb66-507"><a href="#cb66-507" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_facets</span>(<span class="at">free.scales =</span> <span class="cn">FALSE</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb66-508"><a href="#cb66-508" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">panel.labels =</span> <span class="fu">c</span>(<span class="st">"saddlepoint weighted types"</span>,</span>
-<span id="cb66-509"><a href="#cb66-509" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"Exact weighted types"</span>))</span>
+<span id="cb66-500"><a href="#cb66-500" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb66-501"><a href="#cb66-501" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Local Moran's I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel: weighted types model saddlepoint p-values; right panel: weighted types model exact p-values, for first-round turnout, row-standardised neighbours"</span></span>
+<span id="cb66-502"><a href="#cb66-502" aria-hidden="true" tabindex="-1"></a><span class="in">tm_shape(pol_pres15) +</span></span>
+<span id="cb66-503"><a href="#cb66-503" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_fill(c("locm_sad2", "locm_ex"), colorNA = "grey95",</span></span>
+<span id="cb66-504"><a href="#cb66-504" aria-hidden="true" tabindex="-1"></a><span class="in">        textNA = "Not \"interesting\"", </span></span>
+<span id="cb66-505"><a href="#cb66-505" aria-hidden="true" tabindex="-1"></a><span class="in">        title = "Turnout hotspot status \nLocal Moran's I",</span></span>
+<span id="cb66-506"><a href="#cb66-506" aria-hidden="true" tabindex="-1"></a><span class="in">        palette = RColorBrewer::brewer.pal(4, "Set3")[c(1, 4, 2)]) +</span></span>
+<span id="cb66-507"><a href="#cb66-507" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_facets(free.scales = FALSE, ncol = 2) +</span></span>
+<span id="cb66-508"><a href="#cb66-508" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_layout(panel.labels = c("saddlepoint weighted types",</span></span>
+<span id="cb66-509"><a href="#cb66-509" aria-hidden="true" tabindex="-1"></a><span class="in">                               "Exact weighted types"))</span></span>
 <span id="cb66-510"><a href="#cb66-510" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-511"><a href="#cb66-511" aria-hidden="true" tabindex="-1"></a>As @fig-localmoranHsadex shows, the exact and saddlepoint approximation methods yield almost identical cluster classifications from the same regression residuals, multiple comparison adjustment method, and cutoff level, with the exact method returning four more *interesting* observations:</span>
 <span id="cb66-512"><a href="#cb66-512" aria-hidden="true" tabindex="-1"></a></span>
@@ -1970,8 +2194,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-534"><a href="#cb66-534" aria-hidden="true" tabindex="-1"></a>Permutation inference is also available for this measure:</span>
 <span id="cb66-535"><a href="#cb66-535" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-536"><a href="#cb66-536" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, cache=TRUE} </span></span>
-<span id="cb66-537"><a href="#cb66-537" aria-hidden="true" tabindex="-1"></a>I_turnout <span class="sc">|&gt;</span> </span>
-<span id="cb66-538"><a href="#cb66-538" aria-hidden="true" tabindex="-1"></a>        <span class="fu">localG_perm</span>(lw_q_W, <span class="at">nsim =</span> <span class="dv">9999</span>, <span class="at">iseed =</span> <span class="dv">1</span>) <span class="ot">-&gt;</span> locG_p</span>
+<span id="cb66-537"><a href="#cb66-537" aria-hidden="true" tabindex="-1"></a><span class="in">I_turnout |&gt; </span></span>
+<span id="cb66-538"><a href="#cb66-538" aria-hidden="true" tabindex="-1"></a><span class="in">        localG_perm(lw_q_W, nsim = 9999, iseed = 1) -&gt; locG_p</span></span>
 <span id="cb66-539"><a href="#cb66-539" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-540"><a href="#cb66-540" aria-hidden="true" tabindex="-1"></a>The correlation between the two-sided probability values for analytical and permutation-based standard deviates (first two columns and rows) and permutation rank-based probability values are very strong:</span>
 <span id="cb66-541"><a href="#cb66-541" aria-hidden="true" tabindex="-1"></a></span>
@@ -1989,8 +2213,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-555"><a href="#cb66-555" aria-hidden="true" tabindex="-1"></a>@https://doi.org/10.1111/gean.12164 extends @anselin:95 and has been recently added to **spdep** thanks to contributions by Josiah Parry (pull request https://github.com/r-spatial/spdep/pull/66). The conditional permutation framework used for $I_i$ and $G_i$ is also used for $C_i$:</span>
 <span id="cb66-556"><a href="#cb66-556" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-557"><a href="#cb66-557" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, cache=TRUE}</span></span>
-<span id="cb66-558"><a href="#cb66-558" aria-hidden="true" tabindex="-1"></a>I_turnout <span class="sc">|&gt;</span> </span>
-<span id="cb66-559"><a href="#cb66-559" aria-hidden="true" tabindex="-1"></a>        <span class="fu">localC_perm</span>(lw_q_W, <span class="at">nsim=</span><span class="dv">9999</span>, <span class="at">iseed=</span><span class="dv">1</span>) <span class="ot">-&gt;</span> locC_p</span>
+<span id="cb66-558"><a href="#cb66-558" aria-hidden="true" tabindex="-1"></a><span class="in">I_turnout |&gt; </span></span>
+<span id="cb66-559"><a href="#cb66-559" aria-hidden="true" tabindex="-1"></a><span class="in">        localC_perm(lw_q_W, nsim=9999, iseed=1) -&gt; locC_p</span></span>
 <span id="cb66-560"><a href="#cb66-560" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-561"><a href="#cb66-561" aria-hidden="true" tabindex="-1"></a>The permutation standard deviate-based and rank-based probability values are not as highly correlated as for $G_i$, in part reflecting the difference in view of autocorrelation in $C_i$ as represented by a function of the differences between values rather than the products of values:</span>
 <span id="cb66-562"><a href="#cb66-562" aria-hidden="true" tabindex="-1"></a></span>
@@ -2007,37 +2231,37 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-577"><a href="#cb66-577" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-578"><a href="#cb66-578" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-579"><a href="#cb66-579" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-localIGC, echo=!knitr::is_latex_output(), message=FALSE}</span></span>
-<span id="cb66-580"><a href="#cb66-580" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb66-581"><a href="#cb66-581" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel: local Moran\\'s $I_i$; centre panel: local Getis-Ord $G_i$; right panel: local Geary\\'s $C_i$; first-round turnout, row-standardised neighbours"</span></span>
-<span id="cb66-582"><a href="#cb66-582" aria-hidden="true" tabindex="-1"></a>m1 <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-583"><a href="#cb66-583" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_fill</span>(<span class="st">"hs_cp_q"</span>, </span>
-<span id="cb66-584"><a href="#cb66-584" aria-hidden="true" tabindex="-1"></a>            <span class="at">palette =</span> RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="sc">-</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">3</span>)],</span>
-<span id="cb66-585"><a href="#cb66-585" aria-hidden="true" tabindex="-1"></a>            <span class="at">colorNA =</span> <span class="st">"grey95"</span>, <span class="at">textNA =</span> <span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>,</span>
-<span id="cb66-586"><a href="#cb66-586" aria-hidden="true" tabindex="-1"></a>            <span class="at">title =</span> <span class="st">"Turnout hotspot status</span><span class="sc">\n</span><span class="st">Local Moran I"</span>) <span class="sc">+</span> </span>
-<span id="cb66-587"><a href="#cb66-587" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">legend.outside=</span><span class="cn">TRUE</span>, <span class="at">legend.outside.position=</span><span class="st">"bottom"</span>)</span>
-<span id="cb66-588"><a href="#cb66-588" aria-hidden="true" tabindex="-1"></a>m2 <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-589"><a href="#cb66-589" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_fill</span>(<span class="st">"hs_G"</span>,</span>
-<span id="cb66-590"><a href="#cb66-590" aria-hidden="true" tabindex="-1"></a>            <span class="at">palette =</span> RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="sc">-</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">3</span>)],</span>
-<span id="cb66-591"><a href="#cb66-591" aria-hidden="true" tabindex="-1"></a>            <span class="at">colorNA =</span> <span class="st">"grey95"</span>, <span class="at">textNA=</span><span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>,</span>
-<span id="cb66-592"><a href="#cb66-592" aria-hidden="true" tabindex="-1"></a>            <span class="at">title =</span> <span class="st">"Turnout hotspot status</span><span class="sc">\n</span><span class="st">Local Getis/Ord G"</span>) <span class="sc">+</span></span>
-<span id="cb66-593"><a href="#cb66-593" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">legend.outside=</span><span class="cn">TRUE</span>, <span class="at">legend.outside.position=</span><span class="st">"bottom"</span>)</span>
-<span id="cb66-594"><a href="#cb66-594" aria-hidden="true" tabindex="-1"></a>m3 <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-595"><a href="#cb66-595" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_fill</span>(<span class="st">"hs_C"</span>,</span>
-<span id="cb66-596"><a href="#cb66-596" aria-hidden="true" tabindex="-1"></a>            <span class="at">palette =</span> RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">3</span>)],</span>
-<span id="cb66-597"><a href="#cb66-597" aria-hidden="true" tabindex="-1"></a>            <span class="at">colorNA =</span> <span class="st">"grey95"</span>, <span class="at">textNA=</span><span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>,</span>
-<span id="cb66-598"><a href="#cb66-598" aria-hidden="true" tabindex="-1"></a>            <span class="at">title =</span> <span class="st">"Turnout hotspot status</span><span class="sc">\n</span><span class="st">Local Geary C"</span>) <span class="sc">+</span></span>
-<span id="cb66-599"><a href="#cb66-599" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">legend.outside=</span><span class="cn">TRUE</span>, <span class="at">legend.outside.position=</span><span class="st">"bottom"</span>)</span>
-<span id="cb66-600"><a href="#cb66-600" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_arrange</span>(m1, m2, m3, <span class="at">nrow=</span><span class="dv">1</span>)</span>
+<span id="cb66-580"><a href="#cb66-580" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb66-581"><a href="#cb66-581" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel: local Moran\\'s $I_i$; centre panel: local Getis-Ord $G_i$; right panel: local Geary\\'s $C_i$; first-round turnout, row-standardised neighbours"</span></span>
+<span id="cb66-582"><a href="#cb66-582" aria-hidden="true" tabindex="-1"></a><span class="in">m1 &lt;- tm_shape(pol_pres15) +</span></span>
+<span id="cb66-583"><a href="#cb66-583" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_fill("hs_cp_q", </span></span>
+<span id="cb66-584"><a href="#cb66-584" aria-hidden="true" tabindex="-1"></a><span class="in">            palette = RColorBrewer::brewer.pal(4, "Set3")[-c(2,3)],</span></span>
+<span id="cb66-585"><a href="#cb66-585" aria-hidden="true" tabindex="-1"></a><span class="in">            colorNA = "grey95", textNA = "Not \"interesting\"",</span></span>
+<span id="cb66-586"><a href="#cb66-586" aria-hidden="true" tabindex="-1"></a><span class="in">            title = "Turnout hotspot status\nLocal Moran I") + </span></span>
+<span id="cb66-587"><a href="#cb66-587" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_layout(legend.outside=TRUE, legend.outside.position="bottom")</span></span>
+<span id="cb66-588"><a href="#cb66-588" aria-hidden="true" tabindex="-1"></a><span class="in">m2 &lt;- tm_shape(pol_pres15) +</span></span>
+<span id="cb66-589"><a href="#cb66-589" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_fill("hs_G",</span></span>
+<span id="cb66-590"><a href="#cb66-590" aria-hidden="true" tabindex="-1"></a><span class="in">            palette = RColorBrewer::brewer.pal(4, "Set3")[-c(2,3)],</span></span>
+<span id="cb66-591"><a href="#cb66-591" aria-hidden="true" tabindex="-1"></a><span class="in">            colorNA = "grey95", textNA="Not \"interesting\"",</span></span>
+<span id="cb66-592"><a href="#cb66-592" aria-hidden="true" tabindex="-1"></a><span class="in">            title = "Turnout hotspot status\nLocal Getis/Ord G") +</span></span>
+<span id="cb66-593"><a href="#cb66-593" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_layout(legend.outside=TRUE, legend.outside.position="bottom")</span></span>
+<span id="cb66-594"><a href="#cb66-594" aria-hidden="true" tabindex="-1"></a><span class="in">m3 &lt;- tm_shape(pol_pres15) +</span></span>
+<span id="cb66-595"><a href="#cb66-595" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_fill("hs_C",</span></span>
+<span id="cb66-596"><a href="#cb66-596" aria-hidden="true" tabindex="-1"></a><span class="in">            palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1, 3)],</span></span>
+<span id="cb66-597"><a href="#cb66-597" aria-hidden="true" tabindex="-1"></a><span class="in">            colorNA = "grey95", textNA="Not \"interesting\"",</span></span>
+<span id="cb66-598"><a href="#cb66-598" aria-hidden="true" tabindex="-1"></a><span class="in">            title = "Turnout hotspot status\nLocal Geary C") +</span></span>
+<span id="cb66-599"><a href="#cb66-599" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_layout(legend.outside=TRUE, legend.outside.position="bottom")</span></span>
+<span id="cb66-600"><a href="#cb66-600" aria-hidden="true" tabindex="-1"></a><span class="in">tmap_arrange(m1, m2, m3, nrow=1)</span></span>
 <span id="cb66-601"><a href="#cb66-601" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-602"><a href="#cb66-602" aria-hidden="true" tabindex="-1"></a>@fig-localIGC shows that the cluster cores identified as *interesting* using $I_i$, $G_i$ and $C_i$ for the same variable, first-round turnout, and the same spatial weights, for rank-based permutation FDR adjusted probability values and an $\alpha = 0.005$ cutoff, are very similar. In most cases, the <span class="in">`"High-High"`</span> cluster cores are urban areas, and <span class="in">`"Low-Low"`</span> cores are sparsely populated rural areas in the North, in addition to the German national minority areas close to the southern border. The three measures use slightly different strategies for naming cluster cores: $I_i$ uses quadrants of the Moran scatterplot, $G_i$ splits into <span class="in">`"Low"`</span> and <span class="in">`"High"`</span> on the mean of the input variable (which is the same as the first component in the $I_i$ tuple), and univariate $C_i$ on the mean of the input variable and zero for its lag. As before, cluster categories that do not occur are dropped.</span>
 <span id="cb66-603"><a href="#cb66-603" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-604"><a href="#cb66-604" aria-hidden="true" tabindex="-1"></a>For comparison, and before moving to multivariate $C_i$, let us take the univariate $C_i$ for the second (final) round turnout. One would expect that the run-off between the two top candidates from the first-round might mobilise some voters who did not have a clear first-round preference, but that it discourages some of those with strong loyalty to a candidate eliminated after the first round:</span>
 <span id="cb66-605"><a href="#cb66-605" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-606"><a href="#cb66-606" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, cache=TRUE}</span></span>
-<span id="cb66-607"><a href="#cb66-607" aria-hidden="true" tabindex="-1"></a>pol_pres15 <span class="sc">|&gt;</span> </span>
-<span id="cb66-608"><a href="#cb66-608" aria-hidden="true" tabindex="-1"></a>        <span class="fu">st_drop_geometry</span>() <span class="sc">|&gt;</span> </span>
-<span id="cb66-609"><a href="#cb66-609" aria-hidden="true" tabindex="-1"></a>        <span class="fu">subset</span>(<span class="at">select =</span> II_turnout) <span class="sc">|&gt;</span> </span>
-<span id="cb66-610"><a href="#cb66-610" aria-hidden="true" tabindex="-1"></a>        <span class="fu">localC_perm</span>(lw_q_W, <span class="at">nsim=</span><span class="dv">9999</span>, <span class="at">iseed=</span><span class="dv">1</span>) <span class="ot">-&gt;</span> locC_p_II</span>
+<span id="cb66-607"><a href="#cb66-607" aria-hidden="true" tabindex="-1"></a><span class="in">pol_pres15 |&gt; </span></span>
+<span id="cb66-608"><a href="#cb66-608" aria-hidden="true" tabindex="-1"></a><span class="in">        st_drop_geometry() |&gt; </span></span>
+<span id="cb66-609"><a href="#cb66-609" aria-hidden="true" tabindex="-1"></a><span class="in">        subset(select = II_turnout) |&gt; </span></span>
+<span id="cb66-610"><a href="#cb66-610" aria-hidden="true" tabindex="-1"></a><span class="in">        localC_perm(lw_q_W, nsim=9999, iseed=1) -&gt; locC_p_II</span></span>
 <span id="cb66-611"><a href="#cb66-611" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-612"><a href="#cb66-612" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-615"><a href="#cb66-615" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
@@ -2048,10 +2272,10 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-620"><a href="#cb66-620" aria-hidden="true" tabindex="-1"></a>Multivariate $C_i$ <span class="co">[</span><span class="ot">@https://doi.org/10.1111/gean.12164</span><span class="co">]</span> is taken as the sum of univariate $C_i$ divided by the number of variables, but permutation is fixed so that the correlation between the variables is unchanged:</span>
 <span id="cb66-621"><a href="#cb66-621" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-622"><a href="#cb66-622" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, cache=TRUE}</span></span>
-<span id="cb66-623"><a href="#cb66-623" aria-hidden="true" tabindex="-1"></a>pol_pres15 <span class="sc">|&gt;</span> </span>
-<span id="cb66-624"><a href="#cb66-624" aria-hidden="true" tabindex="-1"></a>        <span class="fu">st_drop_geometry</span>() <span class="sc">|&gt;</span> </span>
-<span id="cb66-625"><a href="#cb66-625" aria-hidden="true" tabindex="-1"></a>        <span class="fu">subset</span>(<span class="at">select =</span> <span class="fu">c</span>(I_turnout, II_turnout)) <span class="sc">|&gt;</span></span>
-<span id="cb66-626"><a href="#cb66-626" aria-hidden="true" tabindex="-1"></a>        <span class="fu">localC_perm</span>(lw_q_W, <span class="at">nsim=</span><span class="dv">9999</span>, <span class="at">iseed=</span><span class="dv">1</span>) <span class="ot">-&gt;</span> locMvC_p</span>
+<span id="cb66-623"><a href="#cb66-623" aria-hidden="true" tabindex="-1"></a><span class="in">pol_pres15 |&gt; </span></span>
+<span id="cb66-624"><a href="#cb66-624" aria-hidden="true" tabindex="-1"></a><span class="in">        st_drop_geometry() |&gt; </span></span>
+<span id="cb66-625"><a href="#cb66-625" aria-hidden="true" tabindex="-1"></a><span class="in">        subset(select = c(I_turnout, II_turnout)) |&gt;</span></span>
+<span id="cb66-626"><a href="#cb66-626" aria-hidden="true" tabindex="-1"></a><span class="in">        localC_perm(lw_q_W, nsim=9999, iseed=1) -&gt; locMvC_p</span></span>
 <span id="cb66-627"><a href="#cb66-627" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-628"><a href="#cb66-628" aria-hidden="true" tabindex="-1"></a>Let us check that the multivariate $C_i$ is equal  to  the mean of the univariate $C_i$:</span>
 <span id="cb66-629"><a href="#cb66-629" aria-hidden="true" tabindex="-1"></a></span>
@@ -2066,27 +2290,27 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-642"><a href="#cb66-642" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-643"><a href="#cb66-643" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-644"><a href="#cb66-644" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-localCmulti, echo=!knitr::is_latex_output(), message=FALSE}</span></span>
-<span id="cb66-645"><a href="#cb66-645" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb66-646"><a href="#cb66-646" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: 'FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.005$: left panel: local $C_i$, first-round turnout; centre panel: local $C_i$, second-round turnout; right panel: local multivariate $C_i$, both turnout rounds; row-standardised neighbours'</span></span>
-<span id="cb66-647"><a href="#cb66-647" aria-hidden="true" tabindex="-1"></a>m3 <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-648"><a href="#cb66-648" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"hs_C"</span>, </span>
-<span id="cb66-649"><a href="#cb66-649" aria-hidden="true" tabindex="-1"></a>    <span class="at">palette =</span> RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">2</span>)],</span>
-<span id="cb66-650"><a href="#cb66-650" aria-hidden="true" tabindex="-1"></a>    <span class="at">colorNA =</span> <span class="st">"grey95"</span>, <span class="at">textNA =</span> <span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>,</span>
-<span id="cb66-651"><a href="#cb66-651" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"First round turnout</span><span class="sc">\n</span><span class="st">Local Geary C"</span>) <span class="sc">+</span></span>
-<span id="cb66-652"><a href="#cb66-652" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">legend.outside=</span><span class="cn">TRUE</span>, <span class="at">legend.outside.position=</span><span class="st">"bottom"</span>)</span>
-<span id="cb66-653"><a href="#cb66-653" aria-hidden="true" tabindex="-1"></a>m4 <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-654"><a href="#cb66-654" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"hs_C_II"</span>, </span>
-<span id="cb66-655"><a href="#cb66-655" aria-hidden="true" tabindex="-1"></a>    <span class="at">palette =</span> RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">2</span>)], </span>
-<span id="cb66-656"><a href="#cb66-656" aria-hidden="true" tabindex="-1"></a>    <span class="at">colorNA =</span> <span class="st">"grey95"</span>, <span class="at">textNA =</span> <span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>,</span>
-<span id="cb66-657"><a href="#cb66-657" aria-hidden="true" tabindex="-1"></a>    <span class="at">title=</span><span class="st">"Second round turnout</span><span class="sc">\n</span><span class="st">Local Geary C"</span>) <span class="sc">+</span></span>
-<span id="cb66-658"><a href="#cb66-658" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">legend.outside=</span><span class="cn">TRUE</span>, <span class="at">legend.outside.position=</span><span class="st">"bottom"</span>)</span>
-<span id="cb66-659"><a href="#cb66-659" aria-hidden="true" tabindex="-1"></a>m5 <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-660"><a href="#cb66-660" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"hs_MvC"</span>, </span>
-<span id="cb66-661"><a href="#cb66-661" aria-hidden="true" tabindex="-1"></a>    <span class="at">palette =</span> RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">1</span>)],</span>
-<span id="cb66-662"><a href="#cb66-662" aria-hidden="true" tabindex="-1"></a>    <span class="at">colorNA =</span> <span class="st">"grey95"</span>, <span class="at">textNA =</span> <span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>,</span>
-<span id="cb66-663"><a href="#cb66-663" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Both rounds turnout</span><span class="sc">\n</span><span class="st">Local Multivariate Geary C"</span>) <span class="sc">+</span></span>
-<span id="cb66-664"><a href="#cb66-664" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_layout</span>(<span class="at">legend.outside=</span><span class="cn">TRUE</span>, <span class="at">legend.outside.position=</span><span class="st">"bottom"</span>)</span>
-<span id="cb66-665"><a href="#cb66-665" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_arrange</span>(m3, m4, m5, <span class="at">nrow=</span><span class="dv">1</span>)</span>
+<span id="cb66-645"><a href="#cb66-645" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb66-646"><a href="#cb66-646" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: 'FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.005$: left panel: local $C_i$, first-round turnout; centre panel: local $C_i$, second-round turnout; right panel: local multivariate $C_i$, both turnout rounds; row-standardised neighbours'</span></span>
+<span id="cb66-647"><a href="#cb66-647" aria-hidden="true" tabindex="-1"></a><span class="in">m3 &lt;- tm_shape(pol_pres15) +</span></span>
+<span id="cb66-648"><a href="#cb66-648" aria-hidden="true" tabindex="-1"></a><span class="in">  tm_fill("hs_C", </span></span>
+<span id="cb66-649"><a href="#cb66-649" aria-hidden="true" tabindex="-1"></a><span class="in">    palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1, 3, 2)],</span></span>
+<span id="cb66-650"><a href="#cb66-650" aria-hidden="true" tabindex="-1"></a><span class="in">    colorNA = "grey95", textNA = "Not \"interesting\"",</span></span>
+<span id="cb66-651"><a href="#cb66-651" aria-hidden="true" tabindex="-1"></a><span class="in">    title = "First round turnout\nLocal Geary C") +</span></span>
+<span id="cb66-652"><a href="#cb66-652" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_layout(legend.outside=TRUE, legend.outside.position="bottom")</span></span>
+<span id="cb66-653"><a href="#cb66-653" aria-hidden="true" tabindex="-1"></a><span class="in">m4 &lt;- tm_shape(pol_pres15) +</span></span>
+<span id="cb66-654"><a href="#cb66-654" aria-hidden="true" tabindex="-1"></a><span class="in">  tm_fill("hs_C_II", </span></span>
+<span id="cb66-655"><a href="#cb66-655" aria-hidden="true" tabindex="-1"></a><span class="in">    palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1, 3, 2)], </span></span>
+<span id="cb66-656"><a href="#cb66-656" aria-hidden="true" tabindex="-1"></a><span class="in">    colorNA = "grey95", textNA = "Not \"interesting\"",</span></span>
+<span id="cb66-657"><a href="#cb66-657" aria-hidden="true" tabindex="-1"></a><span class="in">    title="Second round turnout\nLocal Geary C") +</span></span>
+<span id="cb66-658"><a href="#cb66-658" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_layout(legend.outside=TRUE, legend.outside.position="bottom")</span></span>
+<span id="cb66-659"><a href="#cb66-659" aria-hidden="true" tabindex="-1"></a><span class="in">m5 &lt;- tm_shape(pol_pres15) +</span></span>
+<span id="cb66-660"><a href="#cb66-660" aria-hidden="true" tabindex="-1"></a><span class="in">  tm_fill("hs_MvC", </span></span>
+<span id="cb66-661"><a href="#cb66-661" aria-hidden="true" tabindex="-1"></a><span class="in">    palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)],</span></span>
+<span id="cb66-662"><a href="#cb66-662" aria-hidden="true" tabindex="-1"></a><span class="in">    colorNA = "grey95", textNA = "Not \"interesting\"",</span></span>
+<span id="cb66-663"><a href="#cb66-663" aria-hidden="true" tabindex="-1"></a><span class="in">    title = "Both rounds turnout\nLocal Multivariate Geary C") +</span></span>
+<span id="cb66-664"><a href="#cb66-664" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_layout(legend.outside=TRUE, legend.outside.position="bottom")</span></span>
+<span id="cb66-665"><a href="#cb66-665" aria-hidden="true" tabindex="-1"></a><span class="in">tmap_arrange(m3, m4, m5, nrow=1)</span></span>
 <span id="cb66-666"><a href="#cb66-666" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-667"><a href="#cb66-667" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-668"><a href="#cb66-668" aria-hidden="true" tabindex="-1"></a>@fig-localCmulti indicates that the multivariate measure picks up aggregated elements of observations found *interesting* in the two univariate measures. We can break this down by interacting the first- and second-round univariate measures, and tabulating against the multivariate measure. </span>
@@ -2106,32 +2330,32 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-684"><a href="#cb66-684" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-685"><a href="#cb66-685" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{queen<span class="sc">\_</span>weights}</span>
 <span id="cb66-686"><a href="#cb66-686" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, message=FALSE}</span></span>
-<span id="cb66-687"><a href="#cb66-687" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rgeoda)</span>
-<span id="cb66-688"><a href="#cb66-688" aria-hidden="true" tabindex="-1"></a>Geoda_w <span class="ot">&lt;-</span> <span class="fu">queen_weights</span>(pol_pres15)</span>
-<span id="cb66-689"><a href="#cb66-689" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(Geoda_w)</span>
+<span id="cb66-687"><a href="#cb66-687" aria-hidden="true" tabindex="-1"></a><span class="in">library(rgeoda)</span></span>
+<span id="cb66-688"><a href="#cb66-688" aria-hidden="true" tabindex="-1"></a><span class="in">Geoda_w &lt;- queen_weights(pol_pres15)</span></span>
+<span id="cb66-689"><a href="#cb66-689" aria-hidden="true" tabindex="-1"></a><span class="in">summary(Geoda_w)</span></span>
 <span id="cb66-690"><a href="#cb66-690" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-691"><a href="#cb66-691" aria-hidden="true" tabindex="-1"></a>For comparison, let us take the multivariate $C_i$ measure of turnout in the two rounds of the 2015 Polish presidential election as above:</span>
 <span id="cb66-692"><a href="#cb66-692" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-693"><a href="#cb66-693" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{local<span class="sc">\_</span>multigeary}</span>
 <span id="cb66-694"><a href="#cb66-694" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, message=FALSE}</span></span>
-<span id="cb66-695"><a href="#cb66-695" aria-hidden="true" tabindex="-1"></a>lisa <span class="ot">&lt;-</span> <span class="fu">local_multigeary</span>(Geoda_w, </span>
-<span id="cb66-696"><a href="#cb66-696" aria-hidden="true" tabindex="-1"></a>    pol_pres15[<span class="fu">c</span>(<span class="st">"I_turnout"</span>, <span class="st">"II_turnout"</span>)], </span>
-<span id="cb66-697"><a href="#cb66-697" aria-hidden="true" tabindex="-1"></a>    <span class="at">cpu_threads =</span> <span class="fu">max</span>(<span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>, <span class="dv">1</span>),</span>
-<span id="cb66-698"><a href="#cb66-698" aria-hidden="true" tabindex="-1"></a>    <span class="at">permutations =</span> <span class="dv">99999</span>, <span class="at">seed =</span> <span class="dv">1</span>)</span>
+<span id="cb66-695"><a href="#cb66-695" aria-hidden="true" tabindex="-1"></a><span class="in">lisa &lt;- local_multigeary(Geoda_w, </span></span>
+<span id="cb66-696"><a href="#cb66-696" aria-hidden="true" tabindex="-1"></a><span class="in">    pol_pres15[c("I_turnout", "II_turnout")], </span></span>
+<span id="cb66-697"><a href="#cb66-697" aria-hidden="true" tabindex="-1"></a><span class="in">    cpu_threads = max(detectCores() - 1, 1),</span></span>
+<span id="cb66-698"><a href="#cb66-698" aria-hidden="true" tabindex="-1"></a><span class="in">    permutations = 99999, seed = 1)</span></span>
 <span id="cb66-699"><a href="#cb66-699" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-700"><a href="#cb66-700" aria-hidden="true" tabindex="-1"></a>The contiguity neighbours are the same as those found by <span class="in">`poly2nb`</span>:</span>
 <span id="cb66-701"><a href="#cb66-701" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-702"><a href="#cb66-702" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{lisa<span class="sc">\_</span>num<span class="sc">\_</span>nbrs}</span>
 <span id="cb66-703"><a href="#cb66-703" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, message=FALSE}</span></span>
-<span id="cb66-704"><a href="#cb66-704" aria-hidden="true" tabindex="-1"></a><span class="fu">all.equal</span>(<span class="fu">card</span>(nb_q), <span class="fu">lisa_num_nbrs</span>(lisa), </span>
-<span id="cb66-705"><a href="#cb66-705" aria-hidden="true" tabindex="-1"></a>          <span class="at">check.attributes =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb66-704"><a href="#cb66-704" aria-hidden="true" tabindex="-1"></a><span class="in">all.equal(card(nb_q), lisa_num_nbrs(lisa), </span></span>
+<span id="cb66-705"><a href="#cb66-705" aria-hidden="true" tabindex="-1"></a><span class="in">          check.attributes = FALSE)</span></span>
 <span id="cb66-706"><a href="#cb66-706" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-707"><a href="#cb66-707" aria-hidden="true" tabindex="-1"></a>as are the multivariate $C_i$ values the same as those found above:</span>
 <span id="cb66-708"><a href="#cb66-708" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-709"><a href="#cb66-709" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{lisa<span class="sc">\_</span>values}</span>
 <span id="cb66-710"><a href="#cb66-710" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, message=FALSE}</span></span>
-<span id="cb66-711"><a href="#cb66-711" aria-hidden="true" tabindex="-1"></a><span class="fu">all.equal</span>(<span class="fu">lisa_values</span>(lisa), <span class="fu">c</span>(locMvC_p),</span>
-<span id="cb66-712"><a href="#cb66-712" aria-hidden="true" tabindex="-1"></a>          <span class="at">check.attributes =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb66-711"><a href="#cb66-711" aria-hidden="true" tabindex="-1"></a><span class="in">all.equal(lisa_values(lisa), c(locMvC_p),</span></span>
+<span id="cb66-712"><a href="#cb66-712" aria-hidden="true" tabindex="-1"></a><span class="in">          check.attributes = FALSE)</span></span>
 <span id="cb66-713"><a href="#cb66-713" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-714"><a href="#cb66-714" aria-hidden="true" tabindex="-1"></a>One difference is that the range of the folded two-sided rank-based permutation probability values used by **rgeoda** is $[0, 0.5]$, also reported in **spdep**:</span>
 <span id="cb66-715"><a href="#cb66-715" aria-hidden="true" tabindex="-1"></a></span>
@@ -2165,20 +2389,20 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb66-751"><a href="#cb66-751" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-752"><a href="#cb66-752" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-753"><a href="#cb66-753" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-localCmultix, echo=!knitr::is_latex_output(), message=FALSE}</span></span>
-<span id="cb66-754"><a href="#cb66-754" aria-hidden="true" tabindex="-1"></a><span class="co">#| out.width: 100%</span></span>
-<span id="cb66-755"><a href="#cb66-755" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb66-756"><a href="#cb66-756" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: 'FDR local multivariate $C_i$ hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.0025$ over $[0, 0.5]$: left panel: **spdep**, both turnout rounds; right panel: **rgeoda**, both turnout rounds; row-standardised neighbours'</span></span>
-<span id="cb66-757"><a href="#cb66-757" aria-hidden="true" tabindex="-1"></a>m5 <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-758"><a href="#cb66-758" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_fill</span>(<span class="st">"hs_MvCa"</span>, </span>
-<span id="cb66-759"><a href="#cb66-759" aria-hidden="true" tabindex="-1"></a>        <span class="at">palette =</span> RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">1</span>)],</span>
-<span id="cb66-760"><a href="#cb66-760" aria-hidden="true" tabindex="-1"></a>        <span class="at">colorNA =</span> <span class="st">"grey95"</span>, <span class="at">textNA =</span> <span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>,</span>
-<span id="cb66-761"><a href="#cb66-761" aria-hidden="true" tabindex="-1"></a>  <span class="at">title =</span> <span class="st">"Both rounds turnout spdep</span><span class="sc">\n</span><span class="st">Local Multivariate Geary C"</span>)</span>
-<span id="cb66-762"><a href="#cb66-762" aria-hidden="true" tabindex="-1"></a>m6 <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(pol_pres15) <span class="sc">+</span></span>
-<span id="cb66-763"><a href="#cb66-763" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_fill</span>(<span class="st">"geoda_mvc"</span>, </span>
-<span id="cb66-764"><a href="#cb66-764" aria-hidden="true" tabindex="-1"></a>        <span class="at">palette =</span> RColorBrewer<span class="sc">::</span><span class="fu">brewer.pal</span>(<span class="dv">4</span>, <span class="st">"Set3"</span>)[<span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">1</span>)],</span>
-<span id="cb66-765"><a href="#cb66-765" aria-hidden="true" tabindex="-1"></a>        <span class="at">colorNA =</span> <span class="st">"grey95"</span>, <span class="at">textNA =</span> <span class="st">"Not </span><span class="sc">\"</span><span class="st">interesting</span><span class="sc">\"</span><span class="st">"</span>,</span>
-<span id="cb66-766"><a href="#cb66-766" aria-hidden="true" tabindex="-1"></a>  <span class="at">title=</span><span class="st">"Both rounds turnout rgeoda</span><span class="sc">\n</span><span class="st">Local Multivariate Geary C"</span>)</span>
-<span id="cb66-767"><a href="#cb66-767" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_arrange</span>(m5, m6, <span class="at">nrow=</span><span class="dv">1</span>)</span>
+<span id="cb66-754"><a href="#cb66-754" aria-hidden="true" tabindex="-1"></a><span class="in">#| out.width: 100%</span></span>
+<span id="cb66-755"><a href="#cb66-755" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb66-756"><a href="#cb66-756" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: 'FDR local multivariate $C_i$ hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.0025$ over $[0, 0.5]$: left panel: **spdep**, both turnout rounds; right panel: **rgeoda**, both turnout rounds; row-standardised neighbours'</span></span>
+<span id="cb66-757"><a href="#cb66-757" aria-hidden="true" tabindex="-1"></a><span class="in">m5 &lt;- tm_shape(pol_pres15) +</span></span>
+<span id="cb66-758"><a href="#cb66-758" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_fill("hs_MvCa", </span></span>
+<span id="cb66-759"><a href="#cb66-759" aria-hidden="true" tabindex="-1"></a><span class="in">        palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)],</span></span>
+<span id="cb66-760"><a href="#cb66-760" aria-hidden="true" tabindex="-1"></a><span class="in">        colorNA = "grey95", textNA = "Not \"interesting\"",</span></span>
+<span id="cb66-761"><a href="#cb66-761" aria-hidden="true" tabindex="-1"></a><span class="in">  title = "Both rounds turnout spdep\nLocal Multivariate Geary C")</span></span>
+<span id="cb66-762"><a href="#cb66-762" aria-hidden="true" tabindex="-1"></a><span class="in">m6 &lt;- tm_shape(pol_pres15) +</span></span>
+<span id="cb66-763"><a href="#cb66-763" aria-hidden="true" tabindex="-1"></a><span class="in">    tm_fill("geoda_mvc", </span></span>
+<span id="cb66-764"><a href="#cb66-764" aria-hidden="true" tabindex="-1"></a><span class="in">        palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)],</span></span>
+<span id="cb66-765"><a href="#cb66-765" aria-hidden="true" tabindex="-1"></a><span class="in">        colorNA = "grey95", textNA = "Not \"interesting\"",</span></span>
+<span id="cb66-766"><a href="#cb66-766" aria-hidden="true" tabindex="-1"></a><span class="in">  title="Both rounds turnout rgeoda\nLocal Multivariate Geary C")</span></span>
+<span id="cb66-767"><a href="#cb66-767" aria-hidden="true" tabindex="-1"></a><span class="in">tmap_arrange(m5, m6, nrow=1)</span></span>
 <span id="cb66-768"><a href="#cb66-768" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb66-769"><a href="#cb66-769" aria-hidden="true" tabindex="-1"></a>@fig-localCmultix shows that while almost all of the 242 observations found *interesting* in the **spdep** implementation were also *interesting* for **rgeoda**, the latter found a further 86 *interesting*. Of course, permutation outcomes are bound to vary, but it remains to establish whether either or both implementations require revision.</span>
 <span id="cb66-770"><a href="#cb66-770" aria-hidden="true" tabindex="-1"></a></span>
@@ -2194,4 +2418,4 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-</body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/edzer/sdsr/edit/main/15-Measures.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>

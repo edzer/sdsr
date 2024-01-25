@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.3.450">
+<meta name="generator" content="quarto-1.4.549">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <title>Spatial Data Science - 12&nbsp; Spatial Interpolation</title>
 <style>
@@ -19,7 +19,7 @@ ul.task-list li input[type="checkbox"] {
 }
 /* CSS for syntax highlighting */
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -55,6 +55,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 div.csl-bib-body { }
 div.csl-entry {
   clear: both;
+  margin-bottom: 0em;
 }
 .hanging-indent div.csl-entry {
   margin-left:2em;
@@ -95,7 +96,13 @@ div.csl-indent {
   "collapse-after": 3,
   "panel-placement": "start",
   "type": "textbox",
-  "limit": 20,
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
   "language": {
     "search-no-results-text": "No results",
     "search-matching-documents-text": "matching documents",
@@ -104,6 +111,7 @@ div.csl-indent {
     "search-more-match-text": "more match in this document",
     "search-more-matches-text": "more matches in this document",
     "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
     "search-detached-cancel-button-title": "Cancel",
     "search-submit-button-title": "Submit",
     "search-label": "Search"
@@ -119,29 +127,54 @@ gtag('js', new Date());
     'analytics_storage': 'denied'
   });
 gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
-</script><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+</script><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script><script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 </head>
 <body class="nav-sidebar floating">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top"><nav class="quarto-secondary-nav"><div class="container-fluid d-flex">
-      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./part-3.html">Models for Spatial Data</a></li><li class="breadcrumb-item"><a href="./12-Interpolation.html"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Spatial Interpolation</span></a></li></ol></nav>
-      <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
-      </a>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./part-3.html">Models for Spatial Data</a></li><li class="breadcrumb-item"><a href="./12-Interpolation.html"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Spatial Interpolation</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
       <button type="button" class="btn quarto-search-button" aria-label="" onclick="window.quartoOpenSearch();">
         <i class="bi bi-search"></i>
       </button>
     </div>
   </nav></header><!-- content --><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal sidebar-navigation floating overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
     <div class="sidebar-title mb-0 py-0">
       <a href="./">Spatial Data Science</a> 
         <div class="sidebar-tools-main">
-    <a href="https://github.com/edzer/sdsr/" rel="" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+    <a href="https://github.com/edzer/sdsr/" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
 </div>
     </div>
       </div>
@@ -330,7 +363,7 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 </li>
     </ul>
 </div>
-</nav><div id="quarto-sidebar-glass" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass"></div>
+</nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
@@ -349,10 +382,10 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
   </ul>
 </li>
   <li><a href="#exercises" id="toc-exercises" class="nav-link" data-scroll-target="#exercises"><span class="header-section-number">12.8</span> Exercises</a></li>
-  </ul><div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/edzer/sdsr/edit/main/12-Interpolation.qmd" class="toc-action">Edit this page</a></p></div></div></nav>
+  </ul><div class="toc-actions"><ul><li><a href="https://github.com/edzer/sdsr/edit/main/12-Interpolation.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><div class="quarto-title">
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./part-3.html">Models for Spatial Data</a></li><li class="breadcrumb-item"><a href="./12-Interpolation.html"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Spatial Interpolation</span></a></li></ol></nav><div class="quarto-title">
 <div class="quarto-title-block"><div><h1 class="title"><span id="sec-interpolation" class="quarto-section-identifier"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Spatial Interpolation</span></span></h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">View Source</a></li></ul></div></div>
 </div>
 
@@ -366,13 +399,14 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
   </div>
   
 
+
 </header><p> </p>
 <p>Spatial interpolation is the activity of estimating values of spatially continuous variables (fields) for spatial locations where they have not been observed, based on observations. The statistical methodology for spatial interpolation, called geostatistics, is concerned with the modelling, prediction, and simulation of spatially continuous phenomena. The typical problem is a missing value problem: we observe a property of a phenomenon <span class="math inline">\(Z(s)\)</span> at a limited number of sample locations <span class="math inline">\(s_i, i = 1,...,n\)</span>, and are interested in the property value at all locations <span class="math inline">\(s_0\)</span> covering an area of interest, so we have to predict it for unobserved locations. This is also called <em>kriging</em>, or Gaussian Process prediction. In case <span class="math inline">\(Z(s)\)</span> contains a white noise component <span class="math inline">\(\epsilon\)</span>, as in <span class="math inline">\(Z(s)=S(s)+\epsilon\)</span> (possibly reflecting measurement error) an alternative but similar goal is to predict or simulate <span class="math inline">\(S(s)\)</span> rather than <span class="math inline">\(Z(s)\)</span>, which may be called <em>spatial filtering</em> or <em>smoothing</em>.</p>
-<p>In this chapter we will show simple approaches for handling geostatistical data, demonstrate simple interpolation methods, and explore modelling spatial correlation, spatial prediction and simulation. <a href="13-Geostatistics.html"><span>Chapter&nbsp;13</span></a> focuses on more complex multivariate and spatiotemporal geostatistical models. We will use package <strong>gstat</strong> <span class="citation" data-cites="R-gstat gstatcg">(<a href="references.html#ref-R-gstat" role="doc-biblioref">Pebesma and Graeler 2022</a>; <a href="references.html#ref-gstatcg" role="doc-biblioref">Pebesma 2004</a>)</span>, which offers a fairly wide palette of models and options for non-Bayesian geostatistical analysis. Bayesian methods with R implementations are found in <span class="citation" data-cites="DiggleTawnMoyeed:98">Diggle, Tawn, and Moyeed (<a href="references.html#ref-DiggleTawnMoyeed:98" role="doc-biblioref">1998</a>)</span>, <span class="citation" data-cites="Diggle:2007">Diggle and Ribeiro Jr. (<a href="references.html#ref-Diggle:2007" role="doc-biblioref">2007</a>)</span>, <span class="citation" data-cites="blangiardo2015spatial">Blangiardo and Cameletti (<a href="references.html#ref-blangiardo2015spatial" role="doc-biblioref">2015</a>)</span>, and <span class="citation" data-cites="wikle2019spatio">Wikle, Zammit-Mangion, and Cressie (<a href="references.html#ref-wikle2019spatio" role="doc-biblioref">2019</a>)</span>. An overview and comparison of methods for large datasets is given in <span class="citation" data-cites="Heaton2018">Heaton et al. (<a href="references.html#ref-Heaton2018" role="doc-biblioref">2018</a>)</span>.</p>
+<p>In this chapter we will show simple approaches for handling geostatistical data, demonstrate simple interpolation methods, and explore modelling spatial correlation, spatial prediction and simulation. <a href="13-Geostatistics.html" class="quarto-xref"><span>Chapter 13</span></a> focuses on more complex multivariate and spatiotemporal geostatistical models. We will use package <strong>gstat</strong> <span class="citation" data-cites="R-gstat gstatcg">(<a href="references.html#ref-R-gstat" role="doc-biblioref">Pebesma and Graeler 2022</a>; <a href="references.html#ref-gstatcg" role="doc-biblioref">Pebesma 2004</a>)</span>, which offers a fairly wide palette of models and options for non-Bayesian geostatistical analysis. Bayesian methods with R implementations are found in <span class="citation" data-cites="DiggleTawnMoyeed:98">Diggle, Tawn, and Moyeed (<a href="references.html#ref-DiggleTawnMoyeed:98" role="doc-biblioref">1998</a>)</span>, <span class="citation" data-cites="Diggle:2007">Diggle and Ribeiro Jr. (<a href="references.html#ref-Diggle:2007" role="doc-biblioref">2007</a>)</span>, <span class="citation" data-cites="blangiardo2015spatial">Blangiardo and Cameletti (<a href="references.html#ref-blangiardo2015spatial" role="doc-biblioref">2015</a>)</span>, and <span class="citation" data-cites="wikle2019spatio">Wikle, Zammit-Mangion, and Cressie (<a href="references.html#ref-wikle2019spatio" role="doc-biblioref">2019</a>)</span>. An overview and comparison of methods for large datasets is given in <span class="citation" data-cites="Heaton2018">Heaton et al. (<a href="references.html#ref-Heaton2018" role="doc-biblioref">2018</a>)</span>.</p>
 <p></p>
 <section id="a-first-dataset" class="level2" data-number="12.1"><h2 data-number="12.1" class="anchored" data-anchor-id="a-first-dataset">
 <span class="header-section-number">12.1</span> A first dataset</h2>
-<p>We can read station mean NO<span class="math inline">\(_2\)</span> values, a dataset that is prepared in <a href="13-Geostatistics.html"><span>Chapter&nbsp;13</span></a>, by loading it from package <strong>gstat</strong> using</p>
+<p>We can read station mean NO<span class="math inline">\(_2\)</span> values, a dataset that is prepared in <a href="13-Geostatistics.html" class="quarto-xref"><span>Chapter 13</span></a>, by loading it from package <strong>gstat</strong> using</p>
 <div class="cell">
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/message.html">suppressPackageStartupMessages</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">no2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://readr.tidyverse.org/reference/read_delim.html">read_csv</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html">system.file</a></span><span class="op">(</span><span class="st">"external/no2.csv"</span>, </span>
@@ -387,17 +421,21 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"station_longitude_deg"</span>, <span class="st">"station_latitude_deg"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html">st_transform</a></span><span class="op">(</span><span class="va">crs</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">no2.sf</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Next, we can load country boundaries and plot these data using <code>ggplot</code>, shown in <a href="#fig-plotDE">Figure&nbsp;<span>12.1</span></a>.</p>
+<p>Next, we can load country boundaries and plot these data using <code>ggplot</code>, shown in <a href="#fig-plotDE" class="quarto-xref">Figure&nbsp;<span>12.1</span></a>.</p>
 <div class="cell">
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_read.html">read_sf</a></span><span class="op">(</span><span class="st">"data/de_nuts1.gpkg"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html">st_transform</a></span><span class="op">(</span><span class="va">crs</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">de</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb4"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">de</span><span class="op">)</span> <span class="op">+</span> </span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb4"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">de</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">no2.sf</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>col <span class="op">=</span> <span class="va">NO2</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-plotDE" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-plotDE-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.1: Mean NO<span class="math inline">\(_2\)</span> concentrations in air for rural background stations in Germany, in 2017</figcaption></figure>
+<div id="fig-plotDE" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-plotDE-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-plotDE-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-plotDE-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.1: Mean NO<span class="math inline">\(_2\)</span> concentrations in air for rural background stations in Germany, in 2017
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -430,17 +468,21 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span><span class="va">i</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/gstat/man/krige.html">idw</a></span><span class="op">(</span><span class="va">NO2</span><span class="op">~</span><span class="fl">1</span>, <span class="va">no2.sf</span>, <span class="va">grd</span><span class="op">)</span></span>
 <span><span class="co"># [inverse distance weighted interpolation]</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>and plot them in <a href="#fig-idw">Figure&nbsp;<span>12.2</span></a>.</p>
+<p>and plot them in <a href="#fig-idw" class="quarto-xref">Figure&nbsp;<span>12.2</span></a>.</p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://r-spatial.github.io/stars/reference/geom_stars.html">geom_stars</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">i</span>, </span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://r-spatial.github.io/stars/reference/geom_stars.html">geom_stars</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">i</span>, </span>
 <span>                      <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">var1.pred</span>, x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">xlab</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">ylab</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_cast.html">st_cast</a></span><span class="op">(</span><span class="va">de</span>, <span class="st">"MULTILINESTRING"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">no2.sf</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-idw" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-idw-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.2: Inverse distance weighted interpolated values for NO<span class="math inline">\(_2\)</span> over Germany</figcaption></figure>
+<div id="fig-idw" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-idw-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-idw-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-idw-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.2: Inverse distance weighted interpolated values for NO<span class="math inline">\(_2\)</span> over Germany
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -455,15 +497,19 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <div class="cell">
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">v</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/gstat/man/variogram.html">variogram</a></span><span class="op">(</span><span class="va">NO2</span><span class="op">~</span><span class="fl">1</span>, <span class="va">no2.sf</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>and the result of plotting this is shown in <a href="#fig-vgm">Figure&nbsp;<span>12.3</span></a>.</p>
+<p>and the result of plotting this is shown in <a href="#fig-vgm" class="quarto-xref">Figure&nbsp;<span>12.3</span></a>.</p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">v</span>, plot.numbers <span class="op">=</span> <span class="cn">TRUE</span>, xlab <span class="op">=</span> <span class="st">"distance h [m]"</span>,</span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">v</span>, plot.numbers <span class="op">=</span> <span class="cn">TRUE</span>, xlab <span class="op">=</span> <span class="st">"distance h [m]"</span>,</span>
 <span>     ylab <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/expression.html">expression</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Special.html">gamma</a></span><span class="op">(</span><span class="va">h</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>     xlim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1.055</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">v</span><span class="op">$</span><span class="va">dist</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-vgm" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-vgm-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.3: Sample variogram plot</figcaption></figure>
+<div id="fig-vgm" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-vgm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-vgm-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-vgm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.3: Sample variogram plot
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -471,15 +517,19 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <div class="cell">
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">v0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/gstat/man/variogram.html">variogram</a></span><span class="op">(</span><span class="va">NO2</span><span class="op">~</span><span class="fl">1</span>, <span class="va">no2.sf</span>, cutoff <span class="op">=</span> <span class="fl">100000</span>, width <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>shown in <a href="#fig-vgm2">Figure&nbsp;<span>12.4</span></a>.</p>
+<p>shown in <a href="#fig-vgm2" class="quarto-xref">Figure&nbsp;<span>12.4</span></a>.</p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">v0</span>, plot.numbers <span class="op">=</span> <span class="cn">TRUE</span>, xlab <span class="op">=</span> <span class="st">"distance h [m]"</span>,</span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">v0</span>, plot.numbers <span class="op">=</span> <span class="cn">TRUE</span>, xlab <span class="op">=</span> <span class="st">"distance h [m]"</span>,</span>
 <span>     ylab <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/expression.html">expression</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Special.html">gamma</a></span><span class="op">(</span><span class="va">h</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>     xlim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1.055</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">v0</span><span class="op">$</span><span class="va">dist</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-vgm2" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-vgm2-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.4: Sample variogram plot with adjusted cutoff and lag width</figcaption></figure>
+<div id="fig-vgm2" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-vgm2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-vgm2-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-vgm2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.4: Sample variogram plot with adjusted cutoff and lag width
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -493,9 +543,9 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <div class="cell">
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">v.m</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/gstat/man/fit.variogram.html">fit.variogram</a></span><span class="op">(</span><span class="va">v</span>, <span class="fu"><a href="https://rdrr.io/pkg/gstat/man/vgm.html">vgm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"Exp"</span>, <span class="fl">50000</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>shown by the solid line in <a href="#fig-fitvariogrammodel">Figure&nbsp;<span>12.5</span></a>.</p>
+<p>shown by the solid line in <a href="#fig-fitvariogrammodel" class="quarto-xref">Figure&nbsp;<span>12.5</span></a>.</p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">fit.variogram_ml</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">formula</span>, <span class="va">data</span>, <span class="va">init</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">fit.variogram_ml</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">formula</span>, <span class="va">data</span>, <span class="va">init</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">init</span><span class="op">)</span> <span class="op">&lt;=</span> <span class="fl">2</span>, <span class="fu"><a href="https://rdrr.io/r/base/class.html">inherits</a></span><span class="op">(</span><span class="va">data</span>, <span class="st">"sf"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/class.html">inherits</a></span><span class="op">(</span><span class="va">formula</span>, <span class="st">"formula"</span><span class="op">)</span>,</span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/class.html">inherits</a></span><span class="op">(</span><span class="va">init</span>, <span class="st">"variogramModel"</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">init</span><span class="op">)</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span></span>
@@ -562,9 +612,13 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/lines.html">lines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/gstat/man/variogramLine.html">variogramLine</a></span><span class="op">(</span><span class="va">v.ml</span>, <span class="fl">1.075</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">v</span><span class="op">$</span><span class="va">dist</span><span class="op">)</span><span class="op">)</span>, lty <span class="op">=</span> <span class="fl">2</span>, col <span class="op">=</span> <span class="st">'blue'</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/text.html">text</a></span><span class="op">(</span><span class="va">v</span><span class="op">$</span><span class="va">dist</span>, <span class="va">v</span><span class="op">$</span><span class="va">gamma</span>, <span class="va">v</span><span class="op">$</span><span class="va">np</span>, pos <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-fitvariogrammodel" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-fitvariogrammodel-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.5: Sample variogram (circles) with models fitted using weighted least squares (solid line) and maximum likelihood estimation (dashed line)</figcaption></figure>
+<div id="fig-fitvariogrammodel" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-fitvariogrammodel-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-fitvariogrammodel-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fitvariogrammodel-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.5: Sample variogram (circles) with models fitted using weighted least squares (solid line) and maximum likelihood estimation (dashed line)
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -572,12 +626,12 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 \sum_{i=1}^{n}w_i(\gamma(h_i)-\hat{\gamma}(h_i))^2,
 \tag{12.2}\]</span></span> with weights <span class="math inline">\(w_i\)</span> by default equal to <span class="math inline">\(N(h_i)/h^2\)</span>. Other weight options are available through argument <code>fit.method</code>.</p>
 <p></p>
-<p>As an alternative to weighted least squares fitting, one can use maximum likelihood (ML) or restricted maximum likelihood parameter estimation <span class="citation" data-cites="kitanidis1985maximum">(<a href="references.html#ref-kitanidis1985maximum" role="doc-biblioref">Kitanidis and Lane 1985</a>)</span>, which for this case leads to a relatively similar fitted model, shown as the dashed line in <a href="#fig-fitvariogrammodel">Figure&nbsp;<span>12.5</span></a>. An advantage of ML-type approaches is that they do not require choosing distance intervals <span class="math inline">\(h_i\)</span> in <a href="#eq-samplevariogram">Equation&nbsp;<span>12.1</span></a> or weights <span class="math inline">\(w_i\)</span> in <a href="#eq-wlsweights">Equation&nbsp;<span>12.2</span></a>. Disadvantages are that they lean on stronger assumptions of multivariate normally distributed data, and for larger datasets require iteratively solving linear systems of size equal to the number of observations; <span class="citation" data-cites="Heaton2018">Heaton et al. (<a href="references.html#ref-Heaton2018" role="doc-biblioref">2018</a>)</span> compare approaches dedicated to fitting models to large datasets.</p>
+<p>As an alternative to weighted least squares fitting, one can use maximum likelihood (ML) or restricted maximum likelihood parameter estimation <span class="citation" data-cites="kitanidis1985maximum">(<a href="references.html#ref-kitanidis1985maximum" role="doc-biblioref">Kitanidis and Lane 1985</a>)</span>, which for this case leads to a relatively similar fitted model, shown as the dashed line in <a href="#fig-fitvariogrammodel" class="quarto-xref">Figure&nbsp;<span>12.5</span></a>. An advantage of ML-type approaches is that they do not require choosing distance intervals <span class="math inline">\(h_i\)</span> in <a href="#eq-samplevariogram" class="quarto-xref">Equation&nbsp;<span>12.1</span></a> or weights <span class="math inline">\(w_i\)</span> in <a href="#eq-wlsweights" class="quarto-xref">Equation&nbsp;<span>12.2</span></a>. Disadvantages are that they lean on stronger assumptions of multivariate normally distributed data, and for larger datasets require iteratively solving linear systems of size equal to the number of observations; <span class="citation" data-cites="Heaton2018">Heaton et al. (<a href="references.html#ref-Heaton2018" role="doc-biblioref">2018</a>)</span> compare approaches dedicated to fitting models to large datasets.</p>
 </section><section id="sec-kriging" class="level2" data-number="12.4"><h2 data-number="12.4" class="anchored" data-anchor-id="sec-kriging">
 <span class="header-section-number">12.4</span> Kriging interpolation</h2>
 <p> </p>
 <p>Typically, when we interpolate a variable, we do that on points on a regular grid covering the target area. We first create a <code>stars</code> object with a raster covering the target area, and <code>NA</code>s outside it.</p>
-<p>Kriging involves the prediction of <span class="math inline">\(Z(s_0)\)</span> at arbitrary locations <span class="math inline">\(s_0\)</span>. We can krige NO<span class="math inline">\(_2\)</span> by using <code><a href="https://rdrr.io/pkg/gstat/man/krige.html">gstat::krige</a></code>, with the model for the trend, the data, the prediction grid, and the variogram model as arguments (<a href="#fig-krigeovergermany">Figure&nbsp;<span>12.6</span></a>) by:</p>
+<p>Kriging involves the prediction of <span class="math inline">\(Z(s_0)\)</span> at arbitrary locations <span class="math inline">\(s_0\)</span>. We can krige NO<span class="math inline">\(_2\)</span> by using <code><a href="https://rdrr.io/pkg/gstat/man/krige.html">gstat::krige</a></code>, with the model for the trend, the data, the prediction grid, and the variogram model as arguments (<a href="#fig-krigeovergermany" class="quarto-xref">Figure&nbsp;<span>12.6</span></a>) by:</p>
 <p></p>
 <div class="cell">
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">k</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/gstat/man/krige.html">krige</a></span><span class="op">(</span><span class="va">NO2</span><span class="op">~</span><span class="fl">1</span>, <span class="va">no2.sf</span>, <span class="va">grd</span>, <span class="va">v.m</span><span class="op">)</span></span>
@@ -590,9 +644,13 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">no2.sf</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html">coord_sf</a></span><span class="op">(</span>lims_method <span class="op">=</span> <span class="st">"geometry_bbox"</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<div id="fig-krigeovergermany" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-krigeovergermany-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.6: Kriged NO<span class="math inline">\(_2\)</span> concentrations over Germany</figcaption></figure>
+<div id="fig-krigeovergermany" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-krigeovergermany-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-krigeovergermany-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-krigeovergermany-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.6: Kriged NO<span class="math inline">\(_2\)</span> concentrations over Germany
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -608,7 +666,7 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/gstat/man/krige.html">krige</a></span><span class="op">(</span><span class="va">NO2</span><span class="op">~</span><span class="fl">1</span>, <span class="va">no2.sf</span>, <span class="va">de</span>, <span class="va">v.m</span><span class="op">)</span></span>
 <span><span class="co"># [using ordinary kriging]</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>we can now merge the two maps into a single object to create a single plot (<a href="#fig-aggregations">Figure&nbsp;<span>12.7</span></a>):</p>
+<p>we can now merge the two maps into a single object to create a single plot (<a href="#fig-aggregations" class="quarto-xref">Figure&nbsp;<span>12.7</span></a>):</p>
 <div class="cell">
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">b</span><span class="op">$</span><span class="va">sample</span> <span class="op">&lt;-</span> <span class="va">a</span><span class="op">$</span><span class="va">NO2</span></span>
 <span><span class="va">b</span><span class="op">$</span><span class="va">kriging</span> <span class="op">&lt;-</span> <span class="va">b</span><span class="op">$</span><span class="va">var1.pred</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -620,9 +678,13 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">b2</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">NO2</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">var</span><span class="op">)</span> <span class="op">+</span></span>
 <span>     <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_gradient.html">scale_fill_gradientn</a></span><span class="op">(</span>colors <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/plot.html">sf.colors</a></span><span class="op">(</span><span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<div id="fig-aggregations" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-aggregations-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.7: Aggregated NO<span class="math inline">\(_2\)</span> values from simple averaging (left) and block kriging (right)</figcaption></figure>
+<div id="fig-aggregations" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-aggregations-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-aggregations-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-aggregations-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.7: Aggregated NO<span class="math inline">\(_2\)</span> values from simple averaging (left) and block kriging (right)
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -633,9 +695,9 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">SE</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html">var</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html">aggregate</a></span><span class="op">(</span><span class="va">no2.sf</span><span class="op">[</span><span class="st">"NO2"</span><span class="op">]</span>, <span class="va">de</span>, <span class="va">SE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>which would have been the actual estimate in design-based inference (<a href="10-Models.html#sec-design"><span>Section&nbsp;10.4</span></a>) if the sample were obtained by spatially random sampling. The block kriging variance is the model-based estimate and is a by-product of kriging. We can compare the two in <a href="#fig-aggrSE">Figure&nbsp;<span>12.8</span></a> where we see that the simple averaging approach gives more variability and mostly larger values for prediction errors of areal means, compared to block kriging.</p>
+<p>which would have been the actual estimate in design-based inference (<a href="10-Models.html#sec-design" class="quarto-xref"><span>Section 10.4</span></a>) if the sample were obtained by spatially random sampling. The block kriging variance is the model-based estimate and is a by-product of kriging. We can compare the two in <a href="#fig-aggrSE" class="quarto-xref">Figure&nbsp;<span>12.8</span></a> where we see that the simple averaging approach gives more variability and mostly larger values for prediction errors of areal means, compared to block kriging.</p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb21"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">b</span><span class="op">$</span><span class="va">sample</span> <span class="op">&lt;-</span> <span class="va">a</span><span class="op">$</span><span class="va">NO2</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb21"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">b</span><span class="op">$</span><span class="va">sample</span> <span class="op">&lt;-</span> <span class="va">a</span><span class="op">$</span><span class="va">NO2</span></span>
 <span><span class="va">b</span><span class="op">$</span><span class="va">kriging</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="va">b</span><span class="op">$</span><span class="va">var1.var</span><span class="op">)</span></span>
 <span><span class="va">b</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">sample</span>, <span class="va">kriging</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html">pivot_longer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, names_to <span class="op">=</span> <span class="st">"var"</span>, </span>
@@ -646,9 +708,13 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">var</span>, as.table <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_gradient.html">scale_fill_gradientn</a></span><span class="op">(</span>colors <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/plot.html">sf.colors</a></span><span class="op">(</span><span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-aggrSE" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-aggrSE-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.8: Standard errors for mean NO<span class="math inline">\(_2\)</span> values obtained by simple averaging (left) and block kriging (right)</figcaption></figure>
+<div id="fig-aggrSE" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-aggrSE-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-aggrSE-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-aggrSE-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.8: Standard errors for mean NO<span class="math inline">\(_2\)</span> values obtained by simple averaging (left) and block kriging (right)
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -681,9 +747,9 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span><span class="co"># sample    1  6      NA     NA                NA sim1,...,sim6</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>where <code><a href="https://rdrr.io/r/base/Random.html">set.seed()</a></code> was called here to allow reproducibility.</p>
-<p>It is usually needed to constrain the (maximum) number of nearest neighbours to include in kriging estimation by setting <code>nmax</code> because the dataset grows each step, leading otherwise quickly to very long computing times and large memory requirements. Resulting conditional simulations are shown in (<a href="#fig-plotkrigingvalues">Figure&nbsp;<span>12.9</span></a>).</p>
+<p>It is usually needed to constrain the (maximum) number of nearest neighbours to include in kriging estimation by setting <code>nmax</code> because the dataset grows each step, leading otherwise quickly to very long computing times and large memory requirements. Resulting conditional simulations are shown in (<a href="#fig-plotkrigingvalues" class="quarto-xref">Figure&nbsp;<span>12.9</span></a>).</p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://sjmgarnier.github.io/viridis/">viridis</a></span><span class="op">)</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://sjmgarnier.github.io/viridis/">viridis</a></span><span class="op">)</span></span>
 <span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/coord_fixed.html">coord_equal</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://sjmgarnier.github.io/viridis/reference/scale_viridis.html">scale_fill_viridis</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_void</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
@@ -691,9 +757,13 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_discrete.html">scale_y_discrete</a></span><span class="op">(</span>expand<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">g</span> <span class="op">+</span> <span class="fu"><a href="https://r-spatial.github.io/stars/reference/geom_stars.html">geom_stars</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">s</span><span class="op">[</span>,,,<span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">sample</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-plotkrigingvalues" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-plotkrigingvalues-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.9: Six conditional simulations for NO<span class="math inline">\(_2\)</span> values</figcaption></figure>
+<div id="fig-plotkrigingvalues" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-plotkrigingvalues-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-plotkrigingvalues-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-plotkrigingvalues-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.9: Six conditional simulations for NO<span class="math inline">\(_2\)</span> values
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -727,7 +797,7 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 <span>    <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html">set_units</a></span><span class="op">(</span><span class="va">grd</span><span class="op">$</span><span class="va">values</span>, <span class="va">m</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">grd</span><span class="op">$</span><span class="va">area</span><span class="op">[</span><span class="va">iii</span><span class="op">$</span><span class="va">ID</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_measures.html">st_area</a></span><span class="op">(</span><span class="va">iii</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Instead of doing the two-stage procedure above, first finding cells that have a border crossing it then computing its area, we could also directly use <code>st_intersection</code> on all cells, but that takes considerably longer. From the counts and areas we can compute densities (<a href="#fig-popdens">Figure&nbsp;<span>12.10</span></a>) and verify totals</p>
+<p>Instead of doing the two-stage procedure above, first finding cells that have a border crossing it then computing its area, we could also directly use <code>st_intersection</code> on all cells, but that takes considerably longer. From the counts and areas we can compute densities (<a href="#fig-popdens" class="quarto-xref">Figure&nbsp;<span>12.10</span></a>) and verify totals</p>
 <div class="cell">
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">grd</span><span class="op">$</span><span class="va">pop_dens</span> <span class="op">&lt;-</span> <span class="va">a</span><span class="op">$</span><span class="va">Einwohner</span> <span class="op">/</span> <span class="va">grd</span><span class="op">$</span><span class="va">area</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">grd</span><span class="op">$</span><span class="va">pop_dens</span> <span class="op">*</span> <span class="va">grd</span><span class="op">$</span><span class="va">area</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># verify</span></span>
@@ -737,11 +807,15 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 </div>
 <p>which indicates strong agreement. Using <code>st_interpolate_aw</code> would have given an exact match.</p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb27"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">g</span> <span class="op">+</span> <span class="fu"><a href="https://r-spatial.github.io/stars/reference/geom_stars.html">geom_stars</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">grd</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="va">pop_dens</span><span class="op">)</span>, x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb27"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">g</span> <span class="op">+</span> <span class="fu"><a href="https://r-spatial.github.io/stars/reference/geom_stars.html">geom_stars</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">grd</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="va">pop_dens</span><span class="op">)</span>, x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-popdens" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-popdens-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.10: Population density for 100 m <span class="math inline">\(\times\)</span> 100 m grid cells</figcaption></figure>
+<div id="fig-popdens" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-popdens-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-popdens-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-popdens-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.10: Population density for 100 m <span class="math inline">\(\times\)</span> 100 m grid cells
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -776,14 +850,18 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 <span><span class="co"># Multiple R-squared:  0.377,   Adjusted R-squared:  0.369 </span></span>
 <span><span class="co"># F-statistic: 43.7 on 1 and 72 DF,  p-value: 5.82e-09</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>for which the corresponding scatterplot is shown in <a href="#fig-no2scat">Figure&nbsp;<span>12.11</span></a>.</p>
+<p>for which the corresponding scatterplot is shown in <a href="#fig-no2scat" class="quarto-xref">Figure&nbsp;<span>12.11</span></a>.</p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb30"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">NO2</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="va">pop_dens</span><span class="op">)</span>, <span class="va">no2.sf</span><span class="op">)</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb30"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">NO2</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="va">pop_dens</span><span class="op">)</span>, <span class="va">no2.sf</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html">abline</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html">lm</a></span><span class="op">(</span><span class="va">NO2</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="va">pop_dens</span><span class="op">)</span>, <span class="va">no2.sf</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-no2scat" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-no2scat-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.11: Scatter plot of 2017 annual mean NO<span class="math inline">\(_2\)</span> concentration against population density, for rural background air quality stations</figcaption></figure>
+<div id="fig-no2scat" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-no2scat-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-no2scat-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-no2scat-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.11: Scatter plot of 2017 annual mean NO<span class="math inline">\(_2\)</span> concentration against population density, for rural background air quality stations
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -794,22 +872,26 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 <span><span class="va">vr.m</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/gstat/man/fit.variogram.html">fit.variogram</a></span><span class="op">(</span><span class="va">vr</span>, <span class="fu"><a href="https://rdrr.io/pkg/gstat/man/vgm.html">vgm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"Exp"</span>, <span class="fl">50000</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb32"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">vr</span>, <span class="va">vr.m</span>, plot.numbers <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb32"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">vr</span>, <span class="va">vr.m</span>, plot.numbers <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-predictusingpopulationdensity" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-predictusingpopulationdensity-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.12: Residual variogram after subtracting population density trend</figcaption></figure>
+<div id="fig-predictusingpopulationdensity" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-predictusingpopulationdensity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-predictusingpopulationdensity-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-predictusingpopulationdensity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.12: Residual variogram after subtracting population density trend
+</figcaption></figure>
 </div>
 </div>
 </div>
-<p>which is shown in <a href="#fig-predictusingpopulationdensity">Figure&nbsp;<span>12.12</span></a>. Subsequently, kriging prediction (<a href="#fig-residualkriging">Figure&nbsp;<span>12.13</span></a>) is done by</p>
+<p>which is shown in <a href="#fig-predictusingpopulationdensity" class="quarto-xref">Figure&nbsp;<span>12.12</span></a>. Subsequently, kriging prediction (<a href="#fig-residualkriging" class="quarto-xref">Figure&nbsp;<span>12.13</span></a>) is done by</p>
 <div class="cell">
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">kr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/gstat/man/krige.html">krige</a></span><span class="op">(</span><span class="va">NO2</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="va">pop_dens</span><span class="op">)</span>, <span class="va">no2.sf</span>, </span>
 <span>            <span class="va">grd</span><span class="op">[</span><span class="st">"pop_dens"</span><span class="op">]</span>, <span class="va">vr.m</span><span class="op">)</span></span>
 <span><span class="co"># [using universal kriging]</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb34"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">k</span><span class="op">$</span><span class="va">kr1</span> <span class="op">&lt;-</span> <span class="va">k</span><span class="op">$</span><span class="va">var1.pred</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb34"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">k</span><span class="op">$</span><span class="va">kr1</span> <span class="op">&lt;-</span> <span class="va">k</span><span class="op">$</span><span class="va">var1.pred</span></span>
 <span><span class="va">k</span><span class="op">$</span><span class="va">kr2</span> <span class="op">&lt;-</span> <span class="va">kr</span><span class="op">$</span><span class="va">var1.pred</span></span>
 <span><span class="fu"><a href="https://r-spatial.github.io/stars/reference/redimension.html">st_redimension</a></span><span class="op">(</span><span class="va">k</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"kr1"</span>, <span class="st">"kr2"</span><span class="op">)</span><span class="op">]</span>, </span>
 <span>    along <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>what <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"kriging"</span>, <span class="st">"residual kriging"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -819,18 +901,22 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">no2.sf</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">what</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html">coord_sf</a></span><span class="op">(</span>lims_method <span class="op">=</span> <span class="st">"geometry_bbox"</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-residualkriging" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="12-Interpolation_files/figure-html/fig-residualkriging-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;12.13: Kriging NO<span class="math inline">\(_2\)</span> values using population density as a trend variable</figcaption></figure>
+<div id="fig-residualkriging" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-residualkriging-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="12-Interpolation_files/figure-html/fig-residualkriging-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-residualkriging-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12.13: Kriging NO<span class="math inline">\(_2\)</span> values using population density as a trend variable
+</figcaption></figure>
 </div>
 </div>
 </div>
 <p>where, critically, the <code>pop_dens</code> values are now available for prediction locations in the <code>newdata</code> object <code>grd</code>.</p>
-<p>Compared to (ordinary) kriging We see some clear differences: the map using population density in the trend follows the extremes of the population density rather than those of the measurement stations, and has a value range that extends that of ordinary kriging. It should be taken with a large grain of salt however, since the stations used were filtered for the category “rural background”, indicating that they only represent conditions of lower populations density. The scatter-plot of <a href="#fig-no2scat">Figure&nbsp;<span>12.11</span></a> reveals that the the population density at the locations of stations is much more limited than that in the population density map, and hence the right-hand side map is based on strongly extrapolating the relationship shown in <a href="#fig-no2scat">Figure&nbsp;<span>12.11</span></a>.</p>
+<p>Compared to (ordinary) kriging We see some clear differences: the map using population density in the trend follows the extremes of the population density rather than those of the measurement stations, and has a value range that extends that of ordinary kriging. It should be taken with a large grain of salt however, since the stations used were filtered for the category “rural background”, indicating that they only represent conditions of lower populations density. The scatter-plot of <a href="#fig-no2scat" class="quarto-xref">Figure&nbsp;<span>12.11</span></a> reveals that the the population density at the locations of stations is much more limited than that in the population density map, and hence the right-hand side map is based on strongly extrapolating the relationship shown in <a href="#fig-no2scat" class="quarto-xref">Figure&nbsp;<span>12.11</span></a>.</p>
 </section></section><section id="exercises" class="level2" data-number="12.8"><h2 data-number="12.8" class="anchored" data-anchor-id="exercises">
 <span class="header-section-number">12.8</span> Exercises</h2>
 <ol type="1">
-<li>Create a plot like the one in <a href="#fig-residualkriging">Figure&nbsp;<span>12.13</span></a> that has the inverse distance interpolated map of <a href="#fig-idw">Figure&nbsp;<span>12.2</span></a> added on the left side.</li>
+<li>Create a plot like the one in <a href="#fig-residualkriging" class="quarto-xref">Figure&nbsp;<span>12.13</span></a> that has the inverse distance interpolated map of <a href="#fig-idw" class="quarto-xref">Figure&nbsp;<span>12.2</span></a> added on the left side.</li>
 <li>Create a scatter-plot of the map values of the idw and kriging map, and a scatter-plot of map values of idw and residual kriging.</li>
 <li>Carry out a <em>block kriging</em>, predicting block averages for blocks centred over grid cells, by setting the <code>block</code> argument in <code><a href="https://rdrr.io/pkg/gstat/man/krige.html">krige()</a></code>, and do this for block sizes of 10 km (grid cell size), 50 km, and 200 km. Compare the resulting maps of estimates for these three block sizes with those obtained by point kriging, and do the same thing for all associated kriging standard errors.</li>
 <li>Based on the residual kriging results obtained above, compute maps of the lower and upper boundary of a 95% confidence interval, when assuming that the kriging error is normally distributed, and show them in a plot with a single (joint) legend.</li>
@@ -840,7 +926,7 @@ Z(s) = \sum_{j=0}^p \beta_j X_j(s) + e(s)
 
 <!-- -->
 
-<div id="refs" class="references csl-bib-body hanging-indent" role="list" style="display: none">
+<div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">
 <div id="ref-blangiardo2015spatial" class="csl-entry" role="listitem">
 Blangiardo, Marta, and Michela Cameletti. 2015. <em>Spatial and Spatio-Temporal Bayesian Models with r-INLA</em>. John Wiley &amp; Sons.
 </div>
@@ -1005,10 +1091,9 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   if (showAllCode) {
     showAllCode.addEventListener("click", toggleCodeHandler(true));
   }
-  function tippyHover(el, contentFn) {
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
     const config = {
       allowHTML: true,
-      content: contentFn,
       maxWidth: 500,
       delay: 100,
       arrow: false,
@@ -1018,8 +1103,17 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       interactive: true,
       interactiveBorder: 10,
       theme: 'quarto',
-      placement: 'bottom-start'
+      placement: 'bottom-start',
     };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
     window.tippy(el, config); 
   }
   const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
@@ -1032,6 +1126,125 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       const id = href.replace(/^#\/?/, "");
       const note = window.document.getElementById(id);
       return note.innerHTML;
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
     });
   }
       let selectedAnnoteEl;
@@ -1075,6 +1288,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
             }
             div.style.top = top - 2 + "px";
             div.style.height = height + 4 + "px";
+            div.style.left = 0;
             let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
             if (gutterDiv === null) {
               gutterDiv = window.document.createElement("div");
@@ -1100,6 +1314,32 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
         });
         selectedAnnoteEl = undefined;
       };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
       // Attach click handler to the DT
       const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
       for (const annoteDlNode of annoteDls) {
@@ -1159,12 +1399,12 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   }
 });
 </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
-      <a href="./11-PointPattern.html" class="pagination-link">
+      <a href="./11-PointPattern.html" class="pagination-link  aria-label=" pattern="" analysis="">
         <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Point Pattern Analysis</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./13-Geostatistics.html" class="pagination-link">
+      <a href="./13-Geostatistics.html" class="pagination-link" aria-label="<span class='chapter-number'>13</span>&nbsp; <span class='chapter-title'>Multivariate and Spatiotemporal Geostatistics</span>">
         <span class="nav-page-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Multivariate and Spatiotemporal Geostatistics</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
@@ -1205,12 +1445,12 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-34"><a href="#cb35-34" aria-hidden="true" tabindex="-1"></a>\index{spatial autocorrelation in fields}</span>
 <span id="cb35-35"><a href="#cb35-35" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-36"><a href="#cb35-36" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE, eval=FALSE}</span></span>
-<span id="cb35-37"><a href="#cb35-37" aria-hidden="true" tabindex="-1"></a><span class="co"># after running the "Spatiotemporal Geostatistics" chapter, write NO2 means by</span></span>
-<span id="cb35-38"><a href="#cb35-38" aria-hidden="true" tabindex="-1"></a><span class="fu">write_csv</span>(<span class="fu">right_join</span>(a2, tb), <span class="st">"no2.csv"</span>)</span>
+<span id="cb35-37"><a href="#cb35-37" aria-hidden="true" tabindex="-1"></a><span class="in"># after running the "Spatiotemporal Geostatistics" chapter, write NO2 means by</span></span>
+<span id="cb35-38"><a href="#cb35-38" aria-hidden="true" tabindex="-1"></a><span class="in">write_csv(right_join(a2, tb), "no2.csv")</span></span>
 <span id="cb35-39"><a href="#cb35-39" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-40"><a href="#cb35-40" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-41"><a href="#cb35-41" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
-<span id="cb35-42"><a href="#cb35-42" aria-hidden="true" tabindex="-1"></a>CI <span class="ot">&lt;-</span> <span class="fu">Sys.getenv</span>(<span class="st">"CI"</span>) <span class="sc">==</span> <span class="st">"true"</span> <span class="co"># TRUE when inside GitHub Actions</span></span>
+<span id="cb35-42"><a href="#cb35-42" aria-hidden="true" tabindex="-1"></a><span class="in">CI &lt;- Sys.getenv("CI") == "true" # TRUE when inside GitHub Actions</span></span>
 <span id="cb35-43"><a href="#cb35-43" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-44"><a href="#cb35-44" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-45"><a href="#cb35-45" aria-hidden="true" tabindex="-1"></a><span class="fu">## A first dataset</span></span>
@@ -1218,9 +1458,9 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-47"><a href="#cb35-47" aria-hidden="true" tabindex="-1"></a>We can read station mean NO$_2$ values, a dataset that is prepared </span>
 <span id="cb35-48"><a href="#cb35-48" aria-hidden="true" tabindex="-1"></a>in @sec-stgeostatistics, by loading it from package **gstat** using</span>
 <span id="cb35-49"><a href="#cb35-49" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, message=FALSE}</span></span>
-<span id="cb35-50"><a href="#cb35-50" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse) <span class="sc">|&gt;</span> <span class="fu">suppressPackageStartupMessages</span>()</span>
-<span id="cb35-51"><a href="#cb35-51" aria-hidden="true" tabindex="-1"></a>no2 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="fu">system.file</span>(<span class="st">"external/no2.csv"</span>, </span>
-<span id="cb35-52"><a href="#cb35-52" aria-hidden="true" tabindex="-1"></a>    <span class="at">package =</span> <span class="st">"gstat"</span>), <span class="at">show_col_types =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb35-50"><a href="#cb35-50" aria-hidden="true" tabindex="-1"></a><span class="in">library(tidyverse) |&gt; suppressPackageStartupMessages()</span></span>
+<span id="cb35-51"><a href="#cb35-51" aria-hidden="true" tabindex="-1"></a><span class="in">no2 &lt;- read_csv(system.file("external/no2.csv", </span></span>
+<span id="cb35-52"><a href="#cb35-52" aria-hidden="true" tabindex="-1"></a><span class="in">    package = "gstat"), show_col_types = FALSE)</span></span>
 <span id="cb35-53"><a href="#cb35-53" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-54"><a href="#cb35-54" aria-hidden="true" tabindex="-1"></a>and convert it into an <span class="in">`sf`</span> object with an appropriate UTM projection using</span>
 <span id="cb35-57"><a href="#cb35-57" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
@@ -1234,14 +1474,14 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-65"><a href="#cb35-65" aria-hidden="true" tabindex="-1"></a>Next, we can load country boundaries and plot these data using <span class="in">`ggplot`</span>, shown</span>
 <span id="cb35-66"><a href="#cb35-66" aria-hidden="true" tabindex="-1"></a>in @fig-plotDE.</span>
 <span id="cb35-67"><a href="#cb35-67" aria-hidden="true" tabindex="-1"></a><span class="in">```{r plot}</span></span>
-<span id="cb35-68"><a href="#cb35-68" aria-hidden="true" tabindex="-1"></a><span class="fu">read_sf</span>(<span class="st">"data/de_nuts1.gpkg"</span>) <span class="sc">|&gt;</span> <span class="fu">st_transform</span>(crs) <span class="ot">-&gt;</span> de</span>
+<span id="cb35-68"><a href="#cb35-68" aria-hidden="true" tabindex="-1"></a><span class="in">read_sf("data/de_nuts1.gpkg") |&gt; st_transform(crs) -&gt; de</span></span>
 <span id="cb35-69"><a href="#cb35-69" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-70"><a href="#cb35-70" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-71"><a href="#cb35-71" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-plotDE, echo = !knitr::is_latex_output()}</span></span>
-<span id="cb35-72"><a href="#cb35-72" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Mean NO$_2$ concentrations in air for rural background stations in Germany, in 2017"</span></span>
-<span id="cb35-73"><a href="#cb35-73" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-74"><a href="#cb35-74" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_sf</span>(<span class="at">data =</span> de) <span class="sc">+</span> </span>
-<span id="cb35-75"><a href="#cb35-75" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> no2.sf, <span class="at">mapping =</span> <span class="fu">aes</span>(<span class="at">col =</span> NO2))</span>
+<span id="cb35-72"><a href="#cb35-72" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Mean NO$_2$ concentrations in air for rural background stations in Germany, in 2017"</span></span>
+<span id="cb35-73"><a href="#cb35-73" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-74"><a href="#cb35-74" aria-hidden="true" tabindex="-1"></a><span class="in">ggplot() + geom_sf(data = de) + </span></span>
+<span id="cb35-75"><a href="#cb35-75" aria-hidden="true" tabindex="-1"></a><span class="in">    geom_sf(data = no2.sf, mapping = aes(col = NO2))</span></span>
 <span id="cb35-76"><a href="#cb35-76" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-77"><a href="#cb35-77" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-78"><a href="#cb35-78" aria-hidden="true" tabindex="-1"></a>\index{interpolation!target grid}</span>
@@ -1253,11 +1493,11 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-84"><a href="#cb35-84" aria-hidden="true" tabindex="-1"></a>create a regular 10 km $\times$ 10 km grid over Germany by</span>
 <span id="cb35-85"><a href="#cb35-85" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-86"><a href="#cb35-86" aria-hidden="true" tabindex="-1"></a><span class="in">```{r buildgridgermany}</span></span>
-<span id="cb35-87"><a href="#cb35-87" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stars) <span class="sc">|&gt;</span> <span class="fu">suppressPackageStartupMessages</span>()</span>
-<span id="cb35-88"><a href="#cb35-88" aria-hidden="true" tabindex="-1"></a><span class="fu">st_bbox</span>(de) <span class="sc">|&gt;</span></span>
-<span id="cb35-89"><a href="#cb35-89" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_as_stars</span>(<span class="at">dx =</span> <span class="dv">10000</span>) <span class="sc">|&gt;</span></span>
-<span id="cb35-90"><a href="#cb35-90" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_crop</span>(de) <span class="ot">-&gt;</span> grd</span>
-<span id="cb35-91"><a href="#cb35-91" aria-hidden="true" tabindex="-1"></a>grd</span>
+<span id="cb35-87"><a href="#cb35-87" aria-hidden="true" tabindex="-1"></a><span class="in">library(stars) |&gt; suppressPackageStartupMessages()</span></span>
+<span id="cb35-88"><a href="#cb35-88" aria-hidden="true" tabindex="-1"></a><span class="in">st_bbox(de) |&gt;</span></span>
+<span id="cb35-89"><a href="#cb35-89" aria-hidden="true" tabindex="-1"></a><span class="in">  st_as_stars(dx = 10000) |&gt;</span></span>
+<span id="cb35-90"><a href="#cb35-90" aria-hidden="true" tabindex="-1"></a><span class="in">  st_crop(de) -&gt; grd</span></span>
+<span id="cb35-91"><a href="#cb35-91" aria-hidden="true" tabindex="-1"></a><span class="in">grd</span></span>
 <span id="cb35-92"><a href="#cb35-92" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-93"><a href="#cb35-93" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-94"><a href="#cb35-94" aria-hidden="true" tabindex="-1"></a>Here, we chose grid cells not too fine, so that we still see</span>
@@ -1278,20 +1518,20 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-109"><a href="#cb35-109" aria-hidden="true" tabindex="-1"></a>taken as 2, or optimised using cross-validation. We can compute</span>
 <span id="cb35-110"><a href="#cb35-110" aria-hidden="true" tabindex="-1"></a>inverse distance interpolated values using <span class="in">`gstat::idw`</span>, </span>
 <span id="cb35-111"><a href="#cb35-111" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, message=FALSE}</span></span>
-<span id="cb35-112"><a href="#cb35-112" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gstat)</span>
-<span id="cb35-113"><a href="#cb35-113" aria-hidden="true" tabindex="-1"></a>i <span class="ot">&lt;-</span> <span class="fu">idw</span>(NO2<span class="sc">~</span><span class="dv">1</span>, no2.sf, grd)</span>
+<span id="cb35-112"><a href="#cb35-112" aria-hidden="true" tabindex="-1"></a><span class="in">library(gstat)</span></span>
+<span id="cb35-113"><a href="#cb35-113" aria-hidden="true" tabindex="-1"></a><span class="in">i &lt;- idw(NO2~1, no2.sf, grd)</span></span>
 <span id="cb35-114"><a href="#cb35-114" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-115"><a href="#cb35-115" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-116"><a href="#cb35-116" aria-hidden="true" tabindex="-1"></a>and plot them in @fig-idw.</span>
 <span id="cb35-117"><a href="#cb35-117" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-118"><a href="#cb35-118" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-idw, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb35-119"><a href="#cb35-119" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Inverse distance weighted interpolated values for NO$_2$ over Germany"</span></span>
-<span id="cb35-120"><a href="#cb35-120" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-121"><a href="#cb35-121" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> i, </span>
-<span id="cb35-122"><a href="#cb35-122" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">aes</span>(<span class="at">fill =</span> var1.pred, <span class="at">x =</span> x, <span class="at">y =</span> y)) <span class="sc">+</span> </span>
-<span id="cb35-123"><a href="#cb35-123" aria-hidden="true" tabindex="-1"></a>    <span class="fu">xlab</span>(<span class="cn">NULL</span>) <span class="sc">+</span> <span class="fu">ylab</span>(<span class="cn">NULL</span>) <span class="sc">+</span></span>
-<span id="cb35-124"><a href="#cb35-124" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> <span class="fu">st_cast</span>(de, <span class="st">"MULTILINESTRING"</span>)) <span class="sc">+</span> </span>
-<span id="cb35-125"><a href="#cb35-125" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> no2.sf)</span>
+<span id="cb35-119"><a href="#cb35-119" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Inverse distance weighted interpolated values for NO$_2$ over Germany"</span></span>
+<span id="cb35-120"><a href="#cb35-120" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-121"><a href="#cb35-121" aria-hidden="true" tabindex="-1"></a><span class="in">ggplot() + geom_stars(data = i, </span></span>
+<span id="cb35-122"><a href="#cb35-122" aria-hidden="true" tabindex="-1"></a><span class="in">                      aes(fill = var1.pred, x = x, y = y)) + </span></span>
+<span id="cb35-123"><a href="#cb35-123" aria-hidden="true" tabindex="-1"></a><span class="in">    xlab(NULL) + ylab(NULL) +</span></span>
+<span id="cb35-124"><a href="#cb35-124" aria-hidden="true" tabindex="-1"></a><span class="in">    geom_sf(data = st_cast(de, "MULTILINESTRING")) + </span></span>
+<span id="cb35-125"><a href="#cb35-125" aria-hidden="true" tabindex="-1"></a><span class="in">    geom_sf(data = no2.sf)</span></span>
 <span id="cb35-126"><a href="#cb35-126" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-127"><a href="#cb35-127" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-128"><a href="#cb35-128" aria-hidden="true" tabindex="-1"></a><span class="fu">## Sample variogram </span></span>
@@ -1309,27 +1549,27 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-140"><a href="#cb35-140" aria-hidden="true" tabindex="-1"></a>with $N(h_i)$ the number of sample pairs available for distance interval $h_i$.</span>
 <span id="cb35-141"><a href="#cb35-141" aria-hidden="true" tabindex="-1"></a>Function <span class="in">`gstat::variogram`</span> computes sample variograms,</span>
 <span id="cb35-142"><a href="#cb35-142" aria-hidden="true" tabindex="-1"></a><span class="in">```{r computevariogram}</span></span>
-<span id="cb35-143"><a href="#cb35-143" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> <span class="fu">variogram</span>(NO2<span class="sc">~</span><span class="dv">1</span>, no2.sf)</span>
+<span id="cb35-143"><a href="#cb35-143" aria-hidden="true" tabindex="-1"></a><span class="in">v &lt;- variogram(NO2~1, no2.sf)</span></span>
 <span id="cb35-144"><a href="#cb35-144" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-145"><a href="#cb35-145" aria-hidden="true" tabindex="-1"></a>and the result of plotting this is shown in @fig-vgm.</span>
 <span id="cb35-146"><a href="#cb35-146" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-vgm, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb35-147"><a href="#cb35-147" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Sample variogram plot"</span></span>
-<span id="cb35-148"><a href="#cb35-148" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-149"><a href="#cb35-149" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(v, <span class="at">plot.numbers =</span> <span class="cn">TRUE</span>, <span class="at">xlab =</span> <span class="st">"distance h [m]"</span>,</span>
-<span id="cb35-150"><a href="#cb35-150" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">gamma</span>(h)),</span>
-<span id="cb35-151"><a href="#cb35-151" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">1.055</span> <span class="sc">*</span> <span class="fu">max</span>(v<span class="sc">$</span>dist)))</span>
+<span id="cb35-147"><a href="#cb35-147" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Sample variogram plot"</span></span>
+<span id="cb35-148"><a href="#cb35-148" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-149"><a href="#cb35-149" aria-hidden="true" tabindex="-1"></a><span class="in">plot(v, plot.numbers = TRUE, xlab = "distance h [m]",</span></span>
+<span id="cb35-150"><a href="#cb35-150" aria-hidden="true" tabindex="-1"></a><span class="in">     ylab = expression(gamma(h)),</span></span>
+<span id="cb35-151"><a href="#cb35-151" aria-hidden="true" tabindex="-1"></a><span class="in">     xlim = c(0, 1.055 * max(v$dist)))</span></span>
 <span id="cb35-152"><a href="#cb35-152" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-153"><a href="#cb35-153" aria-hidden="true" tabindex="-1"></a>Function <span class="in">`variogram`</span> chooses default for maximum distance (<span class="in">`cutoff`</span>: one-third of the length of the bounding box diagonal) and (constant) interval widths (<span class="in">`width`</span>: cutoff divided by 15). These defaults can be changed by</span>
 <span id="cb35-154"><a href="#cb35-154" aria-hidden="true" tabindex="-1"></a><span class="in">```{r controlcutoff}</span></span>
-<span id="cb35-155"><a href="#cb35-155" aria-hidden="true" tabindex="-1"></a>v0 <span class="ot">&lt;-</span> <span class="fu">variogram</span>(NO2<span class="sc">~</span><span class="dv">1</span>, no2.sf, <span class="at">cutoff =</span> <span class="dv">100000</span>, <span class="at">width =</span> <span class="dv">10000</span>)</span>
+<span id="cb35-155"><a href="#cb35-155" aria-hidden="true" tabindex="-1"></a><span class="in">v0 &lt;- variogram(NO2~1, no2.sf, cutoff = 100000, width = 10000)</span></span>
 <span id="cb35-156"><a href="#cb35-156" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-157"><a href="#cb35-157" aria-hidden="true" tabindex="-1"></a>shown in @fig-vgm2.</span>
 <span id="cb35-158"><a href="#cb35-158" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-vgm2, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb35-159"><a href="#cb35-159" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Sample variogram plot with adjusted cutoff and lag width"</span></span>
-<span id="cb35-160"><a href="#cb35-160" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-161"><a href="#cb35-161" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(v0, <span class="at">plot.numbers =</span> <span class="cn">TRUE</span>, <span class="at">xlab =</span> <span class="st">"distance h [m]"</span>,</span>
-<span id="cb35-162"><a href="#cb35-162" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">gamma</span>(h)),</span>
-<span id="cb35-163"><a href="#cb35-163" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">1.055</span> <span class="sc">*</span> <span class="fu">max</span>(v0<span class="sc">$</span>dist)))</span>
+<span id="cb35-159"><a href="#cb35-159" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Sample variogram plot with adjusted cutoff and lag width"</span></span>
+<span id="cb35-160"><a href="#cb35-160" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-161"><a href="#cb35-161" aria-hidden="true" tabindex="-1"></a><span class="in">plot(v0, plot.numbers = TRUE, xlab = "distance h [m]",</span></span>
+<span id="cb35-162"><a href="#cb35-162" aria-hidden="true" tabindex="-1"></a><span class="in">     ylab = expression(gamma(h)),</span></span>
+<span id="cb35-163"><a href="#cb35-163" aria-hidden="true" tabindex="-1"></a><span class="in">     xlim = c(0, 1.055 * max(v0$dist)))</span></span>
 <span id="cb35-164"><a href="#cb35-164" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-165"><a href="#cb35-165" aria-hidden="true" tabindex="-1"></a>Note that the formula <span class="in">`NO2~1`</span> is used to select the variable of interest from the data file (<span class="in">`NO2`</span>), and to specify the mean model: <span class="in">`~1`</span> specifies an intercept-only (unknown, constant mean) model.</span>
 <span id="cb35-166"><a href="#cb35-166" aria-hidden="true" tabindex="-1"></a></span>
@@ -1348,74 +1588,74 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-181"><a href="#cb35-181" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-182"><a href="#cb35-182" aria-hidden="true" tabindex="-1"></a>shown by the solid line in @fig-fitvariogrammodel.</span>
 <span id="cb35-183"><a href="#cb35-183" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-fitvariogrammodel, echo = !knitr::is_latex_output()}</span></span>
-<span id="cb35-184"><a href="#cb35-184" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Sample variogram (circles) with models fitted using weighted least squares (solid line) and maximum likelihood estimation (dashed line)"</span></span>
-<span id="cb35-185"><a href="#cb35-185" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-186"><a href="#cb35-186" aria-hidden="true" tabindex="-1"></a>fit.variogram_ml <span class="ot">&lt;-</span> <span class="cf">function</span>(formula, data, init, ...) {</span>
-<span id="cb35-187"><a href="#cb35-187" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">nrow</span>(init) <span class="sc">&lt;=</span> <span class="dv">2</span>, <span class="fu">inherits</span>(data, <span class="st">"sf"</span>), <span class="fu">inherits</span>(formula, <span class="st">"formula"</span>),</span>
-<span id="cb35-188"><a href="#cb35-188" aria-hidden="true" tabindex="-1"></a>    <span class="fu">inherits</span>(init, <span class="st">"variogramModel"</span>))</span>
-<span id="cb35-189"><a href="#cb35-189" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">nrow</span>(init) <span class="sc">==</span> <span class="dv">2</span>)</span>
-<span id="cb35-190"><a href="#cb35-190" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stopifnot</span>(<span class="st">"Nug"</span> <span class="sc">%in%</span> init<span class="sc">$</span>model)</span>
+<span id="cb35-184"><a href="#cb35-184" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Sample variogram (circles) with models fitted using weighted least squares (solid line) and maximum likelihood estimation (dashed line)"</span></span>
+<span id="cb35-185"><a href="#cb35-185" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-186"><a href="#cb35-186" aria-hidden="true" tabindex="-1"></a><span class="in">fit.variogram_ml &lt;- function(formula, data, init, ...) {</span></span>
+<span id="cb35-187"><a href="#cb35-187" aria-hidden="true" tabindex="-1"></a><span class="in">  stopifnot(nrow(init) &lt;= 2, inherits(data, "sf"), inherits(formula, "formula"),</span></span>
+<span id="cb35-188"><a href="#cb35-188" aria-hidden="true" tabindex="-1"></a><span class="in">    inherits(init, "variogramModel"))</span></span>
+<span id="cb35-189"><a href="#cb35-189" aria-hidden="true" tabindex="-1"></a><span class="in">  if (nrow(init) == 2)</span></span>
+<span id="cb35-190"><a href="#cb35-190" aria-hidden="true" tabindex="-1"></a><span class="in">    stopifnot("Nug" %in% init$model)</span></span>
 <span id="cb35-191"><a href="#cb35-191" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-192"><a href="#cb35-192" aria-hidden="true" tabindex="-1"></a>  <span class="co"># convert from parameter vector to "variogramModel" class:</span></span>
-<span id="cb35-193"><a href="#cb35-193" aria-hidden="true" tabindex="-1"></a>  <span class="co"># x is c(sill, range) or: c(sill, range, nugget)</span></span>
-<span id="cb35-194"><a href="#cb35-194" aria-hidden="true" tabindex="-1"></a>  get_model <span class="ot">&lt;-</span> <span class="cf">function</span>(x, model, <span class="at">min_range =</span> <span class="fl">1e-10</span>) {</span>
-<span id="cb35-195"><a href="#cb35-195" aria-hidden="true" tabindex="-1"></a>    sill <span class="ot">&lt;-</span> x[<span class="dv">1</span>]</span>
-<span id="cb35-196"><a href="#cb35-196" aria-hidden="true" tabindex="-1"></a>    range <span class="ot">&lt;-</span> <span class="fu">max</span>(x[<span class="dv">2</span>], min_range)</span>
-<span id="cb35-197"><a href="#cb35-197" aria-hidden="true" tabindex="-1"></a>    nugget <span class="ot">&lt;-</span> <span class="cf">if</span> (<span class="fu">length</span>(x) <span class="sc">==</span> <span class="dv">3</span>)</span>
-<span id="cb35-198"><a href="#cb35-198" aria-hidden="true" tabindex="-1"></a>            x[<span class="dv">3</span>]</span>
-<span id="cb35-199"><a href="#cb35-199" aria-hidden="true" tabindex="-1"></a>      <span class="cf">else</span></span>
-<span id="cb35-200"><a href="#cb35-200" aria-hidden="true" tabindex="-1"></a>            <span class="fl">0.</span></span>
-<span id="cb35-201"><a href="#cb35-201" aria-hidden="true" tabindex="-1"></a>    m <span class="ot">&lt;-</span> <span class="fu">vgm</span>(sill, model, range, nugget)</span>
-<span id="cb35-202"><a href="#cb35-202" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb35-192"><a href="#cb35-192" aria-hidden="true" tabindex="-1"></a><span class="in">  # convert from parameter vector to "variogramModel" class:</span></span>
+<span id="cb35-193"><a href="#cb35-193" aria-hidden="true" tabindex="-1"></a><span class="in">  # x is c(sill, range) or: c(sill, range, nugget)</span></span>
+<span id="cb35-194"><a href="#cb35-194" aria-hidden="true" tabindex="-1"></a><span class="in">  get_model &lt;- function(x, model, min_range = 1e-10) {</span></span>
+<span id="cb35-195"><a href="#cb35-195" aria-hidden="true" tabindex="-1"></a><span class="in">    sill &lt;- x[1]</span></span>
+<span id="cb35-196"><a href="#cb35-196" aria-hidden="true" tabindex="-1"></a><span class="in">    range &lt;- max(x[2], min_range)</span></span>
+<span id="cb35-197"><a href="#cb35-197" aria-hidden="true" tabindex="-1"></a><span class="in">    nugget &lt;- if (length(x) == 3)</span></span>
+<span id="cb35-198"><a href="#cb35-198" aria-hidden="true" tabindex="-1"></a><span class="in">            x[3]</span></span>
+<span id="cb35-199"><a href="#cb35-199" aria-hidden="true" tabindex="-1"></a><span class="in">      else</span></span>
+<span id="cb35-200"><a href="#cb35-200" aria-hidden="true" tabindex="-1"></a><span class="in">            0.</span></span>
+<span id="cb35-201"><a href="#cb35-201" aria-hidden="true" tabindex="-1"></a><span class="in">    m &lt;- vgm(sill, model, range, nugget)</span></span>
+<span id="cb35-202"><a href="#cb35-202" aria-hidden="true" tabindex="-1"></a><span class="in">  }</span></span>
 <span id="cb35-203"><a href="#cb35-203" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-204"><a href="#cb35-204" aria-hidden="true" tabindex="-1"></a>  <span class="co"># with A &lt;- chol(Q), solve Q x = b for x:</span></span>
-<span id="cb35-205"><a href="#cb35-205" aria-hidden="true" tabindex="-1"></a>  ch_solve <span class="ot">&lt;-</span> <span class="cf">function</span>(A, b) {</span>
-<span id="cb35-206"><a href="#cb35-206" aria-hidden="true" tabindex="-1"></a>    <span class="fu">backsolve</span>(A, <span class="fu">forwardsolve</span>(A, b, <span class="at">upper.tri =</span> <span class="cn">TRUE</span>, <span class="at">transpose =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb35-207"><a href="#cb35-207" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb35-204"><a href="#cb35-204" aria-hidden="true" tabindex="-1"></a><span class="in">  # with A &lt;- chol(Q), solve Q x = b for x:</span></span>
+<span id="cb35-205"><a href="#cb35-205" aria-hidden="true" tabindex="-1"></a><span class="in">  ch_solve &lt;- function(A, b) {</span></span>
+<span id="cb35-206"><a href="#cb35-206" aria-hidden="true" tabindex="-1"></a><span class="in">    backsolve(A, forwardsolve(A, b, upper.tri = TRUE, transpose = TRUE))</span></span>
+<span id="cb35-207"><a href="#cb35-207" aria-hidden="true" tabindex="-1"></a><span class="in">  }</span></span>
 <span id="cb35-208"><a href="#cb35-208" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-209"><a href="#cb35-209" aria-hidden="true" tabindex="-1"></a>  <span class="co"># negative log likelihood, excluding the constant:</span></span>
-<span id="cb35-210"><a href="#cb35-210" aria-hidden="true" tabindex="-1"></a>  nll <span class="ot">&lt;-</span> <span class="cf">function</span>(x, d, res, model, ...) {</span>
-<span id="cb35-211"><a href="#cb35-211" aria-hidden="true" tabindex="-1"></a>    m <span class="ot">&lt;-</span> <span class="fu">get_model</span>(x, model, ...)</span>
-<span id="cb35-212"><a href="#cb35-212" aria-hidden="true" tabindex="-1"></a>    Q <span class="ot">&lt;-</span> <span class="fu">variogramLine</span>(m, <span class="at">dist_vector =</span> d, <span class="at">covariance =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb35-213"><a href="#cb35-213" aria-hidden="true" tabindex="-1"></a>    Qc <span class="ot">&lt;-</span> <span class="fu">chol</span>(Q)</span>
-<span id="cb35-214"><a href="#cb35-214" aria-hidden="true" tabindex="-1"></a>    det <span class="ot">&lt;-</span> <span class="dv">2</span> <span class="sc">*</span> <span class="fu">sum</span>(<span class="fu">log</span>(<span class="fu">diag</span>(Qc)))</span>
-<span id="cb35-215"><a href="#cb35-215" aria-hidden="true" tabindex="-1"></a>    det <span class="sc">+</span> <span class="fu">t</span>(res) <span class="sc">%*%</span> <span class="fu">ch_solve</span>(Qc, res)</span>
-<span id="cb35-216"><a href="#cb35-216" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb35-209"><a href="#cb35-209" aria-hidden="true" tabindex="-1"></a><span class="in">  # negative log likelihood, excluding the constant:</span></span>
+<span id="cb35-210"><a href="#cb35-210" aria-hidden="true" tabindex="-1"></a><span class="in">  nll &lt;- function(x, d, res, model, ...) {</span></span>
+<span id="cb35-211"><a href="#cb35-211" aria-hidden="true" tabindex="-1"></a><span class="in">    m &lt;- get_model(x, model, ...)</span></span>
+<span id="cb35-212"><a href="#cb35-212" aria-hidden="true" tabindex="-1"></a><span class="in">    Q &lt;- variogramLine(m, dist_vector = d, covariance = TRUE)</span></span>
+<span id="cb35-213"><a href="#cb35-213" aria-hidden="true" tabindex="-1"></a><span class="in">    Qc &lt;- chol(Q)</span></span>
+<span id="cb35-214"><a href="#cb35-214" aria-hidden="true" tabindex="-1"></a><span class="in">    det &lt;- 2 * sum(log(diag(Qc)))</span></span>
+<span id="cb35-215"><a href="#cb35-215" aria-hidden="true" tabindex="-1"></a><span class="in">    det + t(res) %*% ch_solve(Qc, res)</span></span>
+<span id="cb35-216"><a href="#cb35-216" aria-hidden="true" tabindex="-1"></a><span class="in">  }</span></span>
 <span id="cb35-217"><a href="#cb35-217" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-218"><a href="#cb35-218" aria-hidden="true" tabindex="-1"></a>  <span class="co"># distance matrix, for optim stability rescaled to [0,1] range</span></span>
-<span id="cb35-219"><a href="#cb35-219" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> <span class="fu">st_distance</span>(data) <span class="sc">|&gt;</span> units<span class="sc">::</span><span class="fu">drop_units</span>()</span>
-<span id="cb35-220"><a href="#cb35-220" aria-hidden="true" tabindex="-1"></a>  max_d <span class="ot">&lt;-</span> <span class="fu">max</span>(d)</span>
-<span id="cb35-221"><a href="#cb35-221" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> d <span class="sc">/</span> max_d</span>
-<span id="cb35-222"><a href="#cb35-222" aria-hidden="true" tabindex="-1"></a>  <span class="co"># residuals y - X beta: scale to sd 1</span></span>
-<span id="cb35-223"><a href="#cb35-223" aria-hidden="true" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">residuals</span>(<span class="fu">lm</span>(formula, data))</span>
-<span id="cb35-224"><a href="#cb35-224" aria-hidden="true" tabindex="-1"></a>  v <span class="ot">&lt;-</span> <span class="fu">var</span>(res)</span>
-<span id="cb35-225"><a href="#cb35-225" aria-hidden="true" tabindex="-1"></a>  res <span class="ot">&lt;-</span> res<span class="sc">/</span><span class="fu">sqrt</span>(v)</span>
-<span id="cb35-226"><a href="#cb35-226" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">nrow</span>(init) <span class="sc">==</span> <span class="dv">2</span>) {</span>
-<span id="cb35-227"><a href="#cb35-227" aria-hidden="true" tabindex="-1"></a>    o.init <span class="ot">&lt;-</span> <span class="fu">c</span>(init<span class="sc">$</span>psill[<span class="dv">2</span>], init<span class="sc">$</span>range[<span class="dv">2</span>], init<span class="sc">$</span>psill[<span class="dv">0</span>])</span>
-<span id="cb35-228"><a href="#cb35-228" aria-hidden="true" tabindex="-1"></a>    model <span class="ot">&lt;-</span> <span class="fu">as.character</span>(init<span class="sc">$</span>model[<span class="dv">2</span>])</span>
-<span id="cb35-229"><a href="#cb35-229" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
-<span id="cb35-230"><a href="#cb35-230" aria-hidden="true" tabindex="-1"></a>    o.init <span class="ot">&lt;-</span> <span class="fu">c</span>(init<span class="sc">$</span>psill[<span class="dv">1</span>], init<span class="sc">$</span>range[<span class="dv">1</span>])</span>
-<span id="cb35-231"><a href="#cb35-231" aria-hidden="true" tabindex="-1"></a>    model <span class="ot">&lt;-</span> <span class="fu">as.character</span>(init<span class="sc">$</span>model[<span class="dv">1</span>])</span>
-<span id="cb35-232"><a href="#cb35-232" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb35-233"><a href="#cb35-233" aria-hidden="true" tabindex="-1"></a>  o.init[<span class="dv">2</span>] <span class="ot">&lt;-</span> o.init[<span class="dv">2</span>] <span class="sc">/</span> max_d <span class="co"># scale to [0,1]</span></span>
-<span id="cb35-234"><a href="#cb35-234" aria-hidden="true" tabindex="-1"></a>  o.init[<span class="sc">-</span><span class="dv">2</span>] <span class="ot">&lt;-</span> o.init[<span class="sc">-</span><span class="dv">2</span>] <span class="sc">/</span> v   <span class="co"># scale to sd 1</span></span>
-<span id="cb35-235"><a href="#cb35-235" aria-hidden="true" tabindex="-1"></a>  o <span class="ot">&lt;-</span> <span class="fu">optim</span>(o.init, nll, <span class="at">d =</span> d, <span class="at">res =</span> res, <span class="at">model =</span> model, </span>
-<span id="cb35-236"><a href="#cb35-236" aria-hidden="true" tabindex="-1"></a>            <span class="at">lower =</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="fu">length</span>(o.init)), <span class="at">method =</span> <span class="st">"L-BFGS-B"</span>, ...)<span class="sc">$</span>par</span>
-<span id="cb35-237"><a href="#cb35-237" aria-hidden="true" tabindex="-1"></a>  o[<span class="dv">2</span>] <span class="ot">&lt;-</span> o[<span class="dv">2</span>] <span class="sc">*</span> max_d <span class="co"># scale back to distance units</span></span>
-<span id="cb35-238"><a href="#cb35-238" aria-hidden="true" tabindex="-1"></a>  o[<span class="sc">-</span><span class="dv">2</span>] <span class="ot">&lt;-</span> o[<span class="sc">-</span><span class="dv">2</span>] <span class="sc">*</span> v <span class="co"># scale back to variance v</span></span>
-<span id="cb35-239"><a href="#cb35-239" aria-hidden="true" tabindex="-1"></a>  <span class="fu">get_model</span>(o, model)</span>
-<span id="cb35-240"><a href="#cb35-240" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb35-241"><a href="#cb35-241" aria-hidden="true" tabindex="-1"></a><span class="co"># use WLS fit model v.m for initial parameters:</span></span>
-<span id="cb35-242"><a href="#cb35-242" aria-hidden="true" tabindex="-1"></a>v.ml <span class="ot">&lt;-</span> <span class="fu">fit.variogram_ml</span>(NO2<span class="sc">~</span><span class="dv">1</span>, no2.sf, v.m)</span>
-<span id="cb35-243"><a href="#cb35-243" aria-hidden="true" tabindex="-1"></a><span class="co"># plot(v, v.ml, plot.numbers = TRUE)</span></span>
-<span id="cb35-244"><a href="#cb35-244" aria-hidden="true" tabindex="-1"></a><span class="co"># plot(v, v.m, plot.numbers = TRUE) ## draws a single model; draw 2 models in single plot:</span></span>
-<span id="cb35-245"><a href="#cb35-245" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">xaxs =</span> <span class="st">"i"</span>, <span class="at">yaxs =</span> <span class="st">"i"</span>)</span>
-<span id="cb35-246"><a href="#cb35-246" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(gamma <span class="sc">~</span> dist, v, </span>
-<span id="cb35-247"><a href="#cb35-247" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">1.075</span> <span class="sc">*</span> <span class="fu">max</span>(v<span class="sc">$</span>dist)), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">1.05</span> <span class="sc">*</span> <span class="fu">max</span>(v<span class="sc">$</span>gamma)),</span>
-<span id="cb35-248"><a href="#cb35-248" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"distance h [m]"</span>, <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="fu">gamma</span>(h)))</span>
-<span id="cb35-249"><a href="#cb35-249" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">variogramLine</span>(v.m, <span class="fl">1.075</span> <span class="sc">*</span> <span class="fu">max</span>(v<span class="sc">$</span>dist)), <span class="at">lty =</span> <span class="dv">1</span>, <span class="at">col =</span> <span class="st">'blue'</span>)</span>
-<span id="cb35-250"><a href="#cb35-250" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">variogramLine</span>(v.ml, <span class="fl">1.075</span> <span class="sc">*</span> <span class="fu">max</span>(v<span class="sc">$</span>dist)), <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">'blue'</span>)</span>
-<span id="cb35-251"><a href="#cb35-251" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(v<span class="sc">$</span>dist, v<span class="sc">$</span>gamma, v<span class="sc">$</span>np, <span class="at">pos =</span> <span class="dv">4</span>)</span>
+<span id="cb35-218"><a href="#cb35-218" aria-hidden="true" tabindex="-1"></a><span class="in">  # distance matrix, for optim stability rescaled to [0,1] range</span></span>
+<span id="cb35-219"><a href="#cb35-219" aria-hidden="true" tabindex="-1"></a><span class="in">  d &lt;- st_distance(data) |&gt; units::drop_units()</span></span>
+<span id="cb35-220"><a href="#cb35-220" aria-hidden="true" tabindex="-1"></a><span class="in">  max_d &lt;- max(d)</span></span>
+<span id="cb35-221"><a href="#cb35-221" aria-hidden="true" tabindex="-1"></a><span class="in">  d &lt;- d / max_d</span></span>
+<span id="cb35-222"><a href="#cb35-222" aria-hidden="true" tabindex="-1"></a><span class="in">  # residuals y - X beta: scale to sd 1</span></span>
+<span id="cb35-223"><a href="#cb35-223" aria-hidden="true" tabindex="-1"></a><span class="in">  res &lt;- residuals(lm(formula, data))</span></span>
+<span id="cb35-224"><a href="#cb35-224" aria-hidden="true" tabindex="-1"></a><span class="in">  v &lt;- var(res)</span></span>
+<span id="cb35-225"><a href="#cb35-225" aria-hidden="true" tabindex="-1"></a><span class="in">  res &lt;- res/sqrt(v)</span></span>
+<span id="cb35-226"><a href="#cb35-226" aria-hidden="true" tabindex="-1"></a><span class="in">  if (nrow(init) == 2) {</span></span>
+<span id="cb35-227"><a href="#cb35-227" aria-hidden="true" tabindex="-1"></a><span class="in">    o.init &lt;- c(init$psill[2], init$range[2], init$psill[0])</span></span>
+<span id="cb35-228"><a href="#cb35-228" aria-hidden="true" tabindex="-1"></a><span class="in">    model &lt;- as.character(init$model[2])</span></span>
+<span id="cb35-229"><a href="#cb35-229" aria-hidden="true" tabindex="-1"></a><span class="in">  } else {</span></span>
+<span id="cb35-230"><a href="#cb35-230" aria-hidden="true" tabindex="-1"></a><span class="in">    o.init &lt;- c(init$psill[1], init$range[1])</span></span>
+<span id="cb35-231"><a href="#cb35-231" aria-hidden="true" tabindex="-1"></a><span class="in">    model &lt;- as.character(init$model[1])</span></span>
+<span id="cb35-232"><a href="#cb35-232" aria-hidden="true" tabindex="-1"></a><span class="in">  }</span></span>
+<span id="cb35-233"><a href="#cb35-233" aria-hidden="true" tabindex="-1"></a><span class="in">  o.init[2] &lt;- o.init[2] / max_d # scale to [0,1]</span></span>
+<span id="cb35-234"><a href="#cb35-234" aria-hidden="true" tabindex="-1"></a><span class="in">  o.init[-2] &lt;- o.init[-2] / v   # scale to sd 1</span></span>
+<span id="cb35-235"><a href="#cb35-235" aria-hidden="true" tabindex="-1"></a><span class="in">  o &lt;- optim(o.init, nll, d = d, res = res, model = model, </span></span>
+<span id="cb35-236"><a href="#cb35-236" aria-hidden="true" tabindex="-1"></a><span class="in">            lower = rep(0, length(o.init)), method = "L-BFGS-B", ...)$par</span></span>
+<span id="cb35-237"><a href="#cb35-237" aria-hidden="true" tabindex="-1"></a><span class="in">  o[2] &lt;- o[2] * max_d # scale back to distance units</span></span>
+<span id="cb35-238"><a href="#cb35-238" aria-hidden="true" tabindex="-1"></a><span class="in">  o[-2] &lt;- o[-2] * v # scale back to variance v</span></span>
+<span id="cb35-239"><a href="#cb35-239" aria-hidden="true" tabindex="-1"></a><span class="in">  get_model(o, model)</span></span>
+<span id="cb35-240"><a href="#cb35-240" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-241"><a href="#cb35-241" aria-hidden="true" tabindex="-1"></a><span class="in"># use WLS fit model v.m for initial parameters:</span></span>
+<span id="cb35-242"><a href="#cb35-242" aria-hidden="true" tabindex="-1"></a><span class="in">v.ml &lt;- fit.variogram_ml(NO2~1, no2.sf, v.m)</span></span>
+<span id="cb35-243"><a href="#cb35-243" aria-hidden="true" tabindex="-1"></a><span class="in"># plot(v, v.ml, plot.numbers = TRUE)</span></span>
+<span id="cb35-244"><a href="#cb35-244" aria-hidden="true" tabindex="-1"></a><span class="in"># plot(v, v.m, plot.numbers = TRUE) ## draws a single model; draw 2 models in single plot:</span></span>
+<span id="cb35-245"><a href="#cb35-245" aria-hidden="true" tabindex="-1"></a><span class="in">par(xaxs = "i", yaxs = "i")</span></span>
+<span id="cb35-246"><a href="#cb35-246" aria-hidden="true" tabindex="-1"></a><span class="in">plot(gamma ~ dist, v, </span></span>
+<span id="cb35-247"><a href="#cb35-247" aria-hidden="true" tabindex="-1"></a><span class="in">     xlim = c(0, 1.075 * max(v$dist)), ylim = c(0, 1.05 * max(v$gamma)),</span></span>
+<span id="cb35-248"><a href="#cb35-248" aria-hidden="true" tabindex="-1"></a><span class="in">     xlab = "distance h [m]", ylab = expression(gamma(h)))</span></span>
+<span id="cb35-249"><a href="#cb35-249" aria-hidden="true" tabindex="-1"></a><span class="in">lines(variogramLine(v.m, 1.075 * max(v$dist)), lty = 1, col = 'blue')</span></span>
+<span id="cb35-250"><a href="#cb35-250" aria-hidden="true" tabindex="-1"></a><span class="in">lines(variogramLine(v.ml, 1.075 * max(v$dist)), lty = 2, col = 'blue')</span></span>
+<span id="cb35-251"><a href="#cb35-251" aria-hidden="true" tabindex="-1"></a><span class="in">text(v$dist, v$gamma, v$np, pos = 4)</span></span>
 <span id="cb35-252"><a href="#cb35-252" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-253"><a href="#cb35-253" aria-hidden="true" tabindex="-1"></a>The fitting for the drawn line was done by weighted least squares,</span>
 <span id="cb35-254"><a href="#cb35-254" aria-hidden="true" tabindex="-1"></a>minimising </span>
@@ -1462,12 +1702,12 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-297"><a href="#cb35-297" aria-hidden="true" tabindex="-1"></a>k <span class="ot">&lt;-</span> <span class="fu">krige</span>(NO2<span class="sc">~</span><span class="dv">1</span>, no2.sf, grd, v.m)</span>
 <span id="cb35-298"><a href="#cb35-298" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-299"><a href="#cb35-299" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-krigeovergermany, echo = !knitr::is_latex_output()}</span></span>
-<span id="cb35-300"><a href="#cb35-300" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Kriged NO$_2$ concentrations over Germany"</span></span>
-<span id="cb35-301"><a href="#cb35-301" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> k, <span class="fu">aes</span>(<span class="at">fill =</span> var1.pred, <span class="at">x =</span> x, <span class="at">y =</span> y)) <span class="sc">+</span> </span>
-<span id="cb35-302"><a href="#cb35-302" aria-hidden="true" tabindex="-1"></a>    <span class="fu">xlab</span>(<span class="cn">NULL</span>) <span class="sc">+</span> <span class="fu">ylab</span>(<span class="cn">NULL</span>) <span class="sc">+</span></span>
-<span id="cb35-303"><a href="#cb35-303" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> <span class="fu">st_cast</span>(de, <span class="st">"MULTILINESTRING"</span>)) <span class="sc">+</span> </span>
-<span id="cb35-304"><a href="#cb35-304" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> no2.sf) <span class="sc">+</span></span>
-<span id="cb35-305"><a href="#cb35-305" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_sf</span>(<span class="at">lims_method =</span> <span class="st">"geometry_bbox"</span>)</span>
+<span id="cb35-300"><a href="#cb35-300" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Kriged NO$_2$ concentrations over Germany"</span></span>
+<span id="cb35-301"><a href="#cb35-301" aria-hidden="true" tabindex="-1"></a><span class="in">ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) + </span></span>
+<span id="cb35-302"><a href="#cb35-302" aria-hidden="true" tabindex="-1"></a><span class="in">    xlab(NULL) + ylab(NULL) +</span></span>
+<span id="cb35-303"><a href="#cb35-303" aria-hidden="true" tabindex="-1"></a><span class="in">    geom_sf(data = st_cast(de, "MULTILINESTRING")) + </span></span>
+<span id="cb35-304"><a href="#cb35-304" aria-hidden="true" tabindex="-1"></a><span class="in">    geom_sf(data = no2.sf) +</span></span>
+<span id="cb35-305"><a href="#cb35-305" aria-hidden="true" tabindex="-1"></a><span class="in">    coord_sf(lims_method = "geometry_bbox")</span></span>
 <span id="cb35-306"><a href="#cb35-306" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-307"><a href="#cb35-307" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-308"><a href="#cb35-308" aria-hidden="true" tabindex="-1"></a><span class="fu">## Areal means: block kriging {#sec-blockkriging}</span></span>
@@ -1485,7 +1725,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-322"><a href="#cb35-322" aria-hidden="true" tabindex="-1"></a>target areas. With <span class="in">`krige`</span>, this can be done by giving the target</span>
 <span id="cb35-323"><a href="#cb35-323" aria-hidden="true" tabindex="-1"></a>areas (polygons) as the <span class="in">`newdata`</span> argument:</span>
 <span id="cb35-324"><a href="#cb35-324" aria-hidden="true" tabindex="-1"></a><span class="in">```{r krigeNO2regionmeans}</span></span>
-<span id="cb35-325"><a href="#cb35-325" aria-hidden="true" tabindex="-1"></a>b <span class="ot">&lt;-</span> <span class="fu">krige</span>(NO2<span class="sc">~</span><span class="dv">1</span>, no2.sf, de, v.m)</span>
+<span id="cb35-325"><a href="#cb35-325" aria-hidden="true" tabindex="-1"></a><span class="in">b &lt;- krige(NO2~1, no2.sf, de, v.m)</span></span>
 <span id="cb35-326"><a href="#cb35-326" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-327"><a href="#cb35-327" aria-hidden="true" tabindex="-1"></a>we can now merge the two maps into a single object to create a single plot (@fig-aggregations):</span>
 <span id="cb35-330"><a href="#cb35-330" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
@@ -1494,12 +1734,12 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-333"><a href="#cb35-333" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-334"><a href="#cb35-334" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-335"><a href="#cb35-335" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-aggregations, echo = !knitr::is_latex_output()}</span></span>
-<span id="cb35-336"><a href="#cb35-336" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Aggregated NO$_2$ values from simple averaging (left) and block kriging (right)"</span></span>
-<span id="cb35-337"><a href="#cb35-337" aria-hidden="true" tabindex="-1"></a>b <span class="sc">|&gt;</span> <span class="fu">select</span>(sample, kriging) <span class="sc">|&gt;</span> </span>
-<span id="cb35-338"><a href="#cb35-338" aria-hidden="true" tabindex="-1"></a>        <span class="fu">pivot_longer</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"NO2"</span>) <span class="ot">-&gt;</span> b2</span>
-<span id="cb35-339"><a href="#cb35-339" aria-hidden="true" tabindex="-1"></a>b2<span class="sc">$</span>var <span class="ot">&lt;-</span> <span class="fu">factor</span>(b2<span class="sc">$</span>var, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"sample"</span>, <span class="st">"kriging"</span>))</span>
-<span id="cb35-340"><a href="#cb35-340" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_sf</span>(<span class="at">data =</span> b2, <span class="at">mapping =</span> <span class="fu">aes</span>(<span class="at">fill =</span> NO2)) <span class="sc">+</span> <span class="fu">facet_wrap</span>(<span class="sc">~</span>var) <span class="sc">+</span></span>
-<span id="cb35-341"><a href="#cb35-341" aria-hidden="true" tabindex="-1"></a>     <span class="fu">scale_fill_gradientn</span>(<span class="at">colors =</span> <span class="fu">sf.colors</span>(<span class="dv">20</span>))</span>
+<span id="cb35-336"><a href="#cb35-336" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Aggregated NO$_2$ values from simple averaging (left) and block kriging (right)"</span></span>
+<span id="cb35-337"><a href="#cb35-337" aria-hidden="true" tabindex="-1"></a><span class="in">b |&gt; select(sample, kriging) |&gt; </span></span>
+<span id="cb35-338"><a href="#cb35-338" aria-hidden="true" tabindex="-1"></a><span class="in">        pivot_longer(1:2, names_to = "var", values_to = "NO2") -&gt; b2</span></span>
+<span id="cb35-339"><a href="#cb35-339" aria-hidden="true" tabindex="-1"></a><span class="in">b2$var &lt;- factor(b2$var, levels = c("sample", "kriging"))</span></span>
+<span id="cb35-340"><a href="#cb35-340" aria-hidden="true" tabindex="-1"></a><span class="in">ggplot() + geom_sf(data = b2, mapping = aes(fill = NO2)) + facet_wrap(~var) +</span></span>
+<span id="cb35-341"><a href="#cb35-341" aria-hidden="true" tabindex="-1"></a><span class="in">     scale_fill_gradientn(colors = sf.colors(20))</span></span>
 <span id="cb35-342"><a href="#cb35-342" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-343"><a href="#cb35-343" aria-hidden="true" tabindex="-1"></a>We see that the signal is similar, but that the sample means from simple </span>
 <span id="cb35-344"><a href="#cb35-344" aria-hidden="true" tabindex="-1"></a>averaging are more variable than the block kriging values; this may be due to</span>
@@ -1523,18 +1763,18 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-364"><a href="#cb35-364" aria-hidden="true" tabindex="-1"></a>block kriging.</span>
 <span id="cb35-365"><a href="#cb35-365" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-366"><a href="#cb35-366" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-aggrSE, echo = !knitr::is_latex_output()}</span></span>
-<span id="cb35-367"><a href="#cb35-367" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Standard errors for mean NO$_2$ values obtained by simple averaging (left) and block kriging (right)"</span></span>
-<span id="cb35-368"><a href="#cb35-368" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-369"><a href="#cb35-369" aria-hidden="true" tabindex="-1"></a>b<span class="sc">$</span>sample <span class="ot">&lt;-</span> a<span class="sc">$</span>NO2</span>
-<span id="cb35-370"><a href="#cb35-370" aria-hidden="true" tabindex="-1"></a>b<span class="sc">$</span>kriging <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(b<span class="sc">$</span>var1.var)</span>
-<span id="cb35-371"><a href="#cb35-371" aria-hidden="true" tabindex="-1"></a>b <span class="sc">|&gt;</span> <span class="fu">select</span>(sample, kriging) <span class="sc">|&gt;</span> </span>
-<span id="cb35-372"><a href="#cb35-372" aria-hidden="true" tabindex="-1"></a>        <span class="fu">pivot_longer</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="at">names_to =</span> <span class="st">"var"</span>, </span>
-<span id="cb35-373"><a href="#cb35-373" aria-hidden="true" tabindex="-1"></a>                     <span class="at">values_to =</span> <span class="st">"Standard_error"</span>) <span class="ot">-&gt;</span> b2</span>
-<span id="cb35-374"><a href="#cb35-374" aria-hidden="true" tabindex="-1"></a>b2<span class="sc">$</span>var <span class="ot">&lt;-</span> <span class="fu">factor</span>(b2<span class="sc">$</span>var, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"sample"</span>, <span class="st">"kriging"</span>))</span>
-<span id="cb35-375"><a href="#cb35-375" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span></span>
-<span id="cb35-376"><a href="#cb35-376" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> b2, <span class="at">mapping =</span> <span class="fu">aes</span>(<span class="at">fill =</span> Standard_error)) <span class="sc">+</span></span>
-<span id="cb35-377"><a href="#cb35-377" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span>var, <span class="at">as.table =</span> <span class="cn">FALSE</span>) <span class="sc">+</span> </span>
-<span id="cb35-378"><a href="#cb35-378" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_gradientn</span>(<span class="at">colors =</span> <span class="fu">sf.colors</span>(<span class="dv">20</span>))</span>
+<span id="cb35-367"><a href="#cb35-367" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Standard errors for mean NO$_2$ values obtained by simple averaging (left) and block kriging (right)"</span></span>
+<span id="cb35-368"><a href="#cb35-368" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-369"><a href="#cb35-369" aria-hidden="true" tabindex="-1"></a><span class="in">b$sample &lt;- a$NO2</span></span>
+<span id="cb35-370"><a href="#cb35-370" aria-hidden="true" tabindex="-1"></a><span class="in">b$kriging &lt;- sqrt(b$var1.var)</span></span>
+<span id="cb35-371"><a href="#cb35-371" aria-hidden="true" tabindex="-1"></a><span class="in">b |&gt; select(sample, kriging) |&gt; </span></span>
+<span id="cb35-372"><a href="#cb35-372" aria-hidden="true" tabindex="-1"></a><span class="in">        pivot_longer(1:2, names_to = "var", </span></span>
+<span id="cb35-373"><a href="#cb35-373" aria-hidden="true" tabindex="-1"></a><span class="in">                     values_to = "Standard_error") -&gt; b2</span></span>
+<span id="cb35-374"><a href="#cb35-374" aria-hidden="true" tabindex="-1"></a><span class="in">b2$var &lt;- factor(b2$var, levels = c("sample", "kriging"))</span></span>
+<span id="cb35-375"><a href="#cb35-375" aria-hidden="true" tabindex="-1"></a><span class="in">ggplot() +</span></span>
+<span id="cb35-376"><a href="#cb35-376" aria-hidden="true" tabindex="-1"></a><span class="in">    geom_sf(data = b2, mapping = aes(fill = Standard_error)) +</span></span>
+<span id="cb35-377"><a href="#cb35-377" aria-hidden="true" tabindex="-1"></a><span class="in">    facet_wrap(~var, as.table = FALSE) + </span></span>
+<span id="cb35-378"><a href="#cb35-378" aria-hidden="true" tabindex="-1"></a><span class="in">    scale_fill_gradientn(colors = sf.colors(20))</span></span>
 <span id="cb35-379"><a href="#cb35-379" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-380"><a href="#cb35-380" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-381"><a href="#cb35-381" aria-hidden="true" tabindex="-1"></a><span class="fu">## Conditional simulation</span></span>
@@ -1563,8 +1803,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-404"><a href="#cb35-404" aria-hidden="true" tabindex="-1"></a>This is carried out by <span class="in">`gstat::krige`</span> when <span class="in">`nsim`</span> is set to a</span>
 <span id="cb35-405"><a href="#cb35-405" aria-hidden="true" tabindex="-1"></a>positive value:</span>
 <span id="cb35-406"><a href="#cb35-406" aria-hidden="true" tabindex="-1"></a><span class="in">```{r condsim}</span></span>
-<span id="cb35-407"><a href="#cb35-407" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">13341</span>)</span>
-<span id="cb35-408"><a href="#cb35-408" aria-hidden="true" tabindex="-1"></a>(s <span class="ot">&lt;-</span> <span class="fu">krige</span>(NO2<span class="sc">~</span><span class="dv">1</span>, no2.sf, grd, v.m, <span class="at">nmax =</span> <span class="dv">30</span>, <span class="at">nsim =</span> <span class="dv">6</span>))</span>
+<span id="cb35-407"><a href="#cb35-407" aria-hidden="true" tabindex="-1"></a><span class="in">set.seed(13341)</span></span>
+<span id="cb35-408"><a href="#cb35-408" aria-hidden="true" tabindex="-1"></a><span class="in">(s &lt;- krige(NO2~1, no2.sf, grd, v.m, nmax = 30, nsim = 6))</span></span>
 <span id="cb35-409"><a href="#cb35-409" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-410"><a href="#cb35-410" aria-hidden="true" tabindex="-1"></a>where <span class="in">`set.seed()`</span> was called here to allow reproducibility.</span>
 <span id="cb35-411"><a href="#cb35-411" aria-hidden="true" tabindex="-1"></a></span>
@@ -1575,15 +1815,15 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-416"><a href="#cb35-416" aria-hidden="true" tabindex="-1"></a>conditional simulations are shown in (@fig-plotkrigingvalues).</span>
 <span id="cb35-417"><a href="#cb35-417" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-418"><a href="#cb35-418" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-plotkrigingvalues, echo=!knitr::is_latex_output(), message=FALSE}</span></span>
-<span id="cb35-419"><a href="#cb35-419" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Six conditional simulations for NO$_2$ values"</span></span>
-<span id="cb35-420"><a href="#cb35-420" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-421"><a href="#cb35-421" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(viridis)</span>
-<span id="cb35-422"><a href="#cb35-422" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">coord_equal</span>() <span class="sc">+</span></span>
-<span id="cb35-423"><a href="#cb35-423" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_viridis</span>() <span class="sc">+</span></span>
-<span id="cb35-424"><a href="#cb35-424" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_void</span>() <span class="sc">+</span></span>
-<span id="cb35-425"><a href="#cb35-425" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_discrete</span>(<span class="at">expand=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)) <span class="sc">+</span></span>
-<span id="cb35-426"><a href="#cb35-426" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_y_discrete</span>(<span class="at">expand=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))</span>
-<span id="cb35-427"><a href="#cb35-427" aria-hidden="true" tabindex="-1"></a>g <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> s[,,,<span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>]) <span class="sc">+</span> <span class="fu">facet_wrap</span>(<span class="sc">~</span>sample)</span>
+<span id="cb35-419"><a href="#cb35-419" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Six conditional simulations for NO$_2$ values"</span></span>
+<span id="cb35-420"><a href="#cb35-420" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-421"><a href="#cb35-421" aria-hidden="true" tabindex="-1"></a><span class="in">library(viridis)</span></span>
+<span id="cb35-422"><a href="#cb35-422" aria-hidden="true" tabindex="-1"></a><span class="in">g &lt;- ggplot() + coord_equal() +</span></span>
+<span id="cb35-423"><a href="#cb35-423" aria-hidden="true" tabindex="-1"></a><span class="in">    scale_fill_viridis() +</span></span>
+<span id="cb35-424"><a href="#cb35-424" aria-hidden="true" tabindex="-1"></a><span class="in">    theme_void() +</span></span>
+<span id="cb35-425"><a href="#cb35-425" aria-hidden="true" tabindex="-1"></a><span class="in">    scale_x_discrete(expand=c(0,0)) +</span></span>
+<span id="cb35-426"><a href="#cb35-426" aria-hidden="true" tabindex="-1"></a><span class="in">    scale_y_discrete(expand=c(0,0))</span></span>
+<span id="cb35-427"><a href="#cb35-427" aria-hidden="true" tabindex="-1"></a><span class="in">g + geom_stars(data = s[,,,1:6]) + facet_wrap(~sample)</span></span>
 <span id="cb35-428"><a href="#cb35-428" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-429"><a href="#cb35-429" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-430"><a href="#cb35-430" aria-hidden="true" tabindex="-1"></a>Alternative methods for conditional simulation have recently been</span>
@@ -1621,30 +1861,30 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-462"><a href="#cb35-462" aria-hidden="true" tabindex="-1"></a>in densely populated areas.</span>
 <span id="cb35-463"><a href="#cb35-463" aria-hidden="true" tabindex="-1"></a>Population density is obtained from the <span class="co">[</span><span class="ot">2011 census</span><span class="co">](https://www.zensus2011.de/DE/Home/Aktuelles/DemografischeGrunddaten.html)</span> and is downloaded as a csv file with the number of inhabitants per 100 m $\times$ 100 m grid cell. We can aggregate these data to the target grid cells by summing the inhabitants:</span>
 <span id="cb35-464"><a href="#cb35-464" aria-hidden="true" tabindex="-1"></a><span class="in">```{r vroom1, message=FALSE, eval=!CI}</span></span>
-<span id="cb35-465"><a href="#cb35-465" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> vroom<span class="sc">::</span><span class="fu">vroom</span>(<span class="st">"aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv"</span>)</span>
-<span id="cb35-466"><a href="#cb35-466" aria-hidden="true" tabindex="-1"></a>v <span class="sc">|&gt;</span> <span class="fu">filter</span>(Einwohner <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb35-467"><a href="#cb35-467" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(<span class="sc">-</span>Gitter_ID_100m) <span class="sc">|&gt;</span></span>
-<span id="cb35-468"><a href="#cb35-468" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_as_sf</span>(<span class="at">coords =</span> <span class="fu">c</span>(<span class="st">"x_mp_100m"</span>, <span class="st">"y_mp_100m"</span>), <span class="at">crs =</span> <span class="dv">3035</span>) <span class="sc">|&gt;</span></span>
-<span id="cb35-469"><a href="#cb35-469" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_transform</span>(<span class="fu">st_crs</span>(grd)) <span class="ot">-&gt;</span> b</span>
-<span id="cb35-470"><a href="#cb35-470" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">aggregate</span>(b, <span class="fu">st_as_sf</span>(grd, <span class="at">na.rm =</span> <span class="cn">FALSE</span>), sum)</span>
+<span id="cb35-465"><a href="#cb35-465" aria-hidden="true" tabindex="-1"></a><span class="in">v &lt;- vroom::vroom("aq/pop/Zensus_Bevoelkerung_100m-Gitter.csv")</span></span>
+<span id="cb35-466"><a href="#cb35-466" aria-hidden="true" tabindex="-1"></a><span class="in">v |&gt; filter(Einwohner &gt; 0) |&gt; </span></span>
+<span id="cb35-467"><a href="#cb35-467" aria-hidden="true" tabindex="-1"></a><span class="in">    select(-Gitter_ID_100m) |&gt;</span></span>
+<span id="cb35-468"><a href="#cb35-468" aria-hidden="true" tabindex="-1"></a><span class="in">    st_as_sf(coords = c("x_mp_100m", "y_mp_100m"), crs = 3035) |&gt;</span></span>
+<span id="cb35-469"><a href="#cb35-469" aria-hidden="true" tabindex="-1"></a><span class="in">    st_transform(st_crs(grd)) -&gt; b</span></span>
+<span id="cb35-470"><a href="#cb35-470" aria-hidden="true" tabindex="-1"></a><span class="in">a &lt;- aggregate(b, st_as_sf(grd, na.rm = FALSE), sum)</span></span>
 <span id="cb35-471"><a href="#cb35-471" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-472"><a href="#cb35-472" aria-hidden="true" tabindex="-1"></a><span class="in">```{r vroom0, echo=FALSE, eval=CI}</span></span>
-<span id="cb35-473"><a href="#cb35-473" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"data/ch12.rda"</span>) <span class="co"># instead of reading v &amp; processing b and a, load object a</span></span>
+<span id="cb35-473"><a href="#cb35-473" aria-hidden="true" tabindex="-1"></a><span class="in">load("data/ch12.rda") # instead of reading v &amp; processing b and a, load object a</span></span>
 <span id="cb35-474"><a href="#cb35-474" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-475"><a href="#cb35-475" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-476"><a href="#cb35-476" aria-hidden="true" tabindex="-1"></a>Now we have the population counts per grid cell in <span class="in">`a`</span>. To get to</span>
 <span id="cb35-477"><a href="#cb35-477" aria-hidden="true" tabindex="-1"></a>population density, we need to find the area of each cell; for cells</span>
 <span id="cb35-478"><a href="#cb35-478" aria-hidden="true" tabindex="-1"></a>crossing the country border, this will be less than 10 $\times$ 10 km:</span>
 <span id="cb35-479"><a href="#cb35-479" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, message=FALSE}</span></span>
-<span id="cb35-480"><a href="#cb35-480" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>ID <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">prod</span>(<span class="fu">dim</span>(grd)) <span class="co"># to identify grid cells</span></span>
-<span id="cb35-481"><a href="#cb35-481" aria-hidden="true" tabindex="-1"></a>ii <span class="ot">&lt;-</span> <span class="fu">st_intersects</span>(grd[<span class="st">"ID"</span>],</span>
-<span id="cb35-482"><a href="#cb35-482" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_cast</span>(<span class="fu">st_union</span>(de), <span class="st">"MULTILINESTRING"</span>), <span class="at">as_points =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb35-483"><a href="#cb35-483" aria-hidden="true" tabindex="-1"></a>grd_sf <span class="ot">&lt;-</span> <span class="fu">st_as_sf</span>(grd[<span class="st">"ID"</span>], <span class="at">na.rm =</span> <span class="cn">FALSE</span>)[<span class="fu">lengths</span>(ii) <span class="sc">&gt;</span> <span class="dv">0</span>,]</span>
-<span id="cb35-484"><a href="#cb35-484" aria-hidden="true" tabindex="-1"></a><span class="fu">st_agr</span>(grd_sf) <span class="ot">=</span> <span class="st">"identity"</span></span>
-<span id="cb35-485"><a href="#cb35-485" aria-hidden="true" tabindex="-1"></a>iii <span class="ot">&lt;-</span> <span class="fu">st_intersection</span>(grd_sf, <span class="fu">st_union</span>(de))</span>
-<span id="cb35-486"><a href="#cb35-486" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>area <span class="ot">&lt;-</span> <span class="fu">st_area</span>(grd)[[<span class="dv">1</span>]] <span class="sc">+</span> </span>
-<span id="cb35-487"><a href="#cb35-487" aria-hidden="true" tabindex="-1"></a>    units<span class="sc">::</span><span class="fu">set_units</span>(grd<span class="sc">$</span>values, m<span class="sc">^</span><span class="dv">2</span>)</span>
-<span id="cb35-488"><a href="#cb35-488" aria-hidden="true" tabindex="-1"></a>grd<span class="sc">$</span>area[iii<span class="sc">$</span>ID] <span class="ot">&lt;-</span> <span class="fu">st_area</span>(iii)</span>
+<span id="cb35-480"><a href="#cb35-480" aria-hidden="true" tabindex="-1"></a><span class="in">grd$ID &lt;- 1:prod(dim(grd)) # to identify grid cells</span></span>
+<span id="cb35-481"><a href="#cb35-481" aria-hidden="true" tabindex="-1"></a><span class="in">ii &lt;- st_intersects(grd["ID"],</span></span>
+<span id="cb35-482"><a href="#cb35-482" aria-hidden="true" tabindex="-1"></a><span class="in">  st_cast(st_union(de), "MULTILINESTRING"), as_points = FALSE)</span></span>
+<span id="cb35-483"><a href="#cb35-483" aria-hidden="true" tabindex="-1"></a><span class="in">grd_sf &lt;- st_as_sf(grd["ID"], na.rm = FALSE)[lengths(ii) &gt; 0,]</span></span>
+<span id="cb35-484"><a href="#cb35-484" aria-hidden="true" tabindex="-1"></a><span class="in">st_agr(grd_sf) = "identity"</span></span>
+<span id="cb35-485"><a href="#cb35-485" aria-hidden="true" tabindex="-1"></a><span class="in">iii &lt;- st_intersection(grd_sf, st_union(de))</span></span>
+<span id="cb35-486"><a href="#cb35-486" aria-hidden="true" tabindex="-1"></a><span class="in">grd$area &lt;- st_area(grd)[[1]] + </span></span>
+<span id="cb35-487"><a href="#cb35-487" aria-hidden="true" tabindex="-1"></a><span class="in">    units::set_units(grd$values, m^2)</span></span>
+<span id="cb35-488"><a href="#cb35-488" aria-hidden="true" tabindex="-1"></a><span class="in">grd$area[iii$ID] &lt;- st_area(iii)</span></span>
 <span id="cb35-489"><a href="#cb35-489" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-490"><a href="#cb35-490" aria-hidden="true" tabindex="-1"></a>Instead of doing the two-stage procedure above, first finding cells that</span>
 <span id="cb35-491"><a href="#cb35-491" aria-hidden="true" tabindex="-1"></a>have a border crossing it then computing its area, we could also directly</span>
@@ -1659,9 +1899,9 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-502"><a href="#cb35-502" aria-hidden="true" tabindex="-1"></a>which indicates strong agreement. Using <span class="in">`st_interpolate_aw`</span> would</span>
 <span id="cb35-503"><a href="#cb35-503" aria-hidden="true" tabindex="-1"></a>have given an exact match.</span>
 <span id="cb35-504"><a href="#cb35-504" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-popdens, echo = !knitr::is_latex_output()}</span></span>
-<span id="cb35-505"><a href="#cb35-505" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Population density for 100 m $\\times$ 100 m grid cells"</span></span>
-<span id="cb35-506"><a href="#cb35-506" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-507"><a href="#cb35-507" aria-hidden="true" tabindex="-1"></a>g <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> grd, <span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">sqrt</span>(pop_dens), <span class="at">x =</span> x, <span class="at">y =</span> y))</span>
+<span id="cb35-505"><a href="#cb35-505" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Population density for 100 m $\\times$ 100 m grid cells"</span></span>
+<span id="cb35-506"><a href="#cb35-506" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-507"><a href="#cb35-507" aria-hidden="true" tabindex="-1"></a><span class="in">g + geom_stars(data = grd, aes(fill = sqrt(pop_dens), x = x, y = y))</span></span>
 <span id="cb35-508"><a href="#cb35-508" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-509"><a href="#cb35-509" aria-hidden="true" tabindex="-1"></a>We need to divide the number of inhabitants by the number of 100</span>
 <span id="cb35-510"><a href="#cb35-510" aria-hidden="true" tabindex="-1"></a>m $\times$ 100 m grid cells contributing to it, in order to convert population</span>
@@ -1685,10 +1925,10 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-532"><a href="#cb35-532" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-533"><a href="#cb35-533" aria-hidden="true" tabindex="-1"></a>for which the corresponding scatterplot is shown in @fig-no2scat.</span>
 <span id="cb35-534"><a href="#cb35-534" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-no2scat, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb35-535"><a href="#cb35-535" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Scatter plot of 2017 annual mean NO$_2$ concentration against population density, for rural background air quality stations"</span></span>
-<span id="cb35-536"><a href="#cb35-536" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-537"><a href="#cb35-537" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(NO2 <span class="sc">~</span> <span class="fu">sqrt</span>(pop_dens), no2.sf)</span>
-<span id="cb35-538"><a href="#cb35-538" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="fu">lm</span>(NO2 <span class="sc">~</span> <span class="fu">sqrt</span>(pop_dens), no2.sf))</span>
+<span id="cb35-535"><a href="#cb35-535" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Scatter plot of 2017 annual mean NO$_2$ concentration against population density, for rural background air quality stations"</span></span>
+<span id="cb35-536"><a href="#cb35-536" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-537"><a href="#cb35-537" aria-hidden="true" tabindex="-1"></a><span class="in">plot(NO2 ~ sqrt(pop_dens), no2.sf)</span></span>
+<span id="cb35-538"><a href="#cb35-538" aria-hidden="true" tabindex="-1"></a><span class="in">abline(lm(NO2 ~ sqrt(pop_dens), no2.sf))</span></span>
 <span id="cb35-539"><a href="#cb35-539" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-540"><a href="#cb35-540" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-541"><a href="#cb35-541" aria-hidden="true" tabindex="-1"></a>\index{variogram!residual}</span>
@@ -1700,9 +1940,9 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-549"><a href="#cb35-549" aria-hidden="true" tabindex="-1"></a>vr.m <span class="ot">&lt;-</span> <span class="fu">fit.variogram</span>(vr, <span class="fu">vgm</span>(<span class="dv">1</span>, <span class="st">"Exp"</span>, <span class="dv">50000</span>, <span class="dv">1</span>))</span>
 <span id="cb35-550"><a href="#cb35-550" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-551"><a href="#cb35-551" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-predictusingpopulationdensity,echo=!knitr::is_latex_output()}</span></span>
-<span id="cb35-552"><a href="#cb35-552" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Residual variogram after subtracting population density trend"</span></span>
-<span id="cb35-553"><a href="#cb35-553" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-554"><a href="#cb35-554" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(vr, vr.m, <span class="at">plot.numbers =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb35-552"><a href="#cb35-552" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Residual variogram after subtracting population density trend"</span></span>
+<span id="cb35-553"><a href="#cb35-553" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-554"><a href="#cb35-554" aria-hidden="true" tabindex="-1"></a><span class="in">plot(vr, vr.m, plot.numbers = TRUE)</span></span>
 <span id="cb35-555"><a href="#cb35-555" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-556"><a href="#cb35-556" aria-hidden="true" tabindex="-1"></a>which is shown in @fig-predictusingpopulationdensity.</span>
 <span id="cb35-557"><a href="#cb35-557" aria-hidden="true" tabindex="-1"></a>Subsequently, kriging prediction (@fig-residualkriging) is done by </span>
@@ -1712,17 +1952,17 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-563"><a href="#cb35-563" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-564"><a href="#cb35-564" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-565"><a href="#cb35-565" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-residualkriging, echo=!knitr::is_latex_output(), message=FALSE}</span></span>
-<span id="cb35-566"><a href="#cb35-566" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Kriging NO$_2$ values using population density as a trend variable"</span></span>
-<span id="cb35-567"><a href="#cb35-567" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb35-568"><a href="#cb35-568" aria-hidden="true" tabindex="-1"></a>k<span class="sc">$</span>kr1 <span class="ot">&lt;-</span> k<span class="sc">$</span>var1.pred</span>
-<span id="cb35-569"><a href="#cb35-569" aria-hidden="true" tabindex="-1"></a>k<span class="sc">$</span>kr2 <span class="ot">&lt;-</span> kr<span class="sc">$</span>var1.pred</span>
-<span id="cb35-570"><a href="#cb35-570" aria-hidden="true" tabindex="-1"></a><span class="fu">st_redimension</span>(k[<span class="fu">c</span>(<span class="st">"kr1"</span>, <span class="st">"kr2"</span>)], </span>
-<span id="cb35-571"><a href="#cb35-571" aria-hidden="true" tabindex="-1"></a>    <span class="at">along =</span> <span class="fu">list</span>(<span class="at">what =</span> <span class="fu">c</span>(<span class="st">"kriging"</span>, <span class="st">"residual kriging"</span>))) <span class="sc">|&gt;</span></span>
-<span id="cb35-572"><a href="#cb35-572" aria-hidden="true" tabindex="-1"></a>    <span class="fu">setNames</span>(<span class="st">"NO2"</span>) <span class="ot">-&gt;</span> km</span>
-<span id="cb35-573"><a href="#cb35-573" aria-hidden="true" tabindex="-1"></a>g <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> km, <span class="fu">aes</span>(<span class="at">fill =</span> NO2, <span class="at">x =</span> x, <span class="at">y =</span> y)) <span class="sc">+</span> </span>
-<span id="cb35-574"><a href="#cb35-574" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> <span class="fu">st_cast</span>(de, <span class="st">"MULTILINESTRING"</span>)) <span class="sc">+</span> </span>
-<span id="cb35-575"><a href="#cb35-575" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> no2.sf) <span class="sc">+</span> <span class="fu">facet_wrap</span>(<span class="sc">~</span>what) <span class="sc">+</span></span>
-<span id="cb35-576"><a href="#cb35-576" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_sf</span>(<span class="at">lims_method =</span> <span class="st">"geometry_bbox"</span>)</span>
+<span id="cb35-566"><a href="#cb35-566" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Kriging NO$_2$ values using population density as a trend variable"</span></span>
+<span id="cb35-567"><a href="#cb35-567" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb35-568"><a href="#cb35-568" aria-hidden="true" tabindex="-1"></a><span class="in">k$kr1 &lt;- k$var1.pred</span></span>
+<span id="cb35-569"><a href="#cb35-569" aria-hidden="true" tabindex="-1"></a><span class="in">k$kr2 &lt;- kr$var1.pred</span></span>
+<span id="cb35-570"><a href="#cb35-570" aria-hidden="true" tabindex="-1"></a><span class="in">st_redimension(k[c("kr1", "kr2")], </span></span>
+<span id="cb35-571"><a href="#cb35-571" aria-hidden="true" tabindex="-1"></a><span class="in">    along = list(what = c("kriging", "residual kriging"))) |&gt;</span></span>
+<span id="cb35-572"><a href="#cb35-572" aria-hidden="true" tabindex="-1"></a><span class="in">    setNames("NO2") -&gt; km</span></span>
+<span id="cb35-573"><a href="#cb35-573" aria-hidden="true" tabindex="-1"></a><span class="in">g + geom_stars(data = km, aes(fill = NO2, x = x, y = y)) + </span></span>
+<span id="cb35-574"><a href="#cb35-574" aria-hidden="true" tabindex="-1"></a><span class="in">    geom_sf(data = st_cast(de, "MULTILINESTRING")) + </span></span>
+<span id="cb35-575"><a href="#cb35-575" aria-hidden="true" tabindex="-1"></a><span class="in">    geom_sf(data = no2.sf) + facet_wrap(~what) +</span></span>
+<span id="cb35-576"><a href="#cb35-576" aria-hidden="true" tabindex="-1"></a><span class="in">    coord_sf(lims_method = "geometry_bbox")</span></span>
 <span id="cb35-577"><a href="#cb35-577" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb35-578"><a href="#cb35-578" aria-hidden="true" tabindex="-1"></a>where, critically, the <span class="in">`pop_dens`</span> values are now available for</span>
 <span id="cb35-579"><a href="#cb35-579" aria-hidden="true" tabindex="-1"></a>prediction locations in the <span class="in">`newdata`</span> object <span class="in">`grd`</span>.  </span>
@@ -1762,8 +2002,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb35-613"><a href="#cb35-613" aria-hidden="true" tabindex="-1"></a>kriging errors.</span>
 <span id="cb35-614"><a href="#cb35-614" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-615"><a href="#cb35-615" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE, eval=!CI}</span></span>
-<span id="cb35-616"><a href="#cb35-616" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(v, b)</span>
-<span id="cb35-617"><a href="#cb35-617" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="fu">ls</span>(), <span class="at">file =</span> <span class="st">"ch12.RData"</span>)</span>
+<span id="cb35-616"><a href="#cb35-616" aria-hidden="true" tabindex="-1"></a><span class="in">rm(v, b)</span></span>
+<span id="cb35-617"><a href="#cb35-617" aria-hidden="true" tabindex="-1"></a><span class="in">save(list = ls(), file = "ch12.RData")</span></span>
 <span id="cb35-618"><a href="#cb35-618" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 </code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
@@ -1771,4 +2011,4 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-</body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/edzer/sdsr/edit/main/12-Interpolation.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>

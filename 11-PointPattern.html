@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.3.450">
+<meta name="generator" content="quarto-1.4.549">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <title>Spatial Data Science - 11&nbsp; Point Pattern Analysis</title>
 <style>
@@ -19,7 +19,7 @@ ul.task-list li input[type="checkbox"] {
 }
 /* CSS for syntax highlighting */
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -55,6 +55,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 div.csl-bib-body { }
 div.csl-entry {
   clear: both;
+  margin-bottom: 0em;
 }
 .hanging-indent div.csl-entry {
   margin-left:2em;
@@ -95,7 +96,13 @@ div.csl-indent {
   "collapse-after": 3,
   "panel-placement": "start",
   "type": "textbox",
-  "limit": 20,
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
   "language": {
     "search-no-results-text": "No results",
     "search-matching-documents-text": "matching documents",
@@ -104,6 +111,7 @@ div.csl-indent {
     "search-more-match-text": "more match in this document",
     "search-more-matches-text": "more matches in this document",
     "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
     "search-detached-cancel-button-title": "Cancel",
     "search-submit-button-title": "Submit",
     "search-label": "Search"
@@ -119,29 +127,54 @@ gtag('js', new Date());
     'analytics_storage': 'denied'
   });
 gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
-</script><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+</script><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script><script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 </head>
 <body class="nav-sidebar floating">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top"><nav class="quarto-secondary-nav"><div class="container-fluid d-flex">
-      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./part-3.html">Models for Spatial Data</a></li><li class="breadcrumb-item"><a href="./11-PointPattern.html"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Point Pattern Analysis</span></a></li></ol></nav>
-      <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
-      </a>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./part-3.html">Models for Spatial Data</a></li><li class="breadcrumb-item"><a href="./11-PointPattern.html"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Point Pattern Analysis</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
       <button type="button" class="btn quarto-search-button" aria-label="" onclick="window.quartoOpenSearch();">
         <i class="bi bi-search"></i>
       </button>
     </div>
   </nav></header><!-- content --><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal sidebar-navigation floating overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
     <div class="sidebar-title mb-0 py-0">
       <a href="./">Spatial Data Science</a> 
         <div class="sidebar-tools-main">
-    <a href="https://github.com/edzer/sdsr/" rel="" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+    <a href="https://github.com/edzer/sdsr/" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
 </div>
     </div>
       </div>
@@ -330,7 +363,7 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 </li>
     </ul>
 </div>
-</nav><div id="quarto-sidebar-glass" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass"></div>
+</nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
@@ -342,10 +375,10 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
   <li><a href="#spatial-sampling-and-simulating-a-point-process" id="toc-spatial-sampling-and-simulating-a-point-process" class="nav-link" data-scroll-target="#spatial-sampling-and-simulating-a-point-process"><span class="header-section-number">11.4</span> Spatial sampling and simulating a point process</a></li>
   <li><a href="#sec-simsphere" id="toc-sec-simsphere" class="nav-link" data-scroll-target="#sec-simsphere"><span class="header-section-number">11.5</span> Simulating points on the sphere</a></li>
   <li><a href="#exercises" id="toc-exercises" class="nav-link" data-scroll-target="#exercises"><span class="header-section-number">11.6</span> Exercises</a></li>
-  </ul><div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/edzer/sdsr/edit/main/11-PointPattern.qmd" class="toc-action">Edit this page</a></p></div></div></nav>
+  </ul><div class="toc-actions"><ul><li><a href="https://github.com/edzer/sdsr/edit/main/11-PointPattern.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><div class="quarto-title">
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./part-3.html">Models for Spatial Data</a></li><li class="breadcrumb-item"><a href="./11-PointPattern.html"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Point Pattern Analysis</span></a></li></ol></nav><div class="quarto-title">
 <div class="quarto-title-block"><div><h1 class="title"><span id="sec-pointpatterns" class="quarto-section-identifier"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Point Pattern Analysis</span></span></h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">View Source</a></li></ul></div></div>
 </div>
 
@@ -359,8 +392,9 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
   </div>
   
 
+
 </header><p> </p>
-<p>Point pattern analysis is concerned with describing patterns of points over space and making inference about the process that could have generated an observed pattern. The main focus here lies on the information carried in the locations of the points, and typically these locations are not controlled by sampling but a result of a process we are interested in, such as animal sightings, accidents, disease cases, or tree locations. This is opposed to geostatistical processes (<a href="12-Interpolation.html"><span>Chapter&nbsp;12</span></a>) where we have values of some phenomenon everywhere but observations limited to a set of locations <em>that we can control</em>, at least in principle. Hence, in geostatistical problems the prime interest is not in the observation locations but in estimating the value of the observed phenomenon at unobserved locations. Point pattern analysis typically assumes that for an observed area, all points are available, meaning that locations without a point are not unobserved as in a geostatistical process, but are observed and contain no point. In terms of random processes, in point processes locations are random variables, where, in geostatistical processes the measured variable is a random field with locations fixed.</p>
+<p>Point pattern analysis is concerned with describing patterns of points over space and making inference about the process that could have generated an observed pattern. The main focus here lies on the information carried in the locations of the points, and typically these locations are not controlled by sampling but a result of a process we are interested in, such as animal sightings, accidents, disease cases, or tree locations. This is opposed to geostatistical processes (<a href="12-Interpolation.html" class="quarto-xref"><span>Chapter 12</span></a>) where we have values of some phenomenon everywhere but observations limited to a set of locations <em>that we can control</em>, at least in principle. Hence, in geostatistical problems the prime interest is not in the observation locations but in estimating the value of the observed phenomenon at unobserved locations. Point pattern analysis typically assumes that for an observed area, all points are available, meaning that locations without a point are not unobserved as in a geostatistical process, but are observed and contain no point. In terms of random processes, in point processes locations are random variables, where, in geostatistical processes the measured variable is a random field with locations fixed.</p>
 <p>This chapter is confined to describing the very basics of point pattern analysis, using package <strong>spatstat</strong> <span class="citation" data-cites="R-spatstat">(<a href="references.html#ref-R-spatstat" role="doc-biblioref">Baddeley, Turner, and Rubak 2022</a>)</span>, and related packages by the same authors. The <strong>spatstat</strong> book of <span class="citation" data-cites="baddeley2015spatial">Baddeley, Rubak, and Turner (<a href="references.html#ref-baddeley2015spatial" role="doc-biblioref">2015</a>)</span> gives a comprehensive introduction to point pattern theory and the use of the <strong>spatstat</strong> package family, which we will not try to copy. Inclusion of particular topics in this chapter should not be seen as an expression that these are more relevant than others. In particular, this chapter tries to illustrate interfaces existing between <strong>spatstat</strong> and the more spatial data science oriented packages <strong>sf</strong> and <strong>stars</strong>. A further book that introduces point patterns analysis is <span class="citation" data-cites="STOYAN2017125">Stoyan et al. (<a href="references.html#ref-STOYAN2017125" role="doc-biblioref">2017</a>)</span>. R package <strong>stpp</strong> <span class="citation" data-cites="R-stpp">(<a href="references.html#ref-R-stpp" role="doc-biblioref">Gabriel et al. 2022</a>)</span> for analysing spatiotemporal point processes is discussed in <span class="citation" data-cites="stpp">Gabriel, Rowlingson, and Diggle (<a href="references.html#ref-stpp" role="doc-biblioref">2013</a>)</span>.</p>
 <p>Important concepts of point patterns analysis are the distinction between a point <em>pattern</em> and a point <em>process</em>: the latter is the stochastic process that, when sampled, generates a point pattern. A dataset is always a point pattern, and inference involves figuring out the properties of a process that could have generated a pattern like the one we observed. Properties of a spatial point process include</p>
 <ul>
@@ -385,17 +419,21 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span>        <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_as_sfc.html">st_as_sfc</a></span><span class="op">(</span><span class="op">)</span> </span>
 <span><span class="va">w2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/sfc.html">st_sfc</a></span><span class="op">(</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st.html">st_point</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_unary.html">st_buffer</a></span><span class="op">(</span><span class="fl">1.2</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>this is shown in <a href="#fig-pp1">Figure&nbsp;<span>11.1</span></a>.</p>
+<p>this is shown in <a href="#fig-pp1" class="quarto-xref">Figure&nbsp;<span>11.1</span></a>.</p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">2.1</span>, <span class="fl">2.1</span>, <span class="fl">0.1</span>, <span class="fl">0.5</span><span class="op">)</span>, xaxs <span class="op">=</span> <span class="st">"i"</span>, yaxs <span class="op">=</span> <span class="st">"i"</span><span class="op">)</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">2.1</span>, <span class="fl">2.1</span>, <span class="fl">0.1</span>, <span class="fl">0.5</span><span class="op">)</span>, xaxs <span class="op">=</span> <span class="st">"i"</span>, yaxs <span class="op">=</span> <span class="st">"i"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">w1</span>, axes <span class="op">=</span> <span class="cn">TRUE</span>, col <span class="op">=</span> <span class="st">'grey'</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">xy</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">w2</span>, axes <span class="op">=</span> <span class="cn">TRUE</span>, col <span class="op">=</span> <span class="st">'grey'</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">xy</span>, add <span class="op">=</span> <span class="cn">TRUE</span>, cex <span class="op">=</span> <span class="fl">.5</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-pp1" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="11-PointPattern_files/figure-html/fig-pp1-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;11.1: Depending on the observation window (grey), the same point pattern can appear completely spatially random (left), or clustered (right)</figcaption></figure>
+<div id="fig-pp1" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-pp1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="11-PointPattern_files/figure-html/fig-pp1-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pp1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11.1: Depending on the observation window (grey), the same point pattern can appear completely spatially random (left), or clustered (right)
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -421,7 +459,7 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span><span class="co"># enclosing rectangle: [-0.2, 2.2] x [-0.7, 1.7] units</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p></p>
-<p>To test for homogeneity, one could carry out a quadrat count, using an appropriate quadrat layout (a 3 <span class="math inline">\(\times\)</span> 3 layout is shown in <a href="#fig-quadrat">Figure&nbsp;<span>11.2</span></a>)</p>
+<p>To test for homogeneity, one could carry out a quadrat count, using an appropriate quadrat layout (a 3 <span class="math inline">\(\times\)</span> 3 layout is shown in <a href="#fig-quadrat" class="quarto-xref">Figure&nbsp;<span>11.2</span></a>)</p>
 <div class="cell">
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">q1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/quadratcount.html">quadratcount</a></span><span class="op">(</span><span class="va">pp1</span>, nx<span class="op">=</span><span class="fl">3</span>, ny<span class="op">=</span><span class="fl">3</span><span class="op">)</span></span>
@@ -431,9 +469,13 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">q2</span>, main <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">xy</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<div id="fig-quadrat" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="11-PointPattern_files/figure-html/fig-quadrat-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;11.2: 3 <span class="math inline">\(\times\)</span> 3 quadrat counts for the two point patterns</figcaption></figure>
+<div id="fig-quadrat" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-quadrat-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="11-PointPattern_files/figure-html/fig-quadrat-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-quadrat-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11.2: 3 <span class="math inline">\(\times\)</span> 3 quadrat counts for the two point patterns
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -463,21 +505,25 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span><span class="co"># Quadrats: 9 tiles (irregular windows)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>which indicates that for the second case we have an indication that this is not a CSR (completely spatially random) pattern. As indicated by the warning, we should take the p-values with a large grain of salt because we have too small expected counts.</p>
-<p> Kernel densities can be computed using <code>density</code>, where kernel shape and bandwidth can be controlled. Here, cross-validation is used by function <code>bw.diggle</code> to specify the bandwidth parameter <code>sigma</code>; plots are shown in <a href="#fig-bwdiggle">Figure&nbsp;<span>11.3</span></a>.</p>
+<p> Kernel densities can be computed using <code>density</code>, where kernel shape and bandwidth can be controlled. Here, cross-validation is used by function <code>bw.diggle</code> to specify the bandwidth parameter <code>sigma</code>; plots are shown in <a href="#fig-bwdiggle" class="quarto-xref">Figure&nbsp;<span>11.3</span></a>.</p>
 <div class="cell">
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">den1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/density.html">density</a></span><span class="op">(</span><span class="va">pp1</span>, sigma <span class="op">=</span> <span class="va">bw.diggle</span><span class="op">)</span></span>
 <span><span class="va">den2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/density.html">density</a></span><span class="op">(</span><span class="va">pp2</span>, sigma <span class="op">=</span> <span class="va">bw.diggle</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">1.1</span>,<span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">1.1</span>,<span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">den1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">pp1</span>, add<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">den2</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">pp1</span>, add<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-bwdiggle" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="11-PointPattern_files/figure-html/fig-bwdiggle-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;11.3: Kernel densities for both point patterns</figcaption></figure>
+<div id="fig-bwdiggle" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-bwdiggle-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="11-PointPattern_files/figure-html/fig-bwdiggle-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-bwdiggle-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11.3: Kernel densities for both point patterns
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -528,13 +574,17 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span><span class="co"># (Intercept)     4.54 0.341    3.87    5.21   *** 13.32</span></span>
 <span><span class="co"># dist           -4.25 0.701   -5.62   -2.88   *** -6.06</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>The returned object is of class <code>ppm</code>, and can be plotted: <a href="#fig-ppm">Figure&nbsp;<span>11.4</span></a> shows the predicted surface. The prediction standard error can also be plotted.</p>
+<p>The returned object is of class <code>ppm</code>, and can be plotted: <a href="#fig-ppm" class="quarto-xref">Figure&nbsp;<span>11.4</span></a> shows the predicted surface. The prediction standard error can also be plotted.</p>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb14"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">m</span>, se <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb14"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">m</span>, se <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-ppm" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="11-PointPattern_files/figure-html/fig-ppm-1.png" class="img-fluid figure-img" style="width:50.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;11.4: Predicted densities of a ppm model</figcaption></figure>
+<div id="fig-ppm" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-ppm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="11-PointPattern_files/figure-html/fig-ppm-1.png" class="img-fluid figure-img" style="width:50.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ppm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11.4: Predicted densities of a ppm model
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -638,8 +688,8 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <p>Potential information about network <em>structure</em>, how <code>LINESTRING</code> geometries are connected, is not present in the <code>sf</code> object. Package <strong>sfnetworks</strong> <span class="citation" data-cites="R-sfnetworks">(<a href="references.html#ref-R-sfnetworks" role="doc-biblioref">van der Meer et al. 2022</a>)</span> would be a candidate package to hold such information in R or to pass on network data imported from OpenStreetMaps to <strong>spatstat</strong>.</p>
 </section><section id="spatial-sampling-and-simulating-a-point-process" class="level2" data-number="11.4"><h2 data-number="11.4" class="anchored" data-anchor-id="spatial-sampling-and-simulating-a-point-process">
 <span class="header-section-number">11.4</span> Spatial sampling and simulating a point process</h2>
-<p> Package <strong>sf</strong> contains an <code>st_sample</code> method that samples points from <code>MULTIPOINT</code>, linear or polygonal geometries, using different spatial sampling strategies. It natively supports strategies “random”, “hexagonal”, “Fibonacci” (<a href="#sec-simsphere"><span>Section&nbsp;11.5</span></a>), and “regular”, where “regular” refers to sampling on a square regular grid and “hexagonal” essentially gives a triangular grid. For type “random”, it can return exactly the number of requested points, for other types this is approximate.</p>
-<p><code>st_sample</code> also interfaces point process simulation functions of <strong>spatstat</strong>, when other values for sampling type are chosen. For instance the <strong>spatstat</strong> function <code>rThomas</code> is invoked when setting <code>type = Thomas</code> (<a href="#fig-rThomas">Figure&nbsp;<span>11.5</span></a>):</p>
+<p> Package <strong>sf</strong> contains an <code>st_sample</code> method that samples points from <code>MULTIPOINT</code>, linear or polygonal geometries, using different spatial sampling strategies. It natively supports strategies “random”, “hexagonal”, “Fibonacci” (<a href="#sec-simsphere" class="quarto-xref"><span>Section 11.5</span></a>), and “regular”, where “regular” refers to sampling on a square regular grid and “hexagonal” essentially gives a triangular grid. For type “random”, it can return exactly the number of requested points, for other types this is approximate.</p>
+<p><code>st_sample</code> also interfaces point process simulation functions of <strong>spatstat</strong>, when other values for sampling type are chosen. For instance the <strong>spatstat</strong> function <code>rThomas</code> is invoked when setting <code>type = Thomas</code> (<a href="#fig-rThomas" class="quarto-xref">Figure&nbsp;<span>11.5</span></a>):</p>
 <div class="cell">
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">kappa</span> <span class="op">&lt;-</span> <span class="fl">30</span> <span class="op">/</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_measures.html">st_area</a></span><span class="op">(</span><span class="va">w2</span><span class="op">)</span> <span class="co"># intensity</span></span>
 <span><span class="va">th</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_sample.html">st_sample</a></span><span class="op">(</span><span class="va">w2</span>, kappa <span class="op">=</span> <span class="va">kappa</span>, mu <span class="op">=</span> <span class="fl">3</span>, scale <span class="op">=</span> <span class="fl">0.05</span>, </span>
@@ -648,22 +698,26 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span><span class="co"># [1] 90</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<details><summary>Code</summary><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">w2</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">th</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-rThomas" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="11-PointPattern_files/figure-html/fig-rThomas-1.png" class="img-fluid figure-img" style="width:60.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;11.5: Thomas process with mu = 3 and scale = 0.05</figcaption></figure>
+<div id="fig-rThomas" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-rThomas-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="11-PointPattern_files/figure-html/fig-rThomas-1.png" class="img-fluid figure-img" style="width:60.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-rThomas-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11.5: Thomas process with mu = 3 and scale = 0.05
+</figcaption></figure>
 </div>
 </div>
 </div>
 <p>The help function obtained by <code><a href="https://rdrr.io/pkg/spatstat.random/man/rThomas.html">?rThomas</a></code> details the meaning of the parameters <code>kappa</code>, <code>mu</code>, and <code>scale</code>. Simulating point processes means that the intensity is given, not the sample size. The sample size within the observation window obtained this way is a random variable.</p>
 </section><section id="sec-simsphere" class="level2" data-number="11.5"><h2 data-number="11.5" class="anchored" data-anchor-id="sec-simsphere">
 <span class="header-section-number">11.5</span> Simulating points on the sphere</h2>
-<p> Another spatial random sampling type supported by <code>sf</code> natively (in <code>st_sample</code>) is simulation of random points on the sphere. An example of this is shown in <a href="#fig-srsglobe">Figure&nbsp;<span>11.6</span></a>, where points were constrained to those in oceans. Points approximately regularly distributed over a sphere are obtained by <code>st_sample</code> with <code>type = "Fibonacci"</code> <span class="citation" data-cites="fibo">(<a href="references.html#ref-fibo" role="doc-biblioref">González 2010</a>)</span>.</p>
+<p> Another spatial random sampling type supported by <code>sf</code> natively (in <code>st_sample</code>) is simulation of random points on the sphere. An example of this is shown in <a href="#fig-srsglobe" class="quarto-xref">Figure&nbsp;<span>11.6</span></a>, where points were constrained to those in oceans. Points approximately regularly distributed over a sphere are obtained by <code>st_sample</code> with <code>type = "Fibonacci"</code> <span class="citation" data-cites="fibo">(<a href="references.html#ref-fibo" role="doc-biblioref">González 2010</a>)</span>.</p>
 <div class="cell" data-messages="false">
-<details><summary>Code</summary><div class="sourceCode" id="cb24"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">4</span><span class="op">)</span>, mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb24"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">4</span><span class="op">)</span>, mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/s2/">s2</a></span><span class="op">)</span></span>
 <span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/s2/reference/as_s2_geography.html">as_s2_geography</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span> <span class="co"># Earth</span></span>
 <span><span class="va">co</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/s2/reference/s2_data_tbl_countries.html">s2_data_countries</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -694,9 +748,13 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span><span class="va">pts</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/s2/reference/s2_boundary.html">s2_intersection</a></span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_as_sfc.html">st_as_sfc</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">pts</span></span>
 <span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html">st_transform</a></span><span class="op">(</span><span class="va">pts</span>, <span class="va">ortho</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span>add <span class="op">=</span> <span class="cn">TRUE</span>, pch <span class="op">=</span> <span class="fl">3</span>, cex <span class="op">=</span> <span class="fl">.5</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-srsglobe" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure"><p><img src="11-PointPattern_files/figure-html/fig-srsglobe-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
-<figcaption class="figure-caption">Figure&nbsp;11.6: Points sampled on the globe over the oceans: randomly (left) and approximately regular (Fibonacci; right), shown in an orthographic projection</figcaption></figure>
+<div id="fig-srsglobe" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-srsglobe-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="11-PointPattern_files/figure-html/fig-srsglobe-1.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-srsglobe-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11.6: Points sampled on the globe over the oceans: randomly (left) and approximately regular (Fibonacci; right), shown in an orthographic projection
+</figcaption></figure>
 </div>
 </div>
 </div>
@@ -704,14 +762,14 @@ gtag('config', 'G-04YTZNEH1K', { 'anonymize_ip': true});
 <span class="header-section-number">11.6</span> Exercises</h2>
 <ol type="1">
 <li>After loading <strong>spatstat</strong>, recreate the plot obtained by <code>plot(longleaf)</code> by using <strong>ggplot2</strong> and <code>geom_sf()</code>, and by <code><a href="https://r-spatial.github.io/sf/reference/plot.html">sf::plot()</a></code>.</li>
-<li>Convert the sample locations of the NO<span class="math inline">\(_2\)</span> data used in <a href="12-Interpolation.html"><span>Chapter&nbsp;12</span></a> to a <code>ppp</code> object, with a proper window.</li>
+<li>Convert the sample locations of the NO<span class="math inline">\(_2\)</span> data used in <a href="12-Interpolation.html" class="quarto-xref"><span>Chapter 12</span></a> to a <code>ppp</code> object, with a proper window.</li>
 <li>Compute and plot the density of the NO<span class="math inline">\(_2\)</span> dataset, import the density as a <code>stars</code> object, and compute the volume under the surface.</li>
 </ol>
 
 
 <!-- -->
 
-<div id="refs" class="references csl-bib-body hanging-indent" role="list" style="display: none">
+<div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">
 <div id="ref-baddeley2015spatial" class="csl-entry" role="listitem">
 Baddeley, Adrian, Ege Rubak, and Rolf Turner. 2015. <em>Spatial Point Patterns: Methodology and Applications with <span>R</span></em>. Chapman &amp; Hall/CRC.
 </div>
@@ -864,10 +922,9 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   if (showAllCode) {
     showAllCode.addEventListener("click", toggleCodeHandler(true));
   }
-  function tippyHover(el, contentFn) {
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
     const config = {
       allowHTML: true,
-      content: contentFn,
       maxWidth: 500,
       delay: 100,
       arrow: false,
@@ -877,8 +934,17 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       interactive: true,
       interactiveBorder: 10,
       theme: 'quarto',
-      placement: 'bottom-start'
+      placement: 'bottom-start',
     };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
     window.tippy(el, config); 
   }
   const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
@@ -891,6 +957,125 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       const id = href.replace(/^#\/?/, "");
       const note = window.document.getElementById(id);
       return note.innerHTML;
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
     });
   }
       let selectedAnnoteEl;
@@ -934,6 +1119,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
             }
             div.style.top = top - 2 + "px";
             div.style.height = height + 4 + "px";
+            div.style.left = 0;
             let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
             if (gutterDiv === null) {
               gutterDiv = window.document.createElement("div");
@@ -959,6 +1145,32 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
         });
         selectedAnnoteEl = undefined;
       };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
       // Attach click handler to the DT
       const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
       for (const annoteDlNode of annoteDls) {
@@ -1018,12 +1230,12 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   }
 });
 </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
-      <a href="./10-Models.html" class="pagination-link">
+      <a href="./10-Models.html" class="pagination-link  aria-label=" modelling="" of="" spatial="" data="">
         <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Statistical modelling of spatial data</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./12-Interpolation.html" class="pagination-link">
+      <a href="./12-Interpolation.html" class="pagination-link" aria-label="<span class='chapter-number'>12</span>&nbsp; <span class='chapter-title'>Spatial Interpolation</span>">
         <span class="nav-page-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Spatial Interpolation</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
@@ -1110,14 +1322,14 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb25-84"><a href="#cb25-84" aria-hidden="true" tabindex="-1"></a>this is shown in @fig-pp1.</span>
 <span id="cb25-85"><a href="#cb25-85" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-86"><a href="#cb25-86" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-pp1, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb25-87"><a href="#cb25-87" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.height: 3.3</span></span>
-<span id="cb25-88"><a href="#cb25-88" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Depending on the observation window (grey), the same point pattern can appear completely spatially random (left), or clustered (right)"</span></span>
-<span id="cb25-89"><a href="#cb25-89" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb25-90"><a href="#cb25-90" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">2.1</span>, <span class="fl">2.1</span>, <span class="fl">0.1</span>, <span class="fl">0.5</span>), <span class="at">xaxs =</span> <span class="st">"i"</span>, <span class="at">yaxs =</span> <span class="st">"i"</span>)</span>
-<span id="cb25-91"><a href="#cb25-91" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(w1, <span class="at">axes =</span> <span class="cn">TRUE</span>, <span class="at">col =</span> <span class="st">'grey'</span>)</span>
-<span id="cb25-92"><a href="#cb25-92" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(xy, <span class="at">add =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb25-93"><a href="#cb25-93" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(w2, <span class="at">axes =</span> <span class="cn">TRUE</span>, <span class="at">col =</span> <span class="st">'grey'</span>)</span>
-<span id="cb25-94"><a href="#cb25-94" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(xy, <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">cex =</span> .<span class="dv">5</span>)</span>
+<span id="cb25-87"><a href="#cb25-87" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.height: 3.3</span></span>
+<span id="cb25-88"><a href="#cb25-88" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Depending on the observation window (grey), the same point pattern can appear completely spatially random (left), or clustered (right)"</span></span>
+<span id="cb25-89"><a href="#cb25-89" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb25-90"><a href="#cb25-90" aria-hidden="true" tabindex="-1"></a><span class="in">par(mfrow = c(1, 2), mar = c(2.1, 2.1, 0.1, 0.5), xaxs = "i", yaxs = "i")</span></span>
+<span id="cb25-91"><a href="#cb25-91" aria-hidden="true" tabindex="-1"></a><span class="in">plot(w1, axes = TRUE, col = 'grey')</span></span>
+<span id="cb25-92"><a href="#cb25-92" aria-hidden="true" tabindex="-1"></a><span class="in">plot(xy, add = TRUE)</span></span>
+<span id="cb25-93"><a href="#cb25-93" aria-hidden="true" tabindex="-1"></a><span class="in">plot(w2, axes = TRUE, col = 'grey')</span></span>
+<span id="cb25-94"><a href="#cb25-94" aria-hidden="true" tabindex="-1"></a><span class="in">plot(xy, add = TRUE, cex = .5)</span></span>
 <span id="cb25-95"><a href="#cb25-95" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb25-96"><a href="#cb25-96" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-97"><a href="#cb25-97" aria-hidden="true" tabindex="-1"></a>\index{ppp}</span>
@@ -1147,15 +1359,15 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb25-125"><a href="#cb25-125" aria-hidden="true" tabindex="-1"></a>an appropriate quadrat layout (a 3 $\times$ 3 layout is shown in </span>
 <span id="cb25-126"><a href="#cb25-126" aria-hidden="true" tabindex="-1"></a>@fig-quadrat)</span>
 <span id="cb25-127"><a href="#cb25-127" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-quadrat, echo = !knitr::is_latex_output()}</span></span>
-<span id="cb25-128"><a href="#cb25-128" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.height: 3.5</span></span>
-<span id="cb25-129"><a href="#cb25-129" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "3 $\\times$ 3 quadrat counts for the two point patterns"</span></span>
-<span id="cb25-130"><a href="#cb25-130" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="dv">4</span>))</span>
-<span id="cb25-131"><a href="#cb25-131" aria-hidden="true" tabindex="-1"></a>q1 <span class="ot">&lt;-</span> <span class="fu">quadratcount</span>(pp1, <span class="at">nx=</span><span class="dv">3</span>, <span class="at">ny=</span><span class="dv">3</span>)</span>
-<span id="cb25-132"><a href="#cb25-132" aria-hidden="true" tabindex="-1"></a>q2 <span class="ot">&lt;-</span> <span class="fu">quadratcount</span>(pp2, <span class="at">nx=</span><span class="dv">3</span>, <span class="at">ny=</span><span class="dv">3</span>)</span>
-<span id="cb25-133"><a href="#cb25-133" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(q1, <span class="at">main =</span> <span class="st">""</span>)</span>
-<span id="cb25-134"><a href="#cb25-134" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(xy, <span class="at">add =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb25-135"><a href="#cb25-135" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(q2, <span class="at">main =</span> <span class="st">""</span>)</span>
-<span id="cb25-136"><a href="#cb25-136" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(xy, <span class="at">add =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb25-128"><a href="#cb25-128" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.height: 3.5</span></span>
+<span id="cb25-129"><a href="#cb25-129" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "3 $\\times$ 3 quadrat counts for the two point patterns"</span></span>
+<span id="cb25-130"><a href="#cb25-130" aria-hidden="true" tabindex="-1"></a><span class="in">par(mfrow = c(1, 2), mar = rep(0, 4))</span></span>
+<span id="cb25-131"><a href="#cb25-131" aria-hidden="true" tabindex="-1"></a><span class="in">q1 &lt;- quadratcount(pp1, nx=3, ny=3)</span></span>
+<span id="cb25-132"><a href="#cb25-132" aria-hidden="true" tabindex="-1"></a><span class="in">q2 &lt;- quadratcount(pp2, nx=3, ny=3)</span></span>
+<span id="cb25-133"><a href="#cb25-133" aria-hidden="true" tabindex="-1"></a><span class="in">plot(q1, main = "")</span></span>
+<span id="cb25-134"><a href="#cb25-134" aria-hidden="true" tabindex="-1"></a><span class="in">plot(xy, add = TRUE)</span></span>
+<span id="cb25-135"><a href="#cb25-135" aria-hidden="true" tabindex="-1"></a><span class="in">plot(q2, main = "")</span></span>
+<span id="cb25-136"><a href="#cb25-136" aria-hidden="true" tabindex="-1"></a><span class="in">plot(xy, add = TRUE)</span></span>
 <span id="cb25-137"><a href="#cb25-137" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb25-138"><a href="#cb25-138" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-139"><a href="#cb25-139" aria-hidden="true" tabindex="-1"></a>\index{quadrat.test}</span>
@@ -1180,14 +1392,14 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb25-162"><a href="#cb25-162" aria-hidden="true" tabindex="-1"></a>den2 <span class="ot">&lt;-</span> <span class="fu">density</span>(pp2, <span class="at">sigma =</span> bw.diggle)</span>
 <span id="cb25-163"><a href="#cb25-163" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb25-164"><a href="#cb25-164" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-bwdiggle, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb25-165"><a href="#cb25-165" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.height: 3.0</span></span>
-<span id="cb25-166"><a href="#cb25-166" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Kernel densities for both point patterns"</span></span>
-<span id="cb25-167"><a href="#cb25-167" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb25-168"><a href="#cb25-168" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="fl">1.1</span>,<span class="dv">2</span>))</span>
-<span id="cb25-169"><a href="#cb25-169" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(den1)</span>
-<span id="cb25-170"><a href="#cb25-170" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(pp1, <span class="at">add=</span><span class="cn">TRUE</span>)</span>
-<span id="cb25-171"><a href="#cb25-171" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(den2)</span>
-<span id="cb25-172"><a href="#cb25-172" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(pp1, <span class="at">add=</span><span class="cn">TRUE</span>)</span>
+<span id="cb25-165"><a href="#cb25-165" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.height: 3.0</span></span>
+<span id="cb25-166"><a href="#cb25-166" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Kernel densities for both point patterns"</span></span>
+<span id="cb25-167"><a href="#cb25-167" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb25-168"><a href="#cb25-168" aria-hidden="true" tabindex="-1"></a><span class="in">par(mfrow = c(1, 2), mar = c(0,0,1.1,2))</span></span>
+<span id="cb25-169"><a href="#cb25-169" aria-hidden="true" tabindex="-1"></a><span class="in">plot(den1)</span></span>
+<span id="cb25-170"><a href="#cb25-170" aria-hidden="true" tabindex="-1"></a><span class="in">plot(pp1, add=TRUE)</span></span>
+<span id="cb25-171"><a href="#cb25-171" aria-hidden="true" tabindex="-1"></a><span class="in">plot(den2)</span></span>
+<span id="cb25-172"><a href="#cb25-172" aria-hidden="true" tabindex="-1"></a><span class="in">plot(pp1, add=TRUE)</span></span>
 <span id="cb25-173"><a href="#cb25-173" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb25-174"><a href="#cb25-174" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-175"><a href="#cb25-175" aria-hidden="true" tabindex="-1"></a>The density maps created this way are obviously raster images, and we can</span>
@@ -1232,10 +1444,10 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb25-222"><a href="#cb25-222" aria-hidden="true" tabindex="-1"></a>shows the predicted surface. The prediction standard error can also be plotted.</span>
 <span id="cb25-223"><a href="#cb25-223" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-224"><a href="#cb25-224" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-ppm, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb25-225"><a href="#cb25-225" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Predicted densities of a ppm model"</span></span>
-<span id="cb25-226"><a href="#cb25-226" aria-hidden="true" tabindex="-1"></a><span class="co">#| out.width: 50%</span></span>
-<span id="cb25-227"><a href="#cb25-227" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb25-228"><a href="#cb25-228" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(m, <span class="at">se =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb25-225"><a href="#cb25-225" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Predicted densities of a ppm model"</span></span>
+<span id="cb25-226"><a href="#cb25-226" aria-hidden="true" tabindex="-1"></a><span class="in">#| out.width: 50%</span></span>
+<span id="cb25-227"><a href="#cb25-227" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb25-228"><a href="#cb25-228" aria-hidden="true" tabindex="-1"></a><span class="in">plot(m, se = FALSE)</span></span>
 <span id="cb25-229"><a href="#cb25-229" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb25-230"><a href="#cb25-230" aria-hidden="true" tabindex="-1"></a>The model also has a <span class="in">`predict`</span> method, which returns an <span class="in">`im`</span> object that</span>
 <span id="cb25-231"><a href="#cb25-231" aria-hidden="true" tabindex="-1"></a>can be converted into a <span class="in">`stars`</span> object by</span>
@@ -1250,11 +1462,11 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb25-242"><a href="#cb25-242" aria-hidden="true" tabindex="-1"></a>Cartesian coordinates. If we try to convert an object with ellipsoidal</span>
 <span id="cb25-243"><a href="#cb25-243" aria-hidden="true" tabindex="-1"></a>coordinates, we get an error:</span>
 <span id="cb25-244"><a href="#cb25-244" aria-hidden="true" tabindex="-1"></a><span class="in">```{r error=TRUE}</span></span>
-<span id="cb25-245"><a href="#cb25-245" aria-hidden="true" tabindex="-1"></a><span class="fu">system.file</span>(<span class="st">"gpkg/nc.gpkg"</span>, <span class="at">package =</span> <span class="st">"sf"</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb25-246"><a href="#cb25-246" aria-hidden="true" tabindex="-1"></a>    <span class="fu">read_sf</span>() <span class="sc">|&gt;</span></span>
-<span id="cb25-247"><a href="#cb25-247" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_geometry</span>() <span class="sc">|&gt;</span></span>
-<span id="cb25-248"><a href="#cb25-248" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_centroid</span>() <span class="sc">|&gt;</span></span>
-<span id="cb25-249"><a href="#cb25-249" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.ppp</span>()</span>
+<span id="cb25-245"><a href="#cb25-245" aria-hidden="true" tabindex="-1"></a><span class="in">system.file("gpkg/nc.gpkg", package = "sf") |&gt; </span></span>
+<span id="cb25-246"><a href="#cb25-246" aria-hidden="true" tabindex="-1"></a><span class="in">    read_sf() |&gt;</span></span>
+<span id="cb25-247"><a href="#cb25-247" aria-hidden="true" tabindex="-1"></a><span class="in">    st_geometry() |&gt;</span></span>
+<span id="cb25-248"><a href="#cb25-248" aria-hidden="true" tabindex="-1"></a><span class="in">    st_centroid() |&gt;</span></span>
+<span id="cb25-249"><a href="#cb25-249" aria-hidden="true" tabindex="-1"></a><span class="in">    as.ppp()</span></span>
 <span id="cb25-250"><a href="#cb25-250" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb25-251"><a href="#cb25-251" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-252"><a href="#cb25-252" aria-hidden="true" tabindex="-1"></a>When converting to a **spatstat** data structure we loose</span>
@@ -1326,13 +1538,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb25-330"><a href="#cb25-330" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(th)</span>
 <span id="cb25-331"><a href="#cb25-331" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb25-332"><a href="#cb25-332" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-rThomas, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb25-333"><a href="#cb25-333" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.height: 4</span></span>
-<span id="cb25-334"><a href="#cb25-334" aria-hidden="true" tabindex="-1"></a><span class="co">#| out.width: 60%</span></span>
-<span id="cb25-335"><a href="#cb25-335" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Thomas process with mu = 3 and scale = 0.05"</span></span>
-<span id="cb25-336"><a href="#cb25-336" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb25-337"><a href="#cb25-337" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="dv">4</span>))</span>
-<span id="cb25-338"><a href="#cb25-338" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(w2)</span>
-<span id="cb25-339"><a href="#cb25-339" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(th, <span class="at">add =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb25-333"><a href="#cb25-333" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.height: 4</span></span>
+<span id="cb25-334"><a href="#cb25-334" aria-hidden="true" tabindex="-1"></a><span class="in">#| out.width: 60%</span></span>
+<span id="cb25-335"><a href="#cb25-335" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Thomas process with mu = 3 and scale = 0.05"</span></span>
+<span id="cb25-336"><a href="#cb25-336" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb25-337"><a href="#cb25-337" aria-hidden="true" tabindex="-1"></a><span class="in">par(mar = rep(0, 4))</span></span>
+<span id="cb25-338"><a href="#cb25-338" aria-hidden="true" tabindex="-1"></a><span class="in">plot(w2)</span></span>
+<span id="cb25-339"><a href="#cb25-339" aria-hidden="true" tabindex="-1"></a><span class="in">plot(th, add = TRUE)</span></span>
 <span id="cb25-340"><a href="#cb25-340" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb25-341"><a href="#cb25-341" aria-hidden="true" tabindex="-1"></a>The help function obtained by <span class="in">`?rThomas`</span> details the meaning of the</span>
 <span id="cb25-342"><a href="#cb25-342" aria-hidden="true" tabindex="-1"></a>parameters <span class="in">`kappa`</span>, <span class="in">`mu`</span>, and <span class="in">`scale`</span>. Simulating point processes</span>
@@ -1351,39 +1563,39 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb25-355"><a href="#cb25-355" aria-hidden="true" tabindex="-1"></a><span class="in">`type = "Fibonacci"`</span> <span class="co">[</span><span class="ot">@fibo</span><span class="co">]</span>.</span>
 <span id="cb25-356"><a href="#cb25-356" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-357"><a href="#cb25-357" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-srsglobe, echo=!knitr::is_latex_output(), messages = FALSE}</span></span>
-<span id="cb25-358"><a href="#cb25-358" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Points sampled on the globe over the oceans: randomly (left) and approximately regular (Fibonacci; right), shown in an orthographic projection"</span></span>
-<span id="cb25-359"><a href="#cb25-359" aria-hidden="true" tabindex="-1"></a><span class="co">#| out.width: 100%</span></span>
-<span id="cb25-360"><a href="#cb25-360" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb25-361"><a href="#cb25-361" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="dv">4</span>), <span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
-<span id="cb25-362"><a href="#cb25-362" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(s2)</span>
-<span id="cb25-363"><a href="#cb25-363" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">as_s2_geography</span>(<span class="cn">TRUE</span>) <span class="co"># Earth</span></span>
-<span id="cb25-364"><a href="#cb25-364" aria-hidden="true" tabindex="-1"></a>co <span class="ot">&lt;-</span> <span class="fu">s2_data_countries</span>()</span>
-<span id="cb25-365"><a href="#cb25-365" aria-hidden="true" tabindex="-1"></a>oc <span class="ot">&lt;-</span> <span class="fu">s2_difference</span>(g, <span class="fu">s2_union_agg</span>(co)) <span class="co"># oceans</span></span>
-<span id="cb25-366"><a href="#cb25-366" aria-hidden="true" tabindex="-1"></a>b <span class="ot">&lt;-</span> <span class="fu">s2_buffer_cells</span>(<span class="fu">as_s2_geography</span>(<span class="st">"POINT(-30 -10)"</span>), <span class="dv">9800000</span>) <span class="co"># visible half</span></span>
-<span id="cb25-367"><a href="#cb25-367" aria-hidden="true" tabindex="-1"></a>i <span class="ot">&lt;-</span> <span class="fu">s2_intersection</span>(b, oc) <span class="co"># visible ocean</span></span>
-<span id="cb25-368"><a href="#cb25-368" aria-hidden="true" tabindex="-1"></a>co <span class="ot">&lt;-</span> <span class="fu">s2_intersection</span>(b, co)</span>
-<span id="cb25-369"><a href="#cb25-369" aria-hidden="true" tabindex="-1"></a>ortho <span class="ot">=</span> <span class="fu">st_crs</span>(<span class="st">"+proj=ortho +lat_0=-10 +lon_0=-30"</span>)</span>
-<span id="cb25-370"><a href="#cb25-370" aria-hidden="true" tabindex="-1"></a><span class="co"># background:</span></span>
-<span id="cb25-371"><a href="#cb25-371" aria-hidden="true" tabindex="-1"></a><span class="fu">st_transform</span>(<span class="fu">st_as_sfc</span>(i), ortho) <span class="sc">|&gt;</span> <span class="fu">plot</span>(<span class="at">col =</span> <span class="st">'lightblue'</span>)</span>
-<span id="cb25-372"><a href="#cb25-372" aria-hidden="true" tabindex="-1"></a><span class="fu">st_transform</span>(<span class="fu">st_as_sfc</span>(co), ortho) <span class="sc">|&gt;</span> <span class="fu">plot</span>(<span class="at">col =</span> <span class="cn">NA</span>, <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">border =</span> <span class="st">'grey'</span>)</span>
-<span id="cb25-373"><a href="#cb25-373" aria-hidden="true" tabindex="-1"></a><span class="co"># sampling randomly from globe:</span></span>
-<span id="cb25-374"><a href="#cb25-374" aria-hidden="true" tabindex="-1"></a><span class="fu">sf_use_s2</span>(<span class="cn">FALSE</span>) <span class="sc">|&gt;</span> <span class="fu">suppressMessages</span>()</span>
-<span id="cb25-375"><a href="#cb25-375" aria-hidden="true" tabindex="-1"></a><span class="fu">st_as_stars</span>() <span class="sc">|&gt;</span> <span class="fu">st_bbox</span>() <span class="sc">|&gt;</span> <span class="fu">st_as_sfc</span>() <span class="sc">|&gt;</span> <span class="fu">st_sample</span>(<span class="dv">1000</span>, <span class="at">exact =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
-<span id="cb25-376"><a href="#cb25-376" aria-hidden="true" tabindex="-1"></a>  <span class="fu">suppressMessages</span>() <span class="ot">-&gt;</span> pts</span>
-<span id="cb25-377"><a href="#cb25-377" aria-hidden="true" tabindex="-1"></a><span class="fu">sf_use_s2</span>(<span class="cn">TRUE</span>) <span class="sc">|&gt;</span> <span class="fu">suppressMessages</span>()</span>
-<span id="cb25-378"><a href="#cb25-378" aria-hidden="true" tabindex="-1"></a>pts <span class="sc">|&gt;</span> <span class="fu">s2_intersection</span>(i) <span class="sc">|&gt;</span> <span class="fu">st_as_sfc</span>() <span class="ot">-&gt;</span> pts</span>
-<span id="cb25-379"><a href="#cb25-379" aria-hidden="true" tabindex="-1"></a><span class="co"># add:</span></span>
-<span id="cb25-380"><a href="#cb25-380" aria-hidden="true" tabindex="-1"></a><span class="fu">st_transform</span>(pts, ortho) <span class="sc">|&gt;</span> <span class="fu">plot</span>(<span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">pch =</span> <span class="dv">3</span>, <span class="at">cex =</span> .<span class="dv">5</span>)</span>
-<span id="cb25-381"><a href="#cb25-381" aria-hidden="true" tabindex="-1"></a><span class="co"># right: background:</span></span>
-<span id="cb25-382"><a href="#cb25-382" aria-hidden="true" tabindex="-1"></a><span class="fu">st_transform</span>(<span class="fu">st_as_sfc</span>(i), ortho) <span class="sc">|&gt;</span> <span class="fu">plot</span>(<span class="at">col =</span> <span class="st">'lightblue'</span>)</span>
-<span id="cb25-383"><a href="#cb25-383" aria-hidden="true" tabindex="-1"></a><span class="fu">st_transform</span>(<span class="fu">st_as_sfc</span>(co), ortho) <span class="sc">|&gt;</span> <span class="fu">plot</span>(<span class="at">col =</span> <span class="cn">NA</span>, <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">border =</span> <span class="st">'grey'</span>)</span>
-<span id="cb25-384"><a href="#cb25-384" aria-hidden="true" tabindex="-1"></a><span class="co"># Fibonacci:</span></span>
-<span id="cb25-385"><a href="#cb25-385" aria-hidden="true" tabindex="-1"></a><span class="fu">sf_use_s2</span>(<span class="cn">FALSE</span>) <span class="sc">|&gt;</span> <span class="fu">suppressMessages</span>()</span>
-<span id="cb25-386"><a href="#cb25-386" aria-hidden="true" tabindex="-1"></a><span class="fu">st_as_stars</span>() <span class="sc">|&gt;</span> <span class="fu">st_bbox</span>() <span class="sc">|&gt;</span> <span class="fu">st_as_sfc</span>() <span class="sc">|&gt;</span> </span>
-<span id="cb25-387"><a href="#cb25-387" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_sample</span>(<span class="dv">1000</span>, <span class="at">type =</span> <span class="st">"Fibonacci"</span>, <span class="at">exact =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span> <span class="fu">suppressMessages</span>() <span class="ot">-&gt;</span> pts</span>
-<span id="cb25-388"><a href="#cb25-388" aria-hidden="true" tabindex="-1"></a><span class="fu">sf_use_s2</span>(<span class="cn">TRUE</span>) <span class="sc">|&gt;</span> <span class="fu">suppressMessages</span>()</span>
-<span id="cb25-389"><a href="#cb25-389" aria-hidden="true" tabindex="-1"></a>pts <span class="sc">|&gt;</span> <span class="fu">s2_intersection</span>(i) <span class="sc">|&gt;</span> <span class="fu">st_as_sfc</span>() <span class="ot">-&gt;</span> pts</span>
-<span id="cb25-390"><a href="#cb25-390" aria-hidden="true" tabindex="-1"></a><span class="fu">st_transform</span>(pts, ortho) <span class="sc">|&gt;</span> <span class="fu">plot</span>(<span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">pch =</span> <span class="dv">3</span>, <span class="at">cex =</span> .<span class="dv">5</span>)</span>
+<span id="cb25-358"><a href="#cb25-358" aria-hidden="true" tabindex="-1"></a><span class="in">#| fig.cap: "Points sampled on the globe over the oceans: randomly (left) and approximately regular (Fibonacci; right), shown in an orthographic projection"</span></span>
+<span id="cb25-359"><a href="#cb25-359" aria-hidden="true" tabindex="-1"></a><span class="in">#| out.width: 100%</span></span>
+<span id="cb25-360"><a href="#cb25-360" aria-hidden="true" tabindex="-1"></a><span class="in">#| code-fold: true</span></span>
+<span id="cb25-361"><a href="#cb25-361" aria-hidden="true" tabindex="-1"></a><span class="in">par(mar = rep(0, 4), mfrow = c(1, 2))</span></span>
+<span id="cb25-362"><a href="#cb25-362" aria-hidden="true" tabindex="-1"></a><span class="in">library(s2)</span></span>
+<span id="cb25-363"><a href="#cb25-363" aria-hidden="true" tabindex="-1"></a><span class="in">g &lt;- as_s2_geography(TRUE) # Earth</span></span>
+<span id="cb25-364"><a href="#cb25-364" aria-hidden="true" tabindex="-1"></a><span class="in">co &lt;- s2_data_countries()</span></span>
+<span id="cb25-365"><a href="#cb25-365" aria-hidden="true" tabindex="-1"></a><span class="in">oc &lt;- s2_difference(g, s2_union_agg(co)) # oceans</span></span>
+<span id="cb25-366"><a href="#cb25-366" aria-hidden="true" tabindex="-1"></a><span class="in">b &lt;- s2_buffer_cells(as_s2_geography("POINT(-30 -10)"), 9800000) # visible half</span></span>
+<span id="cb25-367"><a href="#cb25-367" aria-hidden="true" tabindex="-1"></a><span class="in">i &lt;- s2_intersection(b, oc) # visible ocean</span></span>
+<span id="cb25-368"><a href="#cb25-368" aria-hidden="true" tabindex="-1"></a><span class="in">co &lt;- s2_intersection(b, co)</span></span>
+<span id="cb25-369"><a href="#cb25-369" aria-hidden="true" tabindex="-1"></a><span class="in">ortho = st_crs("+proj=ortho +lat_0=-10 +lon_0=-30")</span></span>
+<span id="cb25-370"><a href="#cb25-370" aria-hidden="true" tabindex="-1"></a><span class="in"># background:</span></span>
+<span id="cb25-371"><a href="#cb25-371" aria-hidden="true" tabindex="-1"></a><span class="in">st_transform(st_as_sfc(i), ortho) |&gt; plot(col = 'lightblue')</span></span>
+<span id="cb25-372"><a href="#cb25-372" aria-hidden="true" tabindex="-1"></a><span class="in">st_transform(st_as_sfc(co), ortho) |&gt; plot(col = NA, add = TRUE, border = 'grey')</span></span>
+<span id="cb25-373"><a href="#cb25-373" aria-hidden="true" tabindex="-1"></a><span class="in"># sampling randomly from globe:</span></span>
+<span id="cb25-374"><a href="#cb25-374" aria-hidden="true" tabindex="-1"></a><span class="in">sf_use_s2(FALSE) |&gt; suppressMessages()</span></span>
+<span id="cb25-375"><a href="#cb25-375" aria-hidden="true" tabindex="-1"></a><span class="in">st_as_stars() |&gt; st_bbox() |&gt; st_as_sfc() |&gt; st_sample(1000, exact = FALSE) |&gt;</span></span>
+<span id="cb25-376"><a href="#cb25-376" aria-hidden="true" tabindex="-1"></a><span class="in">  suppressMessages() -&gt; pts</span></span>
+<span id="cb25-377"><a href="#cb25-377" aria-hidden="true" tabindex="-1"></a><span class="in">sf_use_s2(TRUE) |&gt; suppressMessages()</span></span>
+<span id="cb25-378"><a href="#cb25-378" aria-hidden="true" tabindex="-1"></a><span class="in">pts |&gt; s2_intersection(i) |&gt; st_as_sfc() -&gt; pts</span></span>
+<span id="cb25-379"><a href="#cb25-379" aria-hidden="true" tabindex="-1"></a><span class="in"># add:</span></span>
+<span id="cb25-380"><a href="#cb25-380" aria-hidden="true" tabindex="-1"></a><span class="in">st_transform(pts, ortho) |&gt; plot(add = TRUE, pch = 3, cex = .5)</span></span>
+<span id="cb25-381"><a href="#cb25-381" aria-hidden="true" tabindex="-1"></a><span class="in"># right: background:</span></span>
+<span id="cb25-382"><a href="#cb25-382" aria-hidden="true" tabindex="-1"></a><span class="in">st_transform(st_as_sfc(i), ortho) |&gt; plot(col = 'lightblue')</span></span>
+<span id="cb25-383"><a href="#cb25-383" aria-hidden="true" tabindex="-1"></a><span class="in">st_transform(st_as_sfc(co), ortho) |&gt; plot(col = NA, add = TRUE, border = 'grey')</span></span>
+<span id="cb25-384"><a href="#cb25-384" aria-hidden="true" tabindex="-1"></a><span class="in"># Fibonacci:</span></span>
+<span id="cb25-385"><a href="#cb25-385" aria-hidden="true" tabindex="-1"></a><span class="in">sf_use_s2(FALSE) |&gt; suppressMessages()</span></span>
+<span id="cb25-386"><a href="#cb25-386" aria-hidden="true" tabindex="-1"></a><span class="in">st_as_stars() |&gt; st_bbox() |&gt; st_as_sfc() |&gt; </span></span>
+<span id="cb25-387"><a href="#cb25-387" aria-hidden="true" tabindex="-1"></a><span class="in">  st_sample(1000, type = "Fibonacci", exact = FALSE) |&gt; suppressMessages() -&gt; pts</span></span>
+<span id="cb25-388"><a href="#cb25-388" aria-hidden="true" tabindex="-1"></a><span class="in">sf_use_s2(TRUE) |&gt; suppressMessages()</span></span>
+<span id="cb25-389"><a href="#cb25-389" aria-hidden="true" tabindex="-1"></a><span class="in">pts |&gt; s2_intersection(i) |&gt; st_as_sfc() -&gt; pts</span></span>
+<span id="cb25-390"><a href="#cb25-390" aria-hidden="true" tabindex="-1"></a><span class="in">st_transform(pts, ortho) |&gt; plot(add = TRUE, pch = 3, cex = .5)</span></span>
 <span id="cb25-391"><a href="#cb25-391" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb25-392"><a href="#cb25-392" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-393"><a href="#cb25-393" aria-hidden="true" tabindex="-1"></a><span class="fu">## Exercises</span></span>
@@ -1396,21 +1608,21 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb25-400"><a href="#cb25-400" aria-hidden="true" tabindex="-1"></a>   object, and compute the volume under the surface. </span>
 <span id="cb25-401"><a href="#cb25-401" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-402"><a href="#cb25-402" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
-<span id="cb25-403"><a href="#cb25-403" aria-hidden="true" tabindex="-1"></a><span class="co"># we need to detach, to avoid name clashes of using idw() and diagnose() later on</span></span>
-<span id="cb25-404"><a href="#cb25-404" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(spatstat)</span>
-<span id="cb25-405"><a href="#cb25-405" aria-hidden="true" tabindex="-1"></a>w <span class="ot">&lt;-</span> <span class="cf">function</span>(x) <span class="fu">which</span>(x <span class="sc">==</span> <span class="fu">search</span>())</span>
-<span id="cb25-406"><a href="#cb25-406" aria-hidden="true" tabindex="-1"></a><span class="fu">detach</span>(<span class="at">pos =</span> <span class="fu">w</span>(<span class="st">"package:spatstat"</span>))</span>
-<span id="cb25-407"><a href="#cb25-407" aria-hidden="true" tabindex="-1"></a><span class="fu">detach</span>(<span class="at">pos =</span> <span class="fu">w</span>(<span class="st">"package:spatstat.linnet"</span>))</span>
-<span id="cb25-408"><a href="#cb25-408" aria-hidden="true" tabindex="-1"></a>pc <span class="ot">&lt;-</span> <span class="fu">w</span>(<span class="st">"package:spatstat.core"</span>)</span>
-<span id="cb25-409"><a href="#cb25-409" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">length</span>(pc)) {</span>
-<span id="cb25-410"><a href="#cb25-410" aria-hidden="true" tabindex="-1"></a>    <span class="fu">detach</span>(<span class="at">pos =</span> <span class="fu">w</span>(<span class="st">"package:spatstat.core"</span>))</span>
-<span id="cb25-411"><a href="#cb25-411" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> { <span class="co"># &gt; 3.0.0</span></span>
-<span id="cb25-412"><a href="#cb25-412" aria-hidden="true" tabindex="-1"></a>    <span class="fu">detach</span>(<span class="at">pos =</span> <span class="fu">w</span>(<span class="st">"package:spatstat.model"</span>))</span>
-<span id="cb25-413"><a href="#cb25-413" aria-hidden="true" tabindex="-1"></a>    <span class="fu">detach</span>(<span class="at">pos =</span> <span class="fu">w</span>(<span class="st">"package:spatstat.explore"</span>))</span>
-<span id="cb25-414"><a href="#cb25-414" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb25-415"><a href="#cb25-415" aria-hidden="true" tabindex="-1"></a><span class="fu">detach</span>(<span class="at">pos =</span> <span class="fu">w</span>(<span class="st">"package:spatstat.random"</span>))</span>
-<span id="cb25-416"><a href="#cb25-416" aria-hidden="true" tabindex="-1"></a><span class="fu">detach</span>(<span class="at">pos =</span> <span class="fu">w</span>(<span class="st">"package:spatstat.geom"</span>))</span>
-<span id="cb25-417"><a href="#cb25-417" aria-hidden="true" tabindex="-1"></a><span class="fu">detach</span>(<span class="at">pos =</span> <span class="fu">w</span>(<span class="st">"package:spatstat.data"</span>))</span>
+<span id="cb25-403"><a href="#cb25-403" aria-hidden="true" tabindex="-1"></a><span class="in"># we need to detach, to avoid name clashes of using idw() and diagnose() later on</span></span>
+<span id="cb25-404"><a href="#cb25-404" aria-hidden="true" tabindex="-1"></a><span class="in">library(spatstat)</span></span>
+<span id="cb25-405"><a href="#cb25-405" aria-hidden="true" tabindex="-1"></a><span class="in">w &lt;- function(x) which(x == search())</span></span>
+<span id="cb25-406"><a href="#cb25-406" aria-hidden="true" tabindex="-1"></a><span class="in">detach(pos = w("package:spatstat"))</span></span>
+<span id="cb25-407"><a href="#cb25-407" aria-hidden="true" tabindex="-1"></a><span class="in">detach(pos = w("package:spatstat.linnet"))</span></span>
+<span id="cb25-408"><a href="#cb25-408" aria-hidden="true" tabindex="-1"></a><span class="in">pc &lt;- w("package:spatstat.core")</span></span>
+<span id="cb25-409"><a href="#cb25-409" aria-hidden="true" tabindex="-1"></a><span class="in">if (length(pc)) {</span></span>
+<span id="cb25-410"><a href="#cb25-410" aria-hidden="true" tabindex="-1"></a><span class="in">    detach(pos = w("package:spatstat.core"))</span></span>
+<span id="cb25-411"><a href="#cb25-411" aria-hidden="true" tabindex="-1"></a><span class="in">} else { # &gt; 3.0.0</span></span>
+<span id="cb25-412"><a href="#cb25-412" aria-hidden="true" tabindex="-1"></a><span class="in">    detach(pos = w("package:spatstat.model"))</span></span>
+<span id="cb25-413"><a href="#cb25-413" aria-hidden="true" tabindex="-1"></a><span class="in">    detach(pos = w("package:spatstat.explore"))</span></span>
+<span id="cb25-414"><a href="#cb25-414" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb25-415"><a href="#cb25-415" aria-hidden="true" tabindex="-1"></a><span class="in">detach(pos = w("package:spatstat.random"))</span></span>
+<span id="cb25-416"><a href="#cb25-416" aria-hidden="true" tabindex="-1"></a><span class="in">detach(pos = w("package:spatstat.geom"))</span></span>
+<span id="cb25-417"><a href="#cb25-417" aria-hidden="true" tabindex="-1"></a><span class="in">detach(pos = w("package:spatstat.data"))</span></span>
 <span id="cb25-418"><a href="#cb25-418" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 </code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
@@ -1418,4 +1630,4 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-</body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/edzer/sdsr/edit/main/11-PointPattern.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
