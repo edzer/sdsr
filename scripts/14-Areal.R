@@ -77,7 +77,7 @@ nb_q |>
     nb2listw(style = "B") |> 
     as("CsparseMatrix") -> smat
 library(igraph, warn.conflicts = FALSE)
-(smat |> graph.adjacency() -> g1) |> 
+(smat |> graph_from_adjacency_matrix() -> g1) |> 
     count_components()
 
 
@@ -312,7 +312,7 @@ diameter(g1)
 
 
 
-g1 |> shortest.paths() -> sps
+g1 |> distances() -> sps
 (sps |> apply(2, max) -> spmax) |> max()
 
 
