@@ -227,7 +227,7 @@ system.file("gpkg/nc.gpkg", package = "sf") |>
     as.ppp()
 ```
 
-When converting to a **spatstat** data structure we loose
+When converting to a **spatstat** data structure we lose
 the coordinate reference system we started with. It can be set
 back to `sf` or `stars` objects by using `st_set_crs`.
 
@@ -338,10 +338,14 @@ st_transform(st_as_sfc(i), ortho) |> plot(col = 'lightblue')
 st_transform(st_as_sfc(co), ortho) |> plot(col = NA, add = TRUE, border = 'grey')
 # sampling randomly from globe:
 sf_use_s2(FALSE) |> suppressMessages()
-st_as_stars() |> st_bbox() |> st_as_sfc() |> st_sample(1000, exact = FALSE) |>
-  suppressMessages() -> pts
+if (packageVersion("sf") >= "1.0.16") {
+  globe = st_as_stars() |> st_bbox() # st_sample only needs bbox
+} else {
+  globe = st_as_stars() |> st_bbox() |> st_as_sfc()
+}
+pts <- st_sample(globe, 1000, exact = FALSE) |> suppressMessages()
 sf_use_s2(TRUE) |> suppressMessages()
-pts |> s2_intersection(i) |> st_as_sfc() -> pts
+s2_intersection(pts, i) |> st_as_sfc() -> pts
 # add:
 st_transform(pts, ortho) |> plot(add = TRUE, pch = 3, cex = .5)
 # right: background:
@@ -349,8 +353,7 @@ st_transform(st_as_sfc(i), ortho) |> plot(col = 'lightblue')
 st_transform(st_as_sfc(co), ortho) |> plot(col = NA, add = TRUE, border = 'grey')
 # Fibonacci:
 sf_use_s2(FALSE) |> suppressMessages()
-st_as_stars() |> st_bbox() |> st_as_sfc() |> 
-  st_sample(1000, type = "Fibonacci", exact = FALSE) |> suppressMessages() -> pts
+st_sample(globe, 1000, type = "Fibonacci", exact = FALSE) |> suppressMessages() -> pts
 sf_use_s2(TRUE) |> suppressMessages()
 pts |> s2_intersection(i) |> st_as_sfc() -> pts
 st_transform(pts, ortho) |> plot(add = TRUE, pch = 3, cex = .5)

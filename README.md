@@ -63,6 +63,7 @@ install.packages(c(
   "spData",
   "stars",
   "tidyverse",
+  "viridis",
   "tmap"))
 ```
 
