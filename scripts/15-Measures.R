@@ -7,7 +7,7 @@ xargs <- function(x) {
     ooo <- strwrap(oo, width=getOption("width"), indent=1, exdent=3)
     cat(paste(ooo, collapse="\n"), "\n")
 }
-library(tmap)
+library(tmap, warn.conflicts=FALSE)
 tmap4 <- packageVersion("tmap") >= "3.99"
 
 
