@@ -7,6 +7,8 @@ xargs <- function(x) {
     ooo <- strwrap(oo, width=getOption("width"), indent=1, exdent=3)
     cat(paste(ooo, collapse="\n"), "\n")
 }
+library(tmap, warn.conflicts=FALSE)
+tmap4 <- packageVersion("tmap") >= "3.99"
 
 
 load("ch14.RData")
@@ -118,9 +120,16 @@ I_turnout |>
 
 
 #| fig.cap: "Moran plot hat values, row standardised neighbours"
-library(tmap)
 pol_pres15$hat_value <- infl_W$hat
-tm_shape(pol_pres15) + tm_fill("hat_value")
+if (tmap4) {
+  tm_shape(pol_pres15) +
+  tm_fill("hat_value", fill.scale = tm_scale(values = "brewer.yl_or_br"),
+    fill.legend = tm_legend(item.r = 0, frame = FALSE,
+    position = tm_pos_in("left", "bottom"))
+  )
+} else {
+  tm_shape(pol_pres15) + tm_fill("hat_value")
+}
 
 
 
@@ -183,7 +192,19 @@ pol_pres15$locm_p_pv <- p.adjust(locm_p[, "Pr(z != E(Ii)) Sim"],
 
 #| code-fold: true
 #| fig.cap: "Local Moran's I FDR probability values: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours"
-tm_shape(pol_pres15) +
+if (tmap4) {
+pv_brks <- c(0, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.75, 1)
+tm_shape(pol_pres15) + 
+    tm_polygons(fill=c("locm_pv", "locm_std_pv", "locm_p_pv"),
+        fill.legend = tm_legend("Pseudo p-values\nLocal Moran's I",
+            frame=FALSE, item.r = 0),
+        fill.scale = tm_scale(breaks = pv_brks, values="-brewer.yl_or_br"),
+        fill.free=FALSE, lwd=0.01) +
+    tm_facets_wrap(columns=2, rows=2) +
+    tm_layout(panel.labels = c("Analytical conditional",
+        "Permutation std. dev.", "Permutation rank"))
+} else {
+  tm_shape(pol_pres15) +
 		tm_fill(c("locm_pv", "locm_std_pv", "locm_p_pv"), 
 				breaks=c(0, 0.0005, 0.001, 0.005, 0.01, 
 						 0.05, 0.1, 0.2, 0.5, 0.75, 1), 
@@ -193,6 +214,7 @@ tm_shape(pol_pres15) +
     tm_layout(panel.labels = c("Analytical conditional",
 							   "Permutation std. dev.",
 							   "Permutation rank"))
+}
 
 
 
@@ -219,7 +241,20 @@ pol_pres15$hs_cp_q <- droplevels(pol_pres15$hs_cp_q)
 
 #| code-fold: true
 #| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps $\\alpha = 0.005$: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours"
-tm_shape(pol_pres15) +
+if (tmap4) {
+    pal <- rev(RColorBrewer::brewer.pal(4, "Set3")[-c(2,3)])
+    tm_shape(pol_pres15) +
+    tm_polygons(fill = c("hs_an_q", "hs_ac_q", "hs_cp_q"),
+	fill.legend = tm_legend("Turnout hotspot status \nLocal Moran's I",
+            frame = FALSE, item.r = 0),
+	fill.scale = tm_scale(values = pal, value.na = "grey95",
+            label.na = "Not \"interesting\""),
+        lwd = 0.01, fill.free = FALSE) +
+    tm_facets_wrap(columns = 2, rows = 2) +
+    tm_layout(panel.labels = c("Analytical conditional",
+        "Permutation std. cond.", "Permutation rank cond."))
+} else {
+    tm_shape(pol_pres15) +
 	tm_fill(c("hs_an_q", "hs_ac_q", "hs_cp_q"),
 		colorNA = "grey95", textNA="Not \"interesting\"",
 		title = "Turnout hotspot status \nLocal Moran's I",
@@ -228,7 +263,7 @@ tm_shape(pol_pres15) +
 	tm_layout(panel.labels = c("Analytical conditional",
 							   "Permutation std. cond.",
 							   "Permutation rank cond."))
-
+}
 
 
 lm(I_turnout ~ 1) -> lm_null
@@ -268,6 +303,20 @@ locm_sad_types |> hotspot(Prname="Pr. (Sad)",
 
 #| code-fold: true
 #| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left upper panel: permutation rank conditional p-values; right upper panel:  null (intercept only) model saddlepoint p-values; left lower panel: weighted null (intercept only) model saddlepoint p-values; right lower panel: weighted types model saddlepoint p-values, for first-round turnout, row-standardised neighbours"
+if (tmap4) {
+    pal <- RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)]
+    tm_shape(pol_pres15) +
+    tm_polygons(fill = c("hs_cp_q", "locm_sad0", "locm_sad1",  "locm_sad2"),
+	fill.legend = tm_legend("Turnout hotspot status \nLocal Moran's I",
+            frame = FALSE, item.r = 0),
+	fill.scale = tm_scale(values = pal, value.na = "grey95",
+            label.na = "Not \"interesting\""),
+        lwd = 0.01, fill.free = FALSE) +
+    tm_facets_wrap(columns = 2, rows = 2) +
+    tm_layout(panel.labels = c("Permutation rank", 
+         "saddlepoint null", "saddlepoint weighted null", 
+	 "saddlepoint weighted types"))
+} else {
 tm_shape(pol_pres15) +
   tm_fill(c("hs_cp_q", "locm_sad0", "locm_sad1",  "locm_sad2"),
     colorNA = "grey95", textNA = "Not \"interesting\"",
@@ -277,7 +326,7 @@ tm_shape(pol_pres15) +
   tm_layout(panel.labels = c("Permutation rank", 
      "saddlepoint null", "saddlepoint weighted null", 
 	 "saddlepoint weighted types"))
-
+}
 
 rbind(null = append(table(addNA(pol_pres15$locm_sad0)),
 					c("Low-High" = 0), 1),
@@ -300,6 +349,20 @@ locm_ex_types |> hotspot(Prname = "Pr. (exact)",
 
 #| code-fold: true
 #| fig.cap: "Local Moran's I FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel: weighted types model saddlepoint p-values; right panel: weighted types model exact p-values, for first-round turnout, row-standardised neighbours"
+if (tmap4) {
+    pal <- RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)]
+    tm_shape(pol_pres15) +
+    tm_polygons(fill = c("locm_sad2", "locm_ex"),
+	fill.legend = tm_legend("Turnout hotspot status \nLocal Moran's I",
+            frame = FALSE, item.r = 0),
+	fill.scale = tm_scale(values = pal, value.na = "grey95",
+            label.na = "Not \"interesting\""),
+        lwd = 0.01, fill.free = FALSE) +
+    tm_facets_wrap(rows = 1) +
+    tm_layout(panel.labels = c("saddlepoint weighted types",
+	"Exact weighted types"))
+
+} else {
 tm_shape(pol_pres15) +
 	tm_fill(c("locm_sad2", "locm_ex"), colorNA = "grey95",
 		textNA = "Not \"interesting\"", 
@@ -308,7 +371,7 @@ tm_shape(pol_pres15) +
     tm_facets(free.scales = FALSE, ncol = 2) +
 	tm_layout(panel.labels = c("saddlepoint weighted types",
 							   "Exact weighted types"))
-
+}
 
 
 table(Saddlepoint = addNA(pol_pres15$locm_sad2),
@@ -350,6 +413,36 @@ locG_p |> hotspot(Prname = "Pr(z != E(Gi)) Sim",
 
 #| code-fold: true
 #| fig.cap: "FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\\alpha = 0.005$: left panel: local Moran\\'s $I_i$; centre panel: local Getis-Ord $G_i$; right panel: local Geary\\'s $C_i$; first-round turnout, row-standardised neighbours"
+if (tmap4) {
+    pal <- RColorBrewer::brewer.pal(4, "Set3")[-c(2,3)]
+    m1 <- tm_shape(pol_pres15) +
+        tm_polygons(fill = "hs_cp_q",
+	    fill.legend = tm_legend("Turnout hotspot status\nLocal Moran I",
+                position = tm_pos_out("center","bottom"),
+                frame = FALSE, item.r = 0),
+	    fill.scale = tm_scale(values = pal, value.na = "grey95",
+                label.na = "Not \"interesting\""),
+            lwd = 0.01) +
+        tm_layout(meta.margins = c(.2, 0, 0, 0))
+    m2 <- tm_shape(pol_pres15) +
+        tm_polygons(fill = "hs_G",
+	    fill.legend = tm_legend("Turnout hotspot status\nLocal Getis/Ord G",
+                position = tm_pos_out("center","bottom"),
+                frame = FALSE, item.r = 0),
+	    fill.scale = tm_scale(values = pal, value.na = "grey95",
+                label.na = "Not \"interesting\""),
+            lwd = 0.01) +
+        tm_layout(meta.margins = c(.2, 0, 0, 0))
+    m3 <- tm_shape(pol_pres15) +
+        tm_polygons(fill = "hs_C",
+	    fill.legend = tm_legend("Turnout hotspot status\nLocal Geary C",
+                position = tm_pos_out("center","bottom"),
+                frame = FALSE, item.r = 0),
+	    fill.scale = tm_scale(values = rev(pal), value.na = "grey95",
+                label.na = "Not \"interesting\""),
+            lwd = 0.01) +
+        tm_layout(meta.margins = c(.2, 0, 0, 0))
+} else {
 m1 <- tm_shape(pol_pres15) +
     tm_fill("hs_cp_q", 
 			palette = RColorBrewer::brewer.pal(4, "Set3")[-c(2,3)],
@@ -368,6 +461,7 @@ m3 <- tm_shape(pol_pres15) +
 			colorNA = "grey95", textNA="Not \"interesting\"",
 			title = "Turnout hotspot status\nLocal Geary C") +
     tm_layout(legend.outside=TRUE, legend.outside.position="bottom")
+}
 tmap_arrange(m1, m2, m3, nrow=1)
 
 
@@ -401,6 +495,38 @@ locMvC_p |> hotspot(Prname = "Pr(z != E(Ci)) Sim",
 
 #| code-fold: true
 #| fig.cap: 'FDR hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.005$: left panel: local $C_i$, first-round turnout; centre panel: local $C_i$, second-round turnout; right panel: local multivariate $C_i$, both turnout rounds; row-standardised neighbours'
+if (tmap4) {
+    pal <- RColorBrewer::brewer.pal(4, "Set3")[-c(2,3)]
+    m3 <- tm_shape(pol_pres15) +
+        tm_polygons(fill = "hs_C",
+	    fill.legend = tm_legend("First round turnout\nLocal Geary C",
+                position = tm_pos_out("center","bottom"),
+                frame = FALSE, item.r = 0),
+	    fill.scale = tm_scale(values = rev(pal), value.na = "grey95",
+                label.na = "Not \"interesting\""),
+            lwd = 0.01) +
+        tm_layout(meta.margins = c(.2, 0, 0, 0))
+    pal <- RColorBrewer::brewer.pal(4, "Set3")[c(4, 1, 3, 2)]
+    m4 <- tm_shape(pol_pres15) +
+        tm_polygons(fill = "hs_C_II",
+	    fill.legend = tm_legend("Second round turnout\nLocal Geary C",
+                position = tm_pos_out("center","bottom"),
+                frame = FALSE, item.r = 0),
+	    fill.scale = tm_scale(values = pal, value.na = "grey95",
+                label.na = "Not \"interesting\""),
+            lwd = 0.01) +
+        tm_layout(meta.margins = c(.2, 0, 0, 0))
+    pal <- RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)]
+    m5 <- tm_shape(pol_pres15) +
+        tm_polygons(fill = "hs_MvC",
+	    fill.legend = tm_legend("Both rounds turnout\nLocal Multivariate Geary C",
+                position = tm_pos_out("center","bottom"),
+                frame = FALSE, item.r = 0),
+	    fill.scale = tm_scale_categorical(values = pal, value.na = "grey95",
+                label.na = "Not \"interesting\""),
+            lwd = 0.01) +
+        tm_layout(meta.margins = c(.2, 0, 0, 0))
+} else {
 m3 <- tm_shape(pol_pres15) +
   tm_fill("hs_C", 
 	palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1, 3, 2)],
@@ -419,6 +545,7 @@ m5 <- tm_shape(pol_pres15) +
 	colorNA = "grey95", textNA = "Not \"interesting\"",
 	title = "Both rounds turnout\nLocal Multivariate Geary C") +
     tm_layout(legend.outside=TRUE, legend.outside.position="bottom")
+}
 tmap_arrange(m3, m4, m5, nrow=1)
 
 
@@ -476,6 +603,25 @@ addmargins(table(spdep = addNA(pol_pres15$hs_MvCa),
 #| out.width: 100%
 #| code-fold: true
 #| fig.cap: 'FDR local multivariate $C_i$ hotspot cluster core maps, two-sided, *interesting* cutoff $\alpha = 0.0025$ over $[0, 0.5]$: left panel: **spdep**, both turnout rounds; right panel: **rgeoda**, both turnout rounds; row-standardised neighbours'
+if (tmap4) {
+    pal <- RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)]
+    m5 <- tm_shape(pol_pres15) +
+        tm_polygons(fill = "hs_MvC",
+	fill.legend = tm_legend("Both rounds turnout spdep\nLocal Multivariate Geary C",
+            position = tm_pos_in("left","bottom"),
+            frame = FALSE, item.r = 0),
+	fill.scale = tm_scale_categorical(values = pal, value.na = "grey95",
+            label.na = "Not \"interesting\""),
+        lwd = 0.01)
+    m6 <- tm_shape(pol_pres15) +
+        tm_polygons(fill = "geoda_mvc",
+	fill.legend = tm_legend("Both rounds turnout rgeoda\nLocal Multivariate Geary C",
+            position = tm_pos_in("left","bottom"),
+            frame = FALSE, item.r = 0),
+	fill.scale = tm_scale_categorical(values = pal, value.na = "grey95",
+            label.na = "Not \"interesting\""),
+        lwd = 0.01)
+} else {
 m5 <- tm_shape(pol_pres15) +
     tm_fill("hs_MvCa", 
 		palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)],
@@ -486,5 +632,6 @@ m6 <- tm_shape(pol_pres15) +
 		palette = RColorBrewer::brewer.pal(4, "Set3")[c(4, 1)],
 		colorNA = "grey95", textNA = "Not \"interesting\"",
   title="Both rounds turnout rgeoda\nLocal Multivariate Geary C")
+}
 tmap_arrange(m5, m6, nrow=1)
 

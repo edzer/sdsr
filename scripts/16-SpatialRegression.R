@@ -168,7 +168,22 @@ library(INLA) |> suppressPackageStartupMessages()
 
 
 
-
+if (eval_inla) {
+INLA_iid <- inla(update(form, . ~ . + f(NOX_ID, model = "iid")),
+				 family = "gaussian", data = boston_487)
+boston_93$INLA_re <- INLA_iid$summary.random$NOX_ID$mean
+ID2 <- as.integer(as.factor(boston_487$NOX_ID))
+INLA_ss <- inla(update(form, . ~ . + f(ID2, model = "besag",
+									   graph = W)),
+				family = "gaussian", data = boston_487)
+boston_93$INLA_ss <- INLA_ss$summary.random$ID2$mean
+M <- Diagonal(nrow(W), rowSums(W)) - W
+Cmatrix <- Diagonal(nrow(M), 1) -  M
+INLA_lr <- inla(update(form, . ~ . + f(ID2, model = "generic1",
+									   Cmatrix = Cmatrix)),
+				family = "gaussian", data = boston_487)
+boston_93$INLA_lr <- INLA_lr$summary.random$ID2$mean
+}
 
 
 
@@ -211,9 +226,48 @@ all(sapply(tapply(ssre, list(boston_487$NOX_ID), c),
 boston_93$GAM_ss <- aggregate(ssre, list(boston_487$NOX_ID), 
 							  head, n=1)$x
 
+if (eval_inla) {
+library(tmap, warn.conflicts=FALSE)
+tmap4 <- packageVersion("tmap") >= "3.99"
+if (tmap4) {
+    tm_shape(boston_93) +
+    tm_polygons(fill = c("MLM_re", "HGLM_re", "INLA_re", "BX_re"),
+        fill.legend = tm_legend("IID", frame=FALSE, item.r = 0),
+        fill.free = FALSE, lwd = 0.1,
+        fill.scale = tm_scale(midpoint = 0, values = "brewer.rd_yl_gn")) +
+    tm_facets_wrap(columns = 2, rows = 2) + 
+    tm_layout(panel.labels = c("lmer", "hglm", "inla", "bayesx"))
+} else {
+  tm_shape(boston_93) +
+    tm_fill(c("MLM_re", "HGLM_re", "INLA_re", "BX_re"),
+          midpoint = 0, title = "IID") +
+    tm_facets(free.scales = FALSE) +
+    tm_borders(lwd = 0.3, alpha = 0.4) + 
+    tm_layout(panel.labels = c("lmer", "hglm", "inla", "bayesx"))
+}
+}
 
-
-
+if (eval_inla) {
+if (tmap4) {
+    tm_shape(boston_93) +
+    tm_polygons(fill = c("HGLM_ss", "INLA_lr", "INLA_ss", "BX_ss", 
+            "GAM_ss"),
+        fill.legend = tm_legend("SSRE", frame=FALSE, item.r = 0),
+        fill.free = FALSE, lwd = 0.1,
+        fill.scale = tm_scale(midpoint = 0, values = "brewer.rd_yl_gn")) +
+    tm_facets_wrap(columns = 3, rows = 2) + 
+    tm_layout(panel.labels = c("hglm CAR", "inla Leroux",
+             "inla ICAR", "bayesx ICAR", "gam ICAR"))
+} else {
+tm_shape(boston_93) +
+  tm_fill(c("HGLM_ss", "INLA_lr", "INLA_ss", "BX_ss", 
+            "GAM_ss"), midpoint = 0, title = "SSRE") +
+  tm_facets(free.scales = FALSE) + 
+  tm_borders(lwd = 0.3, alpha = 0.4) +
+  tm_layout(panel.labels = c("hglm CAR", "inla Leroux",
+             "inla ICAR", "bayesx ICAR", "gam ICAR"))
+}
+}
 
 
 
