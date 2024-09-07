@@ -7,7 +7,8 @@ xargs <- function(x) {
     ooo <- strwrap(oo, width=getOption("width"), indent=1, exdent=3)
     cat(paste(ooo, collapse="\n"), "\n")
 }
-
+library(tmap, warn.conflicts = FALSE)
+tmap4 <- packageVersion("tmap") >= "3.99"
 
 
 library(sf)
@@ -21,9 +22,15 @@ pol_pres15 |>
 
 #| out.width: 100%
 #| fig.cap: "Polish municipality types 2015"
-library(tmap, warn.conflicts = FALSE)
-tm_shape(pol_pres15) + tm_fill("types")
-
+if (tmap4) {
+    tm_shape(pol_pres15) +
+        tm_fill("types", fill.scale = tm_scale(values = "brewer.set3"),
+           fill.legend = tm_legend(position = tm_pos_in("left", "bottom"),
+               frame.lwd=0, item.r = 0)
+        )
+} else {
+    tm_shape(pol_pres15) + tm_fill("types")
+}
 
 
 if (!all(st_is_valid(pol_pres15)))
@@ -325,8 +332,16 @@ pol_pres15$name0[mr]
 #| code-fold: true
 #| fig.cap: "Relationship of shortest paths to distance for Lutowiska; left panel: shortest path counts from Lutowiska; right panel: plot of shortest paths from Lutowiska to other observations, and distances from Lutowiska to other observations"
 pol_pres15$sps1 <- sps[,mr]
-tm1 <- tm_shape(pol_pres15) +
+if (!tmap4) {
+  tm1 <- tm_shape(pol_pres15) +
           tm_fill("sps1", title = "Shortest path\ncount")
+} else {
+  tm1 <- tm_shape(pol_pres15) +
+      tm_fill("sps1",
+          fill.scale = tm_scale(values = "brewer.yl_or_br"),
+          fill.legend = tm_legend("Shortest path\ncount", item.r = 0,
+              frame = FALSE, position = tm_pos_in("left", "bottom")))
+}
 coords[mr] |> 
     st_distance(coords) |> 
     c() |> 
