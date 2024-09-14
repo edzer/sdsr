@@ -484,8 +484,8 @@ Figure&nbsp;14.1: Polish municipality types 2015
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/args.html">args</a></span><span class="op">(</span><span class="va">poly2nb</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<pre><code>#  function (pl, row.names = NULL, snap = sqrt(.Machine$double.eps),
-#    queen = TRUE, useC = TRUE, foundInBox = NULL)</code></pre>
+<pre><code>#  function (pl, row.names = NULL, snap = NULL, queen = TRUE, useC =
+#    TRUE, foundInBox = NULL)</code></pre>
 </div>
 <p>From <strong>spdep</strong> 1.1-7, the <strong>sf</strong> package GEOS interface is used within <code>poly2nb</code> to find the candidate neighbours and populate <code>foundInBox</code> internally. In this case, the use of spatial indexing (STRtree queries) in GEOS through <strong>sf</strong> is the default:</p>
 <div class="cell">
@@ -583,6 +583,8 @@ Figure&nbsp;14.1: Polish municipality types 2015
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_tri</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/graphneigh.html">soi.graph</a></span><span class="op">(</span><span class="va">coords</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/graphneigh.html">graph2nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_soi</span><span class="op">)</span></span>
+<span><span class="co"># Warning in graph2nb(soi.graph(nb_tri, coords)): neighbour object</span></span>
+<span><span class="co"># has 16 sub-graphs</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 12792 </span></span>
@@ -619,6 +621,8 @@ unsure whether the new cross-reference in the caption will be rendered correctly
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/diffnb.html">diffnb</a></span><span class="op">(</span><span class="va">nb_soi</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span>coords <span class="op">=</span> <span class="va">coords</span>, col <span class="op">=</span> <span class="st">"orange"</span>, add <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>         points <span class="op">=</span> <span class="cn">FALSE</span>, lwd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
+<span><span class="co"># Warning in diffnb(nb_tri, nb_soi): neighbour object has 1567</span></span>
+<span><span class="co"># sub-graphs</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span><span class="va">opar</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
 <div id="fig-plotnbdiff" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -648,16 +652,22 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nbdists.html">nbdists</a></span><span class="op">(</span><span class="va">coords</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co"># Warning in knn2nb(knearneigh(coords, k = 1)): neighbour object has</span></span>
+<span><span class="co"># 695 sub-graphs</span></span>
 <span><span class="co">#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
 <span><span class="co">#     247    6663    8538    8275   10124   17979</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Here the largest first nearest neighbour distance is just under 18 km, so using this as the upper threshold gives certainty that all units will have at least one neighbour:</p>
 <div class="cell">
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18000</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d18</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18000</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d18</span></span>
+<span><span class="co"># Warning in dnearneigh(coords, 0, 18000): neighbour object has 2</span></span>
+<span><span class="co"># sub-graphs</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>For this moderate number of observations, use of spatial indexing does not yield advantages in run times:</p>
 <div class="cell">
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18000</span>, use_kd_tree <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d18a</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18000</span>, use_kd_tree <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d18a</span></span>
+<span><span class="co"># Warning in dnearneigh(coords, 0, 18000, use_kd_tree = FALSE):</span></span>
+<span><span class="co"># neighbour object has 2 sub-graphs</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>and the output objects are the same:</p>
 <div class="cell">
@@ -701,13 +711,15 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 <p>For use later, we also construct a neighbour object with no-neighbour units, using a threshold of 16 km:</p>
 <div class="cell">
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">16000</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d16</span><span class="op">)</span></span>
+<span><span class="co"># Warning in dnearneigh(coords, 0, 16000): neighbour object has 17</span></span>
+<span><span class="co"># sub-graphs</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 15850 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.255 </span></span>
 <span><span class="co"># Average number of links: 6.35 </span></span>
 <span><span class="co"># 7 regions with no links:</span></span>
-<span><span class="co"># 569 1371 1522 2374 2385 2473 2474</span></span>
+<span><span class="co"># 569, 1371, 1522, 2374, 2385, 2473, 2474</span></span>
 <span><span class="co"># 17 disjoint connected subgraphs</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>It is possible to control the numbers of neighbours directly using <span class="math inline">\(k\)</span>-nearest neighbours, either accepting asymmetric neighbours:</p>
@@ -863,7 +875,8 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 <p>No-neighbour handling is by default to prevent the construction of a weights object, making the analyst take a position on how to proceed.</p>
 <div class="cell">
 <div class="sourceCode" id="cb56"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html">try</a></span><span class="op">(</span><span class="va">nb_d16</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nb2listw.html">nb2listw</a></span><span class="op">(</span>style<span class="op">=</span><span class="st">"B"</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">lw_d16_B</span><span class="op">)</span></span>
-<span><span class="co"># Error in nb2listw(nb_d16, style = "B") : Empty neighbour sets found</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Error in nb2listw(nb_d16, style = "B") : </span></span>
+<span><span class="co">#   Empty neighbour sets found (zero.policy: FALSE)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Use can be made of the <code>zero.policy</code> argument to many functions used with <code>nb</code> and <code>listw</code> objects.</p>
 <div class="cell">
