@@ -745,7 +745,7 @@ GEOMETRYCOLLECTION (
 <p>Any geometry also has an inside (I), a boundary (B), and an exterior (E); these roles are obvious for polygons, however, for:</p>
 <ul>
 <li>
-<strong>lines</strong> the boundary is formed by the end points, and the interior by all non-end points on the line</li>
+<strong>lines</strong> the boundary is formed by the end points, and the inside by all non-end points on the line</li>
 <li>
 <strong>points</strong> have a zero-dimensional inside but no boundary</li>
 </ul>
@@ -818,7 +818,7 @@ Figure&nbsp;3.2: DE-9IM: intersections between the interior, boundary, and exter
 </div>
 <p>where the first three characters are associated with the inside of the <em>first</em> geometry (polygon): <a href="#fig-de9im" class="quarto-xref">Figure&nbsp;<span>3.2</span></a> is summarised row-wise. Using this ability to express relationships, we can also query pairs of geometries about particular conditions expressed in a <em>mask string</em>. As an example, the string <code>"*0*******"</code> would evaluate <code>TRUE</code> when the second geometry has one or more boundary <em>points</em> in common with the interior of the first geometry; the symbol <code>*</code> standing for “any dimensionality” (0, 1, 2 or F). The mask string <code>"T********"</code> matches pairs of geometry with intersecting interiors, where the symbol <code>T</code> stands for any non-empty intersection of dimensionality 0, 1, or 2.</p>
 <p>Binary predicates are further described using normal-language verbs, using DE-9IM definitions. For instance, the predicate <code>equals</code> corresponds to the relationship <code>"T*F**FFF*"</code>. If any two geometries obey this relationship, they are (topologically) equal, but may have a different ordering of nodes.</p>
-<p>A list of binary predicates is:</p>
+<p>A list of binary predicates, with their meaning for non-empty geometries:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 27%">
@@ -827,30 +827,30 @@ Figure&nbsp;3.2: DE-9IM: intersections between the interior, boundary, and exter
 </colgroup>
 <thead><tr class="header">
 <th>predicate</th>
-<th>meaning</th>
+<th>meaning of A <em>predicate</em> B</th>
 <th>inverse of</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>contains</code></td>
-<td>None of the points of A are outside B</td>
+<td>B has no points in the exterior of A <em>and</em> the insides of A and B have at least one point in common</td>
 <td><code>within</code></td>
 </tr>
 <tr class="even">
 <td><code>contains_properly</code></td>
-<td>A contains B and B has no points in common with the boundary of A</td>
+<td>A contains B <em>and</em> B has no points in common with the boundary of A</td>
 <td></td>
 </tr>
 <tr class="odd">
 <td><code>covers</code></td>
-<td>No points of B lie in the exterior of A</td>
+<td>B has no points in the exterior of A</td>
 <td><code>covered_by</code></td>
 </tr>
 <tr class="even">
 <td><code>covered_by</code></td>
 <td>Inverse of <code>covers</code>
 </td>
-<td></td>
+<td><code>covers</code></td>
 </tr>
 <tr class="odd">
 <td><code>crosses</code></td>
@@ -864,12 +864,12 @@ Figure&nbsp;3.2: DE-9IM: intersections between the interior, boundary, and exter
 </tr>
 <tr class="odd">
 <td><code>equals</code></td>
-<td>A and B are topologically equal: node order or number of nodes may differ; identical to A contains B and A within B</td>
+<td>A and B are topologically equal: node order or number of nodes may differ; identical to A contains B <em>and</em> A within B</td>
 <td></td>
 </tr>
 <tr class="even">
 <td><code>equals_exact</code></td>
-<td>A and B are geometrically equal, and have identical node order</td>
+<td>A equal B <em>and</em> A and B have identical node order</td>
 <td></td>
 </tr>
 <tr class="odd">
@@ -879,27 +879,27 @@ Figure&nbsp;3.2: DE-9IM: intersections between the interior, boundary, and exter
 </tr>
 <tr class="even">
 <td><code>is_within_distance</code></td>
-<td>A is closer to B than a given distance</td>
+<td>the shortest distance from A to B is within a given distance</td>
 <td></td>
 </tr>
 <tr class="odd">
 <td><code>within</code></td>
-<td>None of the points of B are outside A</td>
+<td>A has no points in the exterior of B, <em>and</em> the insides of A and B have at least one point in common</td>
 <td><code>contains</code></td>
 </tr>
 <tr class="even">
 <td><code>touches</code></td>
-<td>A and B have at least one boundary point in common, but no interior points</td>
+<td>A and B have at least one boundary point but no interior points in common</td>
 <td></td>
 </tr>
 <tr class="odd">
 <td><code>overlaps</code></td>
-<td>A and B have some points in common; the dimension of these is identical to that of A and B</td>
+<td>A and B have the same dimension and some but not all points in common; the dimension of the common points is identical to that of A and B</td>
 <td></td>
 </tr>
 <tr class="even">
 <td><code>relate</code></td>
-<td>Given a mask pattern, return whether A and B adhere to this pattern</td>
+<td>Given a mask string, return whether A <em>relate</em> B adheres to its pattern</td>
 <td></td>
 </tr>
 </tbody>
@@ -1160,7 +1160,7 @@ Figure&nbsp;3.5: Difference between subsequent boxes, left: in original order; r
 <p></p>
 <p>The Open Geospatial Consortium defines a <em>coverage</em> as a “feature that acts as a function to return values from its range for any direct position within its spatiotemporal domain” <span class="citation" data-cites="ogccov">(<a href="references.html#ref-ogccov" role="doc-biblioref">Baumann, Hirschorn, and Masó 2017</a>)</span>. Having a <em>function</em> implies that for every space time “point”, every combination of a spatial point and a moment in time of the spatiotemporal domain, we have a <em>single</em> value for the range. This is a very common situation for spatiotemporal phenomena, a few examples can be given:</p>
 <ul>
-<li>boundary disputes aside, at a give time every point in a region (domain) belongs to a single administrative unit (range)</li>
+<li>boundary disputes aside, at a given time every point in a region (domain) belongs to a single administrative unit (range)</li>
 <li>at any given moment in time, every point in a region (domain) has a certain <em>land cover type</em> (range)</li>
 <li>every point in an area (domain) has a single surface elevation (range), which could be measured with respect to a given mean sea level surface</li>
 <li>every spatiotemporal point in a three-dimensional body of air (domain) has single value for temperature (range)</li>
@@ -2144,7 +2144,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb26-385"><a href="#cb26-385" aria-hidden="true" tabindex="-1"></a>Any geometry also has an inside (I), a boundary (B), and an exterior (E); these</span>
 <span id="cb26-386"><a href="#cb26-386" aria-hidden="true" tabindex="-1"></a>roles are obvious for polygons, however, for:</span>
 <span id="cb26-387"><a href="#cb26-387" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-388"><a href="#cb26-388" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**lines** the boundary is formed by the end points, and the interior</span>
+<span id="cb26-388"><a href="#cb26-388" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**lines** the boundary is formed by the end points, and the inside</span>
 <span id="cb26-389"><a href="#cb26-389" aria-hidden="true" tabindex="-1"></a>by all non-end points on the line</span>
 <span id="cb26-390"><a href="#cb26-390" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**points** have a zero-dimensional inside but no boundary</span>
 <span id="cb26-391"><a href="#cb26-391" aria-hidden="true" tabindex="-1"></a></span>
@@ -2228,24 +2228,24 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb26-469"><a href="#cb26-469" aria-hidden="true" tabindex="-1"></a>obey this relationship, they are (topologically) equal, but may</span>
 <span id="cb26-470"><a href="#cb26-470" aria-hidden="true" tabindex="-1"></a>have a different ordering of nodes.</span>
 <span id="cb26-471"><a href="#cb26-471" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-472"><a href="#cb26-472" aria-hidden="true" tabindex="-1"></a>A list of binary predicates is:</span>
+<span id="cb26-472"><a href="#cb26-472" aria-hidden="true" tabindex="-1"></a>A list of binary predicates, with their meaning for non-empty geometries:</span>
 <span id="cb26-473"><a href="#cb26-473" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-474"><a href="#cb26-474" aria-hidden="true" tabindex="-1"></a>|predicate                     |meaning                                                          |inverse of      |</span>
+<span id="cb26-474"><a href="#cb26-474" aria-hidden="true" tabindex="-1"></a>|predicate                     |meaning of A _predicate_ B                                       |inverse of      |</span>
 <span id="cb26-475"><a href="#cb26-475" aria-hidden="true" tabindex="-1"></a>|------------------------------|-----------------------------------------------------------------|----------------|</span>
-<span id="cb26-476"><a href="#cb26-476" aria-hidden="true" tabindex="-1"></a>|<span class="in">`contains`</span>                    |None of the points of A are outside B| <span class="in">`within`</span>|</span>
-<span id="cb26-477"><a href="#cb26-477" aria-hidden="true" tabindex="-1"></a>|<span class="in">`contains_properly`</span>           |A contains B and B has no points in common with the boundary of A| |</span>
-<span id="cb26-478"><a href="#cb26-478" aria-hidden="true" tabindex="-1"></a>|<span class="in">`covers`</span>                      |No points of B lie in the exterior of A| <span class="in">`covered_by`</span>|</span>
-<span id="cb26-479"><a href="#cb26-479" aria-hidden="true" tabindex="-1"></a>|<span class="in">`covered_by`</span>                  |Inverse of <span class="in">`covers`</span>| |</span>
+<span id="cb26-476"><a href="#cb26-476" aria-hidden="true" tabindex="-1"></a>|<span class="in">`contains`</span>                    |B has no points in the exterior of A _and_ the insides of A and B have at least one point in common| <span class="in">`within`</span>|</span>
+<span id="cb26-477"><a href="#cb26-477" aria-hidden="true" tabindex="-1"></a>|<span class="in">`contains_properly`</span>           |A contains B _and_ B has no points in common with the boundary of A| |</span>
+<span id="cb26-478"><a href="#cb26-478" aria-hidden="true" tabindex="-1"></a>|<span class="in">`covers`</span>                      |B has no points in the exterior of A| <span class="in">`covered_by`</span>|</span>
+<span id="cb26-479"><a href="#cb26-479" aria-hidden="true" tabindex="-1"></a>|<span class="in">`covered_by`</span>                  |Inverse of <span class="in">`covers`</span>| <span class="in">`covers`</span>|</span>
 <span id="cb26-480"><a href="#cb26-480" aria-hidden="true" tabindex="-1"></a>|<span class="in">`crosses`</span>                     |A and B have some but not all interior points in common| |</span>
 <span id="cb26-481"><a href="#cb26-481" aria-hidden="true" tabindex="-1"></a>|<span class="in">`disjoint`</span>                    |A and B have no points in common| <span class="in">`intersects`</span>|</span>
-<span id="cb26-482"><a href="#cb26-482" aria-hidden="true" tabindex="-1"></a>|<span class="in">`equals`</span>                      |A and B are topologically equal: node order or number of nodes may differ; identical to A contains B and A within B|</span>
-<span id="cb26-483"><a href="#cb26-483" aria-hidden="true" tabindex="-1"></a>|<span class="in">`equals_exact`</span>                |A and B are geometrically equal, and have identical node order| |</span>
+<span id="cb26-482"><a href="#cb26-482" aria-hidden="true" tabindex="-1"></a>|<span class="in">`equals`</span>                      |A and B are topologically equal: node order or number of nodes may differ; identical to A contains B _and_ A within B|</span>
+<span id="cb26-483"><a href="#cb26-483" aria-hidden="true" tabindex="-1"></a>|<span class="in">`equals_exact`</span>                |A equal B _and_ A and B have identical node order| |</span>
 <span id="cb26-484"><a href="#cb26-484" aria-hidden="true" tabindex="-1"></a>|<span class="in">`intersects`</span>                  |A and B are not disjoint| <span class="in">`disjoint`</span>|</span>
-<span id="cb26-485"><a href="#cb26-485" aria-hidden="true" tabindex="-1"></a>|<span class="in">`is_within_distance`</span>          |A is closer to B than a given distance|</span>
-<span id="cb26-486"><a href="#cb26-486" aria-hidden="true" tabindex="-1"></a>|<span class="in">`within`</span>                      |None of the points of B are outside A| <span class="in">`contains`</span>|</span>
-<span id="cb26-487"><a href="#cb26-487" aria-hidden="true" tabindex="-1"></a>|<span class="in">`touches`</span>                     |A and B have at least one boundary point in common, but no interior points|  |</span>
-<span id="cb26-488"><a href="#cb26-488" aria-hidden="true" tabindex="-1"></a>|<span class="in">`overlaps`</span>                    |A and B have some points in common; the dimension of these is identical to that of A and B|  |</span>
-<span id="cb26-489"><a href="#cb26-489" aria-hidden="true" tabindex="-1"></a>|<span class="in">`relate`</span>                      |Given a mask pattern, return whether A and B adhere to this pattern| |</span>
+<span id="cb26-485"><a href="#cb26-485" aria-hidden="true" tabindex="-1"></a>|<span class="in">`is_within_distance`</span>          |the shortest distance from A to B is within a given distance|</span>
+<span id="cb26-486"><a href="#cb26-486" aria-hidden="true" tabindex="-1"></a>|<span class="in">`within`</span>                      |A has no points in the exterior of B, _and_ the insides of A and B have at least one point in common| <span class="in">`contains`</span>|</span>
+<span id="cb26-487"><a href="#cb26-487" aria-hidden="true" tabindex="-1"></a>|<span class="in">`touches`</span>                     |A and B have at least one boundary point but no interior points in common|  |</span>
+<span id="cb26-488"><a href="#cb26-488" aria-hidden="true" tabindex="-1"></a>|<span class="in">`overlaps`</span>                    |A and B have the same dimension and some but not all points in common; the dimension of the common points is identical to that of A and B|  |</span>
+<span id="cb26-489"><a href="#cb26-489" aria-hidden="true" tabindex="-1"></a>|<span class="in">`relate`</span>                      |Given a mask string, return whether A _relate_ B adheres to its pattern| |</span>
 <span id="cb26-490"><a href="#cb26-490" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb26-491"><a href="#cb26-491" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{st<span class="sc">\_</span>contains}</span>
 <span id="cb26-492"><a href="#cb26-492" aria-hidden="true" tabindex="-1"></a>\index<span class="co">[</span><span class="ot">function</span><span class="co">]</span>{st<span class="sc">\_</span>contains<span class="sc">\_</span>properly}</span>
@@ -2479,7 +2479,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb26-720"><a href="#cb26-720" aria-hidden="true" tabindex="-1"></a>we have a _single_ value for the range. This is a very common situation</span>
 <span id="cb26-721"><a href="#cb26-721" aria-hidden="true" tabindex="-1"></a>for spatiotemporal phenomena, a few examples can be given:</span>
 <span id="cb26-722"><a href="#cb26-722" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-723"><a href="#cb26-723" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>boundary disputes aside, at a give time every point in a region (domain) belongs to a single administrative unit (range)</span>
+<span id="cb26-723"><a href="#cb26-723" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>boundary disputes aside, at a given time every point in a region (domain) belongs to a single administrative unit (range)</span>
 <span id="cb26-724"><a href="#cb26-724" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>at any given moment in time, every point in a region (domain) has a certain _land cover type_ (range)</span>
 <span id="cb26-725"><a href="#cb26-725" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>every point in an area (domain) has a single surface elevation (range), which could be measured with respect to a given mean sea level surface</span>
 <span id="cb26-726"><a href="#cb26-726" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>every spatiotemporal point in a three-dimensional body of air (domain) has single value for temperature (range)</span>
