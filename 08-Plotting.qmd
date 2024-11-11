@@ -34,15 +34,18 @@ par(mar = rep(0, 4))
 plot(st_geometry(w))
 
 # sphere:
-library(s2)
-g <- as_s2_geography(TRUE) # Earth
-co <- s2_data_countries()
-oc <- s2_difference(g, s2_union_agg(co)) # oceans
-b <- s2_buffer_cells(as_s2_geography("POINT(-30 -10)"), 9800000) # visible half
-i <- s2_intersection(b, oc) # visible ocean
-co <- s2_intersection(b, co)
-plot(st_transform(st_as_sfc(i), "+proj=ortho +lat_0=-10 +lon_0=-30"), col = 'lightblue')
-plot(st_transform(st_as_sfc(co), "+proj=ortho +lat_0=-10 +lon_0=-30"), col = NA, add = TRUE)
+old <- options(s2_oriented = TRUE) # don't change orientation from here on
+countries <- s2::s2_data_countries() |> st_as_sfc()
+globe <- st_as_sfc("POLYGON FULL", crs = st_crs(countries))
+oceans <- st_difference(globe, st_union(countries))
+visible <- st_buffer(st_as_sfc("POINT(-30 -10)", crs = st_crs(countries)), 9800000) # visible half
+visible_ocean <- st_intersection(visible, oceans)
+visible_countries <- st_intersection(visible, countries)
+st_transform(visible_ocean, "+proj=ortho +lat_0=-10 +lon_0=-30") |>
+    plot(col = 'lightblue')
+st_transform(visible_countries, "+proj=ortho +lat_0=-10 +lon_0=-30") |>
+    plot(col = NA, add = TRUE)
+options(old)
 ```
 
 \newpage
