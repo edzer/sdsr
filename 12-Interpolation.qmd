@@ -46,12 +46,23 @@ CI <- Sys.getenv("CI") == "true" # TRUE when inside GitHub Actions
 
 We can read station mean NO$_2$ values, a dataset that is prepared 
 in @sec-stgeostatistics, by loading it from package **gstat** using
+::: panel-tabset
+#### R
 ```{r, message=FALSE}
 library(tidyverse) |> suppressPackageStartupMessages()
 no2 <- read_csv(system.file("external/no2.csv", 
     package = "gstat"), show_col_types = FALSE)
 ```
+#### Python
+```{python}
+import pandas as pd
+# Assuming the file is located in "external/no2.csv"
+no2 = pd.read_csv("/home/edzer/git/sdsr/data/no2.csv") # TBD!!
+```
+:::
 and convert it into an `sf` object with an appropriate UTM projection using
+::: panel-tabset
+#### R
 ```{r}
 library(sf)
 crs <- st_crs("EPSG:32632")
@@ -59,19 +70,53 @@ st_as_sf(no2, crs = "OGC:CRS84", coords =
 	c("station_longitude_deg", "station_latitude_deg")) |>
 	st_transform(crs) -> no2.sf
 ```
+#### Python
+```{python}
+import geopandas as gpd
+from pyproj import CRS
+
+# Convert NO2 data to GeoDataFrame and set coordinate reference systems
+no2 = gpd.GeoDataFrame(
+    no2,
+    geometry=gpd.points_from_xy(no2["station_longitude_deg"], no2["station_latitude_deg"]),
+    crs="EPSG:4326"  # OGC:CRS84 corresponds to EPSG:4326
+)
+no2_sf = no2.to_crs(CRS.from_epsg(32632))  # Transform to UTM (EPSG:32632)
+```
+:::
 
 Next, we can load country boundaries and plot these data using `ggplot`, shown
 in @fig-plotDE.
+::: panel-tabset
+#### R
 ```{r plot}
 read_sf("data/de_nuts1.gpkg") |> st_transform(crs) -> de
 ```
+#### Python
+```{python}
+de = gpd.read_file("/home/edzer/git/sdsr/data/de_nuts1.gpkg")
+de = de.to_crs(CRS.from_epsg(32632))
+```
+:::
 
+::: panel-tabset
+#### R
 ```{r fig-plotDE, echo = !knitr::is_latex_output()}
 #| fig.cap: "Mean NO$_2$ concentrations in air for rural background stations in Germany, in 2017"
 #| code-fold: true
 ggplot() + geom_sf(data = de) + 
 	geom_sf(data = no2.sf, mapping = aes(col = NO2))
 ```
+#### Python
+```{python}
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(10, 10))
+de.plot(ax=ax, edgecolor="black", alpha=0.5)
+no2_sf.plot(ax=ax, column="NO2", legend=True, cmap="viridis")
+plt.show()
+```
+:::
 
 \index{interpolation!target grid}
 \index{st\_as\_stars!for generating a grid}
@@ -81,6 +126,8 @@ is typically done on a regular grid covering the area of
 interest. Starting with the country outline in object `de` we can
 create a regular 10 km $\times$ 10 km grid over Germany by
 
+::: panel-tabset
+#### R
 ```{r buildgridgermany}
 library(stars) |> suppressPackageStartupMessages()
 st_bbox(de) |>
@@ -88,6 +135,28 @@ st_bbox(de) |>
   st_crop(de) -> grd
 grd
 ```
+#### Python
+```{python}
+import numpy as np
+from shapely.geometry import box
+
+# Create bounding box of the country (Germany)
+bounds = de.total_bounds  # [minx, miny, maxx, maxy]
+
+# Generate a 10 km x 10 km grid
+x_coords = np.arange(bounds[0], bounds[2], 10000)  # 10,000 meters
+y_coords = np.arange(bounds[1], bounds[3], 10000)
+
+# Create grid cells
+grid_cells = [
+    box(x, y, x + 10000, y + 10000) for x in x_coords for y in y_coords
+]
+
+# Crop grid cells to the country boundary
+grid_gdf = gpd.GeoDataFrame(geometry=grid_cells, crs=de.crs)
+grid_gdf = gpd.overlay(grid_gdf, de, how="intersection")  # Crop to country boundary
+```
+:::
 
 Here, we chose grid cells not too fine, so that we still see
 them in plots.
@@ -106,13 +175,43 @@ $$
 with $w_i = |s_0-s_i|^{-p}$, and the inverse distance power $p$ typically
 taken as 2, or optimised using cross-validation. We can compute
 inverse distance interpolated values using `gstat::idw`, 
+::: panel-tabset
+#### R
 ```{r, message=FALSE}
 library(gstat)
 i <- idw(NO2~1, no2.sf, grd)
 ```
+#### Python
+```{python}
+from scipy.spatial import cKDTree
+import numpy as np
+
+def inverse_distance_weighting(data_points, grid_points, values, power=2):
+    """
+    Perform inverse distance weighting (IDW) interpolation.
+    """
+    tree = cKDTree(data_points)
+    distances, indices = tree.query(grid_points, k=len(data_points))
+    
+    weights = 1 / np.power(distances, power)
+    weights[distances == 0] = 1e12  # Handle zero distances
+    interpolated = np.sum(weights * values[indices], axis=1) / np.sum(weights, axis=1)
+    return interpolated
+
+# Prepare data points and grid
+data_points = np.array(list(zip(no2_sf.geometry.x, no2_sf.geometry.y)))
+grid_points = np.array(list(zip(grid_gdf.geometry.centroid.x, grid_gdf.geometry.centroid.y)))
+values = no2_sf["NO2"].values
+
+# Perform IDW
+grid_gdf["NO2_IDW"] = inverse_distance_weighting(data_points, grid_points, values)
+```
+:::
 
 and plot them in @fig-idw.
 
+::: panel-tabset
+#### R
 ```{r fig-idw, echo=!knitr::is_latex_output()}
 #| fig.cap: "Inverse distance weighted interpolated values for NO$_2$ over Germany"
 #| code-fold: true
@@ -122,6 +221,28 @@ ggplot() + geom_stars(data = i,
 	geom_sf(data = st_cast(de, "MULTILINESTRING")) + 
 	geom_sf(data = no2.sf)
 ```
+#### Python
+```{python}
+fig, ax = plt.subplots(figsize=(10, 10))
+
+# Plot IDW interpolated values
+grid_gdf.plot(
+    ax=ax, column="NO2_IDW", cmap="viridis", legend=True,
+    legend_kwds={"label": "NO2 (IDW Interpolation)"}
+)
+
+# Overlay country boundaries
+de.boundary.plot(ax=ax, color="black", linewidth=0.5)
+
+# Overlay measurement points
+no2_sf.plot(ax=ax, color="red", markersize=5)
+
+plt.xlabel("")
+plt.ylabel("")
+plt.title("Inverse Distance Weighted Interpolation for NO2")
+plt.show()
+```
+:::
 
 ## Sample variogram 
 
@@ -137,6 +258,8 @@ $$ {#eq-samplevariogram}
 
 with $N(h_i)$ the number of sample pairs available for distance interval $h_i$.
 Function `gstat::variogram` computes sample variograms,
+::: panel-tabset
+#### R
 ```{r computevariogram}
 v <- variogram(NO2~1, no2.sf)
 ```
@@ -148,11 +271,71 @@ plot(v, plot.numbers = TRUE, xlab = "distance h [m]",
 	 ylab = expression(gamma(h)),
 	 xlim = c(0, 1.055 * max(v$dist)))
 ```
+#### Python
+```{python}
+from scipy.spatial.distance import pdist, squareform
+import pandas as pd
+
+def compute_variogram(data_points, values, bins):
+    """
+    Compute a sample variogram.
+    """
+    distances = pdist(data_points)
+    diffs = pdist(values[:, None], metric="sqeuclidean")
+    distances, diffs = squareform(distances), squareform(diffs)
+
+    # Bin distances
+    binned = pd.cut(distances.flatten(), bins=bins, labels=False)
+    gamma = [
+        np.mean(diffs.flatten()[binned == i]) / 2
+        for i in range(len(bins) - 1)
+    ]
+    return gamma, bins[:-1]
+
+# Compute variogram
+bins = np.linspace(0, 100000, num=10)  # Define bins ## EJP: TBD - num=15 and deal with empty bins!
+data_points = np.array(list(zip(no2_sf.geometry.x, no2_sf.geometry.y)))
+values = no2_sf["NO2"].values
+variogram, bin_centers = compute_variogram(data_points, values, bins)
+```
+:::
+
 Function `variogram` chooses default for maximum distance (`cutoff`: one-third of the length of the bounding box diagonal) and (constant) interval widths (`width`: cutoff divided by 15). These defaults can be changed by
+::: panel-tabset
+#### R
 ```{r controlcutoff}
 v0 <- variogram(NO2~1, no2.sf, cutoff = 100000, width = 10000)
 ```
+#### Python
+```{python}
+def compute_variogram_with_cutoff(data_points, values, bins):
+    """
+    Compute a sample variogram with a custom cutoff and bin width.
+    """
+    distances = pdist(data_points)
+    diffs = pdist(values[:, None], metric="sqeuclidean")
+    distances, diffs = squareform(distances), squareform(diffs)
+    
+    # Apply cutoff
+    valid = distances < bins[-1]
+    distances = distances[valid]
+    diffs = diffs[valid]
+
+    # Bin distances
+    binned = pd.cut(distances.flatten(), bins=bins, labels=False)
+    gamma = [
+        np.mean(diffs.flatten()[binned == i]) / 2
+        for i in range(len(bins) - 1)
+    ]
+    return gamma, bins[:-1]
+
+# Define bins with cutoff and width
+bins = np.arange(0, 100000 + 10000, 10000)  # Lags of 10,000 meters up to 100,000
+variogram_cutoff, bin_centers_cutoff = compute_variogram_with_cutoff(data_points, values, bins)
+```
 shown in @fig-vgm2.
+::: panel-tabset
+#### R
 ```{r fig-vgm2, echo=!knitr::is_latex_output()}
 #| fig.cap: "Sample variogram plot with adjusted cutoff and lag width"
 #| code-fold: true
@@ -160,6 +343,27 @@ plot(v0, plot.numbers = TRUE, xlab = "distance h [m]",
 	 ylab = expression(gamma(h)),
 	 xlim = c(0, 1.055 * max(v0$dist)))
 ```
+#### Python
+```{python}
+fig, ax = plt.subplots(figsize=(10, 5))
+
+# Plot only the symbols (points) without a connecting line
+ax.scatter(bin_centers_cutoff, variogram_cutoff, color="blue", label="Sample Variogram")
+
+# Set x-axis and y-axis limits to start at zero and include the cutoff
+ax.set_xlim(0, 1.055 * bins[-1])
+ax.set_ylim(0)
+
+# Add labels, title, and grid
+ax.set_xlabel("Distance h [m]")
+ax.set_ylabel(r"$\gamma(h)$")
+ax.set_title("Sample Variogram with Cutoff")
+ax.grid(True)
+
+#plt.legend()
+plt.show()
+```
+:::
 Note that the formula `NO2~1` is used to select the variable of interest from the data file (`NO2`), and to specify the mean model: `~1` specifies an intercept-only (unknown, constant mean) model.
 
 ## Fitting variogram models
@@ -172,9 +376,52 @@ In order to progress towards spatial predictions, we need a variogram _model_ $\
 \index[function]{fit.variogram}
 
 To avoid this, we fit parametric models $\gamma(h)$ to the estimates $\hat{\gamma}(h_i)$, where we take $h_i$ as the mean value of all the $h'$ values involved in estimating $\hat{\gamma}(h_i)$. We can fit for instance a model with an exponential variogram by
+::: panel-tabset
+#### R
 ```{r}
 v.m <- fit.variogram(v, vgm(1, "Exp", 50000, 1))
 ```
+#### Python
+```{python}
+from scipy.optimize import curve_fit
+
+# Define exponential variogram model
+def exponential_model(h, sill, range_, nugget):
+    return nugget + sill * (1 - np.exp(-h / range_))
+
+# Initial guesses for sill, range, and nugget
+initial_guess = [1, 50000, 1]
+
+# Fit the variogram model
+params, _ = curve_fit(
+    exponential_model, bin_centers_cutoff, variogram_cutoff, p0=initial_guess
+)
+
+# Extract fitted parameters
+fitted_sill, fitted_range, fitted_nugget = params
+
+## Plotted:
+# Generate model curve
+model_curve = exponential_model(bin_centers_cutoff, fitted_sill, fitted_range, fitted_nugget)
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+# Plot sample variogram points
+ax.scatter(bin_centers_cutoff, variogram_cutoff, color="blue", label="Sample Variogram")
+
+# Plot fitted variogram model
+ax.plot(bin_centers_cutoff, model_curve, color="red", linestyle="--", label="Fitted Model")
+
+# Add labels, title, and grid
+ax.set_xlabel("Distance h [m]")
+ax.set_ylabel(r"$\gamma(h)$")
+ax.set_title("Fitted Variogram Model")
+ax.grid(True)
+
+plt.legend()
+plt.show() # TBD: note the negative nugget!
+```
+:::
 shown by the solid line in @fig-fitvariogrammodel.
 ```{r fig-fitvariogrammodel, echo = !knitr::is_latex_output()}
 #| fig.cap: "Sample variogram (circles) with models fitted using weighted least squares (solid line) and maximum likelihood estimation (dashed line)"
@@ -287,6 +534,8 @@ model as arguments (@fig-krigeovergermany) by:
 
 \index{krige}
 
+::: panel-tabset
+#### R
 ```{r}
 k <- krige(NO2~1, no2.sf, grd, v.m)
 ```
@@ -298,6 +547,63 @@ ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) +
 	geom_sf(data = no2.sf) +
 	coord_sf(lims_method = "geometry_bbox")
 ```
+#### Python
+```{python}
+from pykrige.ok import OrdinaryKriging
+import numpy as np
+
+# Extract coordinates and values from observed data
+data_points_x = no2_sf.geometry.x.values
+data_points_y = no2_sf.geometry.y.values
+values = no2_sf["NO2"].values
+
+# Generate grid coordinates for interpolation
+grid_x, grid_y = np.meshgrid(
+    np.linspace(grid_gdf.total_bounds[0], grid_gdf.total_bounds[2], 100),
+    np.linspace(grid_gdf.total_bounds[1], grid_gdf.total_bounds[3], 100),
+)
+
+# Fit the ordinary kriging model
+ok = OrdinaryKriging(
+    data_points_x,
+    data_points_y,
+    values,
+    variogram_model="exponential",  # Use the exponential model
+    variogram_parameters={"sill": fitted_sill, "range": fitted_range, "nugget": fitted_nugget},
+)
+
+# Perform kriging interpolation on the grid
+z, ss = ok.execute("grid", grid_x[0], grid_y[:, 0])  # z: predicted values, ss: standard error
+
+# plot
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+
+# Plot the kriging results
+fig, ax = plt.subplots(figsize=(10, 10))
+
+# Display the kriging predictions
+c = ax.pcolormesh(
+    grid_x, grid_y, z, shading="auto", cmap="viridis",
+    norm=Normalize(vmin=np.nanmin(z), vmax=np.nanmax(z))
+)
+plt.colorbar(c, ax=ax, label="Kriged NO2 Predictions")
+
+# Overlay country boundaries as multilinestrings
+de.boundary.plot(ax=ax, color="black", linewidth=0.5)
+
+# Overlay measurement points
+no2_sf.plot(ax=ax, color="red", markersize=5, label="Measurement Points")
+
+# Set axis labels and title
+ax.set_xlabel("")
+ax.set_ylabel("")
+ax.set_title("Kriged NO2 Predictions")
+ax.legend()
+
+plt.show()
+```
+:::
 
 ## Areal means: block kriging {#sec-blockkriging}
 
@@ -306,9 +612,25 @@ ggplot() + geom_stars(data = k, aes(fill = var1.pred, x = x, y = y)) +
 
 Computing areal means can be done in several ways. The simplest is to take
 the average of point samples falling inside the target polygons:
+::: panel-tabset
+#### R
 ```{r}
 a <- aggregate(no2.sf["NO2"], by = de, FUN = mean)
 ```
+#### Python
+```{python}
+import geopandas as gpd
+
+# Spatially join the NO2 points with the regions in 'de'
+joined = gpd.sjoin(no2_sf, de, how="inner", predicate="within")
+
+# Calculate the mean NO2 value for each region
+# region_means = joined.groupby(de.index)["NO2"].mean() ## TBD: errors
+
+# Add the computed mean NO2 values back to the 'de' GeoDataFrame
+#de["NO2_mean"] = region_means
+```
+:::
 A more complicated way is to use _block kriging_ [@jh78], which
 uses _all_ the data to estimate the mean of the variable over the
 target areas. With `krige`, this can be done by giving the target
