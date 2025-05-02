@@ -60,6 +60,8 @@ include
 
 Point patterns have an observation window. Consider the points generated randomly by 
 
+::: panel-tabset
+#### R
 ```{r}
 library(sf)
 n <- 30
@@ -67,18 +69,49 @@ set.seed(13531) # remove this to create another random sequence
 xy <- data.frame(x = runif(n), y = runif(n)) |> 
     st_as_sf(coords = c("x", "y"))
 ```
+#### Python
+```{python}
+# Libraries
+import geopandas as gpd
+import pandas as pd
+import numpy as np
+from shapely.geometry import Point, box
+from shapely.ops import unary_union
+import matplotlib.pyplot as plt
+
+# Generate random points
+n = 30
+np.random.seed(13531)  # Remove this line to create another random sequence
+x = np.random.uniform(0, 1, n)
+y = np.random.uniform(0, 1, n)
+xy = gpd.GeoDataFrame({'geometry': [Point(xy) for xy in zip(x, y)]})
+```
+:::
 
 then these points are (by construction) uniformly distributed,
 or completely spatially random, over the domain $[0,1] \times [0,1]$. For
 a larger domain, they are not uniform, for the two square windows
 `w1` and `w2` created by 
+
+::: panel-tabset
+#### R
 ```{r}
 w1 <- st_bbox(c(xmin = 0, ymin = 0, xmax = 1, ymax = 1)) |> 
 		st_as_sfc() 
 w2 <- st_sfc(st_point(c(1, 0.5))) |> st_buffer(1.2)
 ```
+#### Python
+```{python}
+# Create observation windows
+w1 = box(0, 0, 1, 1)
+w2 = Point(1, 0.5).buffer(1.2)
+```
+:::
+
 this is shown in @fig-pp1.
 
+::: panel-tabset
+#### R
 ```{r fig-pp1, echo=!knitr::is_latex_output()}
 #| fig.height: 3.3
 #| fig.cap: "Depending on the observation window (grey), the same point pattern can appear completely spatially random (left), or clustered (right)"
@@ -90,16 +123,49 @@ plot(w2, axes = TRUE, col = 'grey')
 plot(xy, add = TRUE, cex = .5)
 ```
 
+#### Python
+```{python}
+# Plot random points within observation windows
+fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+for ax, window, title in zip(axs, [w1, w2], ["Window 1", "Window 2"]):
+    ax.set_title(title)
+    ax.add_patch(plt.Rectangle((window.bounds[0], window.bounds[1]),
+                                window.bounds[2] - window.bounds[0],
+                                window.bounds[3] - window.bounds[1],
+                                alpha=0.3, color='gray'))
+    ax.scatter(x, y)
+plt.show()
+```
+:::
+
 \index{ppp}
 \index{sf!as.ppp}
 
 Point patterns in **spatstat** are objects of class `ppp` that contain
 points and an observation window (an object of class `owin`).
 We can create a `ppp` from points by
+
+::: panel-tabset
+#### R
 ```{r}
 library(spatstat) |> suppressPackageStartupMessages()
 as.ppp(xy)
 ```
+#### Python
+```{python}
+import geopandas as gpd
+from shapely.geometry import Point, Polygon
+
+# Using previously created random points (xy)
+# Define observation window (bounding box)
+bbox = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+
+# Create a GeoDataFrame as a point pattern
+### EP: the following does not make sense IMO:
+# xy['window'] = bbox
+# print(xy.head())
+```
+:::
 
 \newpage
 where we see that the bounding box of the points is used as observation
@@ -145,6 +211,8 @@ bandwidth can be controlled. Here, cross-validation is used by function
 `bw.diggle` to specify the bandwidth parameter `sigma`; plots are shown in
 @fig-bwdiggle.
 
+::: panel-tabset
+#### R
 ```{r}
 den1 <- density(pp1, sigma = bw.diggle)
 den2 <- density(pp2, sigma = bw.diggle)
@@ -159,6 +227,31 @@ plot(pp1, add=TRUE)
 plot(den2)
 plot(pp1, add=TRUE)
 ```
+#### Python
+```{python}
+from scipy.stats import gaussian_kde
+
+xy_coords = np.vstack((x, y))
+kde = gaussian_kde(xy_coords)
+# Create a grid to evaluate the KDE
+x_grid = np.linspace(min(x) - 1, max(x) + 1, 100)
+y_grid = np.linspace(min(y) - 1, max(y) + 1, 100)
+X, Y = np.meshgrid(x_grid, y_grid)
+positions = np.vstack([X.ravel(), Y.ravel()])
+Z = kde(positions).reshape(X.shape)
+
+# Plot the KDE
+plt.figure(figsize=(8, 6))
+plt.imshow(Z, origin='lower', aspect='auto', extent=(x_grid.min(), x_grid.max(), y_grid.min(), y_grid.max()), cmap='Blues')
+plt.scatter(x, y, c='red', s=15, label="Data points")
+plt.colorbar(label="Density")
+plt.xlabel("X")
+plt.ylabel("Y")
+plt.title("2D Kernel Density Estimation (KDE)")
+plt.legend()
+plt.show()
+```
+:::
 
 The density maps created this way are obviously raster images, and we can
 convert them into stars object by

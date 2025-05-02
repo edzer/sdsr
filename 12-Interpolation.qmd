@@ -46,6 +46,7 @@ CI <- Sys.getenv("CI") == "true" # TRUE when inside GitHub Actions
 
 We can read station mean NO$_2$ values, a dataset that is prepared 
 in @sec-stgeostatistics, by loading it from package **gstat** using
+
 ::: panel-tabset
 #### R
 ```{r, message=FALSE}
@@ -56,11 +57,12 @@ no2 <- read_csv(system.file("external/no2.csv",
 #### Python
 ```{python}
 import pandas as pd
-# Assuming the file is located in "external/no2.csv"
-no2 = pd.read_csv("/home/edzer/git/sdsr/data/no2.csv") # TBD!!
+no2 = pd.read_csv("https://github.com/r-spatial/gstat/raw/main/inst/external/no2.csv")
 ```
 :::
+
 and convert it into an `sf` object with an appropriate UTM projection using
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -79,7 +81,7 @@ from pyproj import CRS
 no2 = gpd.GeoDataFrame(
     no2,
     geometry=gpd.points_from_xy(no2["station_longitude_deg"], no2["station_latitude_deg"]),
-    crs="EPSG:4326"  # OGC:CRS84 corresponds to EPSG:4326
+    crs="OGC:CRS84"
 )
 no2_sf = no2.to_crs(CRS.from_epsg(32632))  # Transform to UTM (EPSG:32632)
 ```
@@ -87,6 +89,7 @@ no2_sf = no2.to_crs(CRS.from_epsg(32632))  # Transform to UTM (EPSG:32632)
 
 Next, we can load country boundaries and plot these data using `ggplot`, shown
 in @fig-plotDE.
+
 ::: panel-tabset
 #### R
 ```{r plot}
@@ -94,7 +97,7 @@ read_sf("data/de_nuts1.gpkg") |> st_transform(crs) -> de
 ```
 #### Python
 ```{python}
-de = gpd.read_file("/home/edzer/git/sdsr/data/de_nuts1.gpkg")
+de = gpd.read_file("data/de_nuts1.gpkg")
 de = de.to_crs(CRS.from_epsg(32632))
 ```
 :::
@@ -109,6 +112,7 @@ ggplot() + geom_sf(data = de) +
 ```
 #### Python
 ```{python}
+#| code-fold: true
 import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(figsize=(10, 10))
@@ -175,6 +179,7 @@ $$
 with $w_i = |s_0-s_i|^{-p}$, and the inverse distance power $p$ typically
 taken as 2, or optimised using cross-validation. We can compute
 inverse distance interpolated values using `gstat::idw`, 
+
 ::: panel-tabset
 #### R
 ```{r, message=FALSE}
@@ -223,6 +228,7 @@ ggplot() + geom_stars(data = i,
 ```
 #### Python
 ```{python}
+#| code-fold: true
 fig, ax = plt.subplots(figsize=(10, 10))
 
 # Plot IDW interpolated values
@@ -258,6 +264,7 @@ $$ {#eq-samplevariogram}
 
 with $N(h_i)$ the number of sample pairs available for distance interval $h_i$.
 Function `gstat::variogram` computes sample variograms,
+
 ::: panel-tabset
 #### R
 ```{r computevariogram}
@@ -273,6 +280,7 @@ plot(v, plot.numbers = TRUE, xlab = "distance h [m]",
 ```
 #### Python
 ```{python}
+#| code-fold: true
 from scipy.spatial.distance import pdist, squareform
 import pandas as pd
 
@@ -301,6 +309,7 @@ variogram, bin_centers = compute_variogram(data_points, values, bins)
 :::
 
 Function `variogram` chooses default for maximum distance (`cutoff`: one-third of the length of the bounding box diagonal) and (constant) interval widths (`width`: cutoff divided by 15). These defaults can be changed by
+
 ::: panel-tabset
 #### R
 ```{r controlcutoff}
@@ -332,19 +341,8 @@ def compute_variogram_with_cutoff(data_points, values, bins):
 # Define bins with cutoff and width
 bins = np.arange(0, 100000 + 10000, 10000)  # Lags of 10,000 meters up to 100,000
 variogram_cutoff, bin_centers_cutoff = compute_variogram_with_cutoff(data_points, values, bins)
-```
-shown in @fig-vgm2.
-::: panel-tabset
-#### R
-```{r fig-vgm2, echo=!knitr::is_latex_output()}
-#| fig.cap: "Sample variogram plot with adjusted cutoff and lag width"
-#| code-fold: true
-plot(v0, plot.numbers = TRUE, xlab = "distance h [m]",
-	 ylab = expression(gamma(h)),
-	 xlim = c(0, 1.055 * max(v0$dist)))
-```
-#### Python
-```{python}
+
+# Plot it:
 fig, ax = plt.subplots(figsize=(10, 5))
 
 # Plot only the symbols (points) without a connecting line
@@ -364,6 +362,41 @@ ax.grid(True)
 plt.show()
 ```
 :::
+
+shown in @fig-vgm2.
+
+::: panel-tabset
+#### R
+```{r fig-vgm2, echo=!knitr::is_latex_output()}
+#| fig.cap: "Sample variogram plot with adjusted cutoff and lag width"
+#| code-fold: true
+plot(v0, plot.numbers = TRUE, xlab = "distance h [m]",
+	 ylab = expression(gamma(h)),
+	 xlim = c(0, 1.055 * max(v0$dist)))
+```
+#### Python
+```{python}
+#| code-fold: true
+fig, ax = plt.subplots(figsize=(10, 5))
+
+# Plot only the symbols (points) without a connecting line
+ax.scatter(bin_centers_cutoff, variogram_cutoff, color="blue", label="Sample Variogram")
+
+# Set x-axis and y-axis limits to start at zero and include the cutoff
+ax.set_xlim(0, 1.055 * bins[-1])
+ax.set_ylim(0)
+
+# Add labels, title, and grid
+ax.set_xlabel("Distance h [m]")
+ax.set_ylabel(r"$\gamma(h)$")
+ax.set_title("Sample Variogram with Cutoff")
+ax.grid(True)
+
+#plt.legend()
+plt.show()
+```
+:::
+
 Note that the formula `NO2~1` is used to select the variable of interest from the data file (`NO2`), and to specify the mean model: `~1` specifies an intercept-only (unknown, constant mean) model.
 
 ## Fitting variogram models
@@ -376,6 +409,7 @@ In order to progress towards spatial predictions, we need a variogram _model_ $\
 \index[function]{fit.variogram}
 
 To avoid this, we fit parametric models $\gamma(h)$ to the estimates $\hat{\gamma}(h_i)$, where we take $h_i$ as the mean value of all the $h'$ values involved in estimating $\hat{\gamma}(h_i)$. We can fit for instance a model with an exponential variogram by
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -422,6 +456,7 @@ plt.legend()
 plt.show() # TBD: note the negative nugget!
 ```
 :::
+
 shown by the solid line in @fig-fitvariogrammodel.
 ```{r fig-fitvariogrammodel, echo = !knitr::is_latex_output()}
 #| fig.cap: "Sample variogram (circles) with models fitted using weighted least squares (solid line) and maximum likelihood estimation (dashed line)"
@@ -612,6 +647,7 @@ plt.show()
 
 Computing areal means can be done in several ways. The simplest is to take
 the average of point samples falling inside the target polygons:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -625,12 +661,13 @@ import geopandas as gpd
 joined = gpd.sjoin(no2_sf, de, how="inner", predicate="within")
 
 # Calculate the mean NO2 value for each region
-# region_means = joined.groupby(de.index)["NO2"].mean() ## TBD: errors
+#region_means = joined.groupby(de.index)["NO2"].mean() ## TBD: errors
 
 # Add the computed mean NO2 values back to the 'de' GeoDataFrame
 #de["NO2_mean"] = region_means
 ```
 :::
+
 A more complicated way is to use _block kriging_ [@jh78], which
 uses _all_ the data to estimate the mean of the variable over the
 target areas. With `krige`, this can be done by giving the target
