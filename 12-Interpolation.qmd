@@ -423,22 +423,37 @@ from scipy.optimize import curve_fit
 def exponential_model(h, sill, range_, nugget):
     return nugget + sill * (1 - np.exp(-h / range_))
 
+# Define exponential variogram model without nugget:
+def exponential_model_zero_nugget(h, sill, range_):
+    return sill * (1 - np.exp(-h / range_))
+
 # Initial guesses for sill, range, and nugget
 initial_guess = [1, 50000, 1]
 
 # Fit the variogram model
 params, _ = curve_fit(
-    exponential_model, bin_centers_cutoff, variogram_cutoff, p0=initial_guess
+    exponential_model, bin_centers_cutoff, variogram_cutoff, 
+    p0=initial_guess
 )
 
 # Extract fitted parameters
 fitted_sill, fitted_range, fitted_nugget = params
+
+if fitted_nugget < 0:
+    fitted_nugget = 0  # Ensure nugget is non-negative
+    params, _ = curve_fit(
+        exponential_model_zero_nugget, bin_centers_cutoff, variogram_cutoff, 
+        p0=[fitted_sill, fitted_range]
+    )
+    fitted_sill, fitted_range = params
 
 ## Plotted:
 # Generate model curve
 model_curve = exponential_model(bin_centers_cutoff, fitted_sill, fitted_range, fitted_nugget)
 
 fig, ax = plt.subplots(figsize=(10, 5))
+ax.set_xlim(0, max(bin_centers_cutoff) * 1.05)
+ax.set_ylim(0, max(variogram_cutoff) * 1.05)
 
 # Plot sample variogram points
 ax.scatter(bin_centers_cutoff, variogram_cutoff, color="blue", label="Sample Variogram")
