@@ -848,6 +848,9 @@ drops existing ones.
 
 Further subsetting can be done using spatial objects of class `sf`, `sfc`
 or `bbox`, for instance
+
+::: panel-tabset
+#### R
 ```{r}
 b <- st_bbox(r) |>
 	st_as_sfc() |>
@@ -855,8 +858,24 @@ b <- st_bbox(r) |>
 	st_buffer(units::set_units(500, m))
 r[b]
 ```
+#### Python
+```{python}
+import rioxarray
+da = rioxarray.open_rasterio("https://github.com/r-spatial/stars/raw/refs/heads/main/inst/tif/L7_ETMs.tif")
+xmin, ymin, xmax, ymax = da.rio.bounds()
+bbox_poly = box(xmin, ymin, xmax, ymax)
+centroid = bbox_poly.centroid
+buffered = centroid.buffer(500)
+gdf = gpd.GeoDataFrame({"geometry": [buffered]}, crs=da.rio.crs)
+cropped = da.rio.clip(gdf.geometry, gdf.crs, drop=True)
+```
+:::
+
 selects the circular centre region with a diameter of 500 metre, which for
 the first band is shown in @fig-circr,
+
+::: panel-tabset
+#### R
 ```{r fig-circr, echo=!knitr::is_latex_output()}
 #| fig.cap: "Circular centre region of the Landsat 7 scene (band 1)"
 #| code-fold: true
@@ -864,6 +883,16 @@ the first band is shown in @fig-circr,
 plot(r[b][,,,1], reset = FALSE)
 plot(b, border = 'brown', lwd = 2, col = NA, add = TRUE)
 ```
+#### Python
+```{python}
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(8, 6))
+cropped[0].plot(ax=ax)  # first band
+gdf.boundary.plot(ax=ax, edgecolor="brown", linewidth=2) 
+plt.show()
+```
+:::
+
 where we see that pixels outside the spatial object are assigned `NA` values.
 This object still has dimension indexes relative to the `offset` and `delta`
 values of `r`; we can reset these to a new `offset` with
@@ -890,16 +919,38 @@ st_crop(r, b)
 Package **stars** uses package **abind** [@R-abind] for a number of
 array manipulations. One of them is `aperm` which transposes an
 array by permuting it. A method for `stars` objects is provided, and
+
+::: panel-tabset
+#### R
 ```{r}
 aperm(r, c(3, 1, 2))
 ```
+#### Python
+```{python}
+da.transpose( "x", "y", "band")
+```
+:::
+
+
 permutes the order of dimensions of the resulting object.
 
 Attributes and dimensions can be swapped, using `split` and `merge`:
+
+::: panel-tabset
+#### R
 ```{r}
 (rs <- split(r))
 merge(rs, name = "band") |> setNames("L7_ETMs")
 ```
+#### Python
+```{python}
+da_split = [da.sel(band=b) for b in da.band]
+da_merged = xr.concat(da_split, dim="band")
+da_merged.name = "L7_ETMs"
+```
+
+:::
+
 `split` distributes the `band` dimension over six attributes of a
 two-dimensional array, `merge` reverses this operation. `st_redimension`
 can be used for more generic operations, such as splitting a single array
@@ -927,11 +978,32 @@ A very common use case for raster data cube analysis is the extraction
 of values at certain locations, or computing aggregations over certain 
 geometries. `st_extract` extracts point values. We will do this
 for a few randomly sampled points over the bounding  box of `r`:
+::: panel-tabset
+#### R
 ```{r}
 set.seed(115517)
 pts <- st_bbox(r) |> st_as_sfc() |> st_sample(20)
 (e <- st_extract(r, pts))
 ```
+#### Python
+```{python}
+bbox = da.rio.bounds()
+minx, miny, maxx, maxy = bbox
+
+# Sample random points
+def random_points_in_bbox(minx, miny, maxx, maxy, n):
+    xs = np.random.uniform(minx, maxx, n)
+    ys = np.random.uniform(miny, maxy, n)
+    return [shapely.geometry.Point(x, y) for x, y in zip(xs, ys)]
+  
+pts = random_points_in_bbox(minx, miny, maxx, maxy, 20)
+e = tif.xvec.extract_points(pts, x_coords="x", y_coords="y", name="")
+e.name = "L7_ETMs"
+
+```
+
+:::
+
 which results in a vector data cube with 20 points and 6
 bands. (Setting the seed guarantees an identical sample when
 reproducing, it should not be set to generate further randomly
@@ -942,6 +1014,8 @@ aggregating it. One way of doing this is by spatially aggregating
 values over spatial polygons or lines (@sec-vectordatacubes).
 We can for instance compute the maximum pixel value for each of the
 six bands and for each of the three circles shown in @fig-ras (d) by
+::: panel-tabset
+#### R
 ```{r echo=FALSE}
 set.seed(131)
 ```
@@ -950,6 +1024,26 @@ circles <- st_sample(st_as_sfc(st_bbox(r)), 3) |>
     st_buffer(500)
 aggregate(r, circles, max)
 ```
+#### Python
+```{python echo=FALSE}
+np.random.seed(131)
+```
+```{python}
+pts = random_points_in_bbox(minx, miny, maxx, maxy, 3)
+circles = [p.buffer(500) for p in pts]
+gdf = gpd.GeoDataFrame(geometry=circles)
+
+# Aggregate
+tif.xvec.zonal_stats(
+    gdf.geometry,
+    stats="max",
+    x_coords="x",
+    y_coords="y",
+)
+```
+:::
+
+
 which gives a (vector) data cube with three geometries and six bands. Aggregation
 over a temporal dimension is done by passing a time variable as the
 second argument to `aggregate`, as a
@@ -977,6 +1071,9 @@ object with the predicted values.
 We will illustrate this with a trivial two-class example mapping
 land from sea in the example Landsat dataset, using the sample
 points extracted above, shown in @fig-rsample.
+
+::: panel-tabset
+#### R
 ```{r fig-rsample, echo=!knitr::is_latex_output()}
 #| fig.cap: "Randomly chosen sample locations for training data; red: water, yellow: land"
 #| out.width: 80%
@@ -986,11 +1083,26 @@ col <- rep("yellow", 20)
 col[c(8, 14, 15, 18, 19)] = "red"
 st_as_sf(e) |> st_coordinates() |> text(labels = 1:20, col = col)
 ```
+#### Python
+```{python fig-rsample, echo=!knitr::is_latex_output()}
+# Plot band number 1
+ax = tif[1].plot(cmap="gray")
+ax = plt.gca()
+ax.set_title("L7_ETMs.tif")
+plt.show()
+
+```
+
+:::
+
+
 From this figure, we read "by eye" that the points 8, 14, 15, 18, and
 19 are on water, the others on land. Using a linear discriminant
 ("maximum likelihood") classifier, we find model predictions as
 shown in @fig-lda by
 
+::: panel-tabset
+#### R
 ```{r ldapr}
 rs <- split(r)
 trn <- st_extract(rs, pts)
@@ -999,19 +1111,67 @@ trn$cls[c(8, 14, 15, 18, 19)] <- "water"
 model <- MASS::lda(cls ~ ., st_drop_geometry(trn))
 pr <- predict(rs, model)
 ```
+#### Python
+```{python}
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+trn = e.to_dataset().xvec.to_geodataframe(long=False)["L7_ETMs"]
+trn["cls"] = "land"
+trn.loc[[8, 14, 15, 18, 19], "cls"] = "water"
+X = trn.drop(columns=["cls"]) 
+y = trn["cls"]
+model = LinearDiscriminantAnalysis()
+model.fit(X, y)
+
+# Flatten the data cube and predict 
+bands, ny, nx = tif.shape
+X = tif.values.reshape(bands, ny*nx).T
+proba = model.predict_proba(X)
+y_pred = np.argmax(proba, axis=-1)
+y_pred = y_pred.reshape(ny, nx)
+```
+
+:::
+
+
 Here, we used the `MASS::` prefix to avoid loading **MASS**, as that
 would mask `select` from **dplyr**.  The `split` step is needed to
 convert the band dimension into attributes, so that they are offered
 as a set of predictors.
 
 \index[function]{predict.stars}
-
+::: panel-tabset
+#### R
 ```{r fig-lda, echo=!knitr::is_latex_output()}
 #| fig-cap: "Linear discriminant classifier for land/water, based on training data of @fig-rsample"
 #| out.width: 70%
 #| code-fold: true
 plot(pr[1], key.pos = 4, key.width = lcm(3.5), key.length = lcm(2))
 ```
+#### Python
+```{python}
+import matplotlib.colors as mcolors
+class_labels = ["water", "land"]
+colors = ["blue", "green"]
+
+cmap = mcolors.ListedColormap(colors)
+norm = mcolors.BoundaryNorm(
+    boundaries=np.arange(-0.5, len(class_labels)+0.5, 1),
+    ncolors=len(class_labels)
+)
+
+fig, ax = plt.subplots(figsize=(6, 5))
+im = ax.imshow(y_pred, cmap=cmap, norm=norm)
+ax.set_title("Predicted Classes")
+
+# Add legend 
+cbar = plt.colorbar(im, ax=ax, ticks=range(len(class_labels)))
+cbar.ax.set_yticklabels(class_labels)
+
+plt.show()
+```
+:::
+
+
 
 We also see that the layer plotted in @fig-lda is a `factor` variable, with class labels.
 
