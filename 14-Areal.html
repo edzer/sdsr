@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.34">
+<meta name="generator" content="quarto-1.8.24">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <title>14&nbsp; Proximity and Areal Data – Spatial Data Science</title>
 <style>
@@ -85,14 +85,15 @@ div.csl-indent {
 <link href="./13-Geostatistics.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-c8ad9e5dbd60b7b70b38521ab19b7da4.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dc55a5b9e770e841cd82e46aadbfb9b0.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-23102fe0f0b5b1a9f09cc09ebcc8fe5b.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light"><script id="quarto-search-options" type="application/json">{
+<link href="site_libs/bootstrap/bootstrap-d58359eb3ecc31d3bec1ed479c2cbb3a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light"><script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
   "collapse-after": 3,
@@ -140,7 +141,7 @@ const typesetMath = (el) => {
     var macros = [];
     for (var i = 0; i < mathElements.length; i++) {
       var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN") {
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
         window.katex.render(texText.data, mathElements[i], {
           displayMode: mathElements[i].classList.contains('display'),
           throwOnError: false,
@@ -172,7 +173,9 @@ window.Quarto = {
     </div>
   </nav></header><!-- content --><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="./index.html" class="sidebar-logo-link">
+      </a>
     <div class="sidebar-title mb-0 py-0">
       <a href="./">Spatial Data Science</a> 
         <div class="sidebar-tools-main">
@@ -378,7 +381,7 @@ window.Quarto = {
   <li><a href="#weights-specification" id="toc-weights-specification" class="nav-link" data-scroll-target="#weights-specification"><span class="header-section-number">14.5</span> Weights specification</a></li>
   <li><a href="#higher-order-neighbours" id="toc-higher-order-neighbours" class="nav-link" data-scroll-target="#higher-order-neighbours"><span class="header-section-number">14.6</span> Higher order neighbours</a></li>
   <li><a href="#exercises" id="toc-exercises" class="nav-link" data-scroll-target="#exercises"><span class="header-section-number">14.7</span> Exercises</a></li>
-  </ul><div class="toc-actions"><ul><li><a href="https://github.com/edzer/sdsr/edit/main/14-Areal.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li></ul></div></nav>
+  </ul><div class="toc-actions"><ul><li><a href="https://github.com/edzer/sdsr/edit/python/14-Areal.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./part-3.html">Models for Spatial Data</a></li><li class="breadcrumb-item"><a href="./14-Areal.html"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Proximity and Areal Data</span></a></li></ol></nav><div class="quarto-title">
@@ -418,11 +421,11 @@ window.Quarto = {
 <p>We will be using election data from the 2015 Polish presidential election in this chapter, with 2495 municipalities and Warsaw boroughs (see <a href="#fig-plotpolpres15" class="quarto-xref">Figure&nbsp;<span>14.1</span></a>) for a <strong>tmap</strong> map (<a href="08-Plotting.html#sec-tmap" class="quarto-xref"><span>Section 8.5</span></a>) of the municipality types, and complete count data from polling stations aggregated to these areal units. The data are an <strong>sf</strong> <code>sf</code> object:</p>
 <p> </p>
 <div class="cell">
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/">sf</a></span><span class="op">)</span></span>
-<span><span class="co"># Linking to GEOS 3.12.1, GDAL 3.8.4, PROJ 9.4.0; sf_use_s2() is TRUE</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/">sf</a></span><span class="op">)</span></span>
+<span><span class="co"># Linking to GEOS 3.12.1, GDAL 3.8.4, PROJ 9.4.0; sf_use_s2() is TRUE</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html">data</a></span><span class="op">(</span><span class="va">pol_pres15</span>, package <span class="op">=</span> <span class="st">"spDataLarge"</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html">data</a></span><span class="op">(</span><span class="va">pol_pres15</span>, package <span class="op">=</span> <span class="st">"spDataLarge"</span><span class="op">)</span></span>
 <span><span class="va">pol_pres15</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span>select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">TERYT</span>, <span class="va">name</span>, <span class="va">types</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -444,10 +447,10 @@ window.Quarto = {
 <span><span class="co"># 3 MULTIPOLYGON (((275346 3846...</span></span>
 <span><span class="co"># 4 MULTIPOLYGON (((251770 3770...</span></span>
 <span><span class="co"># 5 MULTIPOLYGON (((263424 4060...</span></span>
-<span><span class="co"># 6 MULTIPOLYGON (((267031 3870...</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># 6 MULTIPOLYGON (((267031 3870...</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">tmap4</span><span class="op">)</span> <span class="op">{</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">tmap4</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu">tm_shape</span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
 <span>        <span class="fu">tm_fill</span><span class="op">(</span><span class="st">"types"</span>, fill.scale <span class="op">=</span> <span class="fu">tm_scale</span><span class="op">(</span>values <span class="op">=</span> <span class="st">"brewer.set3"</span><span class="op">)</span>,</span>
 <span>           fill.legend <span class="op">=</span> <span class="fu">tm_legend</span><span class="op">(</span>position <span class="op">=</span> <span class="fu">tm_pos_in</span><span class="op">(</span><span class="st">"left"</span>, <span class="st">"bottom"</span><span class="op">)</span>,</span>
@@ -455,7 +458,7 @@ window.Quarto = {
 <span>        <span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>    <span class="fu">tm_shape</span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span> <span class="fu">tm_fill</span><span class="op">(</span><span class="st">"types"</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output-display">
 <div id="fig-plotpolpres15" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-plotpolpres15-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -469,21 +472,21 @@ Figure&nbsp;14.1: Polish municipality types 2015
 </div>
 <p>For safety’s sake, we impose topological validity:</p>
 <div class="cell">
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/all.html">all</a></span><span class="op">(</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/valid.html">st_is_valid</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span>        <span class="va">pol_pres15</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/valid.html">st_make_valid</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/all.html">all</a></span><span class="op">(</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/valid.html">st_is_valid</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span>        <span class="va">pol_pres15</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/valid.html">st_make_valid</a></span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p></p>
 <p>Between early 2002 and April 2019, <strong>spdep</strong> contained functions for constructing and handling neighbour and spatial weights objects, tests for spatial autocorrelation, and model fitting functions. The latter have been split out into <strong>spatialreg</strong>, and will be discussed in subsequent chapters. <strong>spdep</strong> <span class="citation" data-cites="R-spdep">(<a href="references.html#ref-R-spdep" role="doc-biblioref">Bivand 2022</a>)</span> now accommodates objects represented using <strong>sf</strong> classes and <strong>sp</strong> classes directly.</p>
 <p> </p>
 <div class="cell">
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/r-spatial/spdep/">spdep</a></span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/message.html">suppressPackageStartupMessages</a></span><span class="op">(</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/r-spatial/spdep/">spdep</a></span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/message.html">suppressPackageStartupMessages</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section><section id="contiguous-neighbours" class="level2" data-number="14.2"><h2 data-number="14.2" class="anchored" data-anchor-id="contiguous-neighbours">
 <span class="header-section-number">14.2</span> Contiguous neighbours</h2>
 <p> </p>
 <p>The <code>poly2nb</code> function in <strong>spdep</strong> takes the boundary points making up the polygon boundaries in the object passed as the <code>pl</code> argument, typically an <code>"sf"</code> or <code>"sfc"</code> object with <code>"POLYGON"</code> or <code>"MULTIPOLYGON"</code> geometries. For each observation, the function checks whether at least one (<code>queen=TRUE</code>, default), or at least two (rook, <code>queen=FALSE</code>) points are within <code>snap</code> distance units of each other. The distances are planar in the raw coordinate units, ignoring geographical projections. Once the required number of sufficiently close points is found, the search is stopped.</p>
 <div class="cell">
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/args.html">args</a></span><span class="op">(</span><span class="va">poly2nb</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/args.html">args</a></span><span class="op">(</span><span class="va">poly2nb</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
 <pre><code>#  function (pl, row.names = NULL, snap = NULL, queen = TRUE, useC =
@@ -491,46 +494,46 @@ Figure&nbsp;14.1: Polish municipality types 2015
 </div>
 <p>From <strong>spdep</strong> 1.1-7, the <strong>sf</strong> package GEOS interface is used within <code>poly2nb</code> to find the candidate neighbours and populate <code>foundInBox</code> internally. In this case, the use of spatial indexing (STRtree queries) in GEOS through <strong>sf</strong> is the default:</p>
 <div class="cell">
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pol_pres15</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/poly2nb.html">poly2nb</a></span><span class="op">(</span>queen <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_q</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pol_pres15</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/poly2nb.html">poly2nb</a></span><span class="op">(</span>queen <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_q</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The print method shows the summary structure of the neighbour object:</p>
 <div class="cell">
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_q</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_q</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 14242 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.229 </span></span>
-<span><span class="co"># Average number of links: 5.71</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Average number of links: 5.71</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>From <strong>sf</strong> version 1.0-0, the <strong>s2</strong> package <span class="citation" data-cites="R-s2">(<a href="references.html#ref-R-s2" role="doc-biblioref">Dunnington, Pebesma, and Rubak 2023</a>)</span> is used by default for spherical geometries, as <code>st_intersects</code> used in <code>poly2nb</code> passes calculation to <code><a href="https://r-spatial.github.io/s2/reference/s2_closest_feature.html">s2::s2_intersects_matrix</a></code> (see <a href="04-Spherical.html" class="quarto-xref"><span>Chapter 4</span></a>). From <strong>spdep</strong> version 1.1-9, if <code><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2()</a></code> is <code>TRUE</code>, spherical intersection is used to find candidate neighbours; as with GEOS, the underlying <code>s2</code> library uses fast spatial indexing.</p>
 <div class="cell">
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">old_use_s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2</a></span><span class="op">(</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">old_use_s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p></p>
 <div class="cell">
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">pol_pres15</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html">st_transform</a></span><span class="op">(</span><span class="st">"OGC:CRS84"</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">pol_pres15_ll</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
-<span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/poly2nb.html">poly2nb</a></span><span class="op">(</span>queen <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_q_s2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">pol_pres15</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html">st_transform</a></span><span class="op">(</span><span class="st">"OGC:CRS84"</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">pol_pres15_ll</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
+<span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/poly2nb.html">poly2nb</a></span><span class="op">(</span>queen <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_q_s2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p> </p>
 <p>Spherical and planar intersection of the input polygons yield the same contiguity neighbours in this case; in both cases valid input geometries are desirable:</p>
 <div class="cell">
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html">all.equal</a></span><span class="op">(</span><span class="va">nb_q</span>, <span class="va">nb_q_s2</span>, check.attributes<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="co"># [1] TRUE</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html">all.equal</a></span><span class="op">(</span><span class="va">nb_q</span>, <span class="va">nb_q_s2</span>, check.attributes<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="co"># [1] TRUE</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Note that <code>nb</code> objects record both symmetric neighbour relationships <code>i</code> to <code>j</code> and <code>j</code> to <code>i</code>, because these objects admit asymmetric relationships as well, but these duplications are not needed for object construction.</p>
 <p>Most of the <strong>spdep</strong> functions for constructing neighbour objects take a <code>row.names</code> argument, the value of which is stored as a <code>region.id</code> attribute. If not given, the values are taken from <code><a href="https://rdrr.io/r/base/row.names.html">row.names()</a></code> of the first argument. These can be used to check that the neighbours object is in the same order as data. If <code>nb</code> objects are subsetted, the indices change to continue to be within <code>1:length(subsetted_nb)</code>, but the <code>region.id</code> attribute values point back to the object from which it was constructed. This is used in out-of-sample prediction from spatial regression models discussed briefly in <a href="17-Econometrics.html#sec-spateconpred" class="quarto-xref"><span>Section 17.4</span></a>.</p>
 <p>We can also check that this undirected graph is connected using the <code>n.comp.nb</code> function; while some model estimation techniques do not support graphs that are not connected, it is helpful to be aware of possible problems <span class="citation" data-cites="FRENISTERRANTINO201825">(<a href="references.html#ref-FRENISTERRANTINO201825" role="doc-biblioref">Freni-Sterrantino, Ventrucci, and Rue 2018</a>)</span>:</p>
 <div class="cell">
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
-<span><span class="co"># [1] 1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
+<span><span class="co"># [1] 1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p></p>
 <p>This approach is equivalent to treating the neighbour object as a graph and using graph analysis on that graph <span class="citation" data-cites="csardi+nepusz:06 R-igraph">(<a href="references.html#ref-csardi+nepusz:06" role="doc-biblioref">Csardi and Nepusz 2006</a>; <a href="references.html#ref-R-igraph" role="doc-biblioref">Nepusz 2022</a>)</span>, by first coercing to a binary sparse matrix <span class="citation" data-cites="R-Matrix">(<a href="references.html#ref-R-Matrix" role="doc-biblioref">Bates, Maechler, and Jagan 2022</a>)</span>:</p>
 <div class="cell">
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://Matrix.R-forge.R-project.org">Matrix</a></span>, warn.conflicts <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://Matrix.R-forge.R-project.org">Matrix</a></span>, warn.conflicts <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/r-spatial/spatialreg/">spatialreg</a></span>, warn.conflicts <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">nb_q</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nb2listw.html">nb2listw</a></span><span class="op">(</span>style <span class="op">=</span> <span class="st">"B"</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
@@ -538,13 +541,13 @@ Figure&nbsp;14.1: Polish municipality types 2015
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://r.igraph.org/">igraph</a></span>, warn.conflicts <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="op">(</span><span class="va">smat</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r.igraph.org/reference/graph_from_adjacency_matrix.html">graph_from_adjacency_matrix</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">g1</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r.igraph.org/reference/components.html">count_components</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co"># [1] 1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># [1] 1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p> </p>
 <p>Neighbour objects may be exported and imported in GAL format for exchange with other software, using <code>write.nb.gal</code> and <code>read.gal</code>:</p>
 <div class="cell">
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">tf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".gal"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://r-spatial.github.io/spdep/reference/write.nb.gal.html">write.nb.gal</a></span><span class="op">(</span><span class="va">nb_q</span>, <span class="va">tf</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">tf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".gal"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://r-spatial.github.io/spdep/reference/write.nb.gal.html">write.nb.gal</a></span><span class="op">(</span><span class="va">nb_q</span>, <span class="va">tf</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p></p>
 </section><section id="graph-based-neighbours" class="level2" data-number="14.3"><h2 data-number="14.3" class="anchored" data-anchor-id="graph-based-neighbours">
@@ -552,7 +555,7 @@ Figure&nbsp;14.1: Polish municipality types 2015
 <p>If areal units are an appropriate representation, but only points on the plane have been observed, contiguity relationships may be approximated using graph-based neighbours. In this case, the imputed boundaries tessellate the plane such that points closer to one observation than any other fall within its polygon. The simplest form is by using triangulation, here using the <code>deldir</code> function in the <strong>deldir</strong> package. Because the function returns from <span class="math inline">\(i\)</span> and to <span class="math inline">\(j\)</span> identifiers, it is easy to construct a long representation of a <code>listw</code> object, as used in the S-Plus SpatialStats module and the <code>sn2listw</code> function internally to construct an <code>nb</code> object (ragged wide representation). Alternatives such as GEOS often fail to return sufficient information to permit the neighbours to be identified.</p>
 <p>The output of these functions is then converted to the <code>nb</code> representation using <code>graph2nb</code>, with the possible use of the <code>sym</code> argument to coerce to symmetry. We take the centroids of the largest component polygon for each observation as the point representation; population-weighted centroids might have been a better choice if they were available:</p>
 <div class="cell">
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pol_pres15</span> <span class="op">|&gt;</span> </span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pol_pres15</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html">st_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_unary.html">st_centroid</a></span><span class="op">(</span>of_largest_polygon <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">coords</span> </span>
 <span><span class="op">(</span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/tri2nb.html">tri2nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_tri</span><span class="op">)</span></span>
@@ -560,29 +563,29 @@ Figure&nbsp;14.1: Polish municipality types 2015
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 14930 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.24 </span></span>
-<span><span class="co"># Average number of links: 5.98</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Average number of links: 5.98</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p></p>
 <p>The average number of neighbours is similar to the Queen boundary contiguity case, but if we look at the distribution of edge lengths using <code><a href="https://r-spatial.github.io/spdep/reference/nbdists.html">nbdists()</a></code>, we can see that although the upper quartile is about 15 km, the maximum is almost 300 km, an edge along much of one side of the convex hull. The short minimum distance is also of interest, as many centroids of urban municipalities are very close to the centroids of their surrounding rural counterparts.</p>
 <p> </p>
 <div class="cell">
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_tri</span> <span class="op">|&gt;</span> </span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_tri</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nbdists.html">nbdists</a></span><span class="op">(</span><span class="va">coords</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#     247    9847   12151   13485   14994  296974</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co">#     247    9847   12151   13485   14994  296974</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Triangulated neighbours also yield a connected graph:</p>
 <div class="cell">
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_tri</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
-<span><span class="co"># [1] 1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_tri</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
+<span><span class="co"># [1] 1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p></p>
 <p>Graph-based approaches include <code>soi.graph</code> - discussed here, <code>relativeneigh</code> and <code>gabrielneigh</code>.</p>
 <p>The Sphere of Influence <code>soi.graph</code> function takes triangulated neighbours and prunes off neighbour relationships represented by edges that are unusually long for each point, especially around the convex hull <span class="citation" data-cites="avis+horton:1985">(<a href="references.html#ref-avis+horton:1985" role="doc-biblioref">Avis and Horton 1985</a>)</span>.</p>
 <div class="cell">
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_tri</span> <span class="op">|&gt;</span> </span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_tri</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/graphneigh.html">soi.graph</a></span><span class="op">(</span><span class="va">coords</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/graphneigh.html">graph2nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_soi</span><span class="op">)</span></span>
 <span><span class="co"># Warning in graph2nb(soi.graph(nb_tri, coords)): neighbour object</span></span>
@@ -592,28 +595,28 @@ Figure&nbsp;14.1: Polish municipality types 2015
 <span><span class="co"># Number of nonzero links: 12792 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.205 </span></span>
 <span><span class="co"># Average number of links: 5.13 </span></span>
-<span><span class="co"># 16 disjoint connected subgraphs</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># 16 disjoint connected subgraphs</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Unpicking the triangulated neighbours does however remove the connected character of the underlying graph:</p>
 <p> </p>
 <div class="cell">
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_soi</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">n_comp</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
-<span><span class="co"># [1] 16</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_soi</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">n_comp</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
+<span><span class="co"># [1] 16</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The algorithm has stripped out longer edges leading to urban and rural municipality pairs where their centroids are very close to each other because the rural ones completely surround the urban, giving 15 pairs of neighbours unconnected to the main graph:</p>
 <div class="cell">
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="va">n_comp</span><span class="op">$</span><span class="va">comp.id</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="va">n_comp</span><span class="op">$</span><span class="va">comp.id</span><span class="op">)</span></span>
 <span><span class="co"># </span></span>
 <span><span class="co">#    1    2    3    4    5    6    7    8    9   10   11   12   13 </span></span>
 <span><span class="co"># 2465    2    2    2    2    2    2    2    2    2    2    2    2 </span></span>
 <span><span class="co">#   14   15   16 </span></span>
-<span><span class="co">#    2    2    2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co">#    2    2    2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The largest length edges along the convex hull have been removed, but “holes” have appeared where the unconnected pairs of neighbours have appeared. The differences between <code>nb_tri</code> and <code>nb_soi</code> are shown in orange in <a href="#fig-plotnbdiff" class="quarto-xref">Figure&nbsp;<span>14.2</span></a>. <!---
 unsure whether the new cross-reference in the caption will be rendered correctly
 ---></p>
 <div class="cell">
-<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">opar</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span><span class="op">)</span><span class="op">+</span><span class="fl">0.5</span><span class="op">)</span></span>
+<details class="code-fold"><summary>Code</summary><div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">opar</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span><span class="op">)</span><span class="op">+</span><span class="fl">0.5</span><span class="op">)</span></span>
 <span><span class="va">pol_pres15</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html">st_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span>border <span class="op">=</span> <span class="st">"grey"</span>, lwd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
@@ -625,7 +628,7 @@ unsure whether the new cross-reference in the caption will be rendered correctly
 <span>         points <span class="op">=</span> <span class="cn">FALSE</span>, lwd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span><span class="co"># Warning in diffnb(nb_tri, nb_soi): neighbour object has 1567</span></span>
 <span><span class="co"># sub-graphs</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span><span class="va">opar</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span><span class="va">opar</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details><div class="cell-output-display">
 <div id="fig-plotnbdiff" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-plotnbdiff-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -648,7 +651,7 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 <p></p>
 <p>The <code>nbdists</code> function returns the length of neighbour relationship edges in the units of the coordinates if the coordinates are projected, in kilometre otherwise. In order to set the upper limit for distance bands, one may first find the maximum first nearest neighbour distance, using <code>unlist</code> to remove the list structure of the returned object. When <code><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2()</a></code> is <code>TRUE</code>, <code>nbdists</code> will use fast spherical distance calculations when the input object is of class <code>"sf"</code> or <code>"sfc"</code>.</p>
 <div class="cell">
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">coords</span> <span class="op">|&gt;</span> </span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">coords</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knearneigh.html">knearneigh</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knn2nb.html">knn2nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nbdists.html">nbdists</a></span><span class="op">(</span><span class="va">coords</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
@@ -657,62 +660,62 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 <span><span class="co"># Warning in knn2nb(knearneigh(coords, k = 1)): neighbour object has</span></span>
 <span><span class="co"># 695 sub-graphs</span></span>
 <span><span class="co">#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#     247    6663    8538    8275   10124   17979</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co">#     247    6663    8538    8275   10124   17979</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Here the largest first nearest neighbour distance is just under 18 km, so using this as the upper threshold gives certainty that all units will have at least one neighbour:</p>
 <div class="cell">
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18000</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d18</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18000</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d18</span></span>
 <span><span class="co"># Warning in dnearneigh(coords, 0, 18000): neighbour object has 2</span></span>
-<span><span class="co"># sub-graphs</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># sub-graphs</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>For this moderate number of observations, use of spatial indexing does not yield advantages in run times:</p>
 <div class="cell">
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18000</span>, use_kd_tree <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d18a</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18000</span>, use_kd_tree <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d18a</span></span>
 <span><span class="co"># Warning in dnearneigh(coords, 0, 18000, use_kd_tree = FALSE):</span></span>
-<span><span class="co"># neighbour object has 2 sub-graphs</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># neighbour object has 2 sub-graphs</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>and the output objects are the same:</p>
 <div class="cell">
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html">all.equal</a></span><span class="op">(</span><span class="va">nb_d18</span>, <span class="va">nb_d18a</span>, check.attributes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="co"># [1] TRUE</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html">all.equal</a></span><span class="op">(</span><span class="va">nb_d18</span>, <span class="va">nb_d18a</span>, check.attributes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="co"># [1] TRUE</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_d18</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_d18</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 20358 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.327 </span></span>
 <span><span class="co"># Average number of links: 8.16 </span></span>
-<span><span class="co"># 2 disjoint connected subgraphs</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># 2 disjoint connected subgraphs</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>However, even though there are no no-neighbour observations (their presence is reported by the print method for <code>nb</code> objects), the graph is not connected, as a pair of observations are each others’ only neighbours.</p>
 <div class="cell">
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_d18</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">n_comp</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
-<span><span class="co"># [1] 2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_d18</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">n_comp</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
+<span><span class="co"># [1] 2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="va">n_comp</span><span class="op">$</span><span class="va">comp.id</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="va">n_comp</span><span class="op">$</span><span class="va">comp.id</span><span class="op">)</span></span>
 <span><span class="co"># </span></span>
 <span><span class="co">#    1    2 </span></span>
-<span><span class="co"># 2493    2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># 2493    2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Adding 300 m to the threshold gives us a neighbour object with no no-neighbour units, and all units can be reached from all others across the graph.</p>
 <div class="cell">
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18300</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d183</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18300</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d183</span><span class="op">)</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 21086 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.339 </span></span>
-<span><span class="co"># Average number of links: 8.45</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Average number of links: 8.45</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_d183</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
-<span><span class="co"># [1] 1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_d183</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
+<span><span class="co"># [1] 1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>One characteristic of distance-based neighbours is that more densely settled areas, with units which are smaller in terms of area, have higher neighbour counts (Warsaw boroughs are much smaller on average, but have almost 30 neighbours for this distance criterion). Having many neighbours smooths the neighbour relationship across more neighbours.</p>
 <p>For use later, we also construct a neighbour object with no-neighbour units, using a threshold of 16 km:</p>
 <div class="cell">
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">16000</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d16</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">16000</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d16</span><span class="op">)</span></span>
 <span><span class="co"># Warning in dnearneigh(coords, 0, 16000): neighbour object has 17</span></span>
 <span><span class="co"># sub-graphs</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
@@ -722,110 +725,110 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 <span><span class="co"># Average number of links: 6.35 </span></span>
 <span><span class="co"># 7 regions with no links:</span></span>
 <span><span class="co"># 569, 1371, 1522, 2374, 2385, 2473, 2474</span></span>
-<span><span class="co"># 17 disjoint connected subgraphs</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># 17 disjoint connected subgraphs</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>It is possible to control the numbers of neighbours directly using <span class="math inline">\(k\)</span>-nearest neighbours, either accepting asymmetric neighbours:</p>
 <div class="cell">
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="op">(</span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knearneigh.html">knearneigh</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">6</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">knn_k6</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knn2nb.html">knn2nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_k6</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="op">(</span><span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knearneigh.html">knearneigh</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">6</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">knn_k6</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knn2nb.html">knn2nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_k6</span><span class="op">)</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 14970 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.24 </span></span>
 <span><span class="co"># Average number of links: 6 </span></span>
-<span><span class="co"># Non-symmetric neighbours list</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Non-symmetric neighbours list</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>or imposing symmetry:</p>
 <div class="cell">
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">knn_k6</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knn2nb.html">knn2nb</a></span><span class="op">(</span>sym <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_k6s</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">knn_k6</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knn2nb.html">knn2nb</a></span><span class="op">(</span>sym <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_k6s</span><span class="op">)</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 16810 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.27 </span></span>
-<span><span class="co"># Average number of links: 6.74</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Average number of links: 6.74</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Here the size of <code>k</code> is sufficient to ensure connectedness, although the graph is not planar as edges cross at locations other than nodes, which is not the case for contiguous or graph-based neighbours.</p>
 <div class="cell">
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_k6s</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
-<span><span class="co"># [1] 1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_k6s</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/compon.html">n.comp.nb</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">nc</span></span>
+<span><span class="co"># [1] 1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>In the case of points on the sphere (see <a href="04-Spherical.html" class="quarto-xref"><span>Chapter 4</span></a>), the output of <code>st_centroid</code> will differ, so rather than inverse projecting the points, we extract points as geographical coordinates from the inverse projected polygon geometries:</p>
 <div class="cell">
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">old_use_s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2</a></span><span class="op">(</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">old_use_s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pol_pres15_ll</span> <span class="op">|&gt;</span> </span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pol_pres15_ll</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html">st_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
-<span>    <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_unary.html">st_centroid</a></span><span class="op">(</span>of_largest_polygon <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">coords_ll</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span>    <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_unary.html">st_centroid</a></span><span class="op">(</span>of_largest_polygon <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">coords_ll</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>For spherical coordinates, distance bounds are in kilometres:</p>
 <div class="cell">
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords_ll</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18.3</span>, use_s2 <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords_ll</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18.3</span>, use_s2 <span class="op">=</span> <span class="cn">TRUE</span>, </span>
 <span>                         dwithin <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d183_ll</span><span class="op">)</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 21140 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.34 </span></span>
-<span><span class="co"># Average number of links: 8.47</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Average number of links: 8.47</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>These neighbours differ from the spherical 18.3 km neighbours as would be expected:</p>
 <div class="cell">
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html">all.equal</a></span><span class="op">(</span><span class="va">nb_d183</span>, <span class="va">nb_d183_ll</span>, check.attributes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co"># [1] FALSE</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html">all.equal</a></span><span class="op">(</span><span class="va">nb_d183</span>, <span class="va">nb_d183_ll</span>, check.attributes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># [1] FALSE</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>If <strong>s2</strong> providing faster distance neighbour indexing is available, by default <code>s2_closest_edges</code> will be used for geographical coordinates:</p>
 <div class="cell">
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords_ll</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18.3</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d183_llce</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb42"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords_ll</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/dnearneigh.html">dnearneigh</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">18.3</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_d183_llce</span><span class="op">)</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 21140 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.34 </span></span>
-<span><span class="co"># Average number of links: 8.47</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Average number of links: 8.47</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>where the two <strong>s2</strong>-based neighbour objects are the same:</p>
 <div class="cell">
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html">all.equal</a></span><span class="op">(</span><span class="va">nb_d183_llce</span>, <span class="va">nb_d183_ll</span>,</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html">all.equal</a></span><span class="op">(</span><span class="va">nb_d183_llce</span>, <span class="va">nb_d183_ll</span>,</span>
 <span>                 check.attributes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co"># [1] TRUE</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># [1] TRUE</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Fast spherical spatial indexing in <strong>s2</strong> is used to find <span class="math inline">\(k\)</span> nearest neighbours:</p>
 <div class="cell">
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords_ll</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knearneigh.html">knearneigh</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">6</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knn2nb.html">knn2nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_k6_ll</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb44"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">coords_ll</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knearneigh.html">knearneigh</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">6</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/knn2nb.html">knn2nb</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_k6_ll</span><span class="op">)</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 14970 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.24 </span></span>
 <span><span class="co"># Average number of links: 6 </span></span>
-<span><span class="co"># Non-symmetric neighbours list</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Non-symmetric neighbours list</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>These neighbours differ from the planar <code>k=6</code> nearest neighbours as would be expected, but will also differ slightly from legacy brute-force ellipsoid distances:</p>
 <div class="cell">
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html">all.equal</a></span><span class="op">(</span><span class="va">nb_k6</span>, <span class="va">nb_k6_ll</span>, check.attributes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co"># [1] FALSE</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb45"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html">all.equal</a></span><span class="op">(</span><span class="va">nb_k6</span>, <span class="va">nb_k6_ll</span>, check.attributes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># [1] FALSE</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The <code>nbdists</code> function also uses <strong>s2</strong> to find distances on the sphere when the <code>"sf"</code> or <code>"sfc"</code>input object is in geographical coordinates (distances returned in kilometres):</p>
 <div class="cell">
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nbdists.html">nbdists</a></span><span class="op">(</span><span class="va">coords_ll</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nbdists.html">nbdists</a></span><span class="op">(</span><span class="va">coords_ll</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#     0.2     9.8    12.2    12.6    15.1    33.0</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co">#     0.2     9.8    12.2    12.6    15.1    33.0</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>These differ a little for the same weights object when planar coordinates are used (distances returned in the metric of the points for planar geometries and kilometres for ellipsoidal and spherical geometries):</p>
 <div class="cell">
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nbdists.html">nbdists</a></span><span class="op">(</span><span class="va">coords</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nbdists.html">nbdists</a></span><span class="op">(</span><span class="va">coords</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#     247    9822   12173   12651   15117   33102</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co">#     247    9822   12173   12651   15117   33102</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2</a></span><span class="op">(</span><span class="va">old_use_s2</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb48"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/s2.html">sf_use_s2</a></span><span class="op">(</span><span class="va">old_use_s2</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section><section id="weights-specification" class="level2" data-number="14.5"><h2 data-number="14.5" class="anchored" data-anchor-id="weights-specification">
 <span class="header-section-number">14.5</span> Weights specification</h2>
 <p>Once neighbour objects are available, further choices need to be made in specifying the weights objects. The <code>nb2listw</code> function is used to create a <code>listw</code> weights object with an <code>nb</code> object, a matching list of weights vectors, and a style specification. Because handling no-neighbour observations now begins to matter, the <code>zero.policy</code> argument is introduced. By default, this is <code>FALSE</code>, indicating that no-neighbour observations will cause an error, as the spatially lagged value for an observation with no neighbours is not available. By convention, zero is substituted for the lagged value, as the cross-product of a vector of zero-valued weights and a data vector, hence the name of <code>zero.policy</code>.</p>
 <p> </p>
 <div class="cell">
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/args.html">args</a></span><span class="op">(</span><span class="va">nb2listw</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/args.html">args</a></span><span class="op">(</span><span class="va">nb2listw</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
 <pre><code>#  function (neighbours, glist = NULL, style = "W", zero.policy =
@@ -834,7 +837,7 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 <p>We will be using the helper function <code>spweights.constants</code> below to show some consequences of varying style choices. It returns constants for a <code>listw</code> object, <span class="math inline">\(n\)</span> is the number of observations, <code>n1</code> to <code>n3</code> are <span class="math inline">\(n-1, \ldots\)</span>, <code>nn</code> is <span class="math inline">\(n^2\)</span> and <span class="math inline">\(S_0\)</span>, <span class="math inline">\(S_1\)</span> and <span class="math inline">\(S_2\)</span> are constants, <span class="math inline">\(S_0\)</span> being the sum of the weights. There is a full discussion of the constants in <span class="citation" data-cites="Bivand2018">Bivand and Wong (<a href="references.html#ref-Bivand2018" role="doc-biblioref">2018</a>)</span>.</p>
 <p></p>
 <div class="cell">
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/args.html">args</a></span><span class="op">(</span><span class="va">spweights.constants</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb51"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/args.html">args</a></span><span class="op">(</span><span class="va">spweights.constants</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
 <pre><code>#  function (listw, zero.policy = attr(listw, "zero.policy"),
@@ -842,29 +845,29 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 </div>
 <p>The <code>"B"</code> binary style gives a weight of unity to each neighbour relationship, and typically up-weights units with no boundaries on the edge of the study area, having a higher count of neighbours.</p>
 <div class="cell">
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_q</span> <span class="op">|&gt;</span> </span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb53"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_q</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nb2listw.html">nb2listw</a></span><span class="op">(</span>style <span class="op">=</span> <span class="st">"B"</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">lw_q_B</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/spweights.constants.html">spweights.constants</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span>select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">S0</span>, <span class="va">S1</span>, <span class="va">S2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#      n    S0    S1     S2</span></span>
-<span><span class="co"># 1 2495 14242 28484 357280</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># 1 2495 14242 28484 357280</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p></p>
 <p>The <code>"W"</code> row-standardised style up-weights units around the edge of the study area that necessarily have fewer neighbours. This style first gives a weight of unity to each neighbour relationship, then it divides these weights by the per unit sums of weights. Naturally this leads to division by zero where there are no neighbours, a not-a-number result, unless the chosen policy is to permit no-neighbour observations. We can see that <span class="math inline">\(S_0\)</span> is now equal to <span class="math inline">\(n\)</span>.</p>
 <div class="cell">
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_q</span> <span class="op">|&gt;</span> </span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb54"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_q</span> <span class="op">|&gt;</span> </span>
 <span>        <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nb2listw.html">nb2listw</a></span><span class="op">(</span>style <span class="op">=</span> <span class="st">"W"</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">lw_q_W</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/spweights.constants.html">spweights.constants</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span>select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">S0</span>, <span class="va">S1</span>, <span class="va">S2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#      n   S0  S1    S2</span></span>
-<span><span class="co"># 1 2495 2495 958 10406</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># 1 2495 2495 958 10406</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p></p>
 <p>Inverse distance weights are used in a number of scientific fields. Some use dense inverse distance matrices, but many of the inverse distances are close to zero, have little practical contribution, especially as the spatial process matrix is itself dense. Inverse distance weights may be constructed by taking the lengths of edges, changing units to avoid most weights being too large or small (here from metre to kilometre), taking the inverse, and passing through the <code>glist</code> argument to <code>nb2listw</code>:</p>
 <div class="cell">
-<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_d183</span> <span class="op">|&gt;</span> </span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb55"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_d183</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nbdists.html">nbdists</a></span><span class="op">(</span><span class="va">coords</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fl">1</span><span class="op">/</span><span class="op">(</span><span class="va">x</span><span class="op">/</span><span class="fl">1000</span><span class="op">)</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">gwts</span></span>
 <span><span class="op">(</span><span class="va">nb_d183</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nb2listw.html">nb2listw</a></span><span class="op">(</span>glist<span class="op">=</span><span class="va">gwts</span>, style<span class="op">=</span><span class="st">"B"</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">lw_d183_idw_B</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
@@ -872,23 +875,23 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span>select<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">S0</span>, <span class="va">S1</span>, <span class="va">S2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#      n   S0  S1   S2</span></span>
-<span><span class="co"># 1 2495 1841 534 7265</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># 1 2495 1841 534 7265</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>No-neighbour handling is by default to prevent the construction of a weights object, making the analyst take a position on how to proceed.</p>
 <div class="cell">
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html">try</a></span><span class="op">(</span><span class="va">nb_d16</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nb2listw.html">nb2listw</a></span><span class="op">(</span>style<span class="op">=</span><span class="st">"B"</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">lw_d16_B</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb56"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html">try</a></span><span class="op">(</span><span class="va">nb_d16</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nb2listw.html">nb2listw</a></span><span class="op">(</span>style<span class="op">=</span><span class="st">"B"</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">lw_d16_B</span><span class="op">)</span></span>
 <span><span class="co"># Error in nb2listw(nb_d16, style = "B") : </span></span>
-<span><span class="co">#   Empty neighbour sets found (zero.policy: FALSE)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co">#   Empty neighbour sets found (zero.policy: FALSE)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Use can be made of the <code>zero.policy</code> argument to many functions used with <code>nb</code> and <code>listw</code> objects.</p>
 <div class="cell">
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_d16</span> <span class="op">|&gt;</span> </span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb57"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_d16</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nb2listw.html">nb2listw</a></span><span class="op">(</span>style<span class="op">=</span><span class="st">"B"</span>, zero.policy<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/spweights.constants.html">spweights.constants</a></span><span class="op">(</span>zero.policy<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span>select<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">S0</span>, <span class="va">S1</span>, <span class="va">S2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#      n    S0    S1     S2</span></span>
-<span><span class="co"># 1 2488 15850 31700 506480</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># 1 2488 15850 31700 506480</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Note that by default the <code>adjust.n</code> argument to <code>spweights.constants</code> is set by default to <code>TRUE</code>, subtracting the count of no-neighbour observations from the observation count, so <span class="math inline">\(n\)</span> is smaller with possible consequences for inference. The complete count can be retrieved by changing the argument.</p>
 </section><section id="higher-order-neighbours" class="level2" data-number="14.6"><h2 data-number="14.6" class="anchored" data-anchor-id="higher-order-neighbours">
@@ -896,63 +899,63 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 <p></p>
 <p>We recall the characteristics of the neighbour object based on Queen contiguities:</p>
 <div class="cell">
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_q</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb58"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nb_q</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 14242 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.229 </span></span>
-<span><span class="co"># Average number of links: 5.71</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Average number of links: 5.71</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>If we wish to create an object showing <span class="math inline">\(i\)</span> to <span class="math inline">\(k\)</span> neighbours, where <span class="math inline">\(i\)</span> is a neighbour of <span class="math inline">\(j\)</span>, and <span class="math inline">\(j\)</span> in turn is a neighbour of <span class="math inline">\(k\)</span>, so taking two steps on the neighbour graph, we can use <code>nblag</code>, which automatically removes <span class="math inline">\(i\)</span> to <span class="math inline">\(i\)</span> self-neighbours:</p>
 <div class="cell">
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nblag.html">nblag</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_q2</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb59"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="op">(</span><span class="va">nb_q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nblag.html">nblag</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">nb_q2</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 32930 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.529 </span></span>
-<span><span class="co"># Average number of links: 13.2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Average number of links: 13.2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The <code>nblag_cumul</code> function cumulates the list of neighbours for the whole list of lags:</p>
 <p> </p>
 <div class="cell">
-<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nblag.html">nblag_cumul</a></span><span class="op">(</span><span class="va">nb_q2</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb60"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nblag.html">nblag_cumul</a></span><span class="op">(</span><span class="va">nb_q2</span><span class="op">)</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 47172 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.758 </span></span>
-<span><span class="co"># Average number of links: 18.9</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Average number of links: 18.9</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>while the set operation <code>union.nb</code> takes two objects, giving here the same outcome: </p>
 <div class="cell">
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nboperations.html">union.nb</a></span><span class="op">(</span><span class="va">nb_q2</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, <span class="va">nb_q2</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb61"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r-spatial.github.io/spdep/reference/nboperations.html">union.nb</a></span><span class="op">(</span><span class="va">nb_q2</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, <span class="va">nb_q2</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co"># Neighbour list object:</span></span>
 <span><span class="co"># Number of regions: 2495 </span></span>
 <span><span class="co"># Number of nonzero links: 47172 </span></span>
 <span><span class="co"># Percentage nonzero weights: 0.758 </span></span>
-<span><span class="co"># Average number of links: 18.9</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># Average number of links: 18.9</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Returning to the graph representation of the same neighbour object, we can ask how many steps might be needed to traverse the graph:</p>
 <p></p>
 <div class="cell">
-<div class="sourceCode" id="cb62"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r.igraph.org/reference/diameter.html">diameter</a></span><span class="op">(</span><span class="va">g1</span><span class="op">)</span></span>
-<span><span class="co"># [1] 52</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb62"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://r.igraph.org/reference/diameter.html">diameter</a></span><span class="op">(</span><span class="va">g1</span><span class="op">)</span></span>
+<span><span class="co"># [1] 52</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>We step out from each observation across the graph to establish the number of steps needed to reach each other observation by the shortest path (creating an <span class="math inline">\(n \times n\)</span> matrix <code>sps</code>), once again finding the same maximum count.</p>
 <div class="cell">
-<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">g1</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r.igraph.org/reference/distances.html">distances</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">sps</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb63"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">g1</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r.igraph.org/reference/distances.html">distances</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">sps</span></span>
 <span><span class="op">(</span><span class="va">sps</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html">apply</a></span><span class="op">(</span><span class="fl">2</span>, <span class="va">max</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">spmax</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co"># [1] 52</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># [1] 52</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p></p>
 <p>The municipality with the maximum count is called Lutowiska, close to the Ukrainian border in the far south east of the country:</p>
 <div class="cell">
-<div class="sourceCode" id="cb64"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">mr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.min.html">which.max</a></span><span class="op">(</span><span class="va">spmax</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb64"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">mr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.min.html">which.max</a></span><span class="op">(</span><span class="va">spmax</span><span class="op">)</span></span>
 <span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">name0</span><span class="op">[</span><span class="va">mr</span><span class="op">]</span></span>
-<span><span class="co"># [1] "Lutowiska"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="co"># [1] "Lutowiska"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p><a href="#fig-shortestpath" class="quarto-xref">Figure&nbsp;<span>14.3</span></a> shows that contiguity neighbours represent the same kinds of relationships with other observations as distance. Some approaches prefer distance neighbours on the basis that, for example, inverse distance neighbours show clearly how all observations are related to each other. However, the development of tests for spatial autocorrelation and spatial regression models has involved the inverse of a spatial process model, which in turn can be represented as the sum of a power series of the product of a coefficient and a spatial weights matrix, intrinsically acknowledging the relationships of all observations with all other observations. Sparse contiguity neighbour objects accommodate rich dependency structures without the need to make the structures explicit.</p>
 <div class="cell">
-<details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb65"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">sps1</span> <span class="op">&lt;-</span> <span class="va">sps</span><span class="op">[</span>,<span class="va">mr</span><span class="op">]</span></span>
+<details class="code-fold"><summary>Code</summary><div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb65"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pol_pres15</span><span class="op">$</span><span class="va">sps1</span> <span class="op">&lt;-</span> <span class="va">sps</span><span class="op">[</span>,<span class="va">mr</span><span class="op">]</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="va">tmap4</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">tm1</span> <span class="op">&lt;-</span> <span class="fu">tm_shape</span><span class="op">(</span><span class="va">pol_pres15</span><span class="op">)</span> <span class="op">+</span></span>
 <span>          <span class="fu">tm_fill</span><span class="op">(</span><span class="st">"sps1"</span>, title <span class="op">=</span> <span class="st">"Shortest path\ncount"</span><span class="op">)</span></span>
@@ -973,7 +976,7 @@ Figure&nbsp;14.2: Triangulated (orange + black) and sphere of influence neighbou
 <span>        <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>        <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">xlab</a></span><span class="op">(</span><span class="st">"Shortest path count"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>        <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">ylab</a></span><span class="op">(</span><span class="st">"km distance"</span><span class="op">)</span></span>
-<span><span class="fu">gridExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/gridExtra/man/arrangeGrob.html">grid.arrange</a></span><span class="op">(</span><span class="fu">tmap_grob</span><span class="op">(</span><span class="va">tm1</span><span class="op">)</span>, <span class="va">g1</span>, nrow<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="fu">gridExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/gridExtra/man/arrangeGrob.html">grid.arrange</a></span><span class="op">(</span><span class="fu">tmap_grob</span><span class="op">(</span><span class="va">tm1</span><span class="op">)</span>, <span class="va">g1</span>, nrow<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details><div class="cell-output-display">
 <div id="fig-shortestpath" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-shortestpath-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1095,13 +1098,14 @@ Wall, M. M. 2004. <span>“A Close Look at the Spatial Structure Implied by the 
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy
@@ -1167,7 +1171,7 @@ Wall, M. M. 2004. <span>“A Close Look at the Spatial Structure Implied by the 
     }
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
       var mailtoRegex = new RegExp(/^mailto:/);
-        var filterRegex = new RegExp("https:\/\/r-spatial\.org\/book\/");
+        var filterRegex = new RegExp("https:\/\/r-spatial\.org\/python\/");
       var isInternal = (href) => {
           return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
       }
@@ -1504,7 +1508,7 @@ Wall, M. M. 2004. <span>“A Close Look at the Spatial Structure Implied by the 
       </a>
   </div>
 </nav><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
-<div class="sourceCode" id="cb66" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a><span class="fu"># Proximity and Areal Data  {#sec-area}</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb66" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a><span class="fu"># Proximity and Areal Data  {#sec-area}</span></span>
 <span id="cb66-2"><a href="#cb66-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb66-3"><a href="#cb66-3" aria-hidden="true" tabindex="-1"></a>Areal units of observation are very often used when simultaneous observations are aggregated within non-overlapping boundaries. The boundaries may be those of administrative entities and may be related to underlying spatial processes, such as commuting flows, but are usually arbitrary. If they do not match the underlying and unobserved spatial processes in one or more variables of interest, proximate areal units will contain parts of the underlying processes, engendering spatial autocorrelation. By proximity, we mean _closeness_ in ways that make sense for the data generation processes thought to be involved. In cross-sectional geostatistical analysis with point support, measured distance makes sense for typical data generation processes. In similar analysis of areal data, sharing a border may make more sense, because that is what we do know, but we cannot measure the distance between the areas in as adequate a way.  </span>
 <span id="cb66-4"><a href="#cb66-4" aria-hidden="true" tabindex="-1"></a></span>
@@ -2086,10 +2090,10 @@ Wall, M. M. 2004. <span>“A Close Look at the Spatial Structure Implied by the 
 <span id="cb66-688"><a href="#cb66-688" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>Which functions creating neighbour objects are only appropriate for planar representations?</span>
 <span id="cb66-689"><a href="#cb66-689" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>What difference might the choice of <span class="in">`rook`</span> rather than <span class="in">`queen`</span> contiguities make on a chessboard?</span>
 <span id="cb66-690"><a href="#cb66-690" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>What are the relationships between neighbour set cardinalities (neighbour counts) and row-standardised weights, and how do they open analyses up to edge effects? Use the chessboard you constructed in exercise 3 for both <span class="in">`rook`</span> and <span class="in">`queen`</span> neighbours.</span>
-</code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
+</code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/edzer/sdsr/edit/main/14-Areal.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/edzer/sdsr/edit/python/14-Areal.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
