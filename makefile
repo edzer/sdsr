@@ -54,3 +54,8 @@ install:
 	unzip sds.zip
 	mv sds/aq .
 	quarto render --to html
+
+
+python:
+	awk '/^```\{python/ {p=1} p; /^```$/ && p {print ""; p=0}' 07-Introsf.qmd > 07_py.qmd
+
