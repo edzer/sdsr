@@ -343,7 +343,7 @@ plot(buf50, add = TRUE, col = NA, border = 'brown')
 plot(st_geometry(nc), add = TRUE, border = 'grey')
 ```
 
-## Spatial joins
+## Spatial joins {#sec-sf-joins}
 
 \index{sf!spatial join}
 \index[function]{st\_join}
@@ -397,7 +397,7 @@ Another way to reduce the result set is to use `aggregate` after
 a join, to merge all matching records, and union their geometries;
 see @sec-updownscaling.
 
-### Sampling, gridding, interpolating
+### Sampling, gridding, interpolating, dasymetric mapping
 
 Several convenience functions are available in package **sf**, some
 of which will be discussed here. Function `st_sample` generates
@@ -415,12 +415,90 @@ was used to create the rectangular grid in @fig-largest.
 \index[function]{st\_make\_grid}
 
 Function `st_interpolate_aw` "interpolates" area values to new areas,
-as explained in @sec-area-weighted, both for intensive
-and extensive variables.
+as explained in @sec-area-weighted, both for intensive and extensive
+variables. In addition it can be used for dasymetric mapping of
+extensive variables (with an extensive external variable; see
+@sec-area-weighted).
 
 \index[function]{st\_interpolate\_aw}
 \index{interpolation!area-weighted}
 \index{area-weighted interpolation}
+\index{dasymetric mapping}
+
+As an example, we can redistribute the birth counts in the North
+Carolina dataset using the density of addresses as a proxy,
+disregarding the difference in time of collecting the birth data
+(1974-79) and address data (2014).
+
+Address data were downloaded from [NC OneMap](https://www.nconemap.gov/datasets/909e8b7d03e04aecaf7a1afc03376074_0/explore?location=35.173750%2C-79.961050%2C7),
+as a GeoJSON file, loaded and converted into address counts for (state boundary clipped) 10 km $\times$ 10 km grid cells by
+```{r eval=FALSE}
+add.sf = read_sf("data/NC_Master_Address_Dataset_-_2014.geojson")
+add.state_plane = st_transform(add.sf, 'EPSG:32119') # NC state plane
+nc = st_transform(nc, 'EPSG:32119')
+grd = st_make_grid(nc, 10000) |> st_intersection(st_union(st_geometry(nc)))
+add.state_plane$ones = 1 # so that sum() gives a count:
+grd.addr = aggregate(add.state_plane["ones"], grd, sum)
+```
+
+```{r echo=FALSE}
+grd.addr = system.file("gpkg/grd_addr.gpkg", package="sf") |> read_sf()
+nc = st_transform(nc, st_crs(grd.addr))
+```
+
+Then, dasymetric mapping is used to redistribute county-aggregate
+values for `BIR74` and `BIR79` to 10 km cells by
+
+```{r}
+bir.grd = st_interpolate_aw(nc[c("BIR74","BIR79")], extensive = TRUE, grd.addr, weights = "ones")
+```
+
+We can verify the sums of births at the county level and at the 10 km cell level and see an exact match:
+```{r}
+apply(as.data.frame(bir.grd)[1:2], 2, sum)
+apply(as.data.frame(nc)[c("BIR74", "BIR79")], 2, sum)
+```
+
+At the county-level the comparison can be made by aggregating the cell level values
+to counties, using area-weighted interpolation, shown in @fig-aw-scatter.
+```{r fig-aw-scatter, message = FALSE, echo=!knitr::is_latex_output()}
+#| fig.cap: "County level birth counts 1974 (x) and 10 km cell values aggregated to county (y); the line is drawn at x = y"
+#| code-fold: true
+aw = st_interpolate_aw(bir.grd["BIR74"], st_geometry(nc), extensive = TRUE)
+plot(nc$BIR74, aw$BIR74, log = 'xy', xlab = 'county-value', 
+	 ylab = 'area-weighted interpolated')
+abline(0, 1)
+```
+The match at the county level is no longer exact because the values
+at the intersection level ($X_{ij}(S_{ij})$ in @sec-area-weighted)
+get lost after aggregating to the 10 km cell level.
+
+A map of county-level birth counts is shown in @fig-nc-bir,
+the address counts are shown in @fig-addresses and the
+dasymetric mapped, redistributed birth counts are shown in Figure
+@fig-dasymetric. Birth count ranges differ, but as birth counts are
+spatially extensive variables the range depends on the target grid
+cell size.
+
+```{r fig-nc-bir, message = FALSE, echo=!knitr::is_latex_output()}
+#| fig.cap: "Birth counts at the county level, 1974"
+#| code-fold: true
+plot(nc["BIR74"], logz = TRUE, main = NULL)
+```
+
+```{r fig-addresses, message = FALSE, echo=!knitr::is_latex_output()}
+#| fig.cap: "Number of addresses per 10 km cell, 2014"
+#| code-fold: true
+grd.addr$ones[grd.addr$ones==0] = 1 # so that logz shows finite values
+plot(grd.addr, logz=TRUE, main = NULL) # log scale
+```
+
+```{r fig-dasymetric, message = FALSE, echo=!knitr::is_latex_output()}
+#| fig.cap: "Dasymetric mapping of birth counts, using address counts as external variable"
+#| code-fold: true
+bir.grd$BIR74[bir.grd$BIR74 == 0] = 1 # so that logz shows finite values
+plot(bir.grd["BIR74"], logz = TRUE, main = NULL)
+```
 
 ## Ellipsoidal coordinates {#sec-ccw}
 
