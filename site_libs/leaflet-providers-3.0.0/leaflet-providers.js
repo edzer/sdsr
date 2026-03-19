@@ -1,4 +1,4 @@
-(function (root, factory) {
+(function(root, factory) {
 	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
 		define(['leaflet'], factory);
@@ -9,11 +9,11 @@
 		// Assume Leaflet is loaded into global object L already
 		factory(L);
 	}
-}(this, function (L) {
+}(this, function(L) {
 	'use strict';
 
 	L.TileLayer.Provider = L.TileLayer.extend({
-		initialize: function (arg, options) {
+		initialize: function(arg, options) {
 			var providers = L.TileLayer.Provider.providers;
 
 			var parts = arg.split('.');
@@ -52,12 +52,13 @@
 
 			// replace attribution placeholders with their values from toplevel provider attribution,
 			// recursively
-			var attributionReplacer = function (attr) {
+			var attributionReplacer = function(attr) {
 				if (attr.indexOf('{attribution.') === -1) {
 					return attr;
 				}
-				return attr.replace(/\{attribution.(\w*)\}/g,
-					function (match, attributionName) {
+				return attr.replace(
+					/\{attribution.(\w*)\}/g,
+					function(match, attributionName) {
 						return attributionReplacer(providers[attributionName].options.attribution);
 					}
 				);
@@ -119,6 +120,12 @@
 					options: {
 						attribution: '{attribution.OpenStreetMap}, Tiles courtesy of <a href="http://www.openstreetmap.bzh/" target="_blank">Breton OpenStreetMap Team</a>',
 						bounds: [[46.2, -5.5], [50, 0.7]]
+					}
+				},
+				CAT: {
+					url: 'https://tile.openstreetmap.bzh/ca/{z}/{x}/{y}.png',
+					options: {
+						attribution: '{attribution.OpenStreetMap}, Tiles courtesy of <a href="https://www.openstreetmap.cat" target="_blank">Breton OpenStreetMap Team</a>',
 					}
 				}
 			}
@@ -208,6 +215,17 @@
 			variants: {
 				AlidadeSmooth: 'alidade_smooth',
 				AlidadeSmoothDark: 'alidade_smooth_dark',
+				AlidadeSatellite: {
+					options: {
+						attribution:
+						  '&copy; CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data) | ' +
+							'&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> ' +
+							'&copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> ' +
+							'{attribution.OpenStreetMap}',
+						variant: 'alidade_satellite',
+						ext: 'jpg',
+					}
+				},
 				OSMBright: 'osm_bright',
 				Outdoors: 'outdoors',
 				StamenToner: {
@@ -325,7 +343,7 @@
 			}
 		},
 		Thunderforest: {
-			url: 'https://{s}.tile.thunderforest.com/{variant}/{z}/{x}/{y}.png?apikey={apikey}',
+			url: 'https://{s}.tile.thunderforest.com/{variant}/{z}/{x}/{y}{r}.png?apikey={apikey}',
 			options: {
 				attribution:
 					'&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, {attribution.OpenStreetMap}',
@@ -357,6 +375,17 @@
 				Neighbourhood: 'neighbourhood'
 			}
 		},
+		BaseMapDE: {
+			url: 'https://sgx.geodatenzentrum.de/wmts_basemapde/tile/1.0.0/{variant}/default/GLOBAL_WEBMERCATOR/{z}/{y}/{x}.png',
+			options: {
+				attribution: 'Map data: &copy; <a href="http://www.govdata.de/dl-de/by-2-0">dl-de/by-2-0</a>',
+				variant: 'de_basemapde_web_raster_farbe',
+			},
+			variants: {
+				Color: 'de_basemapde_web_raster_farbe',
+				Grey: 'de_basemapde_web_raster_grau'
+			}
+		},
 		CyclOSM: {
 			url: 'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png',
 			options: {
@@ -365,15 +394,14 @@
 			}
 		},
 		Jawg: {
-			url: 'https://{s}.tile.jawg.io/{variant}/{z}/{x}/{y}{r}.png?access-token={accessToken}',
+			url: 'https://tile.jawg.io/{variant}/{z}/{x}/{y}{r}.png?access-token={accessToken}',
 			options: {
 				attribution:
-					'<a href="http://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> ' +
+					'<a href="https://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> ' +
 					'{attribution.OpenStreetMap}',
 				minZoom: 0,
 				maxZoom: 22,
-				subdomains: 'abcd',
-				variant: 'jawg-terrain',
+				variant: 'jawg-streets',
 				// Get your own Jawg access token here : https://www.jawg.io/lab/
 				// NB : this is a demonstration key that comes with no guarantee
 				accessToken: '<insert your access token here>',
@@ -381,6 +409,7 @@
 			variants: {
 				Streets: 'jawg-streets',
 				Terrain: 'jawg-terrain',
+				Lagoon: 'jawg-lagoon',
 				Sunny: 'jawg-sunny',
 				Dark: 'jawg-dark',
 				Light: 'jawg-light',
@@ -415,9 +444,9 @@
 				maxZoom: 21
 			},
 			variants: {
-				Streets: 'streets',
-				Basic: 'basic',
-				Bright: 'bright',
+				Streets: 'streets-v2',
+				Basic: 'basic-v2',
+				Bright: 'bright-v2',
 				Pastel: 'pastel',
 				Positron: 'positron',
 				Hybrid: {
@@ -426,9 +455,35 @@
 						ext: 'jpg'
 					}
 				},
-				Toner: 'toner',
-				Topo: 'topo',
-				Voyager: 'voyager'
+				Toner: 'toner-v2',
+				Topo: 'topo-v2',
+				Voyager: 'voyager-v2',
+				Ocean: 'ocean',
+				Backdrop: 'backdrop',
+				Dataviz: 'dataviz',
+				DatavizLight: 'dataviz-light',
+				DatavizDark: 'dataviz-dark',
+				Aquarelle: {
+					options: {
+						variant: 'aquarelle',
+						ext: 'webp'
+					}
+				},
+				Landscape: 'landscape',
+				Openstreetmap: {
+					options: {
+						variant: 'openstreetmap',
+						ext: 'jpg'
+					}
+				},
+				Outdoor: 'outdoor-v2',
+				Satellite: {
+					options: {
+						variant: 'satellite',
+						ext: 'jpg'
+					}
+				},
+				Winter: 'winter-v2',
 			}
 		},
 		TomTom: {
@@ -461,14 +516,6 @@
 						attribution:
 							'{attribution.Esri} &mdash; ' +
 							'Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
-					}
-				},
-				DeLorme: {
-					options: {
-						variant: 'Specialty/DeLorme_World_Base_Map',
-						minZoom: 1,
-						maxZoom: 11,
-						attribution: '{attribution.Esri} &mdash; Copyright: &copy;2012 DeLorme'
 					}
 				},
 				WorldTopoMap: {
@@ -555,147 +602,29 @@
 				Snow: 'snow'
 			}
 		},
+
 		HERE: {
-			/*
-			 * HERE maps, formerly Nokia maps.
-			 * These basemaps are free, but you need an api id and app key. Please sign up at
-			 * https://developer.here.com/plans
-			 */
-			url:
-				'https://{s}.{base}.maps.api.here.com/maptile/2.1/' +
-				'{type}/{mapID}/{variant}/{z}/{x}/{y}/{size}/{format}?' +
-				'app_id={app_id}&app_code={app_code}&lg={language}',
-			options: {
-				attribution:
-					'Map &copy; 1987-' + new Date().getFullYear() + ' <a href="http://developer.here.com">HERE</a>',
-				subdomains: '1234',
-				mapID: 'newest',
-				'app_id': '<insert your app_id here>',
-				'app_code': '<insert your app_code here>',
-				base: 'base',
-				variant: 'normal.day',
-				maxZoom: 20,
-				type: 'maptile',
-				language: 'eng',
-				format: 'png8',
-				size: '256'
-			},
-			variants: {
-				normalDay: 'normal.day',
-				normalDayCustom: 'normal.day.custom',
-				normalDayGrey: 'normal.day.grey',
-				normalDayMobile: 'normal.day.mobile',
-				normalDayGreyMobile: 'normal.day.grey.mobile',
-				normalDayTransit: 'normal.day.transit',
-				normalDayTransitMobile: 'normal.day.transit.mobile',
-				normalDayTraffic: {
-					options: {
-						variant: 'normal.traffic.day',
-						base: 'traffic',
-						type: 'traffictile'
-					}
-				},
-				normalNight: 'normal.night',
-				normalNightMobile: 'normal.night.mobile',
-				normalNightGrey: 'normal.night.grey',
-				normalNightGreyMobile: 'normal.night.grey.mobile',
-				normalNightTransit: 'normal.night.transit',
-				normalNightTransitMobile: 'normal.night.transit.mobile',
-				reducedDay: 'reduced.day',
-				reducedNight: 'reduced.night',
-				basicMap: {
-					options: {
-						type: 'basetile'
-					}
-				},
-				mapLabels: {
-					options: {
-						type: 'labeltile',
-						format: 'png'
-					}
-				},
-				trafficFlow: {
-					options: {
-						base: 'traffic',
-						type: 'flowtile'
-					}
-				},
-				carnavDayGrey: 'carnav.day.grey',
-				hybridDay: {
-					options: {
-						base: 'aerial',
-						variant: 'hybrid.day'
-					}
-				},
-				hybridDayMobile: {
-					options: {
-						base: 'aerial',
-						variant: 'hybrid.day.mobile'
-					}
-				},
-				hybridDayTransit: {
-					options: {
-						base: 'aerial',
-						variant: 'hybrid.day.transit'
-					}
-				},
-				hybridDayGrey: {
-					options: {
-						base: 'aerial',
-						variant: 'hybrid.grey.day'
-					}
-				},
-				hybridDayTraffic: {
-					options: {
-						variant: 'hybrid.traffic.day',
-						base: 'traffic',
-						type: 'traffictile'
-					}
-				},
-				pedestrianDay: 'pedestrian.day',
-				pedestrianNight: 'pedestrian.night',
-				satelliteDay: {
-					options: {
-						base: 'aerial',
-						variant: 'satellite.day'
-					}
-				},
-				terrainDay: {
-					options: {
-						base: 'aerial',
-						variant: 'terrain.day'
-					}
-				},
-				terrainDayMobile: {
-					options: {
-						base: 'aerial',
-						variant: 'terrain.day.mobile'
-					}
-				}
-			}
-		},
-		HEREv3: {
+
 			/*
 			 * HERE maps API Version 3.
+			 * documentation at: https://www.here.com/docs/bundle/raster-tile-api-developer-guide/page/README.html
 			 * These basemaps are free, but you need an API key. Please sign up at
-			 * https://developer.here.com/plans
+			 * https://platform.here.com/portal/
+			 * Subscription remains for free, pricing details can be found here: https://www.here.com/get-started/pricing
 			 * Version 3 deprecates the app_id and app_code access in favor of apiKey
-			 *
-			 * Supported access methods as of 2019/12/21:
-			 * @see https://developer.here.com/faqs#access-control-1--how-do-you-control-access-to-here-location-services
 			 */
 			url:
-				'https://{s}.{base}.maps.ls.hereapi.com/maptile/2.1/' +
-				'{type}/{mapID}/{variant}/{z}/{x}/{y}/{size}/{format}?' +
-				'apiKey={apiKey}&lg={language}',
+				'https://maps.hereapi.com/v3/base/mc/' + // new base url for HERE maptile v3 api
+				'{z}/{x}/{y}/{format}?style={variant}&size={size}' + // slightly modified parameters
+				'&apiKey={app_id}&lg={language}', // replacing app-id with apikey
 			options: {
 				attribution:
-					'Map &copy; 1987-' + new Date().getFullYear() + ' <a href="http://developer.here.com">HERE</a>',
+					'Map &copy; 1987-' + new Date().getFullYear() + ' <a href="http://platform.here.com">HERE</a>',
 				subdomains: '1234',
 				mapID: 'newest',
-				apiKey: '<insert your apiKey here>',
+				apiKey: '<insert your apiKey here>', // switching from appid and appcode to apikey
 				base: 'base',
-				variant: 'normal.day',
+				variant: 'explore.day',
 				maxZoom: 20,
 				type: 'maptile',
 				language: 'eng',
@@ -703,21 +632,17 @@
 				size: '256'
 			},
 			variants: {
-				normalDay: 'normal.day',
-				normalDayCustom: 'normal.day.custom',
-				normalDayGrey: 'normal.day.grey',
-				normalDayMobile: 'normal.day.mobile',
-				normalDayGreyMobile: 'normal.day.grey.mobile',
-				normalDayTransit: 'normal.day.transit',
-				normalDayTransitMobile: 'normal.day.transit.mobile',
-				normalNight: 'normal.night',
-				normalNightMobile: 'normal.night.mobile',
-				normalNightGrey: 'normal.night.grey',
-				normalNightGreyMobile: 'normal.night.grey.mobile',
-				normalNightTransit: 'normal.night.transit',
-				normalNightTransitMobile: 'normal.night.transit.mobile',
-				reducedDay: 'reduced.day',
-				reducedNight: 'reduced.night',
+				exploreDay: 'explore.day',
+				liteDay: 'lite.day',
+				logisticsDay: 'logistics.day',
+				topoDay: 'topo.day',
+				logisticsNight: 'logistics.night',
+				exploreNight: 'explore.night',
+				topoNight: 'topo.night',
+				liteNight: 'lite.night',
+				exploreSatelliteDay: 'explore.satellite.day',
+				liteSatelliteDay: 'lite.satellite.day',
+				logisticsSatelliteDay: 'logistics.satellite.day',
 				basicMap: {
 					options: {
 						type: 'basetile'
@@ -895,12 +820,12 @@
 				attribution: 'Kaartgegevens &copy; <a href="https://www.kadaster.nl">Kadaster</a>'
 			},
 			variants: {
-				'standaard': 'standaard',
-				'pastel': 'pastel',
-				'grijs': 'grijs',
-				'water': 'water',
-				'luchtfoto': {
-					'url': 'https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg',
+				standaard: 'standaard',
+				pastel: 'pastel',
+				grijs: 'grijs',
+				water: 'water',
+				luchtfoto: {
+					url: 'https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg',
 				}
 			}
 		},
@@ -952,7 +877,7 @@
 				},
 				ModisTerraChlorophyll: {
 					options: {
-						variant: 'MODIS_Terra_Chlorophyll_A',
+						variant: 'MODIS_Terra_L2_Chlorophyll_A',
 						format: 'png',
 						maxZoom: 7,
 						opacity: 0.75
@@ -962,20 +887,29 @@
 		},
 		NLS: {
 			// NLS maps are copyright National library of Scotland.
-			// http://maps.nls.uk/projects/api/index.html
+			// http://maps.nls.uk/projects/subscription-api
 			// Please contact NLS for anything other than non-commercial low volume usage
 			//
-			// Map sources: Ordnance Survey 1:1m to 1:63K, 1920s-1940s
+			// Map sources: Ordnance Survey 1:1m to 1:63K, 1880s-1961
 			//   z0-9  - 1:1m
 			//  z10-11 - quarter inch (1:253440)
 			//  z12-18 - one inch (1:63360)
-			url: 'https://nls-{s}.tileserver.com/nls/{z}/{x}/{y}.jpg',
+			url: 'https://api.maptiler.com/tiles/{variant}/{z}/{x}/{y}.jpg?key={apikey}',
 			options: {
-				attribution: '<a href="http://geo.nls.uk/maps/">National Library of Scotland Historic Maps</a>',
+				attribution: '<a href="http://maps.nls.uk/projects/subscription-api">National Library of Scotland Historic Maps</a>',
 				bounds: [[49.6, -12], [61.7, 3]],
 				minZoom: 1,
 				maxZoom: 18,
-				subdomains: '0123',
+				apikey: '<insert your api key here>'
+			},
+			variants: {
+				osgb63k1885: 'uk-osgb63k1885',
+				osgb1888: 'uk-osgb1888',
+				osgb10k1888: 'uk-osgb10k1888',
+				osgb1919: 'uk-osgb1919',
+				osgb25k1937: 'uk-osgb25k1937',
+				osgb63k1955: 'uk-osgb63k1955',
+				oslondon1k1893: 'uk-oslondon1k1893'
 			}
 		},
 		JusticeMap: {
@@ -1003,15 +937,12 @@
 			}
 		},
 		GeoportailFrance: {
-			url: 'https://wxs.ign.fr/{apikey}/geoportail/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER={variant}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+			url: 'https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER={variant}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
 			options: {
 				attribution: '<a target="_blank" href="https://www.geoportail.gouv.fr/">Geoportail France</a>',
 				bounds: [[-75, -180], [81, 180]],
 				minZoom: 2,
 				maxZoom: 18,
-				// Get your own geoportail apikey here : http://professionnels.ign.fr/ign/contrats/
-				// NB : 'choisirgeoportail' is a demonstration key that comes with no guarantee
-				apikey: 'choisirgeoportail',
 				format: 'image/png',
 				style: 'normal',
 				variant: 'GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2'
@@ -1106,9 +1037,9 @@
 			}
 		},
 		AzureMaps: {
-			url: 
-				'https://atlas.microsoft.com/map/tile?api-version={apiVersion}'+
-				'&tilesetId={variant}&x={x}&y={y}&zoom={z}&language={language}'+
+			url:
+				'https://atlas.microsoft.com/map/tile?api-version={apiVersion}' +
+				'&tilesetId={variant}&x={x}&y={y}&zoom={z}&language={language}' +
 				'&subscription-key={subscriptionKey}',
 			options: {
 				attribution: 'See https://docs.microsoft.com/en-us/rest/api/maps/render-v2/get-map-tile for details.',
@@ -1124,9 +1055,9 @@
 				MicrosoftBaseHybridRoad: 'microsoft.base.hybrid.road',
 				MicrosoftTerraMain: 'microsoft.terra.main',
 				MicrosoftWeatherInfraredMain: {
-					url: 
-					'https://atlas.microsoft.com/map/tile?api-version={apiVersion}'+
-					'&tilesetId={variant}&x={x}&y={y}&zoom={z}'+
+					url:
+					'https://atlas.microsoft.com/map/tile?api-version={apiVersion}' +
+					'&tilesetId={variant}&x={x}&y={y}&zoom={z}' +
 					'&timeStamp={timeStamp}&language={language}' +
 					'&subscription-key={subscriptionKey}',
 					options: {
@@ -1136,9 +1067,9 @@
 					},
 				},
 				MicrosoftWeatherRadarMain: {
-					url: 
-					'https://atlas.microsoft.com/map/tile?api-version={apiVersion}'+
-					'&tilesetId={variant}&x={x}&y={y}&zoom={z}'+
+					url:
+					'https://atlas.microsoft.com/map/tile?api-version={apiVersion}' +
+					'&tilesetId={variant}&x={x}&y={y}&zoom={z}' +
 					'&timeStamp={timeStamp}&language={language}' +
 					'&subscription-key={subscriptionKey}',
 					options: {
@@ -1167,10 +1098,22 @@
 					}
 				}
 			}
+		},
+		TopPlusOpen: {
+			url: 'http://sgx.geodatenzentrum.de/wmts_topplus_open/tile/1.0.0/{variant}/default/WEBMERCATOR/{z}/{y}/{x}.png',
+			options: {
+				maxZoom: 18,
+				attribution: 'Map data: &copy; <a href="http://www.govdata.de/dl-de/by-2-0">dl-de/by-2-0</a>',
+				variant: 'web',
+			},
+			variants: {
+				Color: 'web',
+				Grey: 'web_grau'
+			}
 		}
 	};
 
-	L.tileLayer.provider = function (provider, options) {
+	L.tileLayer.provider = function(provider, options) {
 		return new L.TileLayer.Provider(provider, options);
 	};
 
