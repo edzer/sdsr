@@ -816,7 +816,7 @@ r[,1:100, seq(1, 250, 5), 4] |> dim()
 r[,1:100, seq(1, 250, 5), 4, drop = TRUE] |> dim()
 ```
 #### Python
-```{python}
+```{python python-read-tif1}
 import rasterio
 src = rasterio.open('https://github.com/r-spatial/stars/raw/main/inst/tif/L7_ETMs.tif')
 band = src.read(4)
@@ -858,15 +858,19 @@ b <- st_bbox(r) |>
 r[b]
 ```
 #### Python
-```{python}
+```{python python-riox-tif}
 import rioxarray
 from shapely.geometry import box, Point
 import geopandas as gpd
 da = rioxarray.open_rasterio("https://github.com/r-spatial/stars/raw/refs/heads/main/inst/tif/L7_ETMs.tif")
+# Write the CRS explicitly if not already set
+if da.rio.crs is None:
+    da = da.rio.write_crs("EPSG:32724")
 xmin, ymin, xmax, ymax = da.rio.bounds()
 bbox_poly = box(xmin, ymin, xmax, ymax)
 centroid = bbox_poly.centroid
 buffered = centroid.buffer(500)
+
 gdf = gpd.GeoDataFrame({"geometry": [buffered]}, crs=da.rio.crs)
 cropped = da.rio.clip(gdf.geometry, gdf.crs, drop=True)
 ```
@@ -1041,7 +1045,11 @@ aggregate(r, circles, max)
 ```{python}
 np.random.seed(131)
 ```
-```{python}
+```{python python-xvec-zonal, eval=FALSE}
+import xvec
+#if da.rio.crs is None:
+#    da = da.rio.write_crs("EPSG:32724")
+
 bbox = da.rio.bounds()
 minx, miny, maxx, maxy = bbox
 # Sample random points
