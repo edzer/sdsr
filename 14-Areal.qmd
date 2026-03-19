@@ -46,14 +46,10 @@ The **spdep** package provides an `nb` class for neighbours, a list of length eq
 
 We will be using election data from the 2015 Polish presidential election in this chapter, with 2495 municipalities and Warsaw boroughs (see @fig-plotpolpres15) for a **tmap** map (@sec-tmap) of the municipality types, and complete count data from polling stations aggregated to these areal units. The data are an **sf** `sf` object:
 
-
-
 \index{Polish Presidential election data}
 \index{tmap}
 \index{spDataLarge}
--
-::: panel-tabset
-#### R
+
 ```{r setup_sa0, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, paged.print=FALSE)
 owidth <- getOption("width")
@@ -66,11 +62,29 @@ xargs <- function(x) {
 library(tmap, warn.conflicts = FALSE)
 tmap4 <- packageVersion("tmap") >= "3.99"
 ```
-
+ 
+::: panel-tabset
+#### R
+```{r fig-plotpolpres15}
+library(sf)
+data(pol_pres15, package = "spDataLarge")
+pol_pres15 |>
+    subset(select = c(TERYT, name, types)) |>
+    head()
+#| out.width: 100%
+#| fig.cap: "Polish municipality types 2015"
+if (tmap4) {
+    tm_shape(pol_pres15) +
+        tm_fill("types", fill.scale = tm_scale(values = "brewer.set3"),
+           fill.legend = tm_legend(position = tm_pos_in("left", "bottom"),
+               frame.lwd=0, item.r = 0)
+        )
+} else {
+    tm_shape(pol_pres15) + tm_fill("types")
+}
+```
 #### Python
-
 ```{python}
-
 import matplotlib.pyplot as plt
 import geopandas as gpd
 
@@ -93,30 +107,6 @@ plt.show()
 ```
 :::
 
-```{r}
-library(sf)
-```
-
-```{r}
-data(pol_pres15, package = "spDataLarge")
-pol_pres15 |>
-    subset(select = c(TERYT, name, types)) |>
-    head()
-```
-```{r fig-plotpolpres15}
-#| out.width: 100%
-#| fig.cap: "Polish municipality types 2015"
-if (tmap4) {
-    tm_shape(pol_pres15) +
-        tm_fill("types", fill.scale = tm_scale(values = "brewer.set3"),
-           fill.legend = tm_legend(position = tm_pos_in("left", "bottom"),
-               frame.lwd=0, item.r = 0)
-        )
-} else {
-    tm_shape(pol_pres15) + tm_fill("types")
-}
-```
-
 For safety's sake, we impose topological validity
 
 ::: panel-tabset
@@ -125,9 +115,7 @@ For safety's sake, we impose topological validity
 if (!all(st_is_valid(pol_pres15)))
 		pol_pres15 <- st_make_valid(pol_pres15)
 ```
-
 #### Python
-
 ```{python}
 from shapely.validation import make_valid
 
@@ -136,6 +124,7 @@ if not gdf.is_valid.all():
     # Apply make_valid to each geometry
     gdf['geometry'] = gdf['geometry'].apply(make_valid)
 ```
+:::
 
 \index[function]{st\_make\_valid}
 
@@ -149,7 +138,6 @@ Between early 2002 and April 2019, **spdep** contained functions for constructin
 ```{r, message=FALSE}
 library(spdep) |> suppressPackageStartupMessages()
 ```
-
 #### Python
 ```{python}
 import libpysal
@@ -157,6 +145,7 @@ import libpysal
 print(f"libpysal version: {libpysal.__version__}")
 ```
 :::
+
 ## Contiguous neighbours
 
 \index{neighbours!contiguous}
@@ -164,6 +153,7 @@ print(f"libpysal version: {libpysal.__version__}")
 \index[function]{poly2nb}
 
 The `poly2nb` function in **spdep** takes the boundary points making up the polygon boundaries in the object passed as the `pl` argument, typically an `"sf"` or `"sfc"` object with `"POLYGON"` or `"MULTIPOLYGON"` geometries. For each observation, the function checks whether at least one (`queen=TRUE`, default), or at least two (rook, `queen=FALSE`) points are within `snap` distance units of each other. The distances are planar in the raw coordinate units, ignoring geographical projections. Once the required number of sufficiently close points is found, the search is stopped.
+
 ::: panel-tabset
 #### R
 ```{r, echo=TRUE, eval=FALSE}
@@ -180,8 +170,8 @@ import inspect
 print(inspect.signature(graph.Graph.build_contiguity))
 
 ```
-
 :::
+
 ```{r, echo=FALSE, eval=TRUE}
 xargs(poly2nb)
 ```
@@ -192,30 +182,30 @@ From **spdep** 1.1-7, the **sf** package GEOS interface is used within `poly2nb`
 ```{r}
 pol_pres15 |> poly2nb(queen = TRUE) -> nb_q
 ```
-
 #### Python
-
 ```{python}
 from libpysal import graph
 
 nb_q = graph.Graph.build_contiguity(gdf, rook=False)
-##here rook is TRUE by defualt and to use queen based contiguity method set rook = FALSE
+## here rook is TRUE by defualt and to use queen based contiguity method set rook = FALSE
 ```
 :::
+
 The print method shows the summary structure of the neighbour object:
 
 ::: panel-tabset
+#### R
 ```{r}
 nb_q
 ```
-
+#### Python
 ```{python}
 ##recreating the description of neibhorhood/weights exactly as R
 summary = nb_q.summary()
 print(summary)
 ```
-
 :::
+
 From **sf** version 1.0-0, the **s2** package [@R-s2] is used by default for spherical geometries, as `st_intersects` used in `poly2nb` passes calculation to `s2::s2_intersects_matrix` (see @sec-spherical). From **spdep** version 1.1-9, if `sf_use_s2()` is `TRUE`, spherical intersection is used to find candidate neighbours; as with GEOS, the underlying `s2` library uses fast spatial indexing.
 
 ```{r}
@@ -254,6 +244,7 @@ We can also check that this undirected graph is connected using the `n.comp.nb` 
 \index[function]{n.comp.nb}
 
 This approach is equivalent to treating the neighbour object as a graph and using graph analysis on that graph [@csardi+nepusz:06; @R-igraph], by first coercing to a binary sparse matrix [@R-Matrix]:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -266,9 +257,7 @@ library(igraph, warn.conflicts = FALSE)
 (smat |> graph_from_adjacency_matrix() -> g1) |> 
     count_components()
 ```
-
 #### Python
-
 ```{python}
 import networkx as nx
 ## using networkx library to convert libpysal Graph object to a NetworkX graph.
@@ -282,6 +271,7 @@ g1 = g1.to_undirected()
 # connected components
 print(nx.number_connected_components(g1))
 ```
+:::
 
 \index[function]{nb2listw}
 \index[function]{graph\_from\_adjacency\_matrix}
@@ -311,10 +301,9 @@ pol_pres15 |>
 (coords |> tri2nb() -> nb_tri)
 ```
 #### Python
-
 ```{python}
-
-# libpysal has a module Delaunay which constructs the Delaunay graph from a geo-dataframe consisting input points 
+# libpysal has a module Delaunay which constructs the Delaunay graph 
+# from a geo-dataframe consisting input points 
 
 from libpysal import weights
 import numpy as np
@@ -328,10 +317,9 @@ w_delaunay = weights.Delaunay.from_dataframe(gdf_points)
 coords = np.column_stack(
     [gdf_points.geometry.x.to_numpy(), gdf_points.geometry.y.to_numpy()]
 )
-
-
 ```
 :::
+
 \index[function]{tri2nb}
 
 The average number of neighbours is similar to the Queen boundary contiguity case, but if we look at the distribution of edge lengths using `nbdists()`, we can see that although the upper quartile is about 15 km, the maximum is almost 300 km, an edge along much of one side of the convex hull. The short minimum distance is also of interest, as many centroids of urban municipalities are very close to the centroids of their surrounding rural counterparts.
@@ -347,9 +335,7 @@ nb_tri |>
     unlist() |> 
     summary()
 ```
-
 #### Python
-
 ```{python}
 # Extract neighbor pairs (edges)
 edge_lengths = []
@@ -367,8 +353,9 @@ print("median:", np.median(edge_lengths))
 print("75%:", np.percentile(edge_lengths, 75))
 print("max:", np.max(edge_lengths))
 print("mean:", np.mean(edge_lengths))
-
 ```
+:::
+
 Triangulated neighbours also yield a connected graph:
 
 ::: panel-tabset
@@ -377,16 +364,15 @@ Triangulated neighbours also yield a connected graph:
 (nb_tri |> n.comp.nb())$nc
 ```
 #### Python
-
 ```{python}
 import numpy as np
 
 labels = w_delaunay.component_labels
 n_components = len(np.unique(labels))
 print("Number of connected components (Delaunay):", n_components)
-
 ```
 :::
+
 \index[function]{n.comp.nb}
 
 Graph-based approaches include `soi.graph` - discussed here, `relativeneigh` and `gabrielneigh`.
@@ -404,7 +390,6 @@ Unpicking the triangulated neighbours does however remove the connected characte
 \index[function]{soi.graph}
 \index[function]{relativeneigh}
 \index[function]{gabrielneigh}
-
 
 ::: panel-tabset
 #### R
@@ -450,10 +435,9 @@ for i, ns in soi_neighbors.items():
 # Connected components info
 components_soi = list(nx.connected_components(G_soi))
 print("Number of connected components (SOI):", len(components_soi))
-
-
 ```
 :::
+
 The algorithm has stripped out longer edges leading to urban and rural municipality pairs where their centroids are very close to each other because the rural ones completely surround the urban, giving 15 pairs of neighbours unconnected to the main graph:
 
 ```{r}
@@ -461,10 +445,7 @@ table(n_comp$comp.id)
 ```
 
 The largest length edges along the convex hull have been removed, but "holes" have appeared where the unconnected pairs of neighbours have appeared. The differences between `nb_tri` and `nb_soi` are shown in orange in @fig-plotnbdiff.
-<!---
--
-unsure whether the new cross-reference in the caption will be rendered correctly
-- --->
+
 ::: panel-tabset
 #### R
 ```{r fig-plotnbdiff, echo=!knitr::is_latex_output()}
@@ -484,7 +465,6 @@ nb_tri |>
 par(opar)
 ```
 #### Python
-
 ```{python}
 import matplotlib.pyplot as plt
 
@@ -528,7 +508,6 @@ ax.set_aspect("equal")
 ax.set_axis_off()
 plt.tight_layout()
 plt.show()
-
 ```
 :::
 
@@ -555,7 +534,6 @@ The `knearneigh` function for $k$-nearest neighbours returns a `knn` object, con
 
 The `nbdists` function returns the length of neighbour relationship edges in the units of the coordinates if the coordinates are projected, in kilometre otherwise. In order to set the upper limit for distance bands, one may first find the maximum first nearest neighbour distance, using `unlist` to remove the list structure of the returned object. When `sf_use_s2()` is `TRUE`, `nbdists` will use fast spherical distance calculations when the input object is of class `"sf"` or `"sfc"`.
 
-
 ::: panel-tabset
 #### R
 ```{r}
@@ -567,9 +545,7 @@ coords |>
     summary()
 ```
 #### Python
-
 ```{python}
-
 # 1-nearest neighbour graph (k = 1)
 knn1 = graph.Graph.build_knn(coords, k=1)
 
@@ -594,6 +570,7 @@ print("Max:", np.max(dists))
 
 ```
 :::
+
 Here the largest first nearest neighbour distance is just under 18 km, so using this as the upper threshold gives certainty that all units will have at least one neighbour:
 
 ::: panel-tabset
@@ -611,6 +588,7 @@ nb_d18 = graph.Graph.build_distance_band(
 )
 ```
 :::
+
 For this moderate number of observations, use of spatial indexing does not yield advantages in run times:
 -
 ::: panel-tabset
@@ -626,33 +604,37 @@ coords |> dnearneigh(0, 18000, use_kd_tree = FALSE) -> nb_d18a
 
 ```
 :::
+
 and the output objects are the same:
 
 ```{r}
 all.equal(nb_d18, nb_d18a, check.attributes = FALSE)
 ```
+
 ::: panel-tabset
 #### R
 ```{r}
 nb_d18
 ```
 #### Python
-
 ```{python}
 nb_d18.summary()
 ```
+:::
+
 However, even though there are no no-neighbour observations (their presence is reported by the print method for `nb` objects), the graph is not connected, as a pair of observations are each others' only neighbours.
+
 ::: panel-tabset
 #### R
 ```{r}
 (nb_d18 |> n.comp.nb() -> n_comp)$nc
 ```
 #### Python
-
 ```{python}
 print("Number of connected components:", nb_d18.n_components)
 ```
 :::
+
 ```{r}
 table(n_comp$comp.id)
 ```
@@ -664,7 +646,6 @@ Adding 300 m to the threshold gives us a neighbour object with no no-neighbour u
 (coords |> dnearneigh(0, 18300) -> nb_d183)
 ```
 #### Python
-
 ```{python}
 nb_d183 = graph.Graph.build_distance_band(
     coords,
@@ -688,12 +669,12 @@ print("Number of connected components (18.3 km):", nb_d183.n_components)
 One characteristic of distance-based neighbours is that more densely settled areas, with units which are smaller in terms of area, have higher neighbour counts (Warsaw boroughs are much smaller on average, but have almost 30 neighbours for this distance criterion). Having many neighbours smooths the neighbour relationship across more neighbours. 
 
 For use later, we also construct a neighbour object with no-neighbour units, using a threshold of 16 km:
+
 ::: panel-tabset
 #### R
 ```{r}
 (coords |> dnearneigh(0, 16000) -> nb_d16)
 ```
-
 #### Python
 ```{python}
 nb_d16 = graph.Graph.build_distance_band(
@@ -706,15 +687,16 @@ nb_d16 = graph.Graph.build_distance_band(
 isolates_16 = nb_d16.isolates
 print("Number of isolates (16 km):", len(isolates_16))
 ```
+:::
 
 It is possible to control the numbers of neighbours directly using $k$-nearest neighbours, either accepting asymmetric neighbours:
+
 ::: panel-tabset
 #### R
 ```{r}
 ((coords |> knearneigh(k = 6) -> knn_k6) |> knn2nb() -> nb_k6)
 ```
 #### Python
-
 ```{python}
 nb_k6 = graph.Graph.build_knn(
     coords,
@@ -722,7 +704,9 @@ nb_k6 = graph.Graph.build_knn(
 )
 ```
 :::
+
 or imposing symmetry:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -754,17 +738,16 @@ w_k6s = weights.W(sym_neighbors_dict)
 
 # Convert back to Graph
 nb_k6s = graph.Graph.from_W(w_k6s)
-
 ```
 
 Here the size of `k` is sufficient to ensure connectedness, although the graph is not planar as edges cross at locations other than nodes, which is not the case for contiguous or graph-based neighbours.
+
 ::: panel-tabset
 #### R
 ```{r}
 (nb_k6s |> n.comp.nb())$nc
 ```
 #### Python
-
 ```{python}
 print(nb_k6s.n_components)
 ```
@@ -775,10 +758,11 @@ In the case of points on the sphere (see @sec-spherical), the output of `st_cent
 ```{r}
 old_use_s2 <- sf_use_s2()
 ```
--
+ 
 ```{r}
 sf_use_s2(TRUE)
 ```
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -787,7 +771,6 @@ pol_pres15_ll |>
     st_centroid(of_largest_polygon = TRUE) -> coords_ll
 ```
 #### Python
-
 ```{python}
 # convert the projection of the polygons to geographic CRS (WGS84)
 from pyproj import CRS
@@ -815,9 +798,7 @@ For spherical coordinates, distance bounds are in kilometres:
 (coords_ll |> dnearneigh(0, 18.3, use_s2 = TRUE, 
 						 dwithin = TRUE) -> nb_d183_ll)
 ```
-
 #### Python
-
 ```{python}
 # Convert degrees to radians for haversine
 coords_ll_rad = np.radians(coords_ll) 
@@ -851,20 +832,21 @@ nb_d183_ll = graph.Graph.from_dicts(neighbors_sph, weights = None)
 print(nb_d183_ll.summary())
 ```
 :::
+
 These neighbours differ from the spherical 18.3 km neighbours as would be expected:
--
+
 ::: panel-tabset
 #### R
 ```{r}
 isTRUE(all.equal(nb_d183, nb_d183_ll, check.attributes = FALSE))
 ```
 #### Python
-
 ```{python}
 print(nb_d183 == nb_d183_ll)
 
 ```
 :::
+
 If **s2** providing faster distance neighbour indexing is available, by default `s2_closest_edges` will be used for geographical coordinates:
 
 ```{r}
@@ -885,10 +867,7 @@ Fast spherical spatial indexing in **s2** is used to find $k$ nearest neighbours
 ```{r}
 (coords_ll |> knearneigh(k = 6) |> knn2nb() -> nb_k6_ll)
 ```
-These neighbours differ from the planar `k=6` nearest neighbours as would be expected, but will also differ slightly from legacy brute-force ellipsoid distances:
-
 #### Python
-
 ```{python}
 # The 'haversine' metric in Python typically requires inputs in radians.
 coords_ll_rad = np.radians(coords_ll)
@@ -900,6 +879,9 @@ nb_k6_ll = graph.Graph.build_knn(
 ) ##needs scikit installed
 ```
 :::
+
+These neighbours differ from the planar `k=6` nearest neighbours as would be expected, but will also differ slightly from legacy brute-force ellipsoid distances:
+
 ```{r}
 isTRUE(all.equal(nb_k6, nb_k6_ll, check.attributes = FALSE))
 ```
@@ -942,7 +924,7 @@ args(spweights.constants)
 xargs(spweights.constants)
 ```
 The `"B"` binary style gives a weight of unity to each neighbour relationship, and typically up-weights units with no boundaries on the edge of the study area, having a higher count of neighbours.
--
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -977,7 +959,7 @@ print(constants_B)
 \index{weights!row-standardised}
 
 The `"W"` row-standardised style up-weights units around the edge of the study area that necessarily have fewer neighbours. This style first gives a weight of unity to each neighbour relationship, then it divides these weights by the per unit sums of weights. Naturally this leads to division by zero where there are no neighbours, a not-a-number result, unless the chosen policy is to permit no-neighbour observations. We can see that $S_0$ is now equal to $n$.
--
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1004,6 +986,7 @@ constants_W = pd.DataFrame({
 print(constants_W)
 ```
 :::
+
 \index{weights!inverse distance}
 
 Inverse distance weights are used in a number of scientific fields. Some use dense inverse distance matrices, but many of the inverse distances are close to zero, have little practical contribution, especially as the spatial process matrix is itself dense. Inverse distance weights may be constructed by taking the lengths of edges, changing units to avoid most weights being too large or small (here from metre to kilometre), taking the inverse, and passing through the `glist` argument to `nb2listw`:
@@ -1087,10 +1070,7 @@ nb_d16 |>
     subset(select=c(n, S0, S1, S2))
 ```
 #### Python
-
 ```{python}
-
-
 # libpysal allows creating W with islands by default.
 w_d16_B = nb_d16.to_W()
 
@@ -1107,6 +1087,7 @@ constants_d16 = pd.DataFrame({
 print(constants_d16)
 ```
 :::
+
 Note that by default the `adjust.n` argument to `spweights.constants` is set by default to `TRUE`, subtracting the count of no-neighbour observations from the observation count, so $n$ is smaller with possible consequences for inference. The complete count can be retrieved by changing the argument.
 
 ## Higher order neighbours
@@ -1125,9 +1106,7 @@ If we wish to create an object showing $i$ to $k$ neighbours, where $i$ is a nei
 ```{r}
 (nb_q |> nblag(2) -> nb_q2)[[2]]
 ```
-
 #### Python
-
 ```{python}
 from libpysal import weights
 
@@ -1144,11 +1123,12 @@ print(f"Percentage nonzero weights: {(w_q2.s0 / (w_q2.n**2) * 100):.2f}")
 print(f"Average number of links: {w_q2.mean_neighbors:.2f}")
 ```
 :::
+
 The `nblag_cumul` function cumulates the list of neighbours for the whole list of lags:
 
 \index[function]{nblag}
 \index[function]{nblag\_cumul}
--
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1170,6 +1150,7 @@ print(f"Percentage nonzero weights: {(w_cumul.s0 / (w_cumul.n**2) * 100):.2f}")
 print(f"Average number of links: {w_cumul.mean_neighbors:.2f}")
 ```
 :::
+
 while the set operation `union.nb` takes two objects, giving here the same outcome:
 \index[function]{union.nb}
 
@@ -1180,22 +1161,22 @@ Returning to the graph representation of the same neighbour object, we can ask h
 
 \index[function]{diameter}
 
-:::: panel-tabset
+::: panel-tabset
 #### R
 ```{r}
 diameter(g1)
 ```
-
 #### Python
 ```{python}
 # Calculate diameter using NetworkX
 d = nx.diameter(g1)
 print(f"Diameter: {d}")
 ```
-::::
+:::
+
 We step out from each observation across the graph to establish the number of steps needed to reach each other observation by the shortest path (creating an $n \times n$ matrix `sps`), once again finding the same maximum count. 
 
-:::: panel-tabset
+::: panel-tabset
 
 #### R
 ```{r}
@@ -1205,20 +1186,17 @@ g1 |> distances() -> sps
 #### Python
 
 ```{python}
-
 eccentricities = nx.eccentricity(g1)
-
-
 spmax = pd.Series(eccentricities)
-
 print(f"Max eccentricity (Diameter): {spmax.max()}")
 ```
-::::
+:::
+
 \index[function]{distances}
 
 The municipality with the maximum count is called Lutowiska, close to the Ukrainian border in the far south east of the country:
 
-:::: panel-tabset
+::: panel-tabset
 #### R
 ```{r}
 mr <- which.max(spmax)
@@ -1234,8 +1212,10 @@ mr = spmax.idxmax()
 remote_municipality = gdf.loc[mr, "name"]
 print(f"Most remote municipality: {remote_municipality}")
 ```
-::::
+:::
+
 @fig-shortestpath  shows that contiguity neighbours represent the same kinds of relationships with other observations as distance. Some approaches prefer distance neighbours on the basis that, for example, inverse distance neighbours show clearly how all observations are related to each other. However, the development of tests for spatial autocorrelation and spatial regression models has involved the inverse of a spatial process model, which in turn can be represented as the sum of a power series of the product of a coefficient and a spatial weights matrix, intrinsically acknowledging the relationships of all observations with all other observations. Sparse contiguity neighbour objects accommodate rich dependency structures without the need to make the structures explicit.
+
 ::: panel-tabset
 #### R
 ```{r fig-shortestpath, message=FALSE, echo=!knitr::is_latex_output()}
@@ -1265,9 +1245,7 @@ g1 <- ggplot(pol_pres15, aes(x = sps1, y = dist_52)) +
 		ylab("km distance")
 gridExtra::grid.arrange(tmap_grob(tm1), g1, nrow=1)
 ```
-
 #### Python
-
 ```{python}
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -1301,6 +1279,8 @@ ax2.set_title("Shortest Path vs. Physical Distance")
 plt.tight_layout()
 plt.show()
 ```
+:::
+
 ```{r echo=FALSE}
 save(list = ls(), file = "ch14.RData")
 ```
@@ -1316,6 +1296,7 @@ if 'w_q' not in locals():
 with open('ch14_py.pkl', 'wb') as f:
     pickle.dump({'gdf': gdf, 'w_q': w_q, 'w_q_B': w_q_B, 'w_d183_idw_B': w_d183_idw_B}, f)
 ```
+
 ## Exercises
 
 1. Which kinds of geometry support are appropriate for which functions creating neighbour objects?

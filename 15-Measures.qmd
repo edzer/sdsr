@@ -4,7 +4,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(reticulate)
 
 # use_condaenv("base", required = TRUE)
-use_virtualenv("./book-python", required = TRUE)
+# use_virtualenv("./book-python", required = TRUE)
 ```
 \index{spatial autocorrelation!measures of}
 
@@ -75,7 +75,6 @@ set.seed(1)
     glance_htest()
 ```
 #### Python
-
 ```{python}
 import pickle
 import pandas as pd
@@ -91,10 +90,10 @@ with open('ch14_py.pkl', 'rb') as f:
     data = pickle.load(f)
 
 gdf = data['gdf']
-w_q = data['w_q']
+w_q_B = data['w_q']
 
 # Ensure weights are row-standardized
-w_q.transform = 'r'
+w_q_B.transform = 'r'
 
 ## Test Moran's I in a random variable
 # Set seed
@@ -113,6 +112,8 @@ print(f"Std deviate:       {mi_rand.z_norm:.5f}")
 print(f"p-value:           {mi_rand.p_norm:.5f}")
 
 ```
+:::
+
 The test however detects quite strong positive spatial autocorrelation when we insert a gentle trend into the data, but omit to include it in the mean model, thus creating a missing variable problem but finding spatial autocorrelation instead:
 
 ::: panel-tabset
@@ -129,7 +130,6 @@ coords |>
     glance_htest()
 ```
 #### Python
-
 ```{python}
 beta = 0.0015
 
@@ -146,10 +146,12 @@ print(f"Moran I statistic: {mi_trend.I:.5f}")
 print(f"Std deviate:       {mi_trend.z_norm:.5f}")
 print(f"p-value:           {mi_trend.p_norm:.5f}")
 ```
+:::
 
 If we test the residuals of a linear model including the trend, the apparent spatial autocorrelation disappears:
 
 \index{spatial autocorrelation!of residuals}
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -158,7 +160,6 @@ lm(x_t ~ t) |>
     glance_htest()
 ```
 #### Python
-
 ```{python}
 from spreg import OLS
 
@@ -175,6 +176,7 @@ print(f"Moran I statistic: {mi:.5f}")
 print(f"Std deviate:       {z:.5f}")
 print(f"p-value:           {p:.5f}")
 ```
+:::
 
 A comparison of implementations of measures of spatial autocorrelation shows that a wide range of measures is available in R in a number of packages, chiefly in the **spdep** package [@R-spdep], and that differences from other implementations can be attributed to design decisions [@Bivand2018]. The **spdep** package also includes the only implementations of exact and saddlepoint approximations to global and local Moran's I for regression residuals [@tiefelsdorf:02; @bivandetal:09].
 
@@ -210,25 +212,26 @@ The function takes an `alternative` argument for hypothesis testing, a `sampling
     table()
 ```
 #### Python
-
 ```{python}
 Types = gdf['types']
 
 # Create the table (counts of each type)
 print(Types.value_counts().sort_index())
 ```
+:::
+
 Since there are four levels, we rearrange the list of `htest` objects to give a matrix of estimated results. The observed same-colour join-counts are tabulated with their expectations based on the counts of levels of the input factor, so that few joins would be expected between for example Warsaw boroughs, because there are very few of them. The variance calculation uses the underlying constants of the chosen `listw` object and the counts of levels of the input factor. The z-value is obtained in the usual way by dividing the difference between the observed and expected join-counts by the square root of the variance.
 
 The join-count test was subsequently adapted for multi-colour join-counts [@upton+fingleton:85]. The implementation as `joincount.multi` in **spdep** returns a table based on non-free sampling, and does not report p-values.
 
 \index[function]{joincount.multi}
+
 ::: panel-tabset
 #### R
 ```{r}
 Types |> joincount.multi(listw = lw_q_B)
 ```
 #### Python
-
 ```{python}
 types = gdf['types'].astype(object).reset_index(drop=True)
 
@@ -282,21 +285,21 @@ results['z-value'] = (results['Joincount'] - results['Expected']) / np.sqrt(resu
 
 print(results)
 ```
+:::
 
 So far, we have used binary weights, so the sum of join-counts multiplied by the weight on that join remains integer. If we change to row standardised weights, where the weights are almost always fractions of 1, the counts, expectations and variances change, but there are few major changes in the z-values.
 
 Using an inverse distance based `listw` object does, however, change the z-values markedly, because closer centroids are up-weighted relatively strongly:
+
 ::: panel-tabset
 #### R
 ```{r}
 Types |> joincount.multi(listw = lw_d183_idw_B)
 ```
-
 #### Python
-
-```{python}
+```{python eval=FALSE}
 # 1. Convert the new IDW matrix to an adjacency list
-adj_idw = w_d183_idw_B.to_adjlist(remove_symmetric=False)
+adj_idw = lw_d183_idw_B.to_adjlist(remove_symmetric=False)
 
 # 2. Define a function that SUMS the continuous weights
 def get_weighted_counts(adj_df, type_series):
@@ -340,10 +343,12 @@ results_idw['z-value'] = (results_idw['Joincount'] - results_idw['Expected']) / 
 
 print(results_idw)
 ```
+:::
 
 ### Moran's $I$
 
 The implementation of Moran's $I$ in **spdep** in the `moran.test` function has similar arguments to those of `joincount.test`, but `sampling` is replaced by `randomisation` to indicate the underlying analytical approach used for calculating the variance of the measure. It is also possible to use ranks rather than numerical values [@cliff+ord:81, p. 46]. The `drop.EI2` argument may be used to reproduce results where the final component of the variance term is omitted as found in some legacy software implementations.
+
 ::: panel-tabset
 #### R
 ```{r, echo=TRUE, eval=FALSE}
@@ -352,7 +357,6 @@ args(moran.test)
 ```{r, echo=FALSE, eval=TRUE}
 xargs(moran.test)
 ```
-
 #### Python
 ```{python}
 from esda.moran import Moran
@@ -360,25 +364,22 @@ import inspect
 
 print(inspect.signature(Moran))
 ```
+:::
 
 \index[function]{moran.test}
 
 The default for the `randomisation` argument is `TRUE`, but here we will simply show that the test under normality is the same as a test of least squares residuals with only the intercept used in the mean model. The analysed variable is first-round turnout proportion of registered voters in municipalities and Warsaw boroughs in the 2015 Polish presidential election. The spelling of randomisation is that of Cliff and Ord [-@cliff+ord:73].
+
 ::: panel-tabset
 #### R
 ```{r}
 pol_pres15 |> 
         st_drop_geometry() |> 
         subset(select = I_turnout, drop = TRUE) -> I_turnout
-```
-
-```{r}
 I_turnout |> moran.test(listw = lw_q_B, randomisation = FALSE) |> 
     glance_htest()
 ```
-
 #### Python
-
 ```{python}
 I_turnout = gdf['I_turnout']
 
@@ -391,21 +392,20 @@ print(f"Variance:    {moran_res.VI_norm}")
 print(f"Z-value:     {moran_res.z_norm}")
 print(f"P-value:     {moran_res.p_norm}")
 ```
+:::
 
 \index[function]{lm.morantest}
 
 The `lm.morantest` function also takes a `resfun` argument to set the function used to extract the residuals used for testing, and clearly lets us model other salient features of the response variable [@cliff+ord:81, p. 203]. To compare with the standard test, we are only using the intercept here and, as can be seen, the results are the same.
-::: panel-tabset
 
+::: panel-tabset
 #### R
 ```{r}
 lm(I_turnout ~ 1, pol_pres15) |> 
     lm.morantest(listw = lw_q_B) |> 
     glance_htest()
 ```
-
 #### Python 
-
 ```{python}
 from spreg import MoranRes
 dummy_x = np.zeros((len(I_turnout), 1))
@@ -415,10 +415,11 @@ m_res = MoranRes(OLS(I_turnout.values, dummy_x), w_q_B, z= True)
 print(f"Moran I statistic: {m_res.I:.5f}")
 print(f"Std deviate:       {m_res.zI:.5f}")
 print(f"p-value:           {m_res.p_norm:.5f}")
-
 ```
+:::
 
 The only difference between tests under normality and randomisation is that an extra term is added if the kurtosis of the variable of interest indicates a flatter or more peaked distribution, where the measure used is the classical measure of kurtosis. Under the default randomisation assumption of analytical randomisation, the results are largely unchanged.
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -426,9 +427,7 @@ The only difference between tests under normality and randomisation is that an e
     moran.test(listw = lw_q_B) -> mtr) |> 
     glance_htest()
 ```
-
 #### Python
-
 ```{python}
 # Using the already initialized moran_res object from the previous chunk
 print(f"Moran I statistic: {moran_res.I:.5f}")
@@ -437,11 +436,13 @@ print(f"Variance:          {moran_res.VI_rand:.5f}")
 print(f"Std deviate:       {moran_res.z_rand:.5f}")
 print(f"p-value:           {moran_res.p_rand:.5f}")
 ```
+:::
 
 \index[function]{glance\_htest}
 From the very beginning in the early 1970s, interest was shown in Monte Carlo tests, also known as Hope-type tests and as permutation bootstrap. By default, `moran.mc` returns a `"htest"` object, but may simply use `boot::boot` internally and return a `"boot"` object when `return_boot=TRUE`. In addition the number of simulations needs to be given as `nsim`; that is the number of times the values of the observations are shuffled at random.
 
 \index[function]{moran.mc}
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -450,9 +451,7 @@ I_turnout |>
     moran.mc(listw = lw_q_B, nsim = 999, 
 			 return_boot = TRUE) -> mmc
 ```
-
 #### Python
-
 ```{python}
 np.random.seed(1)
 
@@ -465,6 +464,7 @@ print(f"Variance:          {mmc.VI_sim:.5f}")
 print(f"Std deviate:       {mmc.z_sim:.5f}")
 print(f"p-value:           {mmc.p_sim:.5f}")
 ```
+:::
 
 The bootstrap permutation retains the outcomes of each of the random permutations, reporting the observed value of the statistic, here Moran's $I$, the difference between this value and the mean of the simulations under randomisation (equivalent to $E(I)$), and the standard deviation of the simulations under randomisation. 
 
@@ -482,13 +482,13 @@ c("Permutation bootstrap" = var(mmc$t),
   "Analytical randomisation" = unname(mtr$estimate[3]))
 ```
 #### Python
-
 ```{python}
 # Variance comparison
 print("\n--- Variance Comparison ---")
 print(f"Permutation bootstrap:    {mmc.VI_sim:.5f}")
 print(f"Analytical randomisation: {moran_res.VI_rand:.5f}")
 ```
+:::
 
 Geary's global $C$ is implemented in `geary.test` largely following the same argument structure as `moran.test`. The Getis-Ord $G$ test includes extra arguments to accommodate differences between implementations, as @Bivand2018 found multiple divergences from the original definitions, often to omit no-neighbour observations generated when using distance band neighbours. It is given by @getis+ord:92, on page 194. For $G^*$, the $i \neq j$ summation constraint is relaxed by including $i$ as a neighbour of itself (thereby also removing the no-neighbour problem, because all observations have at least one neighbour).
 
@@ -505,6 +505,7 @@ Building on insights from the weaknesses of global measures, local indicators of
 In addition, the Moran plot was introduced, plotting the values of the variable of interest against their spatially lagged values, typically using row-standardised weights to make the axes more directly comparable [@anselin:96]. The `moran.plot` function also returns an influence measures object used to label observations exerting more than proportional influence on the slope of the line representing global Moran's $I$. In @fig-moranplot, we can see that there are many spatial entities exerting such influence. These pairs of observed and lagged observed values make up in aggregate the global measure, but can also be explored in detail. The quadrants of the Moran plot also show low-low pairs in the lower left quadrant, high-high in the upper right quadrant, and fewer low-high and high-low pairs in the upper left and lower right quadrants. In `moran.plot`, the quadrants are split on the means of the variable and its spatial lag; alternative splits are on zero for the centred variable and the spatial lag of the centred variable.
 
 \index[function]{moran.plot}
+
 ::: panel-tabset
 #### R
 ```{r fig-moranplot, echo=!knitr::is_latex_output()}
@@ -516,9 +517,7 @@ I_turnout |>
 			   ylab = "lagged turnout") -> infl_W
 ```
 #### Python
-
 ```{python}
-
 # Plot with zstandard=False, pass scatter_kwds to match pch="." and cex=1
 fig, ax = moran_scatterplot(
     moran_res, 
@@ -530,8 +529,9 @@ ax.set_xlabel("I round turnout")
 ax.set_ylabel("lagged turnout")
 
 plt.show()
-
 ```
+:::
+
 If we extract the hat value influence measure from the returned object, @fig-moranhat suggests that some edge entities exert more than proportional influence (perhaps because of row standardisation), as do entities in or near larger urban areas.
 
 ::: panel-tabset
@@ -550,13 +550,12 @@ if (tmap4) {
 }
 ```
 #### Python
-
 ```{python}
 import statsmodels.api as sm
 
 # Compute spatial lag using row-standardized weights
-w_q.transform = 'r'
-lag_turnout = weights.lag_spatial(w_q, I_turnout.values)
+w_q_B.transform = 'r'
+lag_turnout = weights.lag_spatial(w_q_B, I_turnout.values)
 
 # Fit OLS of lagged values on original values (replicating moran.plot internals)
 X = sm.add_constant(I_turnout.values)
@@ -573,6 +572,7 @@ gdf.plot(column='hat_value', cmap='YlOrBr', legend=True, ax=ax,
 ax.axis('off')
 plt.show()
 ```
+:::
 
 ### Local Moran's $I_i$
 \index{Moran's I!local}
@@ -585,10 +585,10 @@ plt.show()
 args(localmoran)
 ```
 #### Python
-
 ```{python}
 print(inspect.signature(Moran_Local))
 ```
+:::
 
 ```{r, echo=FALSE, eval=TRUE}
 xargs(localmoran)
@@ -603,14 +603,14 @@ In an important clarification, @sauer_oshan_rey_wolf_2021 show that the comparis
 I_turnout |> 
     localmoran(listw = lw_q_W) -> locm
 ```
-
 #### Python
-
 ```{python}
-locm = Moran_Local(I_turnout, w_q, permutations=0)
+locm = Moran_Local(I_turnout, w_q_B, permutations=0)
 ```
+:::
 
 The $I_i$ local indicators when summed and divided by the sum of the spatial weights equal global Moran's $I$, showing the possible presence of positive and negative local spatial autocorrelation:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -618,13 +618,13 @@ all.equal(sum(locm[,1])/Szero(lw_q_W),
 		  unname(moran.test(I_turnout, lw_q_W)$estimate[1]))
 ```
 #### Python
-
 ```{python}
-w_q.transform = 'r'
-moran_W = Moran(I_turnout, w_q, permutations=0)
-print(locm.Is.sum() / w_q.s0)
+w_q_B.transform = 'r'
+moran_W = Moran(I_turnout, w_q_B, permutations=0)
+print(locm.Is.sum() / w_q_B.s0)
 print(moran_W.I)
 ```
+:::
 
 Using `stats::p.adjust` to adjust for multiple comparisons, we see that over 15\% of the 2495 local measures have p-values < 0.005 if no adjustment is applied, but only 1.5\% using Bonferroni adjustment to control the family-wise error rate, with two other choices shown: `"fdr"` is the @fdr-BH false discovery rate (almost 6\%) and `"BY"` [@10.1214/aos/1013699998], another false discovery rate adjustment (about 2.5\%):
 
@@ -640,9 +640,7 @@ locm |>
 f <- function(x) sum(x < 0.005)
 apply(pvsp, 2, f)
 ```
-
 #### Python
-
 ```{python}
 from scipy import stats
 from statsmodels.stats.multitest import multipletests
@@ -661,10 +659,12 @@ def pva(pv):
 pvsp = pva(p_analytical)
 print((pvsp < 0.005).sum())
 ```
+:::
 
 In the global measure case, bootstrap permutations may be used as an alternative to analytical methods for possible inference, where both the theoretical development of the analytical variance of the measure, and the permutation scheme, shuffle all of the observed values.  In the local case, conditional permutation should be used, fixing the value at observation $i$ and randomly sampling from the remaining $n-1$ values to find randomised values at neighbours. Conditional permutation is provided as function `localmoran_perm`, which may use multiple compute nodes to sample in parallel if provided, and permits the setting of a seed for the random number generator across the compute nodes. The number of simulations `nsim` also controls the precision of the ranked estimates of the probability value based on the rank of observed $I_i$ among the simulated values:
 
 \index[function]{localmoran\_perm}
+
 ::: panel-tabset
 #### R
 ```{r, message=FALSE, cache=TRUE}
@@ -674,13 +674,12 @@ I_turnout |>
     localmoran_perm(listw = lw_q_W, nsim = 9999, 
 					iseed = 1) -> locm_p
 ```
-
 #### Python
-
-```{python, message=FALSE, cache=TRUE}
+```{python, message=FALSE, cache=TRUE,eval=FALSE}
 ##no parallel option found
-locm_p = Moran_Local(I_turnout, w_q, permutations=9999, seed=1)
+locm_p = Moran_Local(I_turnout, w_q_B, permutations=9999, seed=1)
 ```
+:::
 
 The outcome is that over 15\% of observations have two sided p-values < 0.005 without multiple comparison adjustment, and about 1.5\% with Bonferroni adjustment, when the p-values are calculated using the standard deviate of the permutation samples and the normal distribution.
 
@@ -693,14 +692,16 @@ locm_p |>
 apply(pvsp, 2, f)
 ```
 #### Python
-
-```{python}
+```{python,eval=FALSE}
 #"Pr(z != E(Ii))" — permutation standard deviate p-values (two-sided)
 p_std_twosided = np.minimum(locm_p.p_z_sim * 2, 1.0)
 pvsp = pva(p_std_twosided)
 print((pvsp < 0.005).sum())
 ```
+:::
+
 Since the variable under analysis may not be normally distributed, the p-values can also be calculated by finding the rank of the observed $I_i$ among the rank-based simulated values, and looking up the probability value from the uniform distribution taking the `alternative` choice into account:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -710,15 +711,16 @@ locm_p |>
 apply(pvsp, 2, f)
 ```
 #### Python
-
-```{python}
+```{python,eval=FALSE}
 #"Pr(z != E(Ii)) Sim" — permutation rank p-values
 p_rank_twosided = np.minimum(locm_p.p_sim * 2, 1.0)
 pvsp = pva(p_rank_twosided)
 print((pvsp < 0.005).sum())
 ```
+:::
 
 Now the `"BY"` and Bonferroni counts of *interesting* locations are zero with 9999 samples, but may be recovered by increasing the sample count to 999999 if required; the FDR adjustment and *interesting* cutoff 0.005 yields about 5\% locations. 
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -729,12 +731,13 @@ pol_pres15$locm_p_pv <- p.adjust(locm_p[, "Pr(z != E(Ii)) Sim"],
 								 "fdr")
 ```
 #### Python
-
-```{python}
+```{python,eval=FALSE}
 gdf['locm_pv'] = multipletests(p_analytical, method='fdr_bh')[1]
 gdf['locm_std_pv'] = multipletests(p_std_twosided, method='fdr_bh')[1]
 gdf['locm_p_pv'] = multipletests(p_rank_twosided, method='fdr_bh')[1]
 ```
+:::
+
 ::: panel-tabset
 #### R
 ```{r fig-localmoranPr, echo=!knitr::is_latex_output()}
@@ -764,8 +767,8 @@ tm_shape(pol_pres15) +
 							   "Permutation rank"))
 }
 ```
-
-```{python}
+#### Python
+```{python,eval=FALSE}
 from matplotlib.colors import BoundaryNorm
 
 pv_brks = [0, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.75, 1]
@@ -792,11 +795,14 @@ fig.colorbar(sm_cb, ax=axes, orientation='horizontal',
 plt.tight_layout()
 plt.show()
 ```
+:::
+
 Proceeding using the FDR adjustment and an *interesting* location cutoff of $0.005$, we can see from @fig-localmoranPr that the adjusted probability values for the analytical conditional approach, the approach using the moments of the sampled values from permutation sampling, and the approach using the ranks of observed values among permutation samples all yield similar maps, as the distribution of the input variable is quite close to normal.
 
 \index{hotspots}
 \index{Moran's I!hotspots}
 In presenting local Moran's $I$, use is often made of "hotspot" maps. Because $I_i$ takes high values both for strong positive autocorrelation of low and high values of the input variable, it is hard to show where "clusters" of similar neighbours with low or high values of the input variable occur. The quadrants of the Moran plot are used, by creating a categorical quadrant variable interacting the input variable and its spatial lag split at their means. The quadrant categories are then set to NA if, for the chosen probability value and adjustment, $I_i$ would not be considered *interesting*. Here, for the FDR adjusted conditional analytical probability values (@fig-localmoranPr, upper left panel), 53 observations belong to `"Low-Low"` cluster cores, and 96 to `"High-High"` cluster cores, similarly for the standard deviate-based permutation p-values (@fig-localmoranPr, upper right panel), but the rank-based permutation p-values reduce the `"High-High"` count and increase the `"Low-Low"` count @fig-localmoranPr lower left panel:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -815,8 +821,7 @@ t(rbind("Moran plot quadrants" = a, "Analytical cond." = b,
   "Permutation std. cond." = c, "Permutation rank cond." = d))
 ```
 #### Python
-
-```{python}
+```{python,eval=FALSE}
 # Quadrant labels mapping from Moran_Local q attribute
 # PySAL: 1=HH, 2=LH, 3=LL, 4=HL
 q_labels = {1: 'High-High', 2: 'Low-High', 3: 'Low-Low', 4: 'High-Low'}
@@ -850,6 +855,7 @@ print(pd.DataFrame({
     'Permutation rank cond.': d
 }).fillna(0).astype(int))
 ```
+:::
 
 ::: panel-tabset
 #### R
@@ -858,7 +864,6 @@ pol_pres15$hs_an_q <- droplevels(pol_pres15$hs_an_q)
 pol_pres15$hs_ac_q <- droplevels(pol_pres15$hs_ac_q)
 pol_pres15$hs_cp_q <- droplevels(pol_pres15$hs_cp_q)
 ```
-
 ```{r fig-Iihotspots, echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| fig.cap: "Local Moran\\'s I FDR hotspot cluster core maps $\\alpha = 0.005$: left upper panel: analytical conditional p-values; right upper panel: permutation standard deviate conditional p-values; left lower panel: permutation rank conditional p-values, first-round turnout, row-standardised neighbours"
@@ -886,10 +891,8 @@ tm_shape(pol_pres15) +
 							   "Permutation rank cond."))
 }
 ```
-
 #### Python
-
-```{python}
+```{python,eval=FALSE}
 import matplotlib.patches as mpatches
 
 cat_order = ['Low-Low', 'High-Low', 'Low-High', 'High-High']
@@ -920,6 +923,7 @@ fig.legend(handles=patches, title="Turnout hotspot status\nLocal Moran's I",
 plt.tight_layout(rect=[0, 0.08, 1, 1])
 plt.show()
 ```
+:::
 
 @fig-Iihotspots  shows that there is very little difference between the FDR-adjusted *interesting* clusters with a choice of an $\alpha=0.005$ probability value cutoff for the three approaches of analytical conditional standard deviates, permutation-based standard deviates, and rank-based probability values; the `"High-High"` cluster cores are metropolitan areas.
 
@@ -927,6 +931,7 @@ plt.show()
 
 \index[function]{localmoran.sad}
 \index{Moran's I!saddlepoint approximation}
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -937,7 +942,10 @@ lm(I_turnout ~ 1) -> lm_null
 X_null = np.ones((len(I_turnout), 1))
 lm_null = sm.OLS(I_turnout, X_null).fit()
 ```
+:::
+
 Saddlepoint approximation is as computationally intensive as conditional permutation, because, rather than computing a simple measure on many samples, a good deal of numerical calculation is needed for each local approximation:
+
 ::: panel-tabset
 #### R
 ```{r, cache=TRUE}
@@ -945,14 +953,17 @@ lm_null |> localmoran.sad(nb = nb_q, style = "W",
 								  alternative = "two.sided") |>
         summary() -> locm_sad_null
 ```
-
+#### Python
 ```{python}
 ##pysal doesnot have saddle point approximation
 ##using permutation on the residuals as the closest approximation
-locm_sad_null = Moran_Local(lm_null.resid, w_q, permutations=9999, seed=1)
+locm_sad_null = Moran_Local(lm_null.resid, w_q_B, permutations=9999, seed=1)
 
 ```
+:::
+
 The chief advantage of the saddlepoint approximation is that it takes a fitted linear model rather than simply a numerical variable, so the residuals are analysed. With an intercept-only model, the results are similar to local Moran's $I_i$, but we can weight the observations, here by the count of those entitled to vote, which should down-weight small units of observation:
+
 ::: panel-tabset
 #### R
 ```{r, cache=TRUE}
@@ -964,13 +975,15 @@ lm_null_weights |>
         summary() -> locm_sad_null_weights
 ```
 #### Python
-
 ```{python}
 wts = gdf['I_entitled_to_vote'].values.astype(float)
 lm_null_w = sm.WLS(I_turnout, X_null, weights=wts).fit()
-locm_sad_null_weights = Moran_Local(lm_null_w.resid, w_q, permutations=9999, seed=1)
+locm_sad_null_weights = Moran_Local(lm_null_w.resid, w_q_B, permutations=9999, seed=1)
 ```
+:::
+
 Next we add the categorical variable distinguishing between rural, urban and other types of observational unit:
+
 ::: panel-tabset
 #### R
 ```{r, cache=TRUE}
@@ -981,13 +994,14 @@ lm_types |> localmoran.sad(nb = nb_q, style = "W",
         summary() -> locm_sad_types
 ```
 #### Python
-
 ```{python}
 Types_dummies = pd.get_dummies(Types, drop_first=True, dtype=float)
 X_types = sm.add_constant(Types_dummies)
 lm_types = sm.WLS(I_turnout, X_types, weights=wts).fit()
-locm_sad_types = Moran_Local(lm_types.resid, w_q, permutations=9999, seed=1)
+locm_sad_types = Moran_Local(lm_types.resid, w_q_B, permutations=9999, seed=1)
 ```
+:::
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -999,7 +1013,6 @@ locm_sad_types |> hotspot(Prname="Pr. (Sad)",
 					 cutoff = 0.005) -> pol_pres15$locm_sad2
 ```
 #### Python
-
 ```{python}
 def hotspot_resid(moran_local, cutoff=0.005):
     q_labels = {1: 'High-High', 2: 'Low-High', 3: 'Low-Low', 4: 'High-Low'}
@@ -1014,6 +1027,8 @@ gdf['locm_sad0'] = hotspot_resid(locm_sad_null)
 gdf['locm_sad1'] = hotspot_resid(locm_sad_null_weights)
 gdf['locm_sad2'] = hotspot_resid(locm_sad_types)
 ```
+:::
+
 ::: panel-tabset
 #### R
 ```{r fig-localmoranHsad, echo=!knitr::is_latex_output()}
@@ -1045,13 +1060,13 @@ tm_shape(pol_pres15) +
 }
 ```
 #### Python
-
-```{python}
+```{python,eval=FALSE}
 fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 axes = axes.flatten()
 cols = ['hs_cp_q', 'locm_sad0', 'locm_sad1', 'locm_sad2']
 titles = ['Permutation rank', 'Null model residuals',
           'Weighted null residuals', 'Weighted types residuals']
+na_color = '#F2F2F2'
 
 for ax, col, title in zip(axes, cols, titles):
     gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
@@ -1070,6 +1085,8 @@ fig.legend(handles=patches, title="Turnout hotspot status\nLocal Moran's I",
 plt.tight_layout(rect=[0, 0.08, 1, 1])
 plt.show()
 ```
+:::
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1092,10 +1109,13 @@ print(pd.DataFrame({
     'type_weighted': b2
 }).fillna(0).astype(int).T)
 ```
+:::
+
 \newpage
 @fig-localmoranHsad includes the permutation rank cluster cores for comparison (upper left panel). Because saddlepoint approximation permits richer mean models to be used, and possibly because the approximation approach is inherently local, relating regression residual values at $i$ to those of its neighbours, the remaining three panels diverge somewhat. The intercept-only (null) model is fairly similar to standard local Moran's $I_i$, but weighting by counts of eligible voters removes most of the `"Low-Low"` cluster cores. Adding the type categorical variable strengthens the urban `"High-High"` cluster cores but removes the Warsaw boroughs as *interesting* cluster cores. The central boroughs are surrounded by other boroughs, all with high turnout, not driven by autocorrelation but by being metropolitan boroughs. It is also possible to use saddlepoint approximation where the global spatial process has been incorporated, removing the conflation of global and local spatial autocorrelation in standard approaches. 
 
 The same can also be accomplished using exact methods, but may require more tuning as numerical integration may fail, returning `NaN` rather than the exact estimate of the standard deviate [@bivandetal:09]:
+
 ::: panel-tabset
 #### R
 ```{r, cache=TRUE}
@@ -1104,11 +1124,12 @@ lm_types |> localmoran.exact(nb = nb_q, style = "W",
     as.data.frame() -> locm_ex_types
 ```
 #### Python
-
 ```{python}
 ## no exact method available
-locm_ex_types = Moran_Local(lm_types.resid, w_q, permutations=99999, seed=1)
+locm_ex_types = Moran_Local(lm_types.resid, w_q_B, permutations=99999, seed=1)
 ```
+:::
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1116,10 +1137,11 @@ locm_ex_types |> hotspot(Prname = "Pr. (exact)",
 						 cutoff = 0.005) -> pol_pres15$locm_ex
 ```
 #### Python
-
 ```{python}
 gdf['locm_ex'] = hotspot_resid(locm_ex_types)
 ```
+:::
+
 ::: panel-tabset
 #### R
 ```{r fig-localmoranHsadex, echo=!knitr::is_latex_output()}
@@ -1149,10 +1171,8 @@ tm_shape(pol_pres15) +
 							   "Exact weighted types"))
 }
 ```
-As @fig-localmoranHsadex shows, the exact and saddlepoint approximation methods yield almost identical cluster classifications from the same regression residuals, multiple comparison adjustment method, and cutoff level, with the exact method returning four more *interesting* observations:
 #### Python
-
-```{python}
+```{python, eval=FALSE}
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 cols = ['locm_sad2', 'locm_ex']
 titles = ['Permutation weighted types', 'High-permutation weighted types']
@@ -1174,6 +1194,10 @@ fig.legend(handles=patches, title="Turnout hotspot status\nLocal Moran's I",
 plt.tight_layout(rect=[0, 0.1, 1, 1])
 plt.show()
 ```
+:::
+
+As @fig-localmoranHsadex shows, the exact and saddlepoint approximation methods yield almost identical cluster classifications from the same regression residuals, multiple comparison adjustment method, and cutoff level, with the exact method returning four more *interesting* observations:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1181,12 +1205,12 @@ table(Saddlepoint = addNA(pol_pres15$locm_sad2),
 	  exact = addNA(pol_pres15$locm_ex))
 ```
 #### Python
-
 ```{python}
 sad2 = gdf['locm_sad2'].astype(object).where(gdf['locm_sad2'].notna(), 'NA')
 ex = gdf['locm_ex'].astype(object).where(gdf['locm_ex'].notna(), 'NA')
 print(pd.crosstab(sad2, ex, margins=False))
 ```
+:::
 
 ### Local Getis-Ord $G_i$
 
@@ -1194,6 +1218,7 @@ print(pd.crosstab(sad2, ex, margins=False))
 \index[function]{localG}
 
 The local Getis-Ord $G_i$ measure [@getis+ord:92; @getis+ord:96] is reported as a standard deviate, and, may also take the $G^*_i$ form where self-neighbours are inserted into the neighbour object using `include.self`. The observed and expected values of local $G$ with their analytical variances may also be returned if `return_internals=TRUE`. 
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1201,13 +1226,15 @@ I_turnout |>
         localG(lw_q_W, return_internals = TRUE) -> locG
 ```
 #### Python
-
 ```{python}
 from esda.getisord import G_Local
 
-locG = G_Local(I_turnout, w_q, permutations=0)
+locG = G_Local(I_turnout, w_q_B, permutations=0)
 ```
+:::
+
 Permutation inference is also available for this measure:
+
 ::: panel-tabset
 #### R
 ```{r, cache=TRUE} 
@@ -1215,11 +1242,13 @@ I_turnout |>
         localG_perm(lw_q_W, nsim = 9999, iseed = 1) -> locG_p
 ```
 #### Python
-
 ```{python}
-locG_p = G_Local(I_turnout, w_q, permutations=9999, seed=1)
+locG_p = G_Local(I_turnout, w_q_B, permutations=9999, seed=1)
 ```
+:::
+
 The correlation between the two-sided probability values for analytical and permutation-based standard deviates (first two columns and rows) and permutation rank-based probability values are very strong:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1228,7 +1257,6 @@ cor(cbind(localG=attr(locG, "internals")[, "Pr(z != E(Gi))"],
 								  "Pr(z != E(Gi)) Sim")]))
 ```
 #### Python
-
 ```{python}
 z_G = (locG.Gs - locG.EGs) / np.sqrt(locG.VGs)
 p_G_analytical = 2 * stats.norm.sf(np.abs(z_G))
@@ -1237,12 +1265,15 @@ p_G_rank = np.minimum(locG_p.p_sim * 2, 1.0)
 
 print(np.corrcoef(np.column_stack([p_G_analytical, p_G_std, p_G_rank]).T))
 ```
+:::
+
 ### Local Geary's $C_i$
 
 \index{Geary's C!local}
 \index[function]{localC\_perm}
 
 @https://doi.org/10.1111/gean.12164 extends @anselin:95 and has been recently added to **spdep** thanks to contributions by Josiah Parry (pull request https://github.com/r-spatial/spdep/pull/66). The conditional permutation framework used for $I_i$ and $G_i$ is also used for $C_i$:
+
 ::: panel-tabset
 #### R
 ```{r, cache=TRUE}
@@ -1250,13 +1281,15 @@ I_turnout |>
         localC_perm(lw_q_W, nsim=9999, iseed=1) -> locC_p
 ```
 #### Python
-
 ```{python}
 from esda.geary_local import Geary_Local
 
-locC_p = Geary_Local(connectivity=w_q, permutations=9999, seed=1).fit(I_turnout)
+locC_p = Geary_Local(connectivity=w_q_B, permutations=9999, seed=1).fit(I_turnout)
 ```
+:::
+
 The permutation standard deviate-based and rank-based probability values are not as highly correlated as for $G_i$, in part reflecting the difference in view of autocorrelation in $C_i$ as represented by a function of the differences between values rather than the products of values:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1264,7 +1297,6 @@ cor(attr(locC_p, "pseudo-p")[, c("Pr(z != E(Ci))",
 								 "Pr(z != E(Ci)) Sim")])
 ```
 #### Python
-
 ```{python}
 ## manually calculate z 
 sims = np.array(locC_p.rlocalG)
@@ -1276,6 +1308,8 @@ p_C_rank = np.minimum(np.array(locC_p.p_sim) * 2, 1.0)
 
 print(np.corrcoef(p_C_std, p_C_rank))
 ```
+:::
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1285,7 +1319,6 @@ locG_p |> hotspot(Prname = "Pr(z != E(Gi)) Sim",
 				  cutoff = 0.005) -> pol_pres15$hs_G
 ```
 #### Python
-
 ```{python}
 # Hotspot for local Geary C
 def hotspot_C(c_local, x, w, cutoff=0.005):
@@ -1318,9 +1351,11 @@ def hotspot_G(g_local, x, cutoff=0.005):
     hs[fdr_pv >= cutoff] = np.nan
     return hs
 
-gdf['hs_C'] = hotspot_C(locC_p, I_turnout, w_q)
+gdf['hs_C'] = hotspot_C(locC_p, I_turnout, w_q_B)
 gdf['hs_G'] = hotspot_G(locG_p, I_turnout)
 ```
+:::
+
 ::: panel-tabset
 #### R
 ```{r fig-localIGC, echo=!knitr::is_latex_output(), message=FALSE}
@@ -1378,8 +1413,7 @@ m3 <- tm_shape(pol_pres15) +
 tmap_arrange(m1, m2, m3, nrow=1)
 ```
 #### Python
-
-```{python}
+```{python,eval=FALSE}
 fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
 # Panel 1: Local Moran's I
@@ -1425,9 +1459,12 @@ fig.legend(handles=all_patches, title="Turnout hotspot status",
 plt.tight_layout(rect=[0, 0.1, 1, 1])
 plt.show()
 ```
+:::
+
 @fig-localIGC shows that the cluster cores identified as *interesting* using $I_i$, $G_i$ and $C_i$ for the same variable, first-round turnout, and the same spatial weights, for rank-based permutation FDR adjusted probability values and an $\alpha = 0.005$ cutoff, are very similar. In most cases, the `"High-High"` cluster cores are urban areas, and `"Low-Low"` cores are sparsely populated rural areas in the North, in addition to the German national minority areas close to the southern border. The three measures use slightly different strategies for naming cluster cores: $I_i$ uses quadrants of the Moran scatterplot, $G_i$ splits into `"Low"` and `"High"` on the mean of the input variable (which is the same as the first component in the $I_i$ tuple), and univariate $C_i$ on the mean of the input variable and zero for its lag. As before, cluster categories that do not occur are dropped.
 
 For comparison, and before moving to multivariate $C_i$, let us take the univariate $C_i$ for the second (final) round turnout. One would expect that the run-off between the two top candidates from the first-round might mobilise some voters who did not have a clear first-round preference, but that it discourages some of those with strong loyalty to a candidate eliminated after the first round:
+
 ::: panel-tabset
 #### R
 ```{r, cache=TRUE}
@@ -1437,11 +1474,11 @@ pol_pres15 |>
         localC_perm(lw_q_W, nsim=9999, iseed=1) -> locC_p_II
 ```
 #### Python
-
 ```{python}
 II_turnout = gdf['II_turnout']
-locC_p_II = Geary_Local(connectivity=w_q, permutations=9999, seed=1).fit(II_turnout)
+locC_p_II = Geary_Local(connectivity=w_q_B, permutations=9999, seed=1).fit(II_turnout)
 ```
+:::
 
 ::: panel-tabset
 #### R
@@ -1450,11 +1487,13 @@ locC_p_II |> hotspot(Prname = "Pr(z != E(Ci)) Sim",
 					 cutoff = 0.005) -> pol_pres15$hs_C_II
 ```
 #### Python
-
 ```{python}
-gdf['hs_C_II'] = hotspot_C(locC_p_II, II_turnout, w_q)
+gdf['hs_C_II'] = hotspot_C(locC_p_II, II_turnout, w_q_B)
 ```
+:::
+
 Multivariate $C_i$ [@https://doi.org/10.1111/gean.12164] is taken as the sum of univariate $C_i$ divided by the number of variables, but permutation is fixed so that the correlation between the variables is unchanged:
+
 ::: panel-tabset
 #### R
 ```{r, cache=TRUE}
@@ -1464,14 +1503,16 @@ pol_pres15 |>
         localC_perm(lw_q_W, nsim=9999, iseed=1) -> locMvC_p
 ```
 #### Python
-
 ```{python}
 from esda.geary_local_mv import Geary_Local_MV
 
-locMvC_p = Geary_Local_MV(connectivity=w_q, permutations=9999).fit(
+locMvC_p = Geary_Local_MV(connectivity=w_q_B, permutations=9999).fit(
     [gdf['I_turnout'].values, gdf['II_turnout'].values])
 ```
+:::
+
 Let us check that the multivariate $C_i$ is equal  to  the mean of the univariate $C_i$:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1479,13 +1520,14 @@ all.equal(locMvC_p, (locC_p+locC_p_II)/2,
 		  check.attributes = FALSE)
 ```
 #### Python
-
 ```{python}
 mv_vals = np.array(locMvC_p.localG)
 uv_mean = (np.array(locC_p.localG) + np.array(locC_p_II.localG)) / 2
 
 print(np.allclose(mv_vals, uv_mean))
 ```
+:::
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1493,7 +1535,6 @@ locMvC_p |> hotspot(Prname = "Pr(z != E(Ci)) Sim",
 					cutoff = 0.005) -> pol_pres15$hs_MvC
 ```
 #### Python
-
 ```{python}
 def hotspot_MvC(mv_local, x_vars, w, cutoff=0.005):
     x_mean = np.column_stack(x_vars).mean(axis=1)
@@ -1512,8 +1553,10 @@ def hotspot_MvC(mv_local, x_vars, w, cutoff=0.005):
     hs[fdr_pv >= cutoff] = np.nan
     return hs
 
-gdf['hs_MvC'] = hotspot_MvC(locMvC_p, [I_turnout.values, II_turnout.values], w_q)
+gdf['hs_MvC'] = hotspot_MvC(locMvC_p, [I_turnout.values, II_turnout.values], w_q_B)
 ```
+:::
+
 ::: panel-tabset
 #### R
 ```{r fig-localCmulti, echo=!knitr::is_latex_output(), message=FALSE}
@@ -1573,8 +1616,7 @@ m5 <- tm_shape(pol_pres15) +
 tmap_arrange(m3, m4, m5, nrow=1)
 ```
 #### Python
-
-```{python}
+```{python,eval=FALSE}
 fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
 # Panel 1: Local Geary C, first-round turnout
@@ -1617,7 +1659,10 @@ fig.legend(handles=patches, title="Turnout hotspot status",
 plt.tight_layout(rect=[0, 0.1, 1, 1])
 plt.show()
 ```
+:::
+
 @fig-localCmulti indicates that the multivariate measure picks up aggregated elements of observations found *interesting* in the two univariate measures. We can break this down by interacting the first- and second-round univariate measures, and tabulating against the multivariate measure. 
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1626,7 +1671,6 @@ table(droplevels(interaction(addNA(pol_pres15$hs_C),
 	  addNA(pol_pres15$hs_MvC))
 ```
 #### Python
-
 ```{python}
 hs_C = gdf['hs_C'].astype(object).where(gdf['hs_C'].notna(), 'NA')
 hs_C_II = gdf['hs_C_II'].astype(object).where(gdf['hs_C_II'].notna(), 'NA')
@@ -1636,6 +1680,8 @@ interaction = hs_C.astype(str) + ':' + hs_C_II.astype(str)
 
 print(pd.crosstab(interaction, hs_MvC, margins=False))
 ```
+:::
+
 For these permutation outcomes, 47 observations in the multivariate case are found *interesting* where neither of the univariate $C_i$ were found *interesting* (FDR, cutoff $0.005$). Almost all of the observations found *interesting* in both first and second round, are also interesting in the multivariate case, but outcomes are more mixed when observations were only found interesting in one of the two rounds.
 
 ### The **rgeoda** package
@@ -1645,6 +1691,7 @@ For these permutation outcomes, 47 observations in the multivariate case are fou
 Geoda has been wrapped for R as **rgeoda** [@R-rgeoda], and provides very similar functionalities for the exploration of spatial autocorrelation in areal data as matching parts of **spdep**. The active objects are kept as pointers to a compiled code workspace; using compiled code for all operations (as in Geoda itself) makes **rgeoda** perform fast, but makes it less flexible when modifications or enhancements are desired.
 
 \index[function]{queen\_weights}
+
 ::: panel-tabset
 #### R
 ```{r, message=FALSE}
@@ -1653,7 +1700,6 @@ Geoda_w <- queen_weights(pol_pres15)
 summary(Geoda_w)
 ```
 #### Python
-
 ```{python}
 import pygeoda
 
@@ -1661,10 +1707,12 @@ geoda_obj = pygeoda.open(gdf)
 geoda_w = pygeoda.queen_weights(geoda_obj)
 print(geoda_w)
 ```
+:::
 
 For comparison, let us take the multivariate $C_i$ measure of turnout in the two rounds of the 2015 Polish presidential election as above:
 
 \index[function]{local\_multigeary}
+
 ::: panel-tabset
 #### R
 ```{r, message=FALSE}
@@ -1674,15 +1722,17 @@ lisa <- local_multigeary(Geoda_w,
     permutations = 99999, seed = 1)
 ```
 #### Python
-
 ```{python}
 lisa = pygeoda.local_multigeary(geoda_w, 
     [gdf['I_turnout'].tolist(), gdf['II_turnout'].tolist()],
     permutations=99999, seed=1)
 ```
+:::
+
 The contiguity neighbours are the same as those found by `poly2nb`:
 
 \index[function]{lisa\_num\_nbrs}
+
 ::: panel-tabset
 #### R
 ```{r, message=FALSE}
@@ -1690,17 +1740,19 @@ all.equal(card(nb_q), lisa_num_nbrs(lisa),
 		  check.attributes = FALSE)
 ```
 #### Python
-
 ```{python}
-nb_card = np.array(w_q.cardinalities.values())
+nb_card = np.array(w_q_B.cardinalities.values())
 lisa_nbrs = np.array(lisa.lisa_num_nbrs())
 
 print(np.array_equal(nb_card, lisa_nbrs))
 ## need recheck
 ```
+:::
+
 as are the multivariate $C_i$ values the same as those found above:
 
 \index[function]{lisa\_values}
+
 ::: panel-tabset
 #### R
 ```{r, message=FALSE}
@@ -1708,13 +1760,15 @@ all.equal(lisa_values(lisa), c(locMvC_p),
 		  check.attributes = FALSE)
 ```
 #### Python
-
 ```{python}
 ##not equal
 # need recheck
 print(np.allclose(np.array(lisa.lisa_values()), np.array(locMvC_p.localG)))
 ```
+:::
+
 One difference is that the range of the folded two-sided rank-based permutation probability values used by **rgeoda** is $[0, 0.5]$, also reported in **spdep**:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1722,7 +1776,6 @@ apply(attr(locMvC_p, "pseudo-p")[,c("Pr(z != E(Ci)) Sim",
 								"Pr(folded) Sim")], 2, range)
 ```
 #### Python
-
 ```{python}
 # need recheck
 p_twosided = np.minimum(np.array(locMvC_p.p_sim) * 2, 1.0)
@@ -1731,7 +1784,10 @@ p_folded = np.array(locMvC_p.p_sim)
 print(f"Pr(z != E(Ci)) Sim range: [{p_twosided.min():.5f}, {p_twosided.max():.5f}]")
 print(f"Pr(folded) Sim range:     [{p_folded.min():.5f}, {p_folded.max():.5f}]")
 ```
+:::
+
 This means that the cutoff corresponding to $0.005$ over $[0, 1]$ is $0.0025$ over $[0, 0.5]$:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1739,7 +1795,6 @@ locMvC_p |> hotspot(Prname = "Pr(folded) Sim",
 					cutoff = 0.0025) -> pol_pres15$hs_MvCa
 ```
 #### Python
-
 ```{python}
 def hotspot_MvCa(mv_local, x_vars, w, cutoff=0.0025):
     x_mean = np.column_stack(x_vars).mean(axis=1)
@@ -1757,10 +1812,12 @@ def hotspot_MvCa(mv_local, x_vars, w, cutoff=0.0025):
     hs[fdr_pv >= cutoff] = np.nan
     return hs
 
-gdf['hs_MvCa'] = hotspot_MvCa(locMvC_p, [I_turnout.values, II_turnout.values], w_q)
+gdf['hs_MvCa'] = hotspot_MvCa(locMvC_p, [I_turnout.values, II_turnout.values], w_q_B)
 ```
+:::
 
 So although `local_multigeary` used the default cutoff of $0.05$ in setting cluster core classes, we can sharpen the cutoff and apply the FDR adjustment on output components of the `lisa` object in the compiled code workspace:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1770,7 +1827,6 @@ is.na(mvc) <- p.adjust(lisa_pvalues(lisa), "fdr") >= 0.0025
 pol_pres15$geoda_mvc <- droplevels(mvc)
 ```
 #### Python
-
 ```{python}
 lisa_labels_list = lisa.lisa_labels()
 mvc = pd.Categorical(
@@ -1783,8 +1839,10 @@ mvc[fdr_pv >= 0.0025] = np.nan
 
 gdf['geoda_mvc'] = mvc
 ```
+:::
 
 About 80 more observations are found *interesting* in the **rgeoda** permutation, and further analysis of implementation details is still in progress:
+
 ::: panel-tabset
 #### R
 ```{r}
@@ -1792,17 +1850,16 @@ addmargins(table(spdep = addNA(pol_pres15$hs_MvCa),
 				 rgeoda = addNA(pol_pres15$geoda_mvc)))
 ```
 #### Python
-
 ```{python}
 spdep = gdf['hs_MvCa'].astype(object).where(gdf['hs_MvCa'].notna(), 'NA')
 rgeoda = gdf['geoda_mvc'].astype(object).where(gdf['geoda_mvc'].notna(), 'NA')
 
 print(pd.crosstab(spdep, rgeoda, margins=True))
 ```
+:::
 
 :::panel-tabset
 #### R
-
 ```{r fig-localCmultix, echo=!knitr::is_latex_output(), message=FALSE}
 #| out.width: 100%
 #| code-fold: true
@@ -1840,8 +1897,7 @@ m6 <- tm_shape(pol_pres15) +
 tmap_arrange(m5, m6, nrow=1)
 ```
 #### Python
-
-```{python}
+```{python,eval=FALSE}
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
 cols = ['hs_MvCa', 'geoda_mvc']
@@ -1865,6 +1921,7 @@ fig.legend(handles=patches, title="Turnout hotspot status",
 plt.tight_layout(rect=[0, 0.1, 1, 1])
 plt.show()
 ```
+:::
 
 @fig-localCmultix shows that while almost all of the 242 observations found *interesting* in the **spdep** implementation were also *interesting* for **rgeoda**, the latter found a further 86 *interesting*. Of course, permutation outcomes are bound to vary, but it remains to establish whether either or both implementations require revision.
 
