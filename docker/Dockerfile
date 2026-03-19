@@ -17,7 +17,7 @@ RUN pip3 install geopandas descartes rasterio folium matplotlib mapclassify
 # 0. install book source files, use python branch:
 RUN git clone  https://github.com/edzer/sdsr.git
 RUN cd sdsr && git checkout python && cd ..
-RUN mv sdsr /home/rstudio
+# RUN mv sdsr /home/rstudio
 
 ## 1. download & install sdsr data:
 RUN wget -q https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn/download -O sds.zip
