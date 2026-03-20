@@ -9,11 +9,10 @@ USER rstudio
 WORKDIR /home/rstudio
 
 # 0. install book source files, use python branch:
-RUN git clone  https://github.com/edzer/sdsr.git
+RUN git clone https://github.com/edzer/sdsr.git
 RUN cd sdsr && git checkout python && cd ..
-# RUN mv sdsr /home/rstudio
 
-# 0.1 install python dependencies in venv:
+# 0. install python dependencies in venv:
 RUN python3 -m venv venv
 RUN ./venv/bin/pip3 install -r /home/rstudio/sdsr/requirements.txt
 
@@ -45,4 +44,3 @@ RUN quarto render --to html
 USER root
 
 EXPOSE 8787
-
