@@ -39,6 +39,7 @@ RUN R -q -e 'options(timeout = 3600); install.packages("starsdata", repos = "htt
 ## 4. INLA:
 RUN R -q -e 'options(timeout = 600)' -e 'install.packages("INLA", repos = c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"))'
 
+RUN chmod +x /usr/local/lib/R/site-library/INLA/bin/linux/64bit/*
 RUN quarto render --to html
 
 USER root
