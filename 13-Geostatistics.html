@@ -405,19 +405,25 @@ window.Quarto = {
 <section id="sec-preparing" class="level2" data-number="13.1"><h2 data-number="13.1" class="anchored" data-anchor-id="sec-preparing">
 <span class="header-section-number">13.1</span> Preparing the air quality dataset</h2>
 <p>The dataset we work with is an air quality dataset obtained from the European Environmental Agency (EEA). European member states report air quality measurements to this agency. So-called <em>validated</em> data are quality controlled by member states, and are reported on a yearly basis. They form the basis for policy compliancy evaluations and (counter) measures.</p>
-<p>The EEA’s <a href="https://www.eea.europa.eu/data-and-maps/data/aqereporting-9">air quality e-reporting</a> website gives access to the data reported by European member states. We decided to download hourly (time series) data, which is the data primarily measured. A web form helps convert simple selection criteria into an http <code>GET</code> request. The <a href="https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&amp;CityName=&amp;Pollutant=8&amp;Year_from=2017&amp;Year_to=2017&amp;Station=&amp;Samplingpoint=&amp;Source=E1a&amp;Output=TEXT&amp;UpdateDate=">URL</a> was created to select all validated (<code>Source=E1a</code>) <span class="math inline">\(NO_2\)</span> (<code>Pollutant=8</code>) data for 2017 (<code>Year_from</code>, <code>Year_to</code>) from Germany (<code>CountryCode=DE</code>). It returns a text file with a set of URLs to CSV files, each containing the hourly values for the whole period for a single measurement station. These files were downloaded and converted to the right encoding using the <code>dos2unix</code> command line utility.</p>
+<p>The EEA’s <a href="https://www.eea.europa.eu/data-and-maps/data/aqereporting-9">air quality e-reporting</a> website gives access to the data reported by European member states. We decided to download hourly (time series) data, which is the data primarily measured. A web form helps convert simple selection criteria into an http <code>GET</code> request. The form was filled with Countries: DE; Cities: All; Pollutants: NO2; Dataset: Primary validated data (E1a); Type: hourly data; Temporal coverage Start: 01/01/2017, End: 01/01/2018; Download format: Parquet files. This downloads a zip file with parquet files, one per station. Station metadata are downloaded from the <a href="https://discomap.eea.europa.eu/App/AQViewer/index.html?fqn=Airquality_Dissem.b2g.measurements#">metadata link</a> shown at the bottom of the <a href="https://eeadmz1-downloads-webapp.azurewebsites.net/">EEA form page</a>. Below we assume the zip file is unpacked into subdirectory <code>aq</code>.</p>
 <p>In the following, we will read all the files into a list, except for the single file with the station metadata:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">files</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html">list.files</a></span><span class="op">(</span><span class="st">"aq"</span>, pattern <span class="op">=</span> <span class="st">"*.csv"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">files</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sets.html">setdiff</a></span><span class="op">(</span><span class="va">files</span>, <span class="st">"aq/AirBase_v8_stations.csv"</span><span class="op">)</span> <span class="co"># metadata file</span></span>
-<span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="va">files</span>, <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html">read.csv</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">files</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html">list.files</a></span><span class="op">(</span><span class="st">"aq/E1a"</span>, pattern <span class="op">=</span> <span class="st">"*.parquet"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="co"># files &lt;- setdiff(files, "aq/DataExtract.csv") # metadata file</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/apache/arrow/">arrow</a></span><span class="op">)</span></span>
+<span><span class="co"># </span></span>
+<span><span class="co"># Attaching package: 'arrow'</span></span>
+<span><span class="co"># The following object is masked from 'package:utils':</span></span>
+<span><span class="co"># </span></span>
+<span><span class="co">#     timestamp</span></span>
+<span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="va">files</span>, <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://arrow.apache.org/docs/r/reference/read_parquet.html">read_parquet</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>then we convert the time variable into a <code>POSIXct</code> variable, and put them in time order by</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html">Sys.setenv</a></span><span class="op">(</span>TZ <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span> <span class="co"># don't use local time zone</span></span>
 <span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="va">r</span>, <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="op">{</span></span>
-<span>        <span class="va">f</span><span class="op">$</span><span class="va">t</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html">as.POSIXct</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">DatetimeBegin</span><span class="op">)</span> </span>
-<span>        <span class="va">f</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">t</span><span class="op">)</span>, <span class="op">]</span> </span>
+<span>        <span class="va">f</span><span class="op">$</span><span class="va">t</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html">as.POSIXct</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">Start</span><span class="op">)</span> </span>
+<span>        <span class="va">f</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">t</span><span class="op">)</span>, <span class="op">]</span></span>
 <span>    <span class="op">}</span></span>
 <span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
@@ -425,47 +431,50 @@ window.Quarto = {
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">r</span> <span class="op">&lt;-</span> <span class="va">r</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">r</span>, <span class="va">nrow</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">1000</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">r</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">r</span>,</span>
-<span>               <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">AirQualityStationEoICode</span><span class="op">)</span><span class="op">)</span></span>
+<span>               <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">Samplingpoint</span>, <span class="fl">11</span>, <span class="fl">17</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">r</span><span class="op">)</span> <span class="op">==</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">r</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># [1] TRUE</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p> and then merge all files using <code>xts::cbind</code>, so that records are combined based on matching times:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://joshuaulrich.github.io/xts/">xts</a></span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/message.html">suppressPackageStartupMessages</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="va">r</span>, <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/pkg/xts/man/xts.html">xts</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">Concentration</span>, <span class="va">f</span><span class="op">$</span><span class="va">t</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">aq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">cbind</span>, <span class="va">r</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="va">r</span>, <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/pkg/xts/man/xts.html">xts</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">Value</span>, <span class="va">f</span><span class="op">$</span><span class="va">t</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">aq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">cbind</span>, <span class="va">r</span><span class="op">)</span></span>
+<span><span class="va">aq</span><span class="op">[</span><span class="va">aq</span> <span class="op">==</span> <span class="op">-</span><span class="fl">999</span><span class="op">]</span> <span class="op">=</span> <span class="cn">NA</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>A usual further selection for this dataset is to select stations for which 75% of the hourly values measured are valid, i.e., drop those with more than 25% missing hourly values. Knowing that <code>mean(is.na(x))</code> gives the <em>fraction</em> of missing values in a vector <code>x</code>, we can apply this function to the columns (stations):</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">sel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html">apply</a></span><span class="op">(</span><span class="va">aq</span>, <span class="fl">2</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">0.25</span><span class="op">)</span></span>
 <span><span class="va">aqsel</span> <span class="op">&lt;-</span> <span class="va">aq</span><span class="op">[</span>, <span class="va">sel</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<p>Next, the <a href="http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_stations.zip">station metadata</a> was read and filtered for rural background stations in Germany (<code>"DE"</code>) by</p>
+<p>Next, the station metadata was read and filtered for rural background stations in Germany by</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/message.html">suppressPackageStartupMessages</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/read.table.html">read.csv</a></span><span class="op">(</span><span class="st">"aq/AirBase_v8_stations.csv"</span>, sep <span class="op">=</span> <span class="st">"\t"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span><span class="va">rural</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"rural"</span>, <span class="st">"rural-regional"</span>, <span class="st">"rural-nearcity"</span>, <span class="st">"rural-remote"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/read.table.html">read.csv</a></span><span class="op">(</span><span class="st">"aq/DataExtract.csv"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="https://tibble.tidyverse.org/reference/as_tibble.html">as_tibble</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
-<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html">filter</a></span><span class="op">(</span><span class="va">country_iso_code</span> <span class="op">==</span> <span class="st">"DE"</span>,</span>
-<span>           <span class="va">station_type_of_area</span> <span class="op">==</span> <span class="st">"rural"</span>,</span>
-<span>           <span class="va">type_of_station</span> <span class="op">==</span> <span class="st">"Background"</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">a2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html">filter</a></span><span class="op">(</span><span class="va">Country</span> <span class="op">==</span> <span class="st">"Germany"</span>,</span>
+<span>           <span class="va">Air.Quality.Station.Area</span> <span class="op"><a href="https://rdrr.io/r/base/match.html">%in%</a></span> <span class="va">rural</span>,</span>
+<span>           <span class="va">Air.Quality.Station.Type</span> <span class="op">==</span> <span class="st">"background"</span>,</span>
+<span>           <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html">duplicated</a></span><span class="op">(</span><span class="va">Air.Quality.Station.EoI.Code</span><span class="op">)</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">a2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>These stations contain coordinates, and an <code>sf</code> object with (static) station metadata is created by</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/">sf</a></span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/message.html">suppressPackageStartupMessages</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">a2.sf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_as_sf.html">st_as_sf</a></span><span class="op">(</span><span class="va">a2</span>, crs <span class="op">=</span> <span class="st">'OGC:CRS84'</span>,</span>
-<span>  coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"station_longitude_deg"</span>, <span class="st">"station_latitude_deg"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span>  coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Longitude"</span>, <span class="st">"Latitude"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>We now subset the air quality measurements to include only stations that are of type rural background, which we saved in <code>a2</code>:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">sel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span><span class="va">aqsel</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/match.html">%in%</a></span> <span class="va">a2</span><span class="op">$</span><span class="va">station_european_code</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">sel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span><span class="va">aqsel</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/match.html">%in%</a></span> <span class="va">a2</span><span class="op">$</span><span class="va">Air.Quality.Station.EoI.Code</span></span>
 <span><span class="va">aqsel</span> <span class="op">&lt;-</span> <span class="va">aqsel</span><span class="op">[</span>, <span class="va">sel</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html">dim</a></span><span class="op">(</span><span class="va">aqsel</span><span class="op">)</span></span>
-<span><span class="co"># [1] 8760   74</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span><span class="co"># [1] 8760   76</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>We can compute station means and join these to station locations by</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">tb</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html">tibble</a></span><span class="op">(</span>NO2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html">apply</a></span><span class="op">(</span><span class="va">aqsel</span>, <span class="fl">2</span>, <span class="va">mean</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, </span>
-<span>            station_european_code <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span><span class="va">aqsel</span><span class="op">)</span><span class="op">)</span></span>
+<span>            Air.Quality.Station.EoI.Code <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span><span class="va">aqsel</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">crs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_crs.html">st_crs</a></span><span class="op">(</span><span class="st">'EPSG:32632'</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html">right_join</a></span><span class="op">(</span><span class="va">a2.sf</span>, <span class="va">tb</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html">st_transform</a></span><span class="op">(</span><span class="va">crs</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">no2.sf</span> </span>
 <span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_read.html">read_sf</a></span><span class="op">(</span><span class="st">"data/de_nuts1.gpkg"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html">st_transform</a></span><span class="op">(</span><span class="va">crs</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="va">de</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -491,10 +500,10 @@ window.Quarto = {
 <p>Several books have been written recently about modern approaches to handling and modelling spatiotemporal geostatistical data, including <span class="citation" data-cites="wikle2019spatio">Wikle et al. (<a href="references.html#ref-wikle2019spatio" role="doc-biblioref">2019</a>)</span> and <span class="citation" data-cites="blangiardo2015spatial">Blangiardo and Cameletti (<a href="references.html#ref-blangiardo2015spatial" role="doc-biblioref">2015</a>)</span>. Here, we will use <span class="citation" data-cites="RJ-2016-014">Gräler et al. (<a href="references.html#ref-RJ-2016-014" role="doc-biblioref">2016</a>)</span> and give some simple examples using the dataset also used for the previous chapter.</p>
 <section id="a-spatiotemporal-variogram-model" class="level3"><h3 class="anchored" data-anchor-id="a-spatiotemporal-variogram-model">A spatiotemporal variogram model</h3>
 <p></p>
-<p>Starting with the spatiotemporal matrix of NO<span class="math inline">\(_2\)</span> data in <code>aq</code> constructed at the beginning of this chapter, we selected complete records taken at rural background stations into <code>aqsel</code>. We can select the spatial locations for these 74 stations by</p>
+<p>Starting with the spatiotemporal matrix of NO<span class="math inline">\(_2\)</span> data in <code>aq</code> constructed at the beginning of this chapter, we selected complete records taken at rural background stations into <code>aqsel</code>. We can select the spatial locations for these stations by</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">sfc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html">st_geometry</a></span><span class="op">(</span><span class="va">a2.sf</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html">match</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span><span class="va">aqsel</span><span class="op">)</span>,</span>
-<span>                           <span class="va">a2.sf</span><span class="op">$</span><span class="va">station_european_code</span><span class="op">)</span><span class="op">]</span> <span class="op">|&gt;</span></span>
+<span>                           <span class="va">a2.sf</span><span class="op">$</span><span class="va">Air.Quality.Station.EoI.Code</span><span class="op">)</span><span class="op">]</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html">st_transform</a></span><span class="op">(</span><span class="va">crs</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>and finally build a <code>stars</code> vector data cube with time and station as dimensions:</p>
@@ -509,14 +518,14 @@ window.Quarto = {
 <span><span class="co"># stars object with 2 dimensions and 1 attribute</span></span>
 <span><span class="co"># attribute(s):</span></span>
 <span><span class="co">#      Min. 1st Qu. Median Mean 3rd Qu. Max.  NA's</span></span>
-<span><span class="co"># NO2  -8.1    3.02   5.66 8.39    10.4  197 16134</span></span>
+<span><span class="co"># NO2  -8.1    3.02   5.66 8.38    10.4  197 16628</span></span>
 <span><span class="co"># dimension(s):</span></span>
 <span><span class="co">#         from   to         offset   delta            refsys point</span></span>
 <span><span class="co"># time       1 8760 2017-01-01 UTC 1 hours           POSIXct    NA</span></span>
-<span><span class="co"># station    1   74             NA      NA WGS 84 / UTM z...  TRUE</span></span>
+<span><span class="co"># station    1   76             NA      NA WGS 84 / UTM z...  TRUE</span></span>
 <span><span class="co">#                                          values</span></span>
 <span><span class="co"># time                                       NULL</span></span>
-<span><span class="co"># station POINT (439814 ...,...,POINT (456668 ...</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span><span class="co"># station POINT (839838 ...,...,POINT (823627 ...</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>From this, we can compute the spatiotemporal variogram using</p>
 <div class="cell">
@@ -557,16 +566,16 @@ Figure&nbsp;13.1: Spatiotemporal sample variogram for hourly NO<span class="math
 <span>    control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>parscale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">100000</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">0.1</span>,<span class="fl">1</span>,<span class="fl">10</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>    lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0.0001</span>, <span class="fl">7</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># space component: </span></span>
-<span><span class="co">#   model    psill range</span></span>
-<span><span class="co"># 1   Nug   0.0166     0</span></span>
-<span><span class="co"># 2   Exp 152.7046 83590</span></span>
+<span><span class="co">#   model    psill  range</span></span>
+<span><span class="co"># 1   Nug   0.0174      0</span></span>
+<span><span class="co"># 2   Exp 151.3332 122399</span></span>
 <span><span class="co"># time component: </span></span>
 <span><span class="co">#   model   psill range</span></span>
-<span><span class="co"># 1   Nug  0.0001  0.00</span></span>
-<span><span class="co"># 2   Sph 25.5736  5.77</span></span>
-<span><span class="co"># k: 0.00397635996859073</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span><span class="co"># 1   Nug  0.0001   0.0</span></span>
+<span><span class="co"># 2   Sph 23.5666   5.9</span></span>
+<span><span class="co"># k: 0.00659252518178781</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<p>and shown in <a href="#fig-prodsummodelplot" class="quarto-xref">Figure&nbsp;<span>13.2</span></a>, which can also be plotted as wire frames, shown in <a href="#fig-modelwire" class="quarto-xref">Figure&nbsp;<span>13.3</span></a>. Fitting this model is rather sensitive to the chosen parameters, which may be caused by the relatively small number (74) of monitoring network stations available.</p>
+<p>and shown in <a href="#fig-prodsummodelplot" class="quarto-xref">Figure&nbsp;<span>13.2</span></a>, which can also be plotted as wire frames, shown in <a href="#fig-modelwire" class="quarto-xref">Figure&nbsp;<span>13.3</span></a>. Fitting this model is rather sensitive to the chosen parameters, which may be caused by the relatively small number (76) of monitoring network stations available.</p>
 <div class="cell">
 <details class="code-fold"><summary>Code</summary><div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">v.st</span>, <span class="va">fitProdSumModel</span>, wireframe <span class="op">=</span> <span class="cn">FALSE</span>, all <span class="op">=</span> <span class="cn">TRUE</span>, </span>
 <span>     scales <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>arrows <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, zlim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">150</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1198,371 +1207,379 @@ Wikle, Christopher K, Andrew Zammit-Mangion, and Noel Cressie. 2019. <em>Spatio-
 <span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>The EEA's [air quality</span>
 <span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>e-reporting](https://www.eea.europa.eu/data-and-maps/data/aqereporting-9)</span>
-<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>website gives access to the data reported by European member states.</span>
-<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>We decided to download hourly (time series) data, which is the data primarily measured.</span>
-<span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>A web form helps convert simple selection criteria into an http <span class="in">`GET`</span> request. The </span>
-<span id="cb25-30"><a href="#cb25-30" aria-hidden="true" tabindex="-1"></a><span class="co">[</span><span class="ot">URL</span><span class="co">](https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&amp;CityName=&amp;Pollutant=8&amp;Year_from=2017&amp;Year_to=2017&amp;Station=&amp;Samplingpoint=&amp;Source=E1a&amp;Output=TEXT&amp;UpdateDate=)</span>\footnote{\url{https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&amp;CityName=&amp;Pollutant=8&amp;Year_from=2017&amp;Year_to=2017&amp;Station=&amp;Samplingpoint=&amp;Source=E1a&amp;Output=TEXT&amp;UpdateDate=}}</span>
-<span id="cb25-31"><a href="#cb25-31" aria-hidden="true" tabindex="-1"></a>was created to select all validated (<span class="in">`Source=E1a`</span>) $NO_2$</span>
-<span id="cb25-32"><a href="#cb25-32" aria-hidden="true" tabindex="-1"></a>(<span class="in">`Pollutant=8`</span>) data for 2017 (<span class="in">`Year_from`</span>, <span class="in">`Year_to`</span>) from Germany</span>
-<span id="cb25-33"><a href="#cb25-33" aria-hidden="true" tabindex="-1"></a>(<span class="in">`CountryCode=DE`</span>).  It returns a text file with a set of URLs to CSV</span>
-<span id="cb25-34"><a href="#cb25-34" aria-hidden="true" tabindex="-1"></a>files, each containing the hourly values for the whole period for a</span>
-<span id="cb25-35"><a href="#cb25-35" aria-hidden="true" tabindex="-1"></a>single measurement station. These files were downloaded and converted</span>
-<span id="cb25-36"><a href="#cb25-36" aria-hidden="true" tabindex="-1"></a>to the right encoding using the <span class="in">`dos2unix`</span> command line utility.</span>
-<span id="cb25-37"><a href="#cb25-37" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-38"><a href="#cb25-38" aria-hidden="true" tabindex="-1"></a>In the following, we will read all the files into a list, except</span>
-<span id="cb25-39"><a href="#cb25-39" aria-hidden="true" tabindex="-1"></a>for the single file with the station metadata:</span>
-<span id="cb25-40"><a href="#cb25-40" aria-hidden="true" tabindex="-1"></a><span class="in">```{r readallcsvfiles}</span></span>
-<span id="cb25-41"><a href="#cb25-41" aria-hidden="true" tabindex="-1"></a>files <span class="ot">&lt;-</span> <span class="fu">list.files</span>(<span class="st">"aq"</span>, <span class="at">pattern =</span> <span class="st">"*.csv"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb25-42"><a href="#cb25-42" aria-hidden="true" tabindex="-1"></a>files <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(files, <span class="st">"aq/AirBase_v8_stations.csv"</span>) <span class="co"># metadata file</span></span>
-<span id="cb25-43"><a href="#cb25-43" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">lapply</span>(files, <span class="cf">function</span>(f) <span class="fu">read.csv</span>(f))</span>
-<span id="cb25-44"><a href="#cb25-44" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-45"><a href="#cb25-45" aria-hidden="true" tabindex="-1"></a>then we convert the time variable into a <span class="in">`POSIXct`</span> variable, and put them in time order by</span>
-<span id="cb25-46"><a href="#cb25-46" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fixtimes}</span></span>
-<span id="cb25-47"><a href="#cb25-47" aria-hidden="true" tabindex="-1"></a><span class="fu">Sys.setenv</span>(<span class="at">TZ =</span> <span class="st">"UTC"</span>) <span class="co"># don't use local time zone</span></span>
-<span id="cb25-48"><a href="#cb25-48" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">lapply</span>(r, <span class="cf">function</span>(f) {</span>
-<span id="cb25-49"><a href="#cb25-49" aria-hidden="true" tabindex="-1"></a>        f<span class="sc">$</span>t <span class="ot">=</span> <span class="fu">as.POSIXct</span>(f<span class="sc">$</span>DatetimeBegin) </span>
-<span id="cb25-50"><a href="#cb25-50" aria-hidden="true" tabindex="-1"></a>        f[<span class="fu">order</span>(f<span class="sc">$</span>t), ] </span>
-<span id="cb25-51"><a href="#cb25-51" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb25-52"><a href="#cb25-52" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb25-53"><a href="#cb25-53" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-54"><a href="#cb25-54" aria-hidden="true" tabindex="-1"></a>We remove smaller sub-datasets, which for this dataset have no hourly data:</span>
-<span id="cb25-55"><a href="#cb25-55" aria-hidden="true" tabindex="-1"></a><span class="in">```{r deselect_smaller_datasets}</span></span>
-<span id="cb25-56"><a href="#cb25-56" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> r[<span class="fu">sapply</span>(r, nrow) <span class="sc">&gt;</span> <span class="dv">1000</span>]</span>
-<span id="cb25-57"><a href="#cb25-57" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(r) <span class="ot">&lt;-</span> <span class="fu">sapply</span>(r,</span>
-<span id="cb25-58"><a href="#cb25-58" aria-hidden="true" tabindex="-1"></a>               <span class="cf">function</span>(f) <span class="fu">unique</span>(f<span class="sc">$</span>AirQualityStationEoICode))</span>
-<span id="cb25-59"><a href="#cb25-59" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(r) <span class="sc">==</span> <span class="fu">length</span>(<span class="fu">unique</span>(<span class="fu">names</span>(r)))</span>
-<span id="cb25-60"><a href="#cb25-60" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-61"><a href="#cb25-61" aria-hidden="true" tabindex="-1"></a>\index{xts}</span>
-<span id="cb25-62"><a href="#cb25-62" aria-hidden="true" tabindex="-1"></a>and then merge all files using <span class="in">`xts::cbind`</span>, so that records are combined based on matching times:</span>
-<span id="cb25-63"><a href="#cb25-63" aria-hidden="true" tabindex="-1"></a><span class="in">```{r converttoxts}</span></span>
-<span id="cb25-64"><a href="#cb25-64" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(xts) <span class="sc">|&gt;</span> <span class="fu">suppressPackageStartupMessages</span>()</span>
-<span id="cb25-65"><a href="#cb25-65" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">lapply</span>(r, <span class="cf">function</span>(f) <span class="fu">xts</span>(f<span class="sc">$</span>Concentration, f<span class="sc">$</span>t))</span>
-<span id="cb25-66"><a href="#cb25-66" aria-hidden="true" tabindex="-1"></a>aq <span class="ot">&lt;-</span> <span class="fu">do.call</span>(cbind, r)</span>
-<span id="cb25-67"><a href="#cb25-67" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-68"><a href="#cb25-68" aria-hidden="true" tabindex="-1"></a>A usual further selection for this dataset is to select stations</span>
-<span id="cb25-69"><a href="#cb25-69" aria-hidden="true" tabindex="-1"></a>for which 75\% of the hourly values measured are valid, i.e., drop</span>
-<span id="cb25-70"><a href="#cb25-70" aria-hidden="true" tabindex="-1"></a>those with more than 25\% missing hourly values. </span>
-<span id="cb25-71"><a href="#cb25-71" aria-hidden="true" tabindex="-1"></a>Knowing that <span class="in">`mean(is.na(x))`</span> gives the _fraction_ of missing values</span>
-<span id="cb25-72"><a href="#cb25-72" aria-hidden="true" tabindex="-1"></a>in a vector <span class="in">`x`</span>, we can apply this function to the columns (stations):</span>
-<span id="cb25-73"><a href="#cb25-73" aria-hidden="true" tabindex="-1"></a><span class="in">```{r removestationswithmissingvalues}</span></span>
-<span id="cb25-74"><a href="#cb25-74" aria-hidden="true" tabindex="-1"></a>sel <span class="ot">&lt;-</span> <span class="fu">apply</span>(aq, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">mean</span>(<span class="fu">is.na</span>(x)) <span class="sc">&lt;</span> <span class="fl">0.25</span>)</span>
-<span id="cb25-75"><a href="#cb25-75" aria-hidden="true" tabindex="-1"></a>aqsel <span class="ot">&lt;-</span> aq[, sel]</span>
-<span id="cb25-76"><a href="#cb25-76" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-77"><a href="#cb25-77" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-78"><a href="#cb25-78" aria-hidden="true" tabindex="-1"></a>Next, the <span class="co">[</span><span class="ot">station metadata</span><span class="co">](http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_stations.zip)</span> was read </span>
-<span id="cb25-79"><a href="#cb25-79" aria-hidden="true" tabindex="-1"></a>and filtered for rural background stations in Germany (<span class="in">`"DE"`</span>) by</span>
-<span id="cb25-80"><a href="#cb25-80" aria-hidden="true" tabindex="-1"></a><span class="in">```{r filterruralbackground}</span></span>
-<span id="cb25-81"><a href="#cb25-81" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse) <span class="sc">|&gt;</span> <span class="fu">suppressPackageStartupMessages</span>()</span>
-<span id="cb25-82"><a href="#cb25-82" aria-hidden="true" tabindex="-1"></a><span class="fu">read.csv</span>(<span class="st">"aq/AirBase_v8_stations.csv"</span>, <span class="at">sep =</span> <span class="st">"</span><span class="sc">\t</span><span class="st">"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb25-83"><a href="#cb25-83" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as_tibble</span>() <span class="sc">|&gt;</span> </span>
-<span id="cb25-84"><a href="#cb25-84" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(country_iso_code <span class="sc">==</span> <span class="st">"DE"</span>,</span>
-<span id="cb25-85"><a href="#cb25-85" aria-hidden="true" tabindex="-1"></a>           station_type_of_area <span class="sc">==</span> <span class="st">"rural"</span>,</span>
-<span id="cb25-86"><a href="#cb25-86" aria-hidden="true" tabindex="-1"></a>           type_of_station <span class="sc">==</span> <span class="st">"Background"</span>) <span class="ot">-&gt;</span> a2</span>
-<span id="cb25-87"><a href="#cb25-87" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-88"><a href="#cb25-88" aria-hidden="true" tabindex="-1"></a>These stations contain coordinates, and an <span class="in">`sf`</span> object with (static) station metadata is created by</span>
-<span id="cb25-89"><a href="#cb25-89" aria-hidden="true" tabindex="-1"></a><span class="in">```{r importstationcoords}</span></span>
-<span id="cb25-90"><a href="#cb25-90" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf) <span class="sc">|&gt;</span> <span class="fu">suppressPackageStartupMessages</span>()</span>
-<span id="cb25-91"><a href="#cb25-91" aria-hidden="true" tabindex="-1"></a>a2.sf <span class="ot">&lt;-</span> <span class="fu">st_as_sf</span>(a2, <span class="at">crs =</span> <span class="st">'OGC:CRS84'</span>,</span>
-<span id="cb25-92"><a href="#cb25-92" aria-hidden="true" tabindex="-1"></a>  <span class="at">coords =</span> <span class="fu">c</span>(<span class="st">"station_longitude_deg"</span>, <span class="st">"station_latitude_deg"</span>))</span>
-<span id="cb25-93"><a href="#cb25-93" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-94"><a href="#cb25-94" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-95"><a href="#cb25-95" aria-hidden="true" tabindex="-1"></a>We now subset the air quality measurements to include only stations that are of type rural background,</span>
-<span id="cb25-96"><a href="#cb25-96" aria-hidden="true" tabindex="-1"></a>which we saved in <span class="in">`a2`</span>:</span>
-<span id="cb25-97"><a href="#cb25-97" aria-hidden="true" tabindex="-1"></a><span class="in">```{r subseteuropean}</span></span>
-<span id="cb25-98"><a href="#cb25-98" aria-hidden="true" tabindex="-1"></a>sel <span class="ot">&lt;-</span> <span class="fu">colnames</span>(aqsel) <span class="sc">%in%</span> a2<span class="sc">$</span>station_european_code</span>
-<span id="cb25-99"><a href="#cb25-99" aria-hidden="true" tabindex="-1"></a>aqsel <span class="ot">&lt;-</span> aqsel[, sel]</span>
-<span id="cb25-100"><a href="#cb25-100" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(aqsel)</span>
+<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>website gives access to the data reported by European</span>
+<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>member states.  We decided to download hourly (time series)</span>
+<span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>data, which is the data primarily measured.  A web form helps</span>
+<span id="cb25-30"><a href="#cb25-30" aria-hidden="true" tabindex="-1"></a>convert simple selection criteria into an http <span class="in">`GET`</span> request. The</span>
+<span id="cb25-31"><a href="#cb25-31" aria-hidden="true" tabindex="-1"></a>form\footnote{https://eeadmz1-downloads-webapp.azurewebsites.net/}</span>
+<span id="cb25-32"><a href="#cb25-32" aria-hidden="true" tabindex="-1"></a>was filled with Countries: DE; Cities: All; Pollutants: NO2; Dataset:</span>
+<span id="cb25-33"><a href="#cb25-33" aria-hidden="true" tabindex="-1"></a>Primary validated data (E1a); Type: hourly data; Temporal coverage</span>
+<span id="cb25-34"><a href="#cb25-34" aria-hidden="true" tabindex="-1"></a>Start: 01/01/2017, End: 01/01/2018; Download format: Parquet files.</span>
+<span id="cb25-35"><a href="#cb25-35" aria-hidden="true" tabindex="-1"></a>This downloads a zip file with parquet files, one</span>
+<span id="cb25-36"><a href="#cb25-36" aria-hidden="true" tabindex="-1"></a>per station.  Station metadata are downloaded from the [metadata</span>
+<span id="cb25-37"><a href="#cb25-37" aria-hidden="true" tabindex="-1"></a>link](https://discomap.eea.europa.eu/App/AQViewer/index.html?fqn=Airquality_Dissem.b2g.measurements#)</span>
+<span id="cb25-38"><a href="#cb25-38" aria-hidden="true" tabindex="-1"></a>shown at the bottom of the [EEA form</span>
+<span id="cb25-39"><a href="#cb25-39" aria-hidden="true" tabindex="-1"></a>page](https://eeadmz1-downloads-webapp.azurewebsites.net/).</span>
+<span id="cb25-40"><a href="#cb25-40" aria-hidden="true" tabindex="-1"></a>Below we assume the zip file is unpacked into subdirectory <span class="in">`aq`</span>.</span>
+<span id="cb25-41"><a href="#cb25-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-42"><a href="#cb25-42" aria-hidden="true" tabindex="-1"></a>In the following, we will read all the files into a list, except</span>
+<span id="cb25-43"><a href="#cb25-43" aria-hidden="true" tabindex="-1"></a>for the single file with the station metadata:</span>
+<span id="cb25-44"><a href="#cb25-44" aria-hidden="true" tabindex="-1"></a><span class="in">```{r readallcsvfiles}</span></span>
+<span id="cb25-45"><a href="#cb25-45" aria-hidden="true" tabindex="-1"></a>files <span class="ot">&lt;-</span> <span class="fu">list.files</span>(<span class="st">"aq/E1a"</span>, <span class="at">pattern =</span> <span class="st">"*.parquet"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb25-46"><a href="#cb25-46" aria-hidden="true" tabindex="-1"></a><span class="co"># files &lt;- setdiff(files, "aq/DataExtract.csv") # metadata file</span></span>
+<span id="cb25-47"><a href="#cb25-47" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(arrow)</span>
+<span id="cb25-48"><a href="#cb25-48" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">lapply</span>(files, <span class="cf">function</span>(f) <span class="fu">read_parquet</span>(f))</span>
+<span id="cb25-49"><a href="#cb25-49" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-50"><a href="#cb25-50" aria-hidden="true" tabindex="-1"></a>then we convert the time variable into a <span class="in">`POSIXct`</span> variable, and put them in time order by</span>
+<span id="cb25-51"><a href="#cb25-51" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fixtimes}</span></span>
+<span id="cb25-52"><a href="#cb25-52" aria-hidden="true" tabindex="-1"></a><span class="fu">Sys.setenv</span>(<span class="at">TZ =</span> <span class="st">"UTC"</span>) <span class="co"># don't use local time zone</span></span>
+<span id="cb25-53"><a href="#cb25-53" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">lapply</span>(r, <span class="cf">function</span>(f) {</span>
+<span id="cb25-54"><a href="#cb25-54" aria-hidden="true" tabindex="-1"></a>        f<span class="sc">$</span>t <span class="ot">=</span> <span class="fu">as.POSIXct</span>(f<span class="sc">$</span>Start) </span>
+<span id="cb25-55"><a href="#cb25-55" aria-hidden="true" tabindex="-1"></a>        f[<span class="fu">order</span>(f<span class="sc">$</span>t), ]</span>
+<span id="cb25-56"><a href="#cb25-56" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb25-57"><a href="#cb25-57" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb25-58"><a href="#cb25-58" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-59"><a href="#cb25-59" aria-hidden="true" tabindex="-1"></a>We remove smaller sub-datasets, which for this dataset have no hourly data:</span>
+<span id="cb25-60"><a href="#cb25-60" aria-hidden="true" tabindex="-1"></a><span class="in">```{r deselect_smaller_datasets}</span></span>
+<span id="cb25-61"><a href="#cb25-61" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> r[<span class="fu">sapply</span>(r, nrow) <span class="sc">&gt;</span> <span class="dv">1000</span>]</span>
+<span id="cb25-62"><a href="#cb25-62" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(r) <span class="ot">&lt;-</span> <span class="fu">sapply</span>(r,</span>
+<span id="cb25-63"><a href="#cb25-63" aria-hidden="true" tabindex="-1"></a>               <span class="cf">function</span>(f) <span class="fu">unique</span>(<span class="fu">substr</span>(f<span class="sc">$</span>Samplingpoint, <span class="dv">11</span>, <span class="dv">17</span>)))</span>
+<span id="cb25-64"><a href="#cb25-64" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(r) <span class="sc">==</span> <span class="fu">length</span>(<span class="fu">unique</span>(<span class="fu">names</span>(r)))</span>
+<span id="cb25-65"><a href="#cb25-65" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-66"><a href="#cb25-66" aria-hidden="true" tabindex="-1"></a>\index{xts}</span>
+<span id="cb25-67"><a href="#cb25-67" aria-hidden="true" tabindex="-1"></a>and then merge all files using <span class="in">`xts::cbind`</span>, so that records are combined based on matching times:</span>
+<span id="cb25-68"><a href="#cb25-68" aria-hidden="true" tabindex="-1"></a><span class="in">```{r converttoxts}</span></span>
+<span id="cb25-69"><a href="#cb25-69" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(xts) <span class="sc">|&gt;</span> <span class="fu">suppressPackageStartupMessages</span>()</span>
+<span id="cb25-70"><a href="#cb25-70" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">lapply</span>(r, <span class="cf">function</span>(f) <span class="fu">xts</span>(f<span class="sc">$</span>Value, f<span class="sc">$</span>t))</span>
+<span id="cb25-71"><a href="#cb25-71" aria-hidden="true" tabindex="-1"></a>aq <span class="ot">&lt;-</span> <span class="fu">do.call</span>(cbind, r)</span>
+<span id="cb25-72"><a href="#cb25-72" aria-hidden="true" tabindex="-1"></a>aq[aq <span class="sc">==</span> <span class="sc">-</span><span class="dv">999</span>] <span class="ot">=</span> <span class="cn">NA</span></span>
+<span id="cb25-73"><a href="#cb25-73" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-74"><a href="#cb25-74" aria-hidden="true" tabindex="-1"></a>A usual further selection for this dataset is to select stations</span>
+<span id="cb25-75"><a href="#cb25-75" aria-hidden="true" tabindex="-1"></a>for which 75\% of the hourly values measured are valid, i.e., drop</span>
+<span id="cb25-76"><a href="#cb25-76" aria-hidden="true" tabindex="-1"></a>those with more than 25\% missing hourly values. </span>
+<span id="cb25-77"><a href="#cb25-77" aria-hidden="true" tabindex="-1"></a>Knowing that <span class="in">`mean(is.na(x))`</span> gives the _fraction_ of missing values</span>
+<span id="cb25-78"><a href="#cb25-78" aria-hidden="true" tabindex="-1"></a>in a vector <span class="in">`x`</span>, we can apply this function to the columns (stations):</span>
+<span id="cb25-79"><a href="#cb25-79" aria-hidden="true" tabindex="-1"></a><span class="in">```{r removestationswithmissingvalues}</span></span>
+<span id="cb25-80"><a href="#cb25-80" aria-hidden="true" tabindex="-1"></a>sel <span class="ot">&lt;-</span> <span class="fu">apply</span>(aq, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">mean</span>(<span class="fu">is.na</span>(x)) <span class="sc">&lt;</span> <span class="fl">0.25</span>)</span>
+<span id="cb25-81"><a href="#cb25-81" aria-hidden="true" tabindex="-1"></a>aqsel <span class="ot">&lt;-</span> aq[, sel]</span>
+<span id="cb25-82"><a href="#cb25-82" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-83"><a href="#cb25-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-84"><a href="#cb25-84" aria-hidden="true" tabindex="-1"></a>Next, the station metadata was read </span>
+<span id="cb25-85"><a href="#cb25-85" aria-hidden="true" tabindex="-1"></a>and filtered for rural background stations in Germany by</span>
+<span id="cb25-86"><a href="#cb25-86" aria-hidden="true" tabindex="-1"></a><span class="in">```{r filterruralbackground}</span></span>
+<span id="cb25-87"><a href="#cb25-87" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse) <span class="sc">|&gt;</span> <span class="fu">suppressPackageStartupMessages</span>()</span>
+<span id="cb25-88"><a href="#cb25-88" aria-hidden="true" tabindex="-1"></a>rural <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"rural"</span>, <span class="st">"rural-regional"</span>, <span class="st">"rural-nearcity"</span>, <span class="st">"rural-remote"</span>)</span>
+<span id="cb25-89"><a href="#cb25-89" aria-hidden="true" tabindex="-1"></a><span class="fu">read.csv</span>(<span class="st">"aq/DataExtract.csv"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb25-90"><a href="#cb25-90" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as_tibble</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb25-91"><a href="#cb25-91" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(Country <span class="sc">==</span> <span class="st">"Germany"</span>,</span>
+<span id="cb25-92"><a href="#cb25-92" aria-hidden="true" tabindex="-1"></a>           Air.Quality.Station.Area <span class="sc">%in%</span> rural,</span>
+<span id="cb25-93"><a href="#cb25-93" aria-hidden="true" tabindex="-1"></a>           Air.Quality.Station.Type <span class="sc">==</span> <span class="st">"background"</span>,</span>
+<span id="cb25-94"><a href="#cb25-94" aria-hidden="true" tabindex="-1"></a>           <span class="sc">!</span><span class="fu">duplicated</span>(Air.Quality.Station.EoI.Code)) <span class="ot">-&gt;</span> a2</span>
+<span id="cb25-95"><a href="#cb25-95" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-96"><a href="#cb25-96" aria-hidden="true" tabindex="-1"></a>These stations contain coordinates, and an <span class="in">`sf`</span> object with (static) station metadata is created by</span>
+<span id="cb25-97"><a href="#cb25-97" aria-hidden="true" tabindex="-1"></a><span class="in">```{r importstationcoords}</span></span>
+<span id="cb25-98"><a href="#cb25-98" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf) <span class="sc">|&gt;</span> <span class="fu">suppressPackageStartupMessages</span>()</span>
+<span id="cb25-99"><a href="#cb25-99" aria-hidden="true" tabindex="-1"></a>a2.sf <span class="ot">&lt;-</span> <span class="fu">st_as_sf</span>(a2, <span class="at">crs =</span> <span class="st">'OGC:CRS84'</span>,</span>
+<span id="cb25-100"><a href="#cb25-100" aria-hidden="true" tabindex="-1"></a>  <span class="at">coords =</span> <span class="fu">c</span>(<span class="st">"Longitude"</span>, <span class="st">"Latitude"</span>))</span>
 <span id="cb25-101"><a href="#cb25-101" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb25-102"><a href="#cb25-102" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-103"><a href="#cb25-103" aria-hidden="true" tabindex="-1"></a>We can compute station means and join these to station locations by</span>
-<span id="cb25-104"><a href="#cb25-104" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-computestationmeans, message = FALSE}</span></span>
-<span id="cb25-105"><a href="#cb25-105" aria-hidden="true" tabindex="-1"></a>tb <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">NO2 =</span> <span class="fu">apply</span>(aqsel, <span class="dv">2</span>, mean, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), </span>
-<span id="cb25-106"><a href="#cb25-106" aria-hidden="true" tabindex="-1"></a>            <span class="at">station_european_code =</span> <span class="fu">colnames</span>(aqsel))</span>
-<span id="cb25-107"><a href="#cb25-107" aria-hidden="true" tabindex="-1"></a>crs <span class="ot">&lt;-</span> <span class="fu">st_crs</span>(<span class="st">'EPSG:32632'</span>)</span>
-<span id="cb25-108"><a href="#cb25-108" aria-hidden="true" tabindex="-1"></a><span class="fu">right_join</span>(a2.sf, tb) <span class="sc">|&gt;</span> <span class="fu">st_transform</span>(crs) <span class="ot">-&gt;</span> no2.sf </span>
-<span id="cb25-109"><a href="#cb25-109" aria-hidden="true" tabindex="-1"></a><span class="fu">read_sf</span>(<span class="st">"data/de_nuts1.gpkg"</span>) <span class="sc">|&gt;</span> <span class="fu">st_transform</span>(crs) <span class="ot">-&gt;</span> de</span>
-<span id="cb25-110"><a href="#cb25-110" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-111"><a href="#cb25-111" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-112"><a href="#cb25-112" aria-hidden="true" tabindex="-1"></a>Station mean NO$_2$ concentrations, along with country borders, are shown in in @fig-plotDE.</span>
-<span id="cb25-113"><a href="#cb25-113" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-114"><a href="#cb25-114" aria-hidden="true" tabindex="-1"></a><span class="fu">## Multivariable geostatistics {#sec-cokriging}</span></span>
-<span id="cb25-115"><a href="#cb25-115" aria-hidden="true" tabindex="-1"></a>\index{kriging!multivariable}</span>
-<span id="cb25-116"><a href="#cb25-116" aria-hidden="true" tabindex="-1"></a>\index{kriging!cokriging}</span>
-<span id="cb25-117"><a href="#cb25-117" aria-hidden="true" tabindex="-1"></a>\index{cokriging}</span>
-<span id="cb25-118"><a href="#cb25-118" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-119"><a href="#cb25-119" aria-hidden="true" tabindex="-1"></a>Multivariable geostatics involves the _joint_ modelling, prediction,</span>
-<span id="cb25-120"><a href="#cb25-120" aria-hidden="true" tabindex="-1"></a>and simulation of multiple variables, </span>
-<span id="cb25-121"><a href="#cb25-121" aria-hidden="true" tabindex="-1"></a>$$Z_1(s) = X_1 \beta_1 + e_1(s)$$</span>
-<span id="cb25-122"><a href="#cb25-122" aria-hidden="true" tabindex="-1"></a>$$...$$</span>
-<span id="cb25-123"><a href="#cb25-123" aria-hidden="true" tabindex="-1"></a>$$Z_n(s) = X_n \beta_n + e_n(s).$$</span>
-<span id="cb25-124"><a href="#cb25-124" aria-hidden="true" tabindex="-1"></a>In addition to having observations, trend models, and variograms</span>
-<span id="cb25-125"><a href="#cb25-125" aria-hidden="true" tabindex="-1"></a>for each variable, the _cross_-variogram for each pair of residual</span>
-<span id="cb25-126"><a href="#cb25-126" aria-hidden="true" tabindex="-1"></a>variables, describing the covariance of $e_i(s), e_j(s+h)$,</span>
-<span id="cb25-127"><a href="#cb25-127" aria-hidden="true" tabindex="-1"></a>is required. If this cross-covariance is non-zero, knowledge of</span>
-<span id="cb25-128"><a href="#cb25-128" aria-hidden="true" tabindex="-1"></a>$e_j(s+h)$ may help predict (or simulate) $e_i(s)$.  This is</span>
-<span id="cb25-129"><a href="#cb25-129" aria-hidden="true" tabindex="-1"></a>especially true if $Z_j(s)$ is more densely sample than $Z_i(s)$.</span>
-<span id="cb25-130"><a href="#cb25-130" aria-hidden="true" tabindex="-1"></a>Prediction and simulation under this model are called cokriging</span>
-<span id="cb25-131"><a href="#cb25-131" aria-hidden="true" tabindex="-1"></a>and cosimulation. Examples using gstat are found when running the</span>
-<span id="cb25-132"><a href="#cb25-132" aria-hidden="true" tabindex="-1"></a>demo scripts</span>
-<span id="cb25-133"><a href="#cb25-133" aria-hidden="true" tabindex="-1"></a><span class="in">```{r eval=FALSE}</span></span>
-<span id="cb25-134"><a href="#cb25-134" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gstat)</span>
-<span id="cb25-135"><a href="#cb25-135" aria-hidden="true" tabindex="-1"></a><span class="fu">demo</span>(cokriging)</span>
-<span id="cb25-136"><a href="#cb25-136" aria-hidden="true" tabindex="-1"></a><span class="fu">demo</span>(cosimulation)</span>
-<span id="cb25-137"><a href="#cb25-137" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-138"><a href="#cb25-138" aria-hidden="true" tabindex="-1"></a>and are further illustrated and discussed in @asdar.</span>
-<span id="cb25-139"><a href="#cb25-139" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-140"><a href="#cb25-140" aria-hidden="true" tabindex="-1"></a>\index{variogram!cross}</span>
-<span id="cb25-141"><a href="#cb25-141" aria-hidden="true" tabindex="-1"></a>\index{cross-variogram}</span>
-<span id="cb25-142"><a href="#cb25-142" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-143"><a href="#cb25-143" aria-hidden="true" tabindex="-1"></a>In case the different variables considered are observed at</span>
-<span id="cb25-144"><a href="#cb25-144" aria-hidden="true" tabindex="-1"></a>the same set of locations, for instance different air quality</span>
-<span id="cb25-145"><a href="#cb25-145" aria-hidden="true" tabindex="-1"></a>parameters, then the statistical _gain_ of using cokriging</span>
-<span id="cb25-146"><a href="#cb25-146" aria-hidden="true" tabindex="-1"></a>as opposed to direct (univariable) kriging is often modest,</span>
-<span id="cb25-147"><a href="#cb25-147" aria-hidden="true" tabindex="-1"></a>when not negligible. A gain may however be that the prediction</span>
-<span id="cb25-148"><a href="#cb25-148" aria-hidden="true" tabindex="-1"></a>is truly multivariable: in addition to the prediction vector</span>
-<span id="cb25-149"><a href="#cb25-149" aria-hidden="true" tabindex="-1"></a>$\hat{Z(s_0)}=(\hat{Z}_1(s_0),...,\hat{Z}_n(s_0))$, we get the full</span>
-<span id="cb25-150"><a href="#cb25-150" aria-hidden="true" tabindex="-1"></a>covariance matrix of the prediction error <span class="co">[</span><span class="ot">@ver1993multivariable</span><span class="co">]</span>.</span>
-<span id="cb25-151"><a href="#cb25-151" aria-hidden="true" tabindex="-1"></a>Using these prediction error covariances, for any linear combination</span>
-<span id="cb25-152"><a href="#cb25-152" aria-hidden="true" tabindex="-1"></a>of $\hat{Z}(s_0)$, such as $\hat{Z}_2(s_0) - \hat{Z}_1(s_0)$,</span>
-<span id="cb25-153"><a href="#cb25-153" aria-hidden="true" tabindex="-1"></a>we can get the standard error of that combination.</span>
-<span id="cb25-154"><a href="#cb25-154" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-155"><a href="#cb25-155" aria-hidden="true" tabindex="-1"></a>Although sets of direct and cross-variograms can be computed</span>
-<span id="cb25-156"><a href="#cb25-156" aria-hidden="true" tabindex="-1"></a>and fitted automatically, multivariable geostatistical modelling</span>
-<span id="cb25-157"><a href="#cb25-157" aria-hidden="true" tabindex="-1"></a>becomes quickly hard to manage when the number of variables gets</span>
-<span id="cb25-158"><a href="#cb25-158" aria-hidden="true" tabindex="-1"></a>large, because the number of direct and cross-variograms required</span>
-<span id="cb25-159"><a href="#cb25-159" aria-hidden="true" tabindex="-1"></a>is $n(n+1)/2$.</span>
-<span id="cb25-160"><a href="#cb25-160" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-161"><a href="#cb25-161" aria-hidden="true" tabindex="-1"></a>In case different variables refer to the same variable taken at</span>
-<span id="cb25-162"><a href="#cb25-162" aria-hidden="true" tabindex="-1"></a>different time steps, one could use a multivariable (cokriging)</span>
-<span id="cb25-163"><a href="#cb25-163" aria-hidden="true" tabindex="-1"></a>prediction approach, but this would not allow for interpolation</span>
-<span id="cb25-164"><a href="#cb25-164" aria-hidden="true" tabindex="-1"></a>between two time steps. For this, and for handling the case of</span>
-<span id="cb25-165"><a href="#cb25-165" aria-hidden="true" tabindex="-1"></a>having data observed at many time instances, one can also model</span>
-<span id="cb25-166"><a href="#cb25-166" aria-hidden="true" tabindex="-1"></a>its variation as a function of continuous space _and_ time, as of</span>
-<span id="cb25-167"><a href="#cb25-167" aria-hidden="true" tabindex="-1"></a>$Z(s,t)$, which we will do in the next section.</span>
+<span id="cb25-103"><a href="#cb25-103" aria-hidden="true" tabindex="-1"></a>We now subset the air quality measurements to include only stations that are of type rural background,</span>
+<span id="cb25-104"><a href="#cb25-104" aria-hidden="true" tabindex="-1"></a>which we saved in <span class="in">`a2`</span>:</span>
+<span id="cb25-105"><a href="#cb25-105" aria-hidden="true" tabindex="-1"></a><span class="in">```{r subseteuropean}</span></span>
+<span id="cb25-106"><a href="#cb25-106" aria-hidden="true" tabindex="-1"></a>sel <span class="ot">&lt;-</span> <span class="fu">colnames</span>(aqsel) <span class="sc">%in%</span> a2<span class="sc">$</span>Air.Quality.Station.EoI.Code</span>
+<span id="cb25-107"><a href="#cb25-107" aria-hidden="true" tabindex="-1"></a>aqsel <span class="ot">&lt;-</span> aqsel[, sel]</span>
+<span id="cb25-108"><a href="#cb25-108" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(aqsel)</span>
+<span id="cb25-109"><a href="#cb25-109" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-110"><a href="#cb25-110" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-111"><a href="#cb25-111" aria-hidden="true" tabindex="-1"></a>We can compute station means and join these to station locations by</span>
+<span id="cb25-112"><a href="#cb25-112" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-computestationmeans, message = FALSE}</span></span>
+<span id="cb25-113"><a href="#cb25-113" aria-hidden="true" tabindex="-1"></a>tb <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">NO2 =</span> <span class="fu">apply</span>(aqsel, <span class="dv">2</span>, mean, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), </span>
+<span id="cb25-114"><a href="#cb25-114" aria-hidden="true" tabindex="-1"></a>            <span class="at">Air.Quality.Station.EoI.Code =</span> <span class="fu">colnames</span>(aqsel))</span>
+<span id="cb25-115"><a href="#cb25-115" aria-hidden="true" tabindex="-1"></a>crs <span class="ot">&lt;-</span> <span class="fu">st_crs</span>(<span class="st">'EPSG:32632'</span>)</span>
+<span id="cb25-116"><a href="#cb25-116" aria-hidden="true" tabindex="-1"></a><span class="fu">right_join</span>(a2.sf, tb) <span class="sc">|&gt;</span> <span class="fu">st_transform</span>(crs) <span class="ot">-&gt;</span> no2.sf </span>
+<span id="cb25-117"><a href="#cb25-117" aria-hidden="true" tabindex="-1"></a><span class="fu">read_sf</span>(<span class="st">"data/de_nuts1.gpkg"</span>) <span class="sc">|&gt;</span> <span class="fu">st_transform</span>(crs) <span class="ot">-&gt;</span> de</span>
+<span id="cb25-118"><a href="#cb25-118" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-119"><a href="#cb25-119" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-120"><a href="#cb25-120" aria-hidden="true" tabindex="-1"></a>Station mean NO$_2$ concentrations, along with country borders, are shown in in @fig-plotDE.</span>
+<span id="cb25-121"><a href="#cb25-121" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-122"><a href="#cb25-122" aria-hidden="true" tabindex="-1"></a><span class="fu">## Multivariable geostatistics {#sec-cokriging}</span></span>
+<span id="cb25-123"><a href="#cb25-123" aria-hidden="true" tabindex="-1"></a>\index{kriging!multivariable}</span>
+<span id="cb25-124"><a href="#cb25-124" aria-hidden="true" tabindex="-1"></a>\index{kriging!cokriging}</span>
+<span id="cb25-125"><a href="#cb25-125" aria-hidden="true" tabindex="-1"></a>\index{cokriging}</span>
+<span id="cb25-126"><a href="#cb25-126" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-127"><a href="#cb25-127" aria-hidden="true" tabindex="-1"></a>Multivariable geostatics involves the _joint_ modelling, prediction,</span>
+<span id="cb25-128"><a href="#cb25-128" aria-hidden="true" tabindex="-1"></a>and simulation of multiple variables, </span>
+<span id="cb25-129"><a href="#cb25-129" aria-hidden="true" tabindex="-1"></a>$$Z_1(s) = X_1 \beta_1 + e_1(s)$$</span>
+<span id="cb25-130"><a href="#cb25-130" aria-hidden="true" tabindex="-1"></a>$$...$$</span>
+<span id="cb25-131"><a href="#cb25-131" aria-hidden="true" tabindex="-1"></a>$$Z_n(s) = X_n \beta_n + e_n(s).$$</span>
+<span id="cb25-132"><a href="#cb25-132" aria-hidden="true" tabindex="-1"></a>In addition to having observations, trend models, and variograms</span>
+<span id="cb25-133"><a href="#cb25-133" aria-hidden="true" tabindex="-1"></a>for each variable, the _cross_-variogram for each pair of residual</span>
+<span id="cb25-134"><a href="#cb25-134" aria-hidden="true" tabindex="-1"></a>variables, describing the covariance of $e_i(s), e_j(s+h)$,</span>
+<span id="cb25-135"><a href="#cb25-135" aria-hidden="true" tabindex="-1"></a>is required. If this cross-covariance is non-zero, knowledge of</span>
+<span id="cb25-136"><a href="#cb25-136" aria-hidden="true" tabindex="-1"></a>$e_j(s+h)$ may help predict (or simulate) $e_i(s)$.  This is</span>
+<span id="cb25-137"><a href="#cb25-137" aria-hidden="true" tabindex="-1"></a>especially true if $Z_j(s)$ is more densely sample than $Z_i(s)$.</span>
+<span id="cb25-138"><a href="#cb25-138" aria-hidden="true" tabindex="-1"></a>Prediction and simulation under this model are called cokriging</span>
+<span id="cb25-139"><a href="#cb25-139" aria-hidden="true" tabindex="-1"></a>and cosimulation. Examples using gstat are found when running the</span>
+<span id="cb25-140"><a href="#cb25-140" aria-hidden="true" tabindex="-1"></a>demo scripts</span>
+<span id="cb25-141"><a href="#cb25-141" aria-hidden="true" tabindex="-1"></a><span class="in">```{r eval=FALSE}</span></span>
+<span id="cb25-142"><a href="#cb25-142" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gstat)</span>
+<span id="cb25-143"><a href="#cb25-143" aria-hidden="true" tabindex="-1"></a><span class="fu">demo</span>(cokriging)</span>
+<span id="cb25-144"><a href="#cb25-144" aria-hidden="true" tabindex="-1"></a><span class="fu">demo</span>(cosimulation)</span>
+<span id="cb25-145"><a href="#cb25-145" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-146"><a href="#cb25-146" aria-hidden="true" tabindex="-1"></a>and are further illustrated and discussed in @asdar.</span>
+<span id="cb25-147"><a href="#cb25-147" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-148"><a href="#cb25-148" aria-hidden="true" tabindex="-1"></a>\index{variogram!cross}</span>
+<span id="cb25-149"><a href="#cb25-149" aria-hidden="true" tabindex="-1"></a>\index{cross-variogram}</span>
+<span id="cb25-150"><a href="#cb25-150" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-151"><a href="#cb25-151" aria-hidden="true" tabindex="-1"></a>In case the different variables considered are observed at</span>
+<span id="cb25-152"><a href="#cb25-152" aria-hidden="true" tabindex="-1"></a>the same set of locations, for instance different air quality</span>
+<span id="cb25-153"><a href="#cb25-153" aria-hidden="true" tabindex="-1"></a>parameters, then the statistical _gain_ of using cokriging</span>
+<span id="cb25-154"><a href="#cb25-154" aria-hidden="true" tabindex="-1"></a>as opposed to direct (univariable) kriging is often modest,</span>
+<span id="cb25-155"><a href="#cb25-155" aria-hidden="true" tabindex="-1"></a>when not negligible. A gain may however be that the prediction</span>
+<span id="cb25-156"><a href="#cb25-156" aria-hidden="true" tabindex="-1"></a>is truly multivariable: in addition to the prediction vector</span>
+<span id="cb25-157"><a href="#cb25-157" aria-hidden="true" tabindex="-1"></a>$\hat{Z(s_0)}=(\hat{Z}_1(s_0),...,\hat{Z}_n(s_0))$, we get the full</span>
+<span id="cb25-158"><a href="#cb25-158" aria-hidden="true" tabindex="-1"></a>covariance matrix of the prediction error <span class="co">[</span><span class="ot">@ver1993multivariable</span><span class="co">]</span>.</span>
+<span id="cb25-159"><a href="#cb25-159" aria-hidden="true" tabindex="-1"></a>Using these prediction error covariances, for any linear combination</span>
+<span id="cb25-160"><a href="#cb25-160" aria-hidden="true" tabindex="-1"></a>of $\hat{Z}(s_0)$, such as $\hat{Z}_2(s_0) - \hat{Z}_1(s_0)$,</span>
+<span id="cb25-161"><a href="#cb25-161" aria-hidden="true" tabindex="-1"></a>we can get the standard error of that combination.</span>
+<span id="cb25-162"><a href="#cb25-162" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-163"><a href="#cb25-163" aria-hidden="true" tabindex="-1"></a>Although sets of direct and cross-variograms can be computed</span>
+<span id="cb25-164"><a href="#cb25-164" aria-hidden="true" tabindex="-1"></a>and fitted automatically, multivariable geostatistical modelling</span>
+<span id="cb25-165"><a href="#cb25-165" aria-hidden="true" tabindex="-1"></a>becomes quickly hard to manage when the number of variables gets</span>
+<span id="cb25-166"><a href="#cb25-166" aria-hidden="true" tabindex="-1"></a>large, because the number of direct and cross-variograms required</span>
+<span id="cb25-167"><a href="#cb25-167" aria-hidden="true" tabindex="-1"></a>is $n(n+1)/2$.</span>
 <span id="cb25-168"><a href="#cb25-168" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-169"><a href="#cb25-169" aria-hidden="true" tabindex="-1"></a><span class="fu">## Spatiotemporal geostatistics {#sec-stgeos}</span></span>
-<span id="cb25-170"><a href="#cb25-170" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-171"><a href="#cb25-171" aria-hidden="true" tabindex="-1"></a>\index{kriging!spatiotemporal}</span>
-<span id="cb25-172"><a href="#cb25-172" aria-hidden="true" tabindex="-1"></a>Spatiotemporal geostatistical processes are modelled as variables</span>
-<span id="cb25-173"><a href="#cb25-173" aria-hidden="true" tabindex="-1"></a>having a value everywhere in space and time, $Z(s,t)$, with $s$ and</span>
-<span id="cb25-174"><a href="#cb25-174" aria-hidden="true" tabindex="-1"></a>$t$ the continuously indexed space and time index. Given observations</span>
-<span id="cb25-175"><a href="#cb25-175" aria-hidden="true" tabindex="-1"></a>$Z(s_i,t_j)$ and a variogram (covariance) model $\gamma(s,t)$ we can</span>
-<span id="cb25-176"><a href="#cb25-176" aria-hidden="true" tabindex="-1"></a>predict $Z(s_0,t_0)$ at arbitrary space/time locations $(s_0,t_0)$</span>
-<span id="cb25-177"><a href="#cb25-177" aria-hidden="true" tabindex="-1"></a>using standard Gaussian process theory.</span>
+<span id="cb25-169"><a href="#cb25-169" aria-hidden="true" tabindex="-1"></a>In case different variables refer to the same variable taken at</span>
+<span id="cb25-170"><a href="#cb25-170" aria-hidden="true" tabindex="-1"></a>different time steps, one could use a multivariable (cokriging)</span>
+<span id="cb25-171"><a href="#cb25-171" aria-hidden="true" tabindex="-1"></a>prediction approach, but this would not allow for interpolation</span>
+<span id="cb25-172"><a href="#cb25-172" aria-hidden="true" tabindex="-1"></a>between two time steps. For this, and for handling the case of</span>
+<span id="cb25-173"><a href="#cb25-173" aria-hidden="true" tabindex="-1"></a>having data observed at many time instances, one can also model</span>
+<span id="cb25-174"><a href="#cb25-174" aria-hidden="true" tabindex="-1"></a>its variation as a function of continuous space _and_ time, as of</span>
+<span id="cb25-175"><a href="#cb25-175" aria-hidden="true" tabindex="-1"></a>$Z(s,t)$, which we will do in the next section.</span>
+<span id="cb25-176"><a href="#cb25-176" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-177"><a href="#cb25-177" aria-hidden="true" tabindex="-1"></a><span class="fu">## Spatiotemporal geostatistics {#sec-stgeos}</span></span>
 <span id="cb25-178"><a href="#cb25-178" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-179"><a href="#cb25-179" aria-hidden="true" tabindex="-1"></a>Several books have been written recently about modern approaches</span>
-<span id="cb25-180"><a href="#cb25-180" aria-hidden="true" tabindex="-1"></a>to handling and modelling spatiotemporal geostatistical data,</span>
-<span id="cb25-181"><a href="#cb25-181" aria-hidden="true" tabindex="-1"></a>including @wikle2019spatio and @blangiardo2015spatial. Here,</span>
-<span id="cb25-182"><a href="#cb25-182" aria-hidden="true" tabindex="-1"></a>we will use @RJ-2016-014 and give some simple examples using the</span>
-<span id="cb25-183"><a href="#cb25-183" aria-hidden="true" tabindex="-1"></a>dataset also used for the previous chapter.</span>
-<span id="cb25-184"><a href="#cb25-184" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-185"><a href="#cb25-185" aria-hidden="true" tabindex="-1"></a><span class="fu">### A spatiotemporal variogram model</span></span>
-<span id="cb25-186"><a href="#cb25-186" aria-hidden="true" tabindex="-1"></a>\index{variogram!spatiotemporal}</span>
-<span id="cb25-187"><a href="#cb25-187" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-188"><a href="#cb25-188" aria-hidden="true" tabindex="-1"></a>Starting with the spatiotemporal matrix of NO$_2$ data in <span class="in">`aq`</span></span>
-<span id="cb25-189"><a href="#cb25-189" aria-hidden="true" tabindex="-1"></a>constructed at the beginning of this chapter, we selected complete</span>
-<span id="cb25-190"><a href="#cb25-190" aria-hidden="true" tabindex="-1"></a>records taken at rural background stations into <span class="in">`aqsel`</span>.</span>
-<span id="cb25-191"><a href="#cb25-191" aria-hidden="true" tabindex="-1"></a>We can select the spatial locations for these 74 stations by</span>
-<span id="cb25-194"><a href="#cb25-194" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb25-195"><a href="#cb25-195" aria-hidden="true" tabindex="-1"></a>sfc <span class="ot">&lt;-</span> <span class="fu">st_geometry</span>(a2.sf)[<span class="fu">match</span>(<span class="fu">colnames</span>(aqsel),</span>
-<span id="cb25-196"><a href="#cb25-196" aria-hidden="true" tabindex="-1"></a>                           a2.sf<span class="sc">$</span>station_european_code)] <span class="sc">|&gt;</span></span>
-<span id="cb25-197"><a href="#cb25-197" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_transform</span>(crs)</span>
-<span id="cb25-198"><a href="#cb25-198" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-199"><a href="#cb25-199" aria-hidden="true" tabindex="-1"></a>and finally build a <span class="in">`stars`</span> vector data cube with time and station as dimensions:</span>
+<span id="cb25-179"><a href="#cb25-179" aria-hidden="true" tabindex="-1"></a>\index{kriging!spatiotemporal}</span>
+<span id="cb25-180"><a href="#cb25-180" aria-hidden="true" tabindex="-1"></a>Spatiotemporal geostatistical processes are modelled as variables</span>
+<span id="cb25-181"><a href="#cb25-181" aria-hidden="true" tabindex="-1"></a>having a value everywhere in space and time, $Z(s,t)$, with $s$ and</span>
+<span id="cb25-182"><a href="#cb25-182" aria-hidden="true" tabindex="-1"></a>$t$ the continuously indexed space and time index. Given observations</span>
+<span id="cb25-183"><a href="#cb25-183" aria-hidden="true" tabindex="-1"></a>$Z(s_i,t_j)$ and a variogram (covariance) model $\gamma(s,t)$ we can</span>
+<span id="cb25-184"><a href="#cb25-184" aria-hidden="true" tabindex="-1"></a>predict $Z(s_0,t_0)$ at arbitrary space/time locations $(s_0,t_0)$</span>
+<span id="cb25-185"><a href="#cb25-185" aria-hidden="true" tabindex="-1"></a>using standard Gaussian process theory.</span>
+<span id="cb25-186"><a href="#cb25-186" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-187"><a href="#cb25-187" aria-hidden="true" tabindex="-1"></a>Several books have been written recently about modern approaches</span>
+<span id="cb25-188"><a href="#cb25-188" aria-hidden="true" tabindex="-1"></a>to handling and modelling spatiotemporal geostatistical data,</span>
+<span id="cb25-189"><a href="#cb25-189" aria-hidden="true" tabindex="-1"></a>including @wikle2019spatio and @blangiardo2015spatial. Here,</span>
+<span id="cb25-190"><a href="#cb25-190" aria-hidden="true" tabindex="-1"></a>we will use @RJ-2016-014 and give some simple examples using the</span>
+<span id="cb25-191"><a href="#cb25-191" aria-hidden="true" tabindex="-1"></a>dataset also used for the previous chapter.</span>
+<span id="cb25-192"><a href="#cb25-192" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-193"><a href="#cb25-193" aria-hidden="true" tabindex="-1"></a><span class="fu">### A spatiotemporal variogram model</span></span>
+<span id="cb25-194"><a href="#cb25-194" aria-hidden="true" tabindex="-1"></a>\index{variogram!spatiotemporal}</span>
+<span id="cb25-195"><a href="#cb25-195" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-196"><a href="#cb25-196" aria-hidden="true" tabindex="-1"></a>Starting with the spatiotemporal matrix of NO$_2$ data in <span class="in">`aq`</span></span>
+<span id="cb25-197"><a href="#cb25-197" aria-hidden="true" tabindex="-1"></a>constructed at the beginning of this chapter, we selected complete</span>
+<span id="cb25-198"><a href="#cb25-198" aria-hidden="true" tabindex="-1"></a>records taken at rural background stations into <span class="in">`aqsel`</span>.</span>
+<span id="cb25-199"><a href="#cb25-199" aria-hidden="true" tabindex="-1"></a>We can select the spatial locations for these stations by</span>
 <span id="cb25-202"><a href="#cb25-202" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb25-203"><a href="#cb25-203" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stars)</span>
-<span id="cb25-204"><a href="#cb25-204" aria-hidden="true" tabindex="-1"></a><span class="fu">st_as_stars</span>(<span class="at">NO2 =</span> <span class="fu">as.matrix</span>(aqsel)) <span class="sc">|&gt;</span></span>
-<span id="cb25-205"><a href="#cb25-205" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="at">names =</span> <span class="fu">c</span>(<span class="st">"time"</span>, <span class="st">"station"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb25-206"><a href="#cb25-206" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"time"</span>, <span class="fu">index</span>(aqsel)) <span class="sc">|&gt;</span></span>
-<span id="cb25-207"><a href="#cb25-207" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"station"</span>, sfc) <span class="ot">-&gt;</span> no2.st</span>
-<span id="cb25-208"><a href="#cb25-208" aria-hidden="true" tabindex="-1"></a>no2.st</span>
-<span id="cb25-209"><a href="#cb25-209" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-210"><a href="#cb25-210" aria-hidden="true" tabindex="-1"></a>From this, we can compute the spatiotemporal variogram using</span>
-<span id="cb25-211"><a href="#cb25-211" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE, eval = file.exists("data/vst.RData")}</span></span>
-<span id="cb25-212"><a href="#cb25-212" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="at">file =</span> <span class="st">"data/vst.RData"</span>)</span>
-<span id="cb25-213"><a href="#cb25-213" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-216"><a href="#cb25-216" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb25-217"><a href="#cb25-217" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gstat)</span>
-<span id="cb25-218"><a href="#cb25-218" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-219"><a href="#cb25-219" aria-hidden="true" tabindex="-1"></a><span class="in">```{r computespacetimesamplevariogram, eval = !exists("v.st")}</span></span>
-<span id="cb25-220"><a href="#cb25-220" aria-hidden="true" tabindex="-1"></a>v.st <span class="ot">&lt;-</span> <span class="fu">variogramST</span>(NO2<span class="sc">~</span><span class="dv">1</span>, no2.st[,<span class="dv">1</span><span class="sc">:</span>(<span class="dv">24</span><span class="sc">*</span><span class="dv">31</span>)], <span class="at">tlags =</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">48</span>, </span>
-<span id="cb25-221"><a href="#cb25-221" aria-hidden="true" tabindex="-1"></a>    <span class="at">cores =</span> <span class="fu">getOption</span>(<span class="st">"mc.cores"</span>, <span class="dv">2</span>))</span>
-<span id="cb25-222"><a href="#cb25-222" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-223"><a href="#cb25-223" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
-<span id="cb25-224"><a href="#cb25-224" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="st">"v.st"</span>, <span class="at">file =</span> <span class="st">"data/vst.RData"</span>)</span>
-<span id="cb25-225"><a href="#cb25-225" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-226"><a href="#cb25-226" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-227"><a href="#cb25-227" aria-hidden="true" tabindex="-1"></a>which is shown in @fig-plotvariograms.</span>
-<span id="cb25-228"><a href="#cb25-228" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-plotvariograms, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb25-229"><a href="#cb25-229" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Spatiotemporal sample variogram for hourly NO$_2$ concentrations at rural background stations in Germany over 2027; in the right-hand side plot colour corresponds to time lag (yellow is later); distance in m"</span></span>
-<span id="cb25-230"><a href="#cb25-230" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb25-231"><a href="#cb25-231" aria-hidden="true" tabindex="-1"></a><span class="co">#| out.width: 100%</span></span>
-<span id="cb25-232"><a href="#cb25-232" aria-hidden="true" tabindex="-1"></a>v1 <span class="ot">&lt;-</span> <span class="fu">plot</span>(v.st)</span>
-<span id="cb25-233"><a href="#cb25-233" aria-hidden="true" tabindex="-1"></a>v2 <span class="ot">&lt;-</span> <span class="fu">plot</span>(v.st, <span class="at">map =</span> <span class="cn">FALSE</span>, <span class="at">legend =</span> <span class="fu">list</span>())</span>
-<span id="cb25-234"><a href="#cb25-234" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(v1, <span class="at">split =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">more =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb25-235"><a href="#cb25-235" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(v2, <span class="at">split =</span> <span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">more =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb25-236"><a href="#cb25-236" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-237"><a href="#cb25-237" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-238"><a href="#cb25-238" aria-hidden="true" tabindex="-1"></a>To this sample variogram, we can fit a variogram model. One relatively</span>
-<span id="cb25-239"><a href="#cb25-239" aria-hidden="true" tabindex="-1"></a>flexible model we try here is the product-sum model <span class="co">[</span><span class="ot">@RJ-2016-014</span><span class="co">]</span>, fitted by</span>
-<span id="cb25-240"><a href="#cb25-240" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fitprodsummodel}</span></span>
-<span id="cb25-241"><a href="#cb25-241" aria-hidden="true" tabindex="-1"></a><span class="co"># product-sum</span></span>
-<span id="cb25-242"><a href="#cb25-242" aria-hidden="true" tabindex="-1"></a>prodSumModel <span class="ot">&lt;-</span> <span class="fu">vgmST</span>(<span class="st">"productSum"</span>,</span>
-<span id="cb25-243"><a href="#cb25-243" aria-hidden="true" tabindex="-1"></a>    <span class="at">space =</span> <span class="fu">vgm</span>(<span class="dv">150</span>, <span class="st">"Exp"</span>, <span class="dv">200000</span>, <span class="dv">0</span>),</span>
-<span id="cb25-244"><a href="#cb25-244" aria-hidden="true" tabindex="-1"></a>    <span class="at">time =</span> <span class="fu">vgm</span>(<span class="dv">20</span>, <span class="st">"Sph"</span>, <span class="dv">6</span>, <span class="dv">0</span>),</span>
-<span id="cb25-245"><a href="#cb25-245" aria-hidden="true" tabindex="-1"></a>    <span class="at">k =</span> <span class="dv">2</span>)</span>
-<span id="cb25-246"><a href="#cb25-246" aria-hidden="true" tabindex="-1"></a><span class="co">#v.st$dist = v.st$dist / 1000</span></span>
-<span id="cb25-247"><a href="#cb25-247" aria-hidden="true" tabindex="-1"></a>StAni <span class="ot">&lt;-</span> <span class="fu">estiStAni</span>(v.st, <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">200000</span>))</span>
-<span id="cb25-248"><a href="#cb25-248" aria-hidden="true" tabindex="-1"></a>(fitProdSumModel <span class="ot">&lt;-</span> <span class="fu">fit.StVariogram</span>(v.st, prodSumModel,</span>
-<span id="cb25-249"><a href="#cb25-249" aria-hidden="true" tabindex="-1"></a>    <span class="at">fit.method =</span> <span class="dv">7</span>, <span class="at">stAni =</span> StAni, <span class="at">method =</span> <span class="st">"L-BFGS-B"</span>,</span>
-<span id="cb25-250"><a href="#cb25-250" aria-hidden="true" tabindex="-1"></a>    <span class="at">control =</span> <span class="fu">list</span>(<span class="at">parscale =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">100000</span>,<span class="dv">1</span>,<span class="dv">1</span>,<span class="fl">0.1</span>,<span class="dv">1</span>,<span class="dv">10</span>)),</span>
-<span id="cb25-251"><a href="#cb25-251" aria-hidden="true" tabindex="-1"></a>    <span class="at">lower =</span> <span class="fu">rep</span>(<span class="fl">0.0001</span>, <span class="dv">7</span>)))</span>
-<span id="cb25-252"><a href="#cb25-252" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-253"><a href="#cb25-253" aria-hidden="true" tabindex="-1"></a>and shown in @fig-prodsummodelplot, which can also be plotted</span>
-<span id="cb25-254"><a href="#cb25-254" aria-hidden="true" tabindex="-1"></a>as wire frames, shown in @fig-modelwire.  Fitting this model is</span>
-<span id="cb25-255"><a href="#cb25-255" aria-hidden="true" tabindex="-1"></a>rather sensitive to the chosen parameters, which may be caused by </span>
-<span id="cb25-256"><a href="#cb25-256" aria-hidden="true" tabindex="-1"></a>the relatively small number (74) of monitoring network stations</span>
-<span id="cb25-257"><a href="#cb25-257" aria-hidden="true" tabindex="-1"></a>available.</span>
-<span id="cb25-258"><a href="#cb25-258" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-259"><a href="#cb25-259" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-prodsummodelplot, echo=!knitr::is_latex_output()}</span></span>
-<span id="cb25-260"><a href="#cb25-260" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap:  "Product-sum model, fitted to the spatiotemporal sample variogram"</span></span>
-<span id="cb25-261"><a href="#cb25-261" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb25-262"><a href="#cb25-262" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(v.st, fitProdSumModel, <span class="at">wireframe =</span> <span class="cn">FALSE</span>, <span class="at">all =</span> <span class="cn">TRUE</span>, </span>
-<span id="cb25-263"><a href="#cb25-263" aria-hidden="true" tabindex="-1"></a>     <span class="at">scales =</span> <span class="fu">list</span>(<span class="at">arrows =</span> <span class="cn">FALSE</span>), <span class="at">zlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">150</span>))</span>
-<span id="cb25-264"><a href="#cb25-264" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-265"><a href="#cb25-265" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-modelwire, echo = !knitr::is_latex_output()}</span></span>
-<span id="cb25-266"><a href="#cb25-266" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Wireframe plot of the fitted spatiotemporal variogram model"</span></span>
-<span id="cb25-267"><a href="#cb25-267" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb25-268"><a href="#cb25-268" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(v.st, <span class="at">model =</span> fitProdSumModel, <span class="at">wireframe =</span> <span class="cn">TRUE</span>, <span class="at">all =</span> <span class="cn">TRUE</span>, </span>
-<span id="cb25-269"><a href="#cb25-269" aria-hidden="true" tabindex="-1"></a>     <span class="at">scales =</span> <span class="fu">list</span>(<span class="at">arrows =</span> <span class="cn">FALSE</span>), <span class="at">zlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">185</span>))</span>
-<span id="cb25-270"><a href="#cb25-270" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-271"><a href="#cb25-271" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-272"><a href="#cb25-272" aria-hidden="true" tabindex="-1"></a>Hints about the fitting strategy and alternative models for</span>
-<span id="cb25-273"><a href="#cb25-273" aria-hidden="true" tabindex="-1"></a>spatiotemporal variograms are given in @RJ-2016-014.  </span>
-<span id="cb25-274"><a href="#cb25-274" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-275"><a href="#cb25-275" aria-hidden="true" tabindex="-1"></a>\newpage</span>
-<span id="cb25-276"><a href="#cb25-276" aria-hidden="true" tabindex="-1"></a>With this fitted model, and given the observations, we can</span>
-<span id="cb25-277"><a href="#cb25-277" aria-hidden="true" tabindex="-1"></a>carry out kriging or simulation at arbitrary points in space and</span>
-<span id="cb25-278"><a href="#cb25-278" aria-hidden="true" tabindex="-1"></a>time. For instance, we could estimate (or simulate) values in the</span>
-<span id="cb25-279"><a href="#cb25-279" aria-hidden="true" tabindex="-1"></a>time series that are now missing: this occurs regularly, and in</span>
-<span id="cb25-280"><a href="#cb25-280" aria-hidden="true" tabindex="-1"></a>@sec-kriging we used means over time series based on</span>
-<span id="cb25-281"><a href="#cb25-281" aria-hidden="true" tabindex="-1"></a>simply ignoring up to 25% of the observations: substituting these</span>
-<span id="cb25-282"><a href="#cb25-282" aria-hidden="true" tabindex="-1"></a>with estimated or simulated values based on neighbouring (in space</span>
-<span id="cb25-283"><a href="#cb25-283" aria-hidden="true" tabindex="-1"></a>and time) observations before computing yearly mean values seems</span>
-<span id="cb25-284"><a href="#cb25-284" aria-hidden="true" tabindex="-1"></a>a more reasonable approach.</span>
-<span id="cb25-285"><a href="#cb25-285" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-286"><a href="#cb25-286" aria-hidden="true" tabindex="-1"></a>More in general, we can estimate at arbitrary locations and time</span>
-<span id="cb25-287"><a href="#cb25-287" aria-hidden="true" tabindex="-1"></a>points, and we will illustrate this with predicting time series at</span>
-<span id="cb25-288"><a href="#cb25-288" aria-hidden="true" tabindex="-1"></a>particular locations and and predicting spatial slices <span class="co">[</span><span class="ot">@RJ-2016-014</span><span class="co">]</span>. </span>
-<span id="cb25-289"><a href="#cb25-289" aria-hidden="true" tabindex="-1"></a>We can create a <span class="in">`stars`</span> object for two randomly selected spatial points </span>
-<span id="cb25-290"><a href="#cb25-290" aria-hidden="true" tabindex="-1"></a>and all time instances by </span>
-<span id="cb25-291"><a href="#cb25-291" aria-hidden="true" tabindex="-1"></a><span class="in">```{r createstarsobject}</span></span>
-<span id="cb25-292"><a href="#cb25-292" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1331</span>)</span>
-<span id="cb25-293"><a href="#cb25-293" aria-hidden="true" tabindex="-1"></a>pt <span class="ot">&lt;-</span> <span class="fu">st_sample</span>(de, <span class="dv">2</span>)</span>
-<span id="cb25-294"><a href="#cb25-294" aria-hidden="true" tabindex="-1"></a>t <span class="ot">&lt;-</span> <span class="fu">st_get_dimension_values</span>(no2.st, <span class="dv">1</span>)</span>
-<span id="cb25-295"><a href="#cb25-295" aria-hidden="true" tabindex="-1"></a><span class="fu">st_as_stars</span>(<span class="fu">list</span>(<span class="at">pts =</span> <span class="fu">matrix</span>(<span class="dv">1</span>, <span class="fu">length</span>(t), <span class="fu">length</span>(pt)))) <span class="sc">|&gt;</span></span>
-<span id="cb25-296"><a href="#cb25-296" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="at">names =</span> <span class="fu">c</span>(<span class="st">"time"</span>, <span class="st">"station"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb25-297"><a href="#cb25-297" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"time"</span>, t) <span class="sc">|&gt;</span></span>
-<span id="cb25-298"><a href="#cb25-298" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"station"</span>, pt) <span class="ot">-&gt;</span> new_pt</span>
-<span id="cb25-299"><a href="#cb25-299" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-300"><a href="#cb25-300" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-301"><a href="#cb25-301" aria-hidden="true" tabindex="-1"></a>and we obtain the spatiotemporal predictions at these two points using <span class="in">`krigeST`</span> by</span>
-<span id="cb25-302"><a href="#cb25-302" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo = FALSE, eval = file.exists("data/new_ts.RData")}</span></span>
-<span id="cb25-303"><a href="#cb25-303" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"data/new_ts.RData"</span>)</span>
-<span id="cb25-304"><a href="#cb25-304" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-305"><a href="#cb25-305" aria-hidden="true" tabindex="-1"></a><span class="in">```{r spacetimekriging, eval = !exists("new_ts")}</span></span>
-<span id="cb25-306"><a href="#cb25-306" aria-hidden="true" tabindex="-1"></a>no2.st <span class="ot">&lt;-</span> <span class="fu">st_transform</span>(no2.st, crs)</span>
-<span id="cb25-307"><a href="#cb25-307" aria-hidden="true" tabindex="-1"></a>new_ts <span class="ot">&lt;-</span> <span class="fu">krigeST</span>(NO2<span class="sc">~</span><span class="dv">1</span>, <span class="at">data =</span> no2.st[<span class="st">"NO2"</span>], <span class="at">newdata =</span> new_pt,</span>
-<span id="cb25-308"><a href="#cb25-308" aria-hidden="true" tabindex="-1"></a>         <span class="at">nmax =</span> <span class="dv">50</span>, <span class="at">stAni =</span> StAni, <span class="at">modelList =</span> fitProdSumModel,</span>
-<span id="cb25-309"><a href="#cb25-309" aria-hidden="true" tabindex="-1"></a>         <span class="at">progress =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb25-310"><a href="#cb25-310" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-311"><a href="#cb25-311" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
-<span id="cb25-312"><a href="#cb25-312" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="st">"new_ts"</span>, <span class="at">file =</span> <span class="st">"data/new_ts.RData"</span>)</span>
-<span id="cb25-313"><a href="#cb25-313" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-314"><a href="#cb25-314" aria-hidden="true" tabindex="-1"></a>where the results are shown in @fig-plotxts.</span>
-<span id="cb25-315"><a href="#cb25-315" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-plotxts, echo = !knitr::is_latex_output()}</span></span>
-<span id="cb25-316"><a href="#cb25-316" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Time series plot of spatiotemporal predictions for two points"</span></span>
-<span id="cb25-317"><a href="#cb25-317" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb25-318"><a href="#cb25-318" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">as.xts</span>(new_ts[<span class="dv">2</span>]))</span>
-<span id="cb25-319"><a href="#cb25-319" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-320"><a href="#cb25-320" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-321"><a href="#cb25-321" aria-hidden="true" tabindex="-1"></a>Alternatively, we can create spatiotemporal predictions for a set of time-stamped</span>
-<span id="cb25-322"><a href="#cb25-322" aria-hidden="true" tabindex="-1"></a>raster maps, evenly spaced over the year 2017, created by</span>
-<span id="cb25-323"><a href="#cb25-323" aria-hidden="true" tabindex="-1"></a><span class="in">```{r spatiotemporalpredictionsgrid}</span></span>
-<span id="cb25-324"><a href="#cb25-324" aria-hidden="true" tabindex="-1"></a><span class="fu">st_bbox</span>(de) <span class="sc">|&gt;</span></span>
-<span id="cb25-325"><a href="#cb25-325" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_as_stars</span>(<span class="at">dx =</span> <span class="dv">10000</span>) <span class="sc">|&gt;</span></span>
-<span id="cb25-326"><a href="#cb25-326" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_crop</span>(de) <span class="ot">-&gt;</span> grd</span>
-<span id="cb25-327"><a href="#cb25-327" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">dim</span>(grd)</span>
-<span id="cb25-328"><a href="#cb25-328" aria-hidden="true" tabindex="-1"></a>t4 <span class="ot">&lt;-</span> t[(<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span> <span class="sc">-</span> <span class="fl">0.5</span>) <span class="sc">*</span> (<span class="dv">3</span><span class="sc">*</span><span class="dv">24</span><span class="sc">*</span><span class="dv">30</span>)]</span>
-<span id="cb25-329"><a href="#cb25-329" aria-hidden="true" tabindex="-1"></a><span class="fu">st_as_stars</span>(<span class="at">pts =</span> <span class="fu">array</span>(<span class="dv">1</span>, <span class="fu">c</span>(d[<span class="dv">1</span>], d[<span class="dv">2</span>], <span class="at">time =</span> <span class="fu">length</span>(t4)))) <span class="sc">|&gt;</span></span>
-<span id="cb25-330"><a href="#cb25-330" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"time"</span>, t4) <span class="sc">|&gt;</span></span>
-<span id="cb25-331"><a href="#cb25-331" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"x"</span>, <span class="fu">st_get_dimension_values</span>(grd, <span class="st">"x"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb25-332"><a href="#cb25-332" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"y"</span>, <span class="fu">st_get_dimension_values</span>(grd, <span class="st">"y"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb25-333"><a href="#cb25-333" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_crs</span>(crs) <span class="ot">-&gt;</span> grd.st</span>
-<span id="cb25-334"><a href="#cb25-334" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-335"><a href="#cb25-335" aria-hidden="true" tabindex="-1"></a>and the subsequent predictions are obtained by</span>
-<span id="cb25-336"><a href="#cb25-336" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-337"><a href="#cb25-337" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo = FALSE, eval = file.exists("data/new_int.RData")}</span></span>
-<span id="cb25-338"><a href="#cb25-338" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"data/new_int.RData"</span>)</span>
-<span id="cb25-339"><a href="#cb25-339" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-340"><a href="#cb25-340" aria-hidden="true" tabindex="-1"></a><span class="in">```{r spatiotemporalpredictions, eval = !exists("new_int") }</span></span>
-<span id="cb25-341"><a href="#cb25-341" aria-hidden="true" tabindex="-1"></a>new_int <span class="ot">&lt;-</span> <span class="fu">krigeST</span>(NO2<span class="sc">~</span><span class="dv">1</span>, <span class="at">data =</span> no2.st[<span class="st">"NO2"</span>], <span class="at">newdata =</span> grd.st,</span>
-<span id="cb25-342"><a href="#cb25-342" aria-hidden="true" tabindex="-1"></a>         <span class="at">nmax =</span> <span class="dv">200</span>, <span class="at">stAni =</span> StAni, <span class="at">modelList =</span> fitProdSumModel,</span>
-<span id="cb25-343"><a href="#cb25-343" aria-hidden="true" tabindex="-1"></a>         <span class="at">progress =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb25-344"><a href="#cb25-344" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(new_int)[<span class="dv">2</span>] <span class="ot">=</span> <span class="st">"NO2"</span></span>
-<span id="cb25-345"><a href="#cb25-345" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-346"><a href="#cb25-346" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
-<span id="cb25-347"><a href="#cb25-347" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="st">"new_int"</span>, <span class="at">file =</span> <span class="st">"data/new_int.RData"</span>)</span>
-<span id="cb25-348"><a href="#cb25-348" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-349"><a href="#cb25-349" aria-hidden="true" tabindex="-1"></a>and shown in @fig-stpredictions.</span>
-<span id="cb25-350"><a href="#cb25-350" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-stpredictions, echo=!knitr::is_latex_output(), message=FALSE}</span></span>
-<span id="cb25-351"><a href="#cb25-351" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Spatiotemporal predictions for four selected time slices"</span></span>
-<span id="cb25-352"><a href="#cb25-352" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb25-353"><a href="#cb25-353" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(viridis)</span>
-<span id="cb25-354"><a href="#cb25-354" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(viridisLite)</span>
-<span id="cb25-355"><a href="#cb25-355" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
-<span id="cb25-356"><a href="#cb25-356" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">coord_equal</span>() <span class="sc">+</span></span>
-<span id="cb25-357"><a href="#cb25-357" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_viridis</span>() <span class="sc">+</span></span>
-<span id="cb25-358"><a href="#cb25-358" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_void</span>() <span class="sc">+</span></span>
-<span id="cb25-359"><a href="#cb25-359" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_discrete</span>(<span class="at">expand=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)) <span class="sc">+</span></span>
-<span id="cb25-360"><a href="#cb25-360" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_y_discrete</span>(<span class="at">expand=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))</span>
-<span id="cb25-361"><a href="#cb25-361" aria-hidden="true" tabindex="-1"></a>g <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> new_int, <span class="fu">aes</span>(<span class="at">fill =</span> NO2, <span class="at">x =</span> x, <span class="at">y =</span> y)) <span class="sc">+</span> </span>
-<span id="cb25-362"><a href="#cb25-362" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span><span class="fu">as.Date</span>(time)) <span class="sc">+</span></span>
-<span id="cb25-363"><a href="#cb25-363" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> <span class="fu">st_cast</span>(de, <span class="st">"MULTILINESTRING"</span>)) <span class="sc">+</span> </span>
-<span id="cb25-364"><a href="#cb25-364" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> no2.sf, <span class="at">col =</span> <span class="st">'grey'</span>, <span class="at">cex =</span> .<span class="dv">5</span>) <span class="sc">+</span> </span>
-<span id="cb25-365"><a href="#cb25-365" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_sf</span>(<span class="at">lims_method =</span> <span class="st">"geometry_bbox"</span>)</span>
-<span id="cb25-366"><a href="#cb25-366" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb25-367"><a href="#cb25-367" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-368"><a href="#cb25-368" aria-hidden="true" tabindex="-1"></a>A larger value for <span class="in">`nmax`</span> was needed here to decrease the visible</span>
-<span id="cb25-369"><a href="#cb25-369" aria-hidden="true" tabindex="-1"></a>disturbance (sharp edges) caused by discrete neighbourhood</span>
-<span id="cb25-370"><a href="#cb25-370" aria-hidden="true" tabindex="-1"></a>selections, which are now done in space _and_ time.</span>
-<span id="cb25-371"><a href="#cb25-371" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-372"><a href="#cb25-372" aria-hidden="true" tabindex="-1"></a><span class="fu">### Irregular space time data</span></span>
-<span id="cb25-373"><a href="#cb25-373" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-374"><a href="#cb25-374" aria-hidden="true" tabindex="-1"></a>For the case where observations are collected at locations that vary</span>
-<span id="cb25-375"><a href="#cb25-375" aria-hidden="true" tabindex="-1"></a>constantly, or at fixed locations but without a common time basis,</span>
-<span id="cb25-376"><a href="#cb25-376" aria-hidden="true" tabindex="-1"></a><span class="in">`stars`</span> objects (vector data cubes) do not represent them well. Such</span>
-<span id="cb25-377"><a href="#cb25-377" aria-hidden="true" tabindex="-1"></a>irregular space time observations can be represented by <span class="in">`sftime`</span></span>
-<span id="cb25-378"><a href="#cb25-378" aria-hidden="true" tabindex="-1"></a>objects, provided by package **sftime** <span class="co">[</span><span class="ot">@R-sftime</span><span class="co">]</span>, which are</span>
-<span id="cb25-379"><a href="#cb25-379" aria-hidden="true" tabindex="-1"></a>essentially <span class="in">`sf`</span> objects with a specified time column. An example of</span>
-<span id="cb25-380"><a href="#cb25-380" aria-hidden="true" tabindex="-1"></a>its uses is found in <span class="in">`demo(sftime)`</span>, provided in package **gstat**.</span>
+<span id="cb25-203"><a href="#cb25-203" aria-hidden="true" tabindex="-1"></a>sfc <span class="ot">&lt;-</span> <span class="fu">st_geometry</span>(a2.sf)[<span class="fu">match</span>(<span class="fu">colnames</span>(aqsel),</span>
+<span id="cb25-204"><a href="#cb25-204" aria-hidden="true" tabindex="-1"></a>                           a2.sf<span class="sc">$</span>Air.Quality.Station.EoI.Code)] <span class="sc">|&gt;</span></span>
+<span id="cb25-205"><a href="#cb25-205" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_transform</span>(crs)</span>
+<span id="cb25-206"><a href="#cb25-206" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-207"><a href="#cb25-207" aria-hidden="true" tabindex="-1"></a>and finally build a <span class="in">`stars`</span> vector data cube with time and station as dimensions:</span>
+<span id="cb25-210"><a href="#cb25-210" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb25-211"><a href="#cb25-211" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stars)</span>
+<span id="cb25-212"><a href="#cb25-212" aria-hidden="true" tabindex="-1"></a><span class="fu">st_as_stars</span>(<span class="at">NO2 =</span> <span class="fu">as.matrix</span>(aqsel)) <span class="sc">|&gt;</span></span>
+<span id="cb25-213"><a href="#cb25-213" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="at">names =</span> <span class="fu">c</span>(<span class="st">"time"</span>, <span class="st">"station"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb25-214"><a href="#cb25-214" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"time"</span>, <span class="fu">index</span>(aqsel)) <span class="sc">|&gt;</span></span>
+<span id="cb25-215"><a href="#cb25-215" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"station"</span>, sfc) <span class="ot">-&gt;</span> no2.st</span>
+<span id="cb25-216"><a href="#cb25-216" aria-hidden="true" tabindex="-1"></a>no2.st</span>
+<span id="cb25-217"><a href="#cb25-217" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-218"><a href="#cb25-218" aria-hidden="true" tabindex="-1"></a>From this, we can compute the spatiotemporal variogram using</span>
+<span id="cb25-219"><a href="#cb25-219" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE, eval = file.exists("data/vst.RData")}</span></span>
+<span id="cb25-220"><a href="#cb25-220" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="at">file =</span> <span class="st">"data/vst.RData"</span>)</span>
+<span id="cb25-221"><a href="#cb25-221" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-224"><a href="#cb25-224" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb25-225"><a href="#cb25-225" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gstat)</span>
+<span id="cb25-226"><a href="#cb25-226" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-227"><a href="#cb25-227" aria-hidden="true" tabindex="-1"></a><span class="in">```{r computespacetimesamplevariogram, eval = !exists("v.st")}</span></span>
+<span id="cb25-228"><a href="#cb25-228" aria-hidden="true" tabindex="-1"></a>v.st <span class="ot">&lt;-</span> <span class="fu">variogramST</span>(NO2<span class="sc">~</span><span class="dv">1</span>, no2.st[,<span class="dv">1</span><span class="sc">:</span>(<span class="dv">24</span><span class="sc">*</span><span class="dv">31</span>)], <span class="at">tlags =</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">48</span>, </span>
+<span id="cb25-229"><a href="#cb25-229" aria-hidden="true" tabindex="-1"></a>    <span class="at">cores =</span> <span class="fu">getOption</span>(<span class="st">"mc.cores"</span>, <span class="dv">2</span>))</span>
+<span id="cb25-230"><a href="#cb25-230" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-231"><a href="#cb25-231" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
+<span id="cb25-232"><a href="#cb25-232" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="st">"v.st"</span>, <span class="at">file =</span> <span class="st">"data/vst.RData"</span>)</span>
+<span id="cb25-233"><a href="#cb25-233" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-234"><a href="#cb25-234" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-235"><a href="#cb25-235" aria-hidden="true" tabindex="-1"></a>which is shown in @fig-plotvariograms.</span>
+<span id="cb25-236"><a href="#cb25-236" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-plotvariograms, echo=!knitr::is_latex_output()}</span></span>
+<span id="cb25-237"><a href="#cb25-237" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Spatiotemporal sample variogram for hourly NO$_2$ concentrations at rural background stations in Germany over 2027; in the right-hand side plot colour corresponds to time lag (yellow is later); distance in m"</span></span>
+<span id="cb25-238"><a href="#cb25-238" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb25-239"><a href="#cb25-239" aria-hidden="true" tabindex="-1"></a><span class="co">#| out.width: 100%</span></span>
+<span id="cb25-240"><a href="#cb25-240" aria-hidden="true" tabindex="-1"></a>v1 <span class="ot">&lt;-</span> <span class="fu">plot</span>(v.st)</span>
+<span id="cb25-241"><a href="#cb25-241" aria-hidden="true" tabindex="-1"></a>v2 <span class="ot">&lt;-</span> <span class="fu">plot</span>(v.st, <span class="at">map =</span> <span class="cn">FALSE</span>, <span class="at">legend =</span> <span class="fu">list</span>())</span>
+<span id="cb25-242"><a href="#cb25-242" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(v1, <span class="at">split =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">more =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb25-243"><a href="#cb25-243" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(v2, <span class="at">split =</span> <span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">more =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb25-244"><a href="#cb25-244" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-245"><a href="#cb25-245" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-246"><a href="#cb25-246" aria-hidden="true" tabindex="-1"></a>To this sample variogram, we can fit a variogram model. One relatively</span>
+<span id="cb25-247"><a href="#cb25-247" aria-hidden="true" tabindex="-1"></a>flexible model we try here is the product-sum model <span class="co">[</span><span class="ot">@RJ-2016-014</span><span class="co">]</span>, fitted by</span>
+<span id="cb25-248"><a href="#cb25-248" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fitprodsummodel}</span></span>
+<span id="cb25-249"><a href="#cb25-249" aria-hidden="true" tabindex="-1"></a><span class="co"># product-sum</span></span>
+<span id="cb25-250"><a href="#cb25-250" aria-hidden="true" tabindex="-1"></a>prodSumModel <span class="ot">&lt;-</span> <span class="fu">vgmST</span>(<span class="st">"productSum"</span>,</span>
+<span id="cb25-251"><a href="#cb25-251" aria-hidden="true" tabindex="-1"></a>    <span class="at">space =</span> <span class="fu">vgm</span>(<span class="dv">150</span>, <span class="st">"Exp"</span>, <span class="dv">200000</span>, <span class="dv">0</span>),</span>
+<span id="cb25-252"><a href="#cb25-252" aria-hidden="true" tabindex="-1"></a>    <span class="at">time =</span> <span class="fu">vgm</span>(<span class="dv">20</span>, <span class="st">"Sph"</span>, <span class="dv">6</span>, <span class="dv">0</span>),</span>
+<span id="cb25-253"><a href="#cb25-253" aria-hidden="true" tabindex="-1"></a>    <span class="at">k =</span> <span class="dv">2</span>)</span>
+<span id="cb25-254"><a href="#cb25-254" aria-hidden="true" tabindex="-1"></a><span class="co">#v.st$dist = v.st$dist / 1000</span></span>
+<span id="cb25-255"><a href="#cb25-255" aria-hidden="true" tabindex="-1"></a>StAni <span class="ot">&lt;-</span> <span class="fu">estiStAni</span>(v.st, <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">200000</span>))</span>
+<span id="cb25-256"><a href="#cb25-256" aria-hidden="true" tabindex="-1"></a>(fitProdSumModel <span class="ot">&lt;-</span> <span class="fu">fit.StVariogram</span>(v.st, prodSumModel,</span>
+<span id="cb25-257"><a href="#cb25-257" aria-hidden="true" tabindex="-1"></a>    <span class="at">fit.method =</span> <span class="dv">7</span>, <span class="at">stAni =</span> StAni, <span class="at">method =</span> <span class="st">"L-BFGS-B"</span>,</span>
+<span id="cb25-258"><a href="#cb25-258" aria-hidden="true" tabindex="-1"></a>    <span class="at">control =</span> <span class="fu">list</span>(<span class="at">parscale =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">100000</span>,<span class="dv">1</span>,<span class="dv">1</span>,<span class="fl">0.1</span>,<span class="dv">1</span>,<span class="dv">10</span>)),</span>
+<span id="cb25-259"><a href="#cb25-259" aria-hidden="true" tabindex="-1"></a>    <span class="at">lower =</span> <span class="fu">rep</span>(<span class="fl">0.0001</span>, <span class="dv">7</span>)))</span>
+<span id="cb25-260"><a href="#cb25-260" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-261"><a href="#cb25-261" aria-hidden="true" tabindex="-1"></a>and shown in @fig-prodsummodelplot, which can also be plotted</span>
+<span id="cb25-262"><a href="#cb25-262" aria-hidden="true" tabindex="-1"></a>as wire frames, shown in @fig-modelwire.  Fitting this model is</span>
+<span id="cb25-263"><a href="#cb25-263" aria-hidden="true" tabindex="-1"></a>rather sensitive to the chosen parameters, which may be caused by </span>
+<span id="cb25-264"><a href="#cb25-264" aria-hidden="true" tabindex="-1"></a>the relatively small number (76) of monitoring network stations</span>
+<span id="cb25-265"><a href="#cb25-265" aria-hidden="true" tabindex="-1"></a>available.</span>
+<span id="cb25-266"><a href="#cb25-266" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-267"><a href="#cb25-267" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-prodsummodelplot, echo=!knitr::is_latex_output()}</span></span>
+<span id="cb25-268"><a href="#cb25-268" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap:  "Product-sum model, fitted to the spatiotemporal sample variogram"</span></span>
+<span id="cb25-269"><a href="#cb25-269" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb25-270"><a href="#cb25-270" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(v.st, fitProdSumModel, <span class="at">wireframe =</span> <span class="cn">FALSE</span>, <span class="at">all =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb25-271"><a href="#cb25-271" aria-hidden="true" tabindex="-1"></a>     <span class="at">scales =</span> <span class="fu">list</span>(<span class="at">arrows =</span> <span class="cn">FALSE</span>), <span class="at">zlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">150</span>))</span>
+<span id="cb25-272"><a href="#cb25-272" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-273"><a href="#cb25-273" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-modelwire, echo = !knitr::is_latex_output()}</span></span>
+<span id="cb25-274"><a href="#cb25-274" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Wireframe plot of the fitted spatiotemporal variogram model"</span></span>
+<span id="cb25-275"><a href="#cb25-275" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb25-276"><a href="#cb25-276" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(v.st, <span class="at">model =</span> fitProdSumModel, <span class="at">wireframe =</span> <span class="cn">TRUE</span>, <span class="at">all =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb25-277"><a href="#cb25-277" aria-hidden="true" tabindex="-1"></a>     <span class="at">scales =</span> <span class="fu">list</span>(<span class="at">arrows =</span> <span class="cn">FALSE</span>), <span class="at">zlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">185</span>))</span>
+<span id="cb25-278"><a href="#cb25-278" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-279"><a href="#cb25-279" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-280"><a href="#cb25-280" aria-hidden="true" tabindex="-1"></a>Hints about the fitting strategy and alternative models for</span>
+<span id="cb25-281"><a href="#cb25-281" aria-hidden="true" tabindex="-1"></a>spatiotemporal variograms are given in @RJ-2016-014.  </span>
+<span id="cb25-282"><a href="#cb25-282" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-283"><a href="#cb25-283" aria-hidden="true" tabindex="-1"></a>\newpage</span>
+<span id="cb25-284"><a href="#cb25-284" aria-hidden="true" tabindex="-1"></a>With this fitted model, and given the observations, we can</span>
+<span id="cb25-285"><a href="#cb25-285" aria-hidden="true" tabindex="-1"></a>carry out kriging or simulation at arbitrary points in space and</span>
+<span id="cb25-286"><a href="#cb25-286" aria-hidden="true" tabindex="-1"></a>time. For instance, we could estimate (or simulate) values in the</span>
+<span id="cb25-287"><a href="#cb25-287" aria-hidden="true" tabindex="-1"></a>time series that are now missing: this occurs regularly, and in</span>
+<span id="cb25-288"><a href="#cb25-288" aria-hidden="true" tabindex="-1"></a>@sec-kriging we used means over time series based on</span>
+<span id="cb25-289"><a href="#cb25-289" aria-hidden="true" tabindex="-1"></a>simply ignoring up to 25% of the observations: substituting these</span>
+<span id="cb25-290"><a href="#cb25-290" aria-hidden="true" tabindex="-1"></a>with estimated or simulated values based on neighbouring (in space</span>
+<span id="cb25-291"><a href="#cb25-291" aria-hidden="true" tabindex="-1"></a>and time) observations before computing yearly mean values seems</span>
+<span id="cb25-292"><a href="#cb25-292" aria-hidden="true" tabindex="-1"></a>a more reasonable approach.</span>
+<span id="cb25-293"><a href="#cb25-293" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-294"><a href="#cb25-294" aria-hidden="true" tabindex="-1"></a>More in general, we can estimate at arbitrary locations and time</span>
+<span id="cb25-295"><a href="#cb25-295" aria-hidden="true" tabindex="-1"></a>points, and we will illustrate this with predicting time series at</span>
+<span id="cb25-296"><a href="#cb25-296" aria-hidden="true" tabindex="-1"></a>particular locations and and predicting spatial slices <span class="co">[</span><span class="ot">@RJ-2016-014</span><span class="co">]</span>. </span>
+<span id="cb25-297"><a href="#cb25-297" aria-hidden="true" tabindex="-1"></a>We can create a <span class="in">`stars`</span> object for two randomly selected spatial points </span>
+<span id="cb25-298"><a href="#cb25-298" aria-hidden="true" tabindex="-1"></a>and all time instances by </span>
+<span id="cb25-299"><a href="#cb25-299" aria-hidden="true" tabindex="-1"></a><span class="in">```{r createstarsobject}</span></span>
+<span id="cb25-300"><a href="#cb25-300" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1331</span>)</span>
+<span id="cb25-301"><a href="#cb25-301" aria-hidden="true" tabindex="-1"></a>pt <span class="ot">&lt;-</span> <span class="fu">st_sample</span>(de, <span class="dv">2</span>)</span>
+<span id="cb25-302"><a href="#cb25-302" aria-hidden="true" tabindex="-1"></a>t <span class="ot">&lt;-</span> <span class="fu">st_get_dimension_values</span>(no2.st, <span class="dv">1</span>)</span>
+<span id="cb25-303"><a href="#cb25-303" aria-hidden="true" tabindex="-1"></a><span class="fu">st_as_stars</span>(<span class="fu">list</span>(<span class="at">pts =</span> <span class="fu">matrix</span>(<span class="dv">1</span>, <span class="fu">length</span>(t), <span class="fu">length</span>(pt)))) <span class="sc">|&gt;</span></span>
+<span id="cb25-304"><a href="#cb25-304" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="at">names =</span> <span class="fu">c</span>(<span class="st">"time"</span>, <span class="st">"station"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb25-305"><a href="#cb25-305" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"time"</span>, t) <span class="sc">|&gt;</span></span>
+<span id="cb25-306"><a href="#cb25-306" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"station"</span>, pt) <span class="ot">-&gt;</span> new_pt</span>
+<span id="cb25-307"><a href="#cb25-307" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-308"><a href="#cb25-308" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-309"><a href="#cb25-309" aria-hidden="true" tabindex="-1"></a>and we obtain the spatiotemporal predictions at these two points using <span class="in">`krigeST`</span> by</span>
+<span id="cb25-310"><a href="#cb25-310" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo = FALSE, eval = file.exists("data/new_ts.RData")}</span></span>
+<span id="cb25-311"><a href="#cb25-311" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"data/new_ts.RData"</span>)</span>
+<span id="cb25-312"><a href="#cb25-312" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-313"><a href="#cb25-313" aria-hidden="true" tabindex="-1"></a><span class="in">```{r spacetimekriging, eval = !exists("new_ts")}</span></span>
+<span id="cb25-314"><a href="#cb25-314" aria-hidden="true" tabindex="-1"></a>no2.st <span class="ot">&lt;-</span> <span class="fu">st_transform</span>(no2.st, crs)</span>
+<span id="cb25-315"><a href="#cb25-315" aria-hidden="true" tabindex="-1"></a>new_ts <span class="ot">&lt;-</span> <span class="fu">krigeST</span>(NO2<span class="sc">~</span><span class="dv">1</span>, <span class="at">data =</span> no2.st[<span class="st">"NO2"</span>], <span class="at">newdata =</span> new_pt,</span>
+<span id="cb25-316"><a href="#cb25-316" aria-hidden="true" tabindex="-1"></a>         <span class="at">nmax =</span> <span class="dv">50</span>, <span class="at">stAni =</span> StAni, <span class="at">modelList =</span> fitProdSumModel,</span>
+<span id="cb25-317"><a href="#cb25-317" aria-hidden="true" tabindex="-1"></a>         <span class="at">progress =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb25-318"><a href="#cb25-318" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-319"><a href="#cb25-319" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
+<span id="cb25-320"><a href="#cb25-320" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="st">"new_ts"</span>, <span class="at">file =</span> <span class="st">"data/new_ts.RData"</span>)</span>
+<span id="cb25-321"><a href="#cb25-321" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-322"><a href="#cb25-322" aria-hidden="true" tabindex="-1"></a>where the results are shown in @fig-plotxts.</span>
+<span id="cb25-323"><a href="#cb25-323" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-plotxts, echo = !knitr::is_latex_output()}</span></span>
+<span id="cb25-324"><a href="#cb25-324" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Time series plot of spatiotemporal predictions for two points"</span></span>
+<span id="cb25-325"><a href="#cb25-325" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb25-326"><a href="#cb25-326" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">as.xts</span>(new_ts[<span class="dv">2</span>]))</span>
+<span id="cb25-327"><a href="#cb25-327" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-328"><a href="#cb25-328" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-329"><a href="#cb25-329" aria-hidden="true" tabindex="-1"></a>Alternatively, we can create spatiotemporal predictions for a set of time-stamped</span>
+<span id="cb25-330"><a href="#cb25-330" aria-hidden="true" tabindex="-1"></a>raster maps, evenly spaced over the year 2017, created by</span>
+<span id="cb25-331"><a href="#cb25-331" aria-hidden="true" tabindex="-1"></a><span class="in">```{r spatiotemporalpredictionsgrid}</span></span>
+<span id="cb25-332"><a href="#cb25-332" aria-hidden="true" tabindex="-1"></a><span class="fu">st_bbox</span>(de) <span class="sc">|&gt;</span></span>
+<span id="cb25-333"><a href="#cb25-333" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_as_stars</span>(<span class="at">dx =</span> <span class="dv">10000</span>) <span class="sc">|&gt;</span></span>
+<span id="cb25-334"><a href="#cb25-334" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_crop</span>(de) <span class="ot">-&gt;</span> grd</span>
+<span id="cb25-335"><a href="#cb25-335" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">dim</span>(grd)</span>
+<span id="cb25-336"><a href="#cb25-336" aria-hidden="true" tabindex="-1"></a>t4 <span class="ot">&lt;-</span> t[(<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span> <span class="sc">-</span> <span class="fl">0.5</span>) <span class="sc">*</span> (<span class="dv">3</span><span class="sc">*</span><span class="dv">24</span><span class="sc">*</span><span class="dv">30</span>)]</span>
+<span id="cb25-337"><a href="#cb25-337" aria-hidden="true" tabindex="-1"></a><span class="fu">st_as_stars</span>(<span class="at">pts =</span> <span class="fu">array</span>(<span class="dv">1</span>, <span class="fu">c</span>(d[<span class="dv">1</span>], d[<span class="dv">2</span>], <span class="at">time =</span> <span class="fu">length</span>(t4)))) <span class="sc">|&gt;</span></span>
+<span id="cb25-338"><a href="#cb25-338" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"time"</span>, t4) <span class="sc">|&gt;</span></span>
+<span id="cb25-339"><a href="#cb25-339" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"x"</span>, <span class="fu">st_get_dimension_values</span>(grd, <span class="st">"x"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb25-340"><a href="#cb25-340" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_dimensions</span>(<span class="st">"y"</span>, <span class="fu">st_get_dimension_values</span>(grd, <span class="st">"y"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb25-341"><a href="#cb25-341" aria-hidden="true" tabindex="-1"></a>    <span class="fu">st_set_crs</span>(crs) <span class="ot">-&gt;</span> grd.st</span>
+<span id="cb25-342"><a href="#cb25-342" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-343"><a href="#cb25-343" aria-hidden="true" tabindex="-1"></a>and the subsequent predictions are obtained by</span>
+<span id="cb25-344"><a href="#cb25-344" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-345"><a href="#cb25-345" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo = FALSE, eval = file.exists("data/new_int.RData")}</span></span>
+<span id="cb25-346"><a href="#cb25-346" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"data/new_int.RData"</span>)</span>
+<span id="cb25-347"><a href="#cb25-347" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-348"><a href="#cb25-348" aria-hidden="true" tabindex="-1"></a><span class="in">```{r spatiotemporalpredictions, eval = !exists("new_int") }</span></span>
+<span id="cb25-349"><a href="#cb25-349" aria-hidden="true" tabindex="-1"></a>new_int <span class="ot">&lt;-</span> <span class="fu">krigeST</span>(NO2<span class="sc">~</span><span class="dv">1</span>, <span class="at">data =</span> no2.st[<span class="st">"NO2"</span>], <span class="at">newdata =</span> grd.st,</span>
+<span id="cb25-350"><a href="#cb25-350" aria-hidden="true" tabindex="-1"></a>         <span class="at">nmax =</span> <span class="dv">200</span>, <span class="at">stAni =</span> StAni, <span class="at">modelList =</span> fitProdSumModel,</span>
+<span id="cb25-351"><a href="#cb25-351" aria-hidden="true" tabindex="-1"></a>         <span class="at">progress =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb25-352"><a href="#cb25-352" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(new_int)[<span class="dv">2</span>] <span class="ot">=</span> <span class="st">"NO2"</span></span>
+<span id="cb25-353"><a href="#cb25-353" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-354"><a href="#cb25-354" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
+<span id="cb25-355"><a href="#cb25-355" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="st">"new_int"</span>, <span class="at">file =</span> <span class="st">"data/new_int.RData"</span>)</span>
+<span id="cb25-356"><a href="#cb25-356" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-357"><a href="#cb25-357" aria-hidden="true" tabindex="-1"></a>and shown in @fig-stpredictions.</span>
+<span id="cb25-358"><a href="#cb25-358" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-stpredictions, echo=!knitr::is_latex_output(), message=FALSE}</span></span>
+<span id="cb25-359"><a href="#cb25-359" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.cap: "Spatiotemporal predictions for four selected time slices"</span></span>
+<span id="cb25-360"><a href="#cb25-360" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb25-361"><a href="#cb25-361" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(viridis)</span>
+<span id="cb25-362"><a href="#cb25-362" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(viridisLite)</span>
+<span id="cb25-363"><a href="#cb25-363" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb25-364"><a href="#cb25-364" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">coord_equal</span>() <span class="sc">+</span></span>
+<span id="cb25-365"><a href="#cb25-365" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_viridis</span>() <span class="sc">+</span></span>
+<span id="cb25-366"><a href="#cb25-366" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_void</span>() <span class="sc">+</span></span>
+<span id="cb25-367"><a href="#cb25-367" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_discrete</span>(<span class="at">expand=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>)) <span class="sc">+</span></span>
+<span id="cb25-368"><a href="#cb25-368" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_y_discrete</span>(<span class="at">expand=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>))</span>
+<span id="cb25-369"><a href="#cb25-369" aria-hidden="true" tabindex="-1"></a>g <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data =</span> new_int, <span class="fu">aes</span>(<span class="at">fill =</span> NO2, <span class="at">x =</span> x, <span class="at">y =</span> y)) <span class="sc">+</span> </span>
+<span id="cb25-370"><a href="#cb25-370" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span><span class="fu">as.Date</span>(time)) <span class="sc">+</span></span>
+<span id="cb25-371"><a href="#cb25-371" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> <span class="fu">st_cast</span>(de, <span class="st">"MULTILINESTRING"</span>)) <span class="sc">+</span> </span>
+<span id="cb25-372"><a href="#cb25-372" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> no2.sf, <span class="at">col =</span> <span class="st">'grey'</span>, <span class="at">cex =</span> .<span class="dv">5</span>) <span class="sc">+</span> </span>
+<span id="cb25-373"><a href="#cb25-373" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_sf</span>(<span class="at">lims_method =</span> <span class="st">"geometry_bbox"</span>)</span>
+<span id="cb25-374"><a href="#cb25-374" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-375"><a href="#cb25-375" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-376"><a href="#cb25-376" aria-hidden="true" tabindex="-1"></a>A larger value for <span class="in">`nmax`</span> was needed here to decrease the visible</span>
+<span id="cb25-377"><a href="#cb25-377" aria-hidden="true" tabindex="-1"></a>disturbance (sharp edges) caused by discrete neighbourhood</span>
+<span id="cb25-378"><a href="#cb25-378" aria-hidden="true" tabindex="-1"></a>selections, which are now done in space _and_ time.</span>
+<span id="cb25-379"><a href="#cb25-379" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-380"><a href="#cb25-380" aria-hidden="true" tabindex="-1"></a><span class="fu">### Irregular space time data</span></span>
 <span id="cb25-381"><a href="#cb25-381" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-382"><a href="#cb25-382" aria-hidden="true" tabindex="-1"></a><span class="fu">## Exercises</span></span>
-<span id="cb25-383"><a href="#cb25-383" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-384"><a href="#cb25-384" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Which fraction of the stations is removed in @sec-preparing when</span>
-<span id="cb25-385"><a href="#cb25-385" aria-hidden="true" tabindex="-1"></a>the criterion applied that a station must be 75% complete?</span>
-<span id="cb25-386"><a href="#cb25-386" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>From the hourly time series in <span class="in">`no2.st`</span>, compute daily mean concentrations</span>
-<span id="cb25-387"><a href="#cb25-387" aria-hidden="true" tabindex="-1"></a>using <span class="in">`aggregate`</span>, and compute the spatiotemporal variogram of this. How does</span>
-<span id="cb25-388"><a href="#cb25-388" aria-hidden="true" tabindex="-1"></a>it compare to the variogram of hourly values?</span>
-<span id="cb25-389"><a href="#cb25-389" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Carry out a spatiotemporal interpolation for daily mean values for the days</span>
-<span id="cb25-390"><a href="#cb25-390" aria-hidden="true" tabindex="-1"></a>corresponding to those shown in @fig-stpredictions, and</span>
-<span id="cb25-391"><a href="#cb25-391" aria-hidden="true" tabindex="-1"></a>compare the results.</span>
-<span id="cb25-392"><a href="#cb25-392" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Following the example in the demo scripts pointed at in @sec-cokriging, carry out a cokriging on the daily mean station data for the four days shown in @fig-stpredictions.</span>
-<span id="cb25-393"><a href="#cb25-393" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>What are the differences of this latter approach to spatiotemporal kriging?</span>
-<span id="cb25-394"><a href="#cb25-394" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-395"><a href="#cb25-395" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
-<span id="cb25-396"><a href="#cb25-396" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="fu">ls</span>(), <span class="at">file =</span> <span class="st">"ch13.RData"</span>)</span>
-<span id="cb25-397"><a href="#cb25-397" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb25-382"><a href="#cb25-382" aria-hidden="true" tabindex="-1"></a>For the case where observations are collected at locations that vary</span>
+<span id="cb25-383"><a href="#cb25-383" aria-hidden="true" tabindex="-1"></a>constantly, or at fixed locations but without a common time basis,</span>
+<span id="cb25-384"><a href="#cb25-384" aria-hidden="true" tabindex="-1"></a><span class="in">`stars`</span> objects (vector data cubes) do not represent them well. Such</span>
+<span id="cb25-385"><a href="#cb25-385" aria-hidden="true" tabindex="-1"></a>irregular space time observations can be represented by <span class="in">`sftime`</span></span>
+<span id="cb25-386"><a href="#cb25-386" aria-hidden="true" tabindex="-1"></a>objects, provided by package **sftime** <span class="co">[</span><span class="ot">@R-sftime</span><span class="co">]</span>, which are</span>
+<span id="cb25-387"><a href="#cb25-387" aria-hidden="true" tabindex="-1"></a>essentially <span class="in">`sf`</span> objects with a specified time column. An example of</span>
+<span id="cb25-388"><a href="#cb25-388" aria-hidden="true" tabindex="-1"></a>its uses is found in <span class="in">`demo(sftime)`</span>, provided in package **gstat**.</span>
+<span id="cb25-389"><a href="#cb25-389" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-390"><a href="#cb25-390" aria-hidden="true" tabindex="-1"></a><span class="fu">## Exercises</span></span>
+<span id="cb25-391"><a href="#cb25-391" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-392"><a href="#cb25-392" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Which fraction of the stations is removed in @sec-preparing when</span>
+<span id="cb25-393"><a href="#cb25-393" aria-hidden="true" tabindex="-1"></a>the criterion applied that a station must be 75% complete?</span>
+<span id="cb25-394"><a href="#cb25-394" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>From the hourly time series in <span class="in">`no2.st`</span>, compute daily mean concentrations</span>
+<span id="cb25-395"><a href="#cb25-395" aria-hidden="true" tabindex="-1"></a>using <span class="in">`aggregate`</span>, and compute the spatiotemporal variogram of this. How does</span>
+<span id="cb25-396"><a href="#cb25-396" aria-hidden="true" tabindex="-1"></a>it compare to the variogram of hourly values?</span>
+<span id="cb25-397"><a href="#cb25-397" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Carry out a spatiotemporal interpolation for daily mean values for the days</span>
+<span id="cb25-398"><a href="#cb25-398" aria-hidden="true" tabindex="-1"></a>corresponding to those shown in @fig-stpredictions, and</span>
+<span id="cb25-399"><a href="#cb25-399" aria-hidden="true" tabindex="-1"></a>compare the results.</span>
+<span id="cb25-400"><a href="#cb25-400" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Following the example in the demo scripts pointed at in @sec-cokriging, carry out a cokriging on the daily mean station data for the four days shown in @fig-stpredictions.</span>
+<span id="cb25-401"><a href="#cb25-401" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>What are the differences of this latter approach to spatiotemporal kriging?</span>
+<span id="cb25-402"><a href="#cb25-402" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-403"><a href="#cb25-403" aria-hidden="true" tabindex="-1"></a><span class="in">```{r echo=FALSE}</span></span>
+<span id="cb25-404"><a href="#cb25-404" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(<span class="at">list =</span> <span class="fu">ls</span>(), <span class="at">file =</span> <span class="st">"ch13.RData"</span>)</span>
+<span id="cb25-405"><a href="#cb25-405" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 </code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
