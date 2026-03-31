@@ -5,7 +5,7 @@ The print version of this book is available from [CRC/Chapman and Hall](https://
 To recreate/reproduce this book:
 
 * git clone this repository
-* download the [data used in Ch 13](https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn), and extract the contents of the `aq` subdirectory into `sdsr/aq`
+* download the [data used in Ch 13](https://uni-muenster.sciebo.de/s/FxAHg5YbayMQ64x) (password: `55S2jKK537`), and extract the contents of the `aq` subdirectory into `sdsr/aq` ([old files Ch 13](https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn))
 * install R package dependencies [listed below](#dependencies)
 * install [quarto](https://quarto.org/) 
 * run `quarto render --to html`
