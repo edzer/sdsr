@@ -24,30 +24,35 @@ and (counter) measures.
 
 The EEA's [air quality
 e-reporting](https://www.eea.europa.eu/data-and-maps/data/aqereporting-9)
-website gives access to the data reported by European member states.
-We decided to download hourly (time series) data, which is the data primarily measured.
-A web form helps convert simple selection criteria into an http `GET` request. The 
-[URL](https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&CityName=&Pollutant=8&Year_from=2017&Year_to=2017&Station=&Samplingpoint=&Source=E1a&Output=TEXT&UpdateDate=)\footnote{\url{https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=DE&CityName=&Pollutant=8&Year_from=2017&Year_to=2017&Station=&Samplingpoint=&Source=E1a&Output=TEXT&UpdateDate=}}
-was created to select all validated (`Source=E1a`) $NO_2$
-(`Pollutant=8`) data for 2017 (`Year_from`, `Year_to`) from Germany
-(`CountryCode=DE`).  It returns a text file with a set of URLs to CSV
-files, each containing the hourly values for the whole period for a
-single measurement station. These files were downloaded and converted
-to the right encoding using the `dos2unix` command line utility.
+website gives access to the data reported by European
+member states.  We decided to download hourly (time series)
+data, which is the data primarily measured.  A web form helps
+convert simple selection criteria into an http `GET` request. The
+form\footnote{https://eeadmz1-downloads-webapp.azurewebsites.net/}
+was filled with Countries: DE; Cities: All; Pollutants: NO2; Dataset:
+Primary validated data (E1a); Type: hourly data; Temporal coverage
+Start: 01/01/2017, End: 01/01/2018; Download format: Parquet files.
+This downloads a zip file with parquet files, one
+per station.  Station metadata are downloaded from the [metadata
+link](https://discomap.eea.europa.eu/App/AQViewer/index.html?fqn=Airquality_Dissem.b2g.measurements#)
+shown at the bottom of the [EEA form
+page](https://eeadmz1-downloads-webapp.azurewebsites.net/).
+Below we assume the zip file is unpacked into subdirectory `aq`.
 
 In the following, we will read all the files into a list, except
 for the single file with the station metadata:
 ```{r readallcsvfiles}
-files <- list.files("aq", pattern = "*.csv", full.names = TRUE)
-files <- setdiff(files, "aq/AirBase_v8_stations.csv") # metadata file
-r <- lapply(files, function(f) read.csv(f))
+files <- list.files("aq/E1a", pattern = "*.parquet", full.names = TRUE)
+# files <- setdiff(files, "aq/DataExtract.csv") # metadata file
+library(arrow)
+r <- lapply(files, function(f) read_parquet(f))
 ```
 then we convert the time variable into a `POSIXct` variable, and put them in time order by
 ```{r fixtimes}
 Sys.setenv(TZ = "UTC") # don't use local time zone
 r <- lapply(r, function(f) {
-		f$t = as.POSIXct(f$DatetimeBegin) 
-		f[order(f$t), ] 
+		f$t = as.POSIXct(f$Start) 
+		f[order(f$t), ]
 	}
 )
 ```
@@ -55,15 +60,16 @@ We remove smaller sub-datasets, which for this dataset have no hourly data:
 ```{r deselect_smaller_datasets}
 r <- r[sapply(r, nrow) > 1000]
 names(r) <- sapply(r,
-			   function(f) unique(f$AirQualityStationEoICode))
+			   function(f) unique(substr(f$Samplingpoint, 11, 17)))
 length(r) == length(unique(names(r)))
 ```
 \index{xts}
 and then merge all files using `xts::cbind`, so that records are combined based on matching times:
 ```{r converttoxts}
 library(xts) |> suppressPackageStartupMessages()
-r <- lapply(r, function(f) xts(f$Concentration, f$t))
+r <- lapply(r, function(f) xts(f$Value, f$t))
 aq <- do.call(cbind, r)
+aq[aq == -999] = NA
 ```
 A usual further selection for this dataset is to select stations
 for which 75\% of the hourly values measured are valid, i.e., drop
@@ -75,27 +81,29 @@ sel <- apply(aq, 2, function(x) mean(is.na(x)) < 0.25)
 aqsel <- aq[, sel]
 ```
 
-Next, the [station metadata](http://ftp.eea.europa.eu/www/AirBase_v8/AirBase_v8_stations.zip) was read 
-and filtered for rural background stations in Germany (`"DE"`) by
+Next, the station metadata was read 
+and filtered for rural background stations in Germany by
 ```{r filterruralbackground}
 library(tidyverse) |> suppressPackageStartupMessages()
-read.csv("aq/AirBase_v8_stations.csv", sep = "\t") |>
+rural = c("rural", "rural-regional", "rural-nearcity", "rural-remote")
+read.csv("aq/DataExtract.csv") |>
 	as_tibble() |> 
-	filter(country_iso_code == "DE",
-		   station_type_of_area == "rural",
-		   type_of_station == "Background") -> a2
+	filter(Country == "Germany",
+		   Air.Quality.Station.Area %in% rural,
+		   Air.Quality.Station.Type == "background",
+           !duplicated(Air.Quality.Station.EoI.Code)) -> a2
 ```
 These stations contain coordinates, and an `sf` object with (static) station metadata is created by
 ```{r importstationcoords}
 library(sf) |> suppressPackageStartupMessages()
 a2.sf <- st_as_sf(a2, crs = 'OGC:CRS84',
-  coords = c("station_longitude_deg", "station_latitude_deg"))
+  coords = c("Longitude", "Latitude"))
 ```
 
 We now subset the air quality measurements to include only stations that are of type rural background,
 which we saved in `a2`:
 ```{r subseteuropean}
-sel <- colnames(aqsel) %in% a2$station_european_code
+sel <- colnames(aqsel) %in% a2$Air.Quality.Station.EoI.Code
 aqsel <- aqsel[, sel]
 dim(aqsel)
 ```
@@ -103,7 +111,7 @@ dim(aqsel)
 We can compute station means and join these to station locations by
 ```{r fig-computestationmeans, message = FALSE}
 tb <- tibble(NO2 = apply(aqsel, 2, mean, na.rm = TRUE), 
-			station_european_code = colnames(aqsel))
+			Air.Quality.Station.EoI.Code = colnames(aqsel))
 crs <- st_crs('EPSG:32632')
 right_join(a2.sf, tb) |> st_transform(crs) -> no2.sf 
 read_sf("data/de_nuts1.gpkg") |> st_transform(crs) -> de
@@ -188,10 +196,10 @@ dataset also used for the previous chapter.
 Starting with the spatiotemporal matrix of NO$_2$ data in `aq`
 constructed at the beginning of this chapter, we selected complete
 records taken at rural background stations into `aqsel`.
-We can select the spatial locations for these 74 stations by
+We can select the spatial locations for these stations by
 ```{r}
 sfc <- st_geometry(a2.sf)[match(colnames(aqsel),
-						   a2.sf$station_european_code)] |>
+						   a2.sf$Air.Quality.Station.EoI.Code)] |>
   st_transform(crs)
 ```
 and finally build a `stars` vector data cube with time and station as dimensions:
@@ -247,7 +255,7 @@ StAni <- estiStAni(v.st, c(0,200000))
 and shown in @fig-prodsummodelplot, which can also be plotted
 as wire frames, shown in @fig-modelwire.  Fitting this model is
 rather sensitive to the chosen parameters, which may be caused by 
-the relatively small number (74) of monitoring network stations
+the relatively small number (76) of monitoring network stations
 available.
 
 ```{r fig-prodsummodelplot, echo=!knitr::is_latex_output()}

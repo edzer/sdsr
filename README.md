@@ -5,7 +5,7 @@ The print version of this book is available from [CRC/Chapman and Hall](https://
 To recreate/reproduce this book:
 
 * git clone this repository
-* download the [data used in Ch 13](https://uni-muenster.sciebo.de/s/8mEbeHPOX9GdAYn), and extract the contents of the `aq` subdirectory into `sdsr/aq`
+* download the [data used in Ch 13](https://zenodo.org/records/19340837/files/aq.zip?download=1), and extract the contents of the `aq` subdirectory into `sdsr/aq`
 * install R package dependencies [listed below](#dependencies)
 * install [quarto](https://quarto.org/) 
 * run `quarto render --to html`
@@ -64,7 +64,8 @@ install.packages(c(
   "stars",
   "tidyverse",
   "viridis",
-  "tmap"))
+  "tmap",
+  "arrow"))
 ```
 
 Install `INLA`:
@@ -79,19 +80,6 @@ options(timeout = 600); install.packages("spDataLarge", repos = "https://nowosad
 Install `starsdata`:
 ```
 options(timeout = 1200); install.packages("starsdata", repos = "http://cran.uni-muenster.de/pebesma", type = "source")
-```
-
-Install `spatialreg` from source from github, either from source:
-```
-install.packages("remotes")
-remotes::install_github("r-spatial/spatialreg")
-```
-or as binary from `r-universe`:
-```
-options(repos = c(
-  rspatial = "https://r-spatial.r-universe.dev",
-  CRAN = "https://cloud.r-project.org"))
-install.packages(c("spatialreg"))
 ```
 
 ## Daily rendered version on GA
