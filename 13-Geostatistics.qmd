@@ -50,7 +50,6 @@ for the single file with the station metadata:
 #### R
 ```{r readallparquetfiles}
 files <- list.files("aq/E1a", pattern = "*.parquet", full.names = TRUE)
-# files <- setdiff(files, "aq/DataExtract.csv") # metadata file
 library(arrow)
 r <- lapply(files, function(f) read_parquet(f))
 ```
@@ -337,6 +336,9 @@ sfc = (
 ```
 :::
 and finally build a `stars` vector data cube with time and station as dimensions:
+
+::: panel-tabset
+#### R
 ```{r}
 library(stars)
 st_as_stars(NO2 = as.matrix(aqsel)) |>
@@ -345,8 +347,26 @@ st_as_stars(NO2 = as.matrix(aqsel)) |>
 	st_set_dimensions("station", sfc) -> no2.st
 no2.st
 ```
+#### Python
+```{python}
+# xvec's GeometryIndex lets a dimension coordinate hold actual
+# geometries (here, the projected station locations in `sfc`),
+# making no2_st a genuine vector data cube, analogous to the stars
+# object above, rather than a plain array indexed by station codes
+import xarray as xr
+import xvec
 
-Readers following the Python tabs should note that the rest of this section (@sec-stgeos) has no Python equivalent: **gstat**'s `variogramST()`, `vgmST()`, `fit.StVariogram()`, and `krigeST()` implement spatiotemporal variogram estimation, product-sum variogram model fitting, and spatiotemporal kriging, none of which are available in Python's spatial statistics ecosystem (`PyKrige` only fits purely spatial variograms; there is no widely-used Python package for spatiotemporal geostatistics comparable to **gstat**). Building an isolated `xarray` data cube to mirror the `stars` object above would have no Python consumer downstream, so it is not attempted either.
+no2_st = xr.DataArray(
+    aqsel.to_numpy(),
+    dims=("time", "station"),
+    coords={"time": aqsel.index.to_numpy(), "station": sfc.values},
+    name="NO2",
+).xvec.set_geom_indexes("station", crs=crs)
+no2_st
+```
+:::
+
+Readers following the Python tabs should note that from here on, @sec-stgeos has no further Python equivalent: **gstat**'s `variogramST()`, `vgmST()`, `fit.StVariogram()`, and `krigeST()` implement spatiotemporal variogram estimation, product-sum variogram model fitting, and spatiotemporal kriging, none of which are available in Python's spatial statistics ecosystem (`PyKrige` only fits purely spatial variograms; there is no widely-used Python package for spatiotemporal geostatistics comparable to **gstat**). The `no2_st` vector data cube built above is real and usable, but nothing downstream in this section can consume it in Python.
 
 From this, we can compute the spatiotemporal variogram using
 ```{r echo=FALSE, eval = file.exists("data/vst.RData")}
