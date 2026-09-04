@@ -8,6 +8,17 @@ system.file("gpkg/nc.gpkg", package="sf") |>
 	read_sf() -> nc
 ```
 
+```{r setup_models, include=FALSE}
+library(reticulate)
+```
+
+```{python echo=FALSE}
+#| code-fold: true
+import geopandas as gpd
+
+nc = gpd.read_file("data/nc.gpkg")
+```
+
 \index{statistical models}
 
 So far in this book, we mostly addressed the problem of
@@ -69,12 +80,30 @@ Objects of class `sf` need no special treatment, as they are
 `data.frame`s. To create maps of the resulting predictions, predicted
 values need to be added to the `sf` object, which can be done using the `nc`
 dataset loaded as in @sec-intro by:
+
+::: panel-tabset
+#### R
 ```{r sid, cache = FALSE}
 nc |> mutate(SID = SID74/BIR74, NWB = NWBIR74/BIR74) -> nc1
 lm(SID ~ NWB, nc1) |>
   predict(nc1, interval = "prediction") -> pr
 bind_cols(nc, pr) |> names()
 ```
+#### Python
+```{python}
+import statsmodels.formula.api as smf
+
+nc1 = nc.copy()
+nc1["SID"] = nc1["SID74"] / nc1["BIR74"]
+nc1["NWB"] = nc1["NWBIR74"] / nc1["BIR74"]
+
+model = smf.ols("SID ~ NWB", data=nc1).fit()
+pr = model.get_prediction(nc1).summary_frame(alpha=0.05)
+pr = pr.rename(columns={"mean": "fit", "obs_ci_lower": "lwr",
+						 "obs_ci_upper": "upr"})[["fit", "lwr", "upr"]]
+nc1.join(pr).columns.tolist()
+```
+:::
 where we see that 
 
 * `lm` estimates a linear model and works directly on an `sf` object

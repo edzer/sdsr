@@ -22,6 +22,8 @@ coordinates into Cartesian coordinates. This includes the cases where
 we think we "do nothing" as in @fig-world (left), or where we show
 the world "as it is", as one would see it from space (@fig-world, right).
 
+::: panel-tabset
+#### R
 ```{r fig-world, echo = !knitr::is_latex_output(), message = FALSE}
 #| fig.cap: "Earth country boundaries; left: mapping long/lat linearly to $x$ and $y$ (plate carrée); right: as seen from an infinite distance (orthographic)"
 #| out.width: 90%
@@ -49,6 +51,51 @@ st_transform(visible_countries, "+proj=ortho +lat_0=-10 +lon_0=-30") |>
     plot(col = NA, add = TRUE)
 options(old)
 ```
+#### Python
+```{python}
+#| fig.cap: "Earth country boundaries; left: mapping long/lat linearly to x and y (plate carrée); right: as seen from an infinite distance (orthographic)"
+#| out.width: 90%
+# Python has no mature equivalent of sf's s2-based spherical
+# intersection used here to clip countries to the visible
+# hemisphere. This approximates it: a country is kept only if every
+# vertex is within ~85 degrees great-circle distance of the centre
+# point, which whole-country-excludes (rather than partially clips)
+# countries straddling the horizon (e.g. Russia, Antarctica).
+import geopandas as gpd
+import numpy as np
+import matplotlib.pyplot as plt
+
+w = gpd.read_file("data/ne_110m_admin_0_countries.shp")
+lon0, lat0 = np.radians(-30), np.radians(-10)
+
+def angular_dist(lon, lat):
+    lon, lat = np.radians(lon), np.radians(lat)
+    cos_d = (np.sin(lat0) * np.sin(lat) +
+             np.cos(lat0) * np.cos(lat) * np.cos(lon - lon0))
+    return np.arccos(np.clip(cos_d, -1, 1))
+
+def all_visible(geom):
+    polys = [geom] if geom.geom_type == "Polygon" else list(geom.geoms)
+    xs, ys = [], []
+    for p in polys:
+        cxs, cys = p.exterior.coords.xy
+        xs.extend(cxs)
+        ys.extend(cys)
+    return np.all(angular_dist(np.array(xs), np.array(ys)) < np.radians(85))
+
+visible = w[w.geometry.apply(all_visible)]
+ortho = f"+proj=ortho +lat_0={np.degrees(lat0)} +lon_0={np.degrees(lon0)}"
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+w.boundary.plot(ax=axes[0], color="black", linewidth=0.5)
+axes[0].set_axis_off()
+
+visible.to_crs(ortho).plot(ax=axes[1], facecolor="lightgrey",
+                            edgecolor="black", linewidth=0.5)
+axes[1].set_axis_off()
+plt.show()
+```
+:::
 
 \newpage
 The left plot of @fig-world  was obtained by
@@ -379,6 +426,8 @@ needs to be prevented by using `reset = FALSE` in the `plot`
 command, and using `add = TRUE` in subsequent calls to `plot`.
 An example is
 
+::: panel-tabset
+#### R
 ```{r fig-figreset}
 #| fig.cap: "Annotating base plots with a legend"
 library(sf)
@@ -387,6 +436,22 @@ plot(nc["BIR74"], reset = FALSE, key.pos = 4)
 plot(st_buffer(nc[1,1], units::set_units(10, km)), col = 'NA', 
 	 border = 'red', lwd = 2, add = TRUE)
 ```
+#### Python
+```{python}
+#| fig.cap: "Annotating base plots with a legend"
+import geopandas as gpd
+import matplotlib.pyplot as plt
+
+nc = gpd.read_file("data/nc.gpkg")
+
+fig, ax = plt.subplots()
+nc.plot(column="BIR74", ax=ax, legend=True)
+buf = nc.iloc[[0]].to_crs("EPSG:32119").buffer(10_000).to_crs(nc.crs)
+buf.boundary.plot(ax=ax, color="red", linewidth=2)
+ax.set_axis_off()
+plt.show()
+```
+:::
 which is shown in @fig-figreset. Annotating `stars`
 plots can be done in the same way when a _single_ stars layer is
 shown. Annotating `stars` facet plots with multiple cube slices can be
@@ -481,6 +546,9 @@ for rectilinear rasters. It downsamples if the user specifies a
 downsampling rate, but has no access to the screen dimensions to
 automatically choose a downsampling rate. This may be just enough, 
 for instance @fig-ggplotstars is created by the following commands:
+
+::: panel-tabset
+#### R
 ```{r fig-ggplotstars}
 #| fig.cap: "Simple facet raster plot with `ggplot2` and `geom_stars`"
 library(ggplot2)
@@ -493,6 +561,15 @@ ggplot() + geom_stars(data = r) +
         scale_y_discrete(expand = c(0,0)) +
 		scale_fill_viridis_c()
 ```
+#### Python
+```{python}
+#| fig.cap: "Simple facet raster plot with xarray"
+import rioxarray as rxr
+
+da = rxr.open_rasterio("data/L7_ETMs.tif")
+da.plot.imshow(col="band", col_wrap=3, cmap="viridis", add_colorbar=True)
+```
+:::
 More elaborate `ggplot2`-based plots with `stars` objects may be
 obtained using package **ggspatial** [@R-ggspatial]. Non-compatible
 but nevertheless `ggplot2`-style plots can be created with `tmap`,
@@ -520,6 +597,8 @@ FIXME: markup visible in PDF and HTML rendering
 ## Maps with `tmap` {#sec-tmap}
 
 \index{tmap}
+
+Readers following the Python tabs should note that this whole section has no Python equivalent: **tmap** is a self-contained grammar-of-graphics-style package with no counterpart in the Python spatial ecosystem (Python maps are generally built directly with **geopandas**/**matplotlib**, as in the sections above, or with dedicated interactive libraries like **folium**), so none of the `tmap`-specific code below is translated.
 
 Package **tmap** [@R-tmap; @tmap] takes a fresh look at plotting
 spatial data in R. It resembles `ggplot2` in the sense that it

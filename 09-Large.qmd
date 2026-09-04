@@ -1,5 +1,9 @@
 # Large data and cloud native {#sec-large}
 
+```{r setup_large, include=FALSE}
+library(reticulate)
+```
+
 \index{cloud native}
 \index{large datasets}
 
@@ -58,6 +62,8 @@ with a WKT text string containing a geometry; only geometries from
 the target file that intersect with this geometry will be returned.
 An example is
 
+::: panel-tabset
+#### R
 ```{r}
 library(sf)
 file <- system.file("gpkg/nc.gpkg", package = "sf")
@@ -65,6 +71,18 @@ c(xmin = -82,ymin = 36, xmax = -80, ymax = 37) |>
     st_bbox() |> st_as_sfc() |> st_as_text() -> bb
 read_sf(file, wkt_filter = bb) |> nrow() # out of 100
 ```
+#### Python
+```{python}
+# geopandas' read_file() has a `bbox` argument that GDAL applies the
+# same way as sf's wkt_filter: only features whose bounding box
+# intersects the given box are returned (out of 100)
+import geopandas as gpd
+from shapely.geometry import box
+
+bb = box(-82, 36, -80, 37)
+len(gpd.read_file("data/nc.gpkg", bbox=bb))
+```
+:::
 
 Here, `read_sf` is used as an alternative to `st_read` to suppress
 output.
@@ -75,16 +93,35 @@ The second option is to use the `query` argument to `st_read`,
 which can be any query in "OGR SQL" dialect. This can for instance be used to
 select features from a layer, or limit fields. An example is:
 
+::: panel-tabset
+#### R
 ```{r}
 q <- "select BIR74,SID74,geom from 'nc.gpkg' where BIR74 > 1500"
 read_sf(file, query = q) |> nrow()
 ```
+#### Python
+```{python}
+# geopandas' read_file() accepts a full OGR SQL statement through
+# the `sql` argument, passed on to GDAL just like sf's `query`
+q = 'select BIR74,SID74,geom from "nc.gpkg" where BIR74 > 1500'
+len(gpd.read_file("data/nc.gpkg", sql=q))
+```
+:::
 Note that `nc.gpkg` is the _layer name_, which can be obtained from `file` using `st_layers`.
 Sequences of records can be read using `LIMIT` and `OFFSET`, to read records 51-60 use
+
+::: panel-tabset
+#### R
 ```{r}
 q <- "select BIR74,SID74,geom from 'nc.gpkg' LIMIT 10 OFFSET 50"
 read_sf(file, query = q) |> nrow()
 ```
+#### Python
+```{python}
+q = 'select BIR74,SID74,geom from "nc.gpkg" LIMIT 10 OFFSET 50'
+len(gpd.read_file("data/nc.gpkg", sql=q))
+```
+:::
 
 Further query options include selection on geometry type or polygon
 area. When the dataset queried is a spatial database, then the query
@@ -126,6 +163,9 @@ mentioned above it passes on SQL in the `query` argument to the
 database, it is sometimes beneficial to directly read from and 
 write to a spatial database using the DBI R database drivers for this. 
 An example of this is:
+
+::: panel-tabset
+#### R
 ```{r, eval=has_PG}
 pg <- DBI::dbConnect(
     RPostgres::Postgres(),
@@ -135,27 +175,70 @@ pg <- DBI::dbConnect(
 read_sf(pg, query = 
 		"select BIR74,wkb_geometry from nc limit 3") |> nrow()
 ```
+#### Python
+```{python, eval=FALSE}
+# geopandas.read_postgis() takes a raw SQL query and a DB-API/SQLAlchemy
+# connection; like has_PG above, this requires database credentials not
+# available in this environment, so it is not executed here
+import os
+import geopandas as gpd
+from sqlalchemy import create_engine
+
+engine = create_engine(
+    f"postgresql://{os.environ['DB_USERNAME']}@{os.environ['DB_HOST']}/postgis"
+)
+gdf = gpd.read_postgis(
+    "select BIR74, wkb_geometry from nc limit 3", engine, geom_col="wkb_geometry"
+)
+len(gdf)
+```
+:::
 where the database host and user name are obtained from environment
 variables, and the database name is `postgis`.
 
 A spatial query might look like
+
+::: panel-tabset
+#### R
 ```{r, eval=has_PG}
 q <- "SELECT BIR74,wkb_geometry FROM nc WHERE \
 ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.50 36.43)');"
 read_sf(pg, query = q) |> nrow()
 ```
+#### Python
+```{python, eval=FALSE}
+q = ("SELECT BIR74, wkb_geometry FROM nc WHERE "
+     "ST_Intersects(wkb_geometry, 'SRID=4267;POINT (-81.50 36.43)')")
+len(gpd.read_postgis(q, engine, geom_col="wkb_geometry"))
+```
+:::
 Here, the intersection is carried out inside the database, and uses a spatial
 index when present.  The same mechanism works when using `dplyr`
 with a database backend:
 
 \index{sf!dbplyr proxy}
 
+::: panel-tabset
+#### R
 ```{r, eval=has_PG}
 library(dplyr, warn.conflicts = FALSE)
 nc_db <- tbl(pg, "nc")
 ```
+#### Python
+```{python, eval=FALSE}
+# Python has no dbplyr-style lazy table abstraction that translates
+# dataframe verbs into SQL; the closest equivalent is to formulate SQL
+# directly (as above) or use an ORM/query-builder such as SQLAlchemy
+# Core or ibis, neither of which are geopandas-integrated the way
+# dbplyr is with sf
+nc_db = "nc"  # table name, used directly in SQL below
+```
+:::
 
 Spatial queries can be formulated and are passed on to the database:
+
+::: panel-tabset
+#### R
 ```{r, eval=has_PG}
 nc_db |> 
 	 filter(ST_Intersects(wkb_geometry, 
@@ -163,6 +246,19 @@ nc_db |>
 	 collect()
 nc_db |> filter(ST_Area(wkb_geometry) > 0.1) |> head(3)
 ```
+#### Python
+```{python, eval=FALSE}
+gpd.read_postgis(
+    "SELECT * FROM nc WHERE ST_Intersects("
+    "wkb_geometry, 'SRID=4267;POINT (-81.50 36.43)')",
+    engine, geom_col="wkb_geometry",
+)
+gpd.read_postgis(
+    "SELECT * FROM nc WHERE ST_Area(wkb_geometry) > 0.1 LIMIT 3",
+    engine, geom_col="wkb_geometry",
+)
+```
+:::
 (Note that PostGIS' `ST_Area` computes the same area as
 the `AREA` field in `nc`, which is the meaningless value obtained by
 interpreting the coordinates as projected, where they are ellipsoidal.)
@@ -217,13 +313,28 @@ that have significant tags, `lines` with non-area "way" features,
 "relation" features , and `other_relations`. A simple and very small
 bounding box query to OpenStreetMap could look like
 
+::: panel-tabset
+#### R
 ```{r,eval=FALSE}
 download.file(paste0("https://openstreetmap.org/api/0.6/map?",
 	   "bbox=7.595,51.969,7.598,51.970"),
     "data/ms.osm", method = "auto")
 ```
+#### Python
+```{python, eval=FALSE}
+import urllib.request
+
+urllib.request.urlretrieve(
+    "https://openstreetmap.org/api/0.6/map?bbox=7.595,51.969,7.598,51.970",
+    "data/ms.osm",
+)
+```
+:::
 and from this file we can read the layer `lines`, and plot its
 first attribute by
+
+::: panel-tabset
+#### R
 ```{r fig-overpass}
 #| fig.cap: "OpenStreetMap vector data"
 #| fig.height: 5
@@ -236,6 +347,27 @@ st_bbox(c(xmin = 7.595, ymin = 51.969,
 plot(o[,1], lwd = 2, add = TRUE)
 plot(st_geometry(p), border = NA, col = '#88888888', add = TRUE)
 ```
+#### Python
+```{python}
+#| fig.cap: "OpenStreetMap vector data"
+#| fig.height: 5
+# the GDAL OSM vector driver (behind read_sf()/st_read()) is also
+# used by geopandas/pyogrio, so the same file and layer names apply
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from shapely.geometry import box
+
+o = gpd.read_file("data/ms.osm", layer="lines")
+p = gpd.read_file("data/ms.osm", layer="multipolygons")
+
+fig, ax = plt.subplots(figsize=(6, 5))
+bbox = gpd.GeoSeries([box(7.595, 51.969, 7.598, 51.970)], crs="OGC:CRS84")
+bbox.boundary.plot(ax=ax, color="black", linewidth=2, linestyle="--")
+o.plot(ax=ax, color="black", linewidth=2)
+p.plot(ax=ax, color="#88888888", edgecolor="none")
+plt.show()
+```
+:::
 the result of which is shown in @fig-overpass.
 The overpass API provides a more generic and powerful query
 functionality to OpenStreetMap data.
@@ -341,6 +473,9 @@ install.packages("starsdata",
   repos = "https://cran.uni-muenster.de/pebesma/", type = "source")
 ```
 We can "load" a Sentinel-2 image from it by
+
+::: panel-tabset
+#### R
 ```{r}
 library(stars) |> suppressPackageStartupMessages()
 f <- paste0("sentinel/S2A_MSIL1C_20180220T105051_N0206",
@@ -353,6 +488,29 @@ s2 <- paste0("SENTINEL2_L1C:/vsizip/", granule, "/", base_name,
 (p <- read_stars(s2, proxy = TRUE))
 object.size(p)
 ```
+#### Python
+```{python}
+# rioxarray/rasterio understand the same GDAL /vsizip/ and
+# SENTINEL2_L1C: prefixes used by sf/stars, since both ultimately
+# call into GDAL. Passing chunks=True makes xarray back the array
+# with dask instead of numpy, giving the same "proxy" behaviour as
+# read_stars(..., proxy = TRUE): only metadata is read up front, no
+# pixel values yet
+import os
+import rioxarray as rxr
+
+f = "sentinel/S2A_MSIL1C_20180220T105051_N0206_R051_T32ULE_20180221T134037.zip"
+granule = os.path.join(
+    os.path.expanduser("~/R/x86_64-pc-linux-gnu-library/4.4/starsdata"), f
+)
+os.path.getsize(granule)
+base_name = os.path.basename(granule).removesuffix(".zip")
+s2 = (f"SENTINEL2_L1C:/vsizip/{granule}/{base_name}"
+	  ".SAFE/MTD_MSIL1C.xml:10m:EPSG_32632")
+p = rxr.open_rasterio(s2, chunks=True)
+type(p.data)  # dask.array.core.Array: not yet computed
+```
+:::
 and we see that this does not actually load _any_ of the pixel
 values but keeps the reference to the dataset and fills the
 dimensions table. (The convoluted `s2` name is needed to point
@@ -364,9 +522,18 @@ in total).
 
 \newpage
 The idea of a proxy object is that we can build expressions like
+
+::: panel-tabset
+#### R
 ```{r}
 p2 <- p * 2
 ```
+#### Python
+```{python}
+p2 = p * 2  # still a dask array: the multiplication is postponed too
+type(p2.data)
+```
+:::
 but that the computations for this are postponed. Only when we
 really need the data, is `p * 2` evaluated.  We need data when we:
 
@@ -381,11 +548,35 @@ In case the entire object does not fit in memory, `plot` and
 pixels available
 * `write_stars` reads, processes, and writes data chunk-by-chunk
 
+::: panel-tabset
+#### R
 ```{r fig-plotp, echo=!knitr::is_latex_output(), message=!knitr::is_latex_output()}
 #| fig.cap: "Downsampled 10 m bands of a Sentinel-2 scene"
 #| code-fold: true
 plot(p)
 ```
+#### Python
+```{python}
+#| fig.cap: "Downsampled 10 m bands of a Sentinel-2 scene"
+#| code-fold: true
+# xarray/dask have no notion of a plotting device resolution the way
+# R's plot.stars_proxy does, so a downsample factor is chosen
+# explicitly here for a representative device size (see also below)
+import numpy as np
+import matplotlib.pyplot as plt
+
+target_px = (700, 700)
+ds = int(np.floor(np.sqrt(np.prod(p.shape[1:]) / np.prod(target_px))))
+
+small = p.isel(y=slice(0, None, ds), x=slice(0, None, ds)).compute()
+fig, axes = plt.subplots(1, small.sizes["band"], figsize=(12, 3.5))
+for i, ax in enumerate(axes):
+    ax.imshow(small.isel(band=i).values, cmap="gray")
+    ax.set_title(f"band {i + 1}")
+    ax.axis("off")
+plt.show()
+```
+:::
 
 Downsampling and chunking is implemented for spatially dense images,
 but not for dense time series or other dense dimensions. 
@@ -393,10 +584,22 @@ As an example, the output of `plot(p)`, shown in @fig-plotp
 only fetches the pixels that can be seen on the plot device, rather
 than the 10980 $\times$ 10980 pixels available in each band. The downsampling
 ratio taken is
+
+::: panel-tabset
+#### R
 ```{r, echo=!knitr::is_latex_output()}
 #| code-fold: true
 (ds <- floor(sqrt(prod(dim(p)) / prod(dev.size("px")))))
 ```
+#### Python
+```{python}
+#| code-fold: true
+# recomputed from the same formula used above, since Python has no
+# equivalent way to query a graphics device's pixel resolution the
+# way R's dev.size("px") does in a headless render
+ds
+```
+:::
 meaning that for every `r ds` $\times$ `r ds` sub-image in the
 original image, only one pixel is read and plotted.
 
@@ -521,17 +724,40 @@ formats that support the GDAL C++ multi-dimensional array API.
 
 To read a remote (cloud-based) Zarr file, one needs to prepend the
 URL with indicators about the format and the access protocol:
+
+::: panel-tabset
+#### R
 ```{r,eval=FALSE}
 dsn = paste0('ZARR:"/vsicurl/https://ncsa.osn.xsede.org',
 	   '/Pangeo/pangeo-forge/gpcp-feedstock/gpcp.zarr"')
 ```
+#### Python
+```{python, eval=FALSE}
+# xarray reads Zarr natively (no GDAL /vsicurl/ prefix needed): a
+# plain https:// URL, or an fsspec-style URL for other backends, is
+# enough. This also means Python's route to cloud-native Zarr access
+# doesn't go through GDAL's multi-dimensional array API at all
+dsn = "https://ncsa.osn.xsede.org/Pangeo/pangeo-forge/gpcp-feedstock/gpcp.zarr"
+```
+:::
 after which we can read the first 10 time steps using
+
+::: panel-tabset
+#### R
 ```{r,eval=FALSE}
 library(stars)
 bounds = c(longitude = "lon_bounds", latitude = "lat_bounds")
 (r = read_mdim(dsn, bounds = bounds, count = c(NA, NA, 10)))
 st_bbox(r)
 ```
+#### Python
+```{python, eval=FALSE}
+import xarray as xr
+
+r = xr.open_zarr(dsn).isel(time=slice(0, 10))
+r.rio.bounds()  # via rioxarray, once a CRS/spatial dims are set
+```
+:::
 In this example, 
 
 * `NA` values for `count` indicate to get all values available for that dimension

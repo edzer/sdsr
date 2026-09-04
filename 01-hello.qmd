@@ -35,19 +35,45 @@ nc.32119 |>
 # https://geopandas.org/en/stable/docs/user_guide/mapping.html
 
 import geopandas as gpd
+import numpy as np
+from pyproj import Transformer
+from shapely.geometry import LineString
 from matplotlib import pyplot as plt
 
-url = "https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg"
-gdf = gpd.read_file(url).to_crs('EPSG:32119')
+gdf_geo = gpd.read_file("data/nc.gpkg")  # native NAD27 geographic CRS
+gdf = gdf_geo.to_crs("EPSG:32119")
+
+# build a graticule by reprojecting meridians/parallels from geographic
+# coordinates into the plot CRS, mirroring sf's plot(graticule = TRUE)
+minx, miny, maxx, maxy = gdf_geo.total_bounds
+lon_ticks = np.arange(np.ceil(minx), np.floor(maxx) + 1)
+lat_ticks = np.arange(np.ceil(miny), np.floor(maxy) + 1)
+to_plot_crs = Transformer.from_crs(gdf_geo.crs, gdf.crs, always_xy=True)
+
+lines = []
+ys = np.linspace(miny, maxy, 100)
+for lon in lon_ticks:
+    lines.append(LineString(zip(*to_plot_crs.transform(np.full_like(ys, lon), ys))))
+xs = np.linspace(minx, maxx, 100)
+for lat in lat_ticks:
+    lines.append(LineString(zip(*to_plot_crs.transform(xs, np.full_like(xs, lat)))))
+graticule = gpd.GeoSeries(lines, crs=gdf.crs)
 
 fig, ax = plt.subplots(1, 1)
-ax.set_yticklabels([])
-ax.set_xticklabels([])
-plt.grid(True)
-plt.title("BIR74")
-gdf.plot(column="BIR74", ax=ax, legend=True, legend_kwds={"orientation": "horizontal"},)
+graticule.plot(ax=ax, color="grey", linewidth=0.5)
+gdf.plot(column="BIR74", ax=ax, legend=True,
+         legend_kwds={"orientation": "horizontal"})
+
+# label the frame with degree values, as sf's graticule axes do
+midlat, midlon = (miny + maxy) / 2, (minx + maxx) / 2
+xt, _ = to_plot_crs.transform(lon_ticks, np.full_like(lon_ticks, midlat))
+_, yt = to_plot_crs.transform(np.full_like(lat_ticks, midlon), lat_ticks)
+ax.set_xticks(xt)
+ax.set_xticklabels([f"{-v:.0f}°W" for v in lon_ticks])
+ax.set_yticks(yt)
+ax.set_yticklabels([f"{v:.0f}°N" for v in lat_ticks])
+ax.set_title("BIR74")
 plt.show()
-# How to do a proper graticule?
 ```
 
 :::
@@ -140,18 +166,22 @@ ggplot() + geom_sf(data = nc_longer, aes(fill = value), linewidth = 0.4) +
 #| code-fold: true
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 
-gdf = gpd.read_file("https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg")
+gdf = gpd.read_file("data/nc.gpkg")
 plt.style.use('ggplot')
 
+# share one colour scale across both facets, matching ggplot's single
+# scale_fill_gradientn() for both panels
+vmin = min(gdf["SID74"].min(), gdf["SID79"].min())
+vmax = max(gdf["SID74"].max(), gdf["SID79"].max())
+
 fig, axes = plt.subplots(nrows=2, figsize=(10, 7))
-gdf.plot(column="SID74", ax=axes[0], legend=True)
-gdf.plot(column="SID79", ax=axes[1], legend=True)
+gdf.plot(column="SID74", ax=axes[0], vmin=vmin, vmax=vmax, legend=True)
+gdf.plot(column="SID79", ax=axes[1], vmin=vmin, vmax=vmax, legend=True)
 axes[0].set_title('1974-1978')
 axes[1].set_title('1979-1984')
 
-plt.show() # however, legends are not equal
+plt.show()
 ```
 
 :::
@@ -170,7 +200,7 @@ mapviewOptions(fgb = FALSE)
 nc.32119 |> mapview(zcol = "BIR74", legend = TRUE, col.regions = sf.colors)
 ```
 #### Python
-```{python eval=FALSE}
+```{python}
 #| code-fold: true
 gdf.explore("BIR74", legend = True)
 ```
@@ -289,61 +319,86 @@ plot(st_buffer(pts, 500), add = TRUE, pch = 3, border = 'blue', col = NA, lwd = 
 import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import rasterio
-import matplotlib as mpl
+from rasterio.plot import show
 from shapely.geometry import Point
 
-src = rasterio.open('https://github.com/r-spatial/stars/raw/main/inst/tif/L7_ETMs.tif')
+src = rasterio.open("data/L7_ETMs.tif")
 band1 = src.read(1)
+minx, miny, maxx, maxy = src.bounds
+
 fig, axes = plt.subplots(2, 2, figsize=(10, 7))
 
-plt.sca(axes[0,0])
-plt.imshow(band1)
-plt.axis(False)
-plt.title('(a)')
+show(band1, transform=src.transform, ax=axes[0, 0])
+axes[0, 0].axis(False)
+axes[0, 0].set_title("(a)")
 
-plt.sca(axes[0,1])
-b1_10x10 = band1[1:10, 1:10]
-plt.imshow(b1_10x10)
-plt.axis(False)
-for (j,i),label in np.ndenumerate(b1_10x10):
-    plt.text(i,j,label,ha='center',va='center')
-plt.title('(b)')
+b1_10x10 = band1[0:10, 0:10]
+axes[0, 1].imshow(b1_10x10)
+axes[0, 1].axis(False)
+for (j, i), label in np.ndenumerate(b1_10x10):
+    axes[0, 1].text(i, j, label, ha="center", va="center", fontsize=6)
+axes[0, 1].set_title("(b)")
 
-np.random.seed(171)
-x = np.random.randint(0, (len(band1)-1), 3)
-y = np.random.randint(0, (len(band1[0])-1), 3)
-plt.sca(axes[1,0])
-plt.imshow(band1)
-plt.title('(c)')
-plt.axis(False)
-plt.plot(x, y, '+', color = 'red')
+# sample 3 random points within the raster's true spatial extent,
+# matching st_sample(st_as_sfc(st_bbox(x)), 3)
+rng = np.random.default_rng(131)
+pts = gpd.GeoSeries(
+    [Point(x, y) for x, y in
+     zip(rng.uniform(minx, maxx, 3), rng.uniform(miny, maxy, 3))],
+    crs=src.crs,
+)
 
-plt.sca(axes[1,1])
-points = gpd.GeoSeries([Point(x[0], y[0]), Point(x[1], y[1]), Point(x[2], y[2])])    
-buffer_size = 500
-met = src.bounds[2]-src.bounds[0]
-res = met/src.width
-buf = buffer_size/res
-buff = int(buf)
-point_buf = points.buffer(buff)
-plt.imshow(band1)
-plt.title('(d)')
-plt.axis(False)
-point_buf.plot(ax = axes[1,1], color="none", edgecolor="red");
+show(band1, transform=src.transform, ax=axes[1, 0])
+pts.plot(ax=axes[1, 0], marker="+", color="blue")
+axes[1, 0].axis(False)
+axes[1, 0].set_title("(c)")
 
+show(band1, transform=src.transform, ax=axes[1, 1])
+pts.buffer(500).plot(ax=axes[1, 1], facecolor="none", edgecolor="blue", linewidth=2)
+axes[1, 1].set_xlim(minx, maxx)
+axes[1, 1].set_ylim(miny, maxy)
+axes[1, 1].axis(False)
+axes[1, 1].set_title("(d)")
+plt.show()
 ```
 
 :::
 
 Vector and raster data can be combined in different ways; for instance we can query the raster at the three points of @fig-ras(c)
 or compute an aggregate, such as the average, over arbitrary regions such as the circles shown in @fig-ras(d).
+
+::: panel-tabset
+#### R
 ```{r fig-raspts,echo=!knitr::is_latex_output(),output=FALSE}
 #| code-fold: true
 st_extract(x, pts) # query at points
 aggregate(x, st_buffer(pts, 500), FUN = mean) |> st_as_sf() # aggregate over circles
 ```
+#### Python
+```{python}
+#| code-fold: true
+from rasterio.mask import mask
+
+# query at points: rasterio.sample returns all bands for each point
+coords = [(p.x, p.y) for p in pts]
+list(src.sample(coords))
+```
+```{python}
+#| code-fold: true
+# aggregate (mean) over circles: mask each buffer polygon and average
+# the pixels it covers
+buffers = pts.buffer(500)
+means = []
+for geom in buffers:
+    out_image, _ = mask(src, [geom], crop=True, nodata=src.nodata)
+    band = out_image[0].astype(float)
+    if src.nodata is not None:
+        band = np.where(out_image[0] == src.nodata, np.nan, band)
+    means.append(np.nanmean(band))
+means
+```
+:::
 
 \newpage
 Other raster-to-vector conversions are discussed in @sec-raster-to-vector and include:
@@ -372,8 +427,6 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import rasterio
 from rasterio import features
-from rasterio.enums import MergeAlg
-from rasterio.plot import show
 import numpy as np
 
 bounds = gdf.total_bounds
@@ -400,14 +453,13 @@ ch_raster3 = rasterio.features.rasterize(
     merge_alg=rasterio.enums.MergeAlg.add
 )
 
-ch_raster3[ch_raster3==0] = np.nan
-fig, axes = plt.subplots(1, 1, figsize=(10, 3))
-show(ch_raster3, transform=transform, ax=axes)
-label = ax.imshow(ch_raster3)
-fig.colorbar(label, ax=axes)
-plt.axis(False)
-axes.set_title('BIR74');
-
+ch_raster3 = np.where(ch_raster3 == 0, np.nan, ch_raster3)
+fig, ax = plt.subplots(1, 1, figsize=(10, 3))
+im = ax.imshow(ch_raster3, extent=(bounds[0], bounds[2], bounds[1], bounds[3]))
+fig.colorbar(im, ax=ax)
+ax.axis(False)
+ax.set_title('BIR74')
+plt.show()
 ```
 
 :::
@@ -433,6 +485,8 @@ Raster dimensions describe how the rows and columns relate to
 spatial coordinates. @fig-rastertypes01  shows a number
 of different possibilities.
 
+::: panel-tabset
+#### R
 ```{r fig-rastertypes01, echo=!knitr::is_latex_output()}
 #| code-fold: true
 #| fig.cap: "Various raster geometry types"
@@ -468,6 +522,56 @@ plot(st_geometry(st_as_sf(r3)), main = "sheared")
 plot(st_geometry(st_as_sf(r4, as_points = FALSE)), main = "rectilinear")
 plot(st_geometry((r5)), main = "curvilinear")
 ```
+#### Python
+```{python}
+#| code-fold: true
+#| fig.cap: "Various raster geometry types"
+# stars raster cells, once converted with st_as_sf(), are just
+# polygon geometries with an affine transform applied to their
+# corners; the same effect is achieved here directly with shapely,
+# without a Python equivalent of stars' `affine` dimension parameter
+import geopandas as gpd
+from shapely.geometry import box
+from shapely.affinity import affine_transform
+import matplotlib.pyplot as plt
+
+def grid_cells(nx, ny, dx=1.0, dy=1.0, x0=0.0, y0=0.0):
+    return gpd.GeoSeries([
+        box(x0 + i * dx, y0 + j * dy, x0 + (i + 1) * dx, y0 + (j + 1) * dy)
+        for j in range(ny) for i in range(nx)
+    ])
+
+regular = grid_cells(5, 4)
+rotated = regular.apply(
+    lambda g: affine_transform(g, [0.985, -0.174, 0.174, 0.985, 0, 0]))
+sheared = regular.apply(
+    lambda g: affine_transform(g, [1, 0.2, -0.3, 1, 0, 0]))
+
+xbreaks, ybreaks = [1, 2, 3.5, 5, 6], [1, 1.5, 3, 3.5]
+rectilinear = gpd.GeoSeries([
+    box(xbreaks[i], ybreaks[j], xbreaks[i + 1], ybreaks[j + 1])
+    for j in range(len(ybreaks) - 1) for i in range(len(xbreaks) - 1)
+])
+
+grd = gpd.GeoSeries(grid_cells(8, 5, dx=10, dy=10, x0=-130, y0=10),
+                     crs="OGC:CRS84")
+curvilinear = grd.to_crs("+proj=laea +lon_0=-70 +lat_0=35")
+
+fig, axes = plt.subplots(2, 3, figsize=(10, 6))
+for ax, geo, title in zip(
+    axes.flat,
+    [regular, rotated, sheared, rectilinear, curvilinear],
+    ["regular", "rotated", "sheared", "rectilinear", "curvilinear"],
+):
+    geo.boundary.plot(ax=ax, color="black", linewidth=0.5)
+    ax.set_title(title)
+    ax.set_axis_off()
+    ax.set_aspect("equal")
+axes.flat[-1].set_axis_off()
+plt.tight_layout()
+plt.show()
+```
+:::
 
 \index{rectilinear raster}
 \index{curvilinear raster}

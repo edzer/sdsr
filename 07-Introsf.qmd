@@ -165,7 +165,7 @@ nc <- st_read(file)
 ```{python}
 import geopandas as gpd
 
-nc = gpd.read_file("https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg")
+nc = gpd.read_file("data/nc.gpkg")
 ```
 :::
 
@@ -257,7 +257,7 @@ nc7 <- nc[1:7, ]
 ```{python}
 import geopandas as gpd
 
-nc = gpd.read_file("https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg")
+nc = gpd.read_file("data/nc.gpkg")
 
 nc5 = nc[:5]
 nc7 = nc[:7]
@@ -286,7 +286,7 @@ text(cc, labels = 1:nrow(nc7), col = "blue")
 import matplotlib.pyplot as plt
 import geopandas as gpd
 
-nc = gpd.read_file("https://github.com/r-spatial/sf/raw/main/inst/gpkg/nc.gpkg")
+nc = gpd.read_file("data/nc.gpkg")
 
 nc5 = nc[:5]
 nc7 = nc[:7]
@@ -413,6 +413,9 @@ is used to evaluate distinctness of geometries.
 `filter` can be used with the usual predicates; when one wants to
 use it with a spatial predicate, for instance to select all counties less
 than 50 km away from Orange County, one could use
+
+::: panel-tabset
+#### R
 ```{r}
 orange <- nc |> dplyr::filter(NAME == "Orange")
 wd <- st_is_within_distance(nc, orange, 
@@ -420,6 +423,24 @@ wd <- st_is_within_distance(nc, orange,
 o50 <- nc |> dplyr::filter(lengths(wd) > 0)
 nrow(o50)
 ```
+#### Python
+```{python}
+# geopandas has no direct equivalent of st_is_within_distance()'s
+# geodesic (s2-based) distance on ellipsoidal coordinates; reproject
+# to a local metric CRS (UTM 17N) first and use planar distances,
+# which closely approximates the geodesic result at this regional
+# scale (verified against R: same 17 counties)
+import geopandas as gpd
+
+orange = nc[nc["NAME"] == "Orange"]
+nc_utm = nc.to_crs("EPSG:32617")
+orange_utm = orange.to_crs("EPSG:32617").geometry.iloc[0]
+
+within = nc_utm.geometry.distance(orange_utm) <= 50_000
+o50 = nc[within.values]
+len(o50)
+```
+:::
 (where we use `dplyr::filter` rather than `filter` to avoid confusion
 with `filter` from base R.)
 
@@ -427,6 +448,8 @@ with `filter` from base R.)
 and in addition a buffer around the county borders. Note that this buffer
 serves for illustration: it was _not_ used to select the counties. 
 
+::: panel-tabset
+#### R
 ```{r fig-orangebuffer, echo=!knitr::is_latex_output()}
 #| fig.cap: "Orange County (orange), counties within a 50 km radius (black), a 50~km buffer around Orange County (brown), and remaining counties (grey)"
 #| code-fold: true
@@ -438,6 +461,23 @@ plot(og, col = 'orange', add = TRUE)
 plot(buf50, add = TRUE, col = NA, border = 'brown')
 plot(st_geometry(nc), add = TRUE, border = 'grey')
 ```
+#### Python
+```{python}
+#| fig.cap: "Orange County (orange), counties within a 50 km radius (black), a 50 km buffer around Orange County (brown), and remaining counties (grey)"
+#| code-fold: true
+import matplotlib.pyplot as plt
+
+buf50 = gpd.GeoSeries([orange_utm.buffer(50_000)], crs="EPSG:32617").to_crs(nc.crs)
+
+fig, ax = plt.subplots()
+nc.boundary.plot(ax=ax, color="grey", linewidth=0.5)
+o50.boundary.plot(ax=ax, color="black", linewidth=1.5)
+orange.plot(ax=ax, color="orange")
+buf50.boundary.plot(ax=ax, color="brown")
+ax.set_axis_off()
+plt.show()
+```
+:::
 
 ## Spatial joins {#sec-sf-joins}
 
@@ -461,6 +501,8 @@ the largest overlap with the target geometry.  An example of this
 is shown (visually) in @fig-largest; this is done using
 `st_join` with argument `largest = TRUE`.
 
+::: panel-tabset
+#### R
 ```{r fig-largest, echo=!knitr::is_latex_output()}
 #| fig-cap: "Example of `st_join` with `largest = TRUE`: the label of the polygon in the top figure with the largest intersection with polygons in the bottom figure is assigned to the polygons of the bottom figure."
 #| code-fold: true
@@ -484,6 +526,62 @@ plot(st_geometry(nc_j), border = 'grey', col = nc_j$col)
 text(st_coordinates(st_centroid(st_geometry(nc_j))), labels = nc_j$label, cex = .7)
 plot(st_geometry(gr), border = '#88ff88aa', add = TRUE)
 ```
+#### Python
+```{python}
+#| fig-cap: "Example of a largest-overlap join: the label of the grid cell in the top figure with the largest intersection with a county in the bottom figure is assigned to that county."
+#| code-fold: true
+# geopandas has no built-in `largest = TRUE` join; it is reproduced
+# here with an overlay followed by picking, per county, the
+# intersecting grid cell with the greatest overlap area
+import geopandas as gpd
+import numpy as np
+from shapely.geometry import box
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+nc2264 = gpd.read_file("data/nc.gpkg").to_crs("EPSG:2264")
+minx, miny, maxx, maxy = nc2264.total_bounds
+n = 10
+dx, dy = (maxx - minx) / n, (maxy - miny) / n
+letters = "ABCDEFGHIJ"
+cells = [box(minx + i * dx, miny + j * dy, minx + (i + 1) * dx, miny + (j + 1) * dy)
+         for j in range(n) for i in range(n)]
+labels = [f"{letters[9 - j]}{i + 1}" for j in range(n) for i in range(n)]
+cmap = plt.get_cmap("tab10")
+gr = gpd.GeoDataFrame(
+    {"label": labels, "col": [mpl.colors.to_hex(cmap(k % 10)) for k in range(len(cells))]},
+    geometry=cells, crs=nc2264.crs,
+)
+gr = gr.iloc[30:].reset_index(drop=True)  # cut, to verify that NAs work out
+
+inter = gpd.overlay(
+    nc2264[["NAME", "geometry"]].reset_index(names="nc_idx"),
+    gr.reset_index(names="gr_idx"),
+    how="intersection",
+)
+inter["area"] = inter.geometry.area
+best = inter.loc[inter.groupby("nc_idx")["area"].idxmax(), ["nc_idx", "label", "col"]]
+nc_j = nc2264.reset_index(names="nc_idx").merge(best, on="nc_idx", how="left")
+
+fig, axes = plt.subplots(2, 1, figsize=(8, 10))
+nc_j.boundary.plot(ax=axes[0], color="grey")
+gr.plot(ax=axes[0], color=gr["col"], alpha=0.3)
+for _, row in gr.iterrows():
+    c = row.geometry.centroid
+    axes[0].text(c.x, c.y, row["label"], fontsize=7, ha="center")
+
+nc_j.boundary.plot(ax=axes[1], color="grey")
+nc_j.plot(ax=axes[1], color=nc_j["col"].fillna("white"))
+for _, row in nc_j.dropna(subset=["label"]).iterrows():
+    c = row.geometry.centroid
+    axes[1].text(c.x, c.y, row["label"], fontsize=6, ha="center")
+gr.boundary.plot(ax=axes[1], color="#88ff88", alpha=0.6)
+
+for ax in axes:
+    ax.set_axis_off()
+plt.show()
+```
+:::
 
 \index{aggregate!sf}
 \index{sf!aggregate}
@@ -537,26 +635,69 @@ add.state_plane$ones = 1 # so that sum() gives a count:
 grd.addr = aggregate(add.state_plane["ones"], grd, sum)
 ```
 
+::: panel-tabset
+#### R
 ```{r echo=FALSE}
 grd.addr = system.file("gpkg/grd_addr.gpkg", package="sf") |> read_sf()
 nc = st_transform(nc, st_crs(grd.addr))
 ```
+#### Python
+```{python}
+import geopandas as gpd
+
+grd_addr = gpd.read_file("data/grd_addr.gpkg")
+nc = gpd.read_file("data/nc.gpkg").to_crs(grd_addr.crs)
+```
+:::
 
 Then, dasymetric mapping is used to redistribute county-aggregate
 values for `BIR74` and `BIR79` to 10 km cells by
 
+::: panel-tabset
+#### R
 ```{r}
 bir.grd = st_interpolate_aw(nc[c("BIR74","BIR79")], extensive = TRUE, grd.addr, weights = "ones")
 ```
+#### Python
+```{python}
+# The Python package tobler provides area_interpolate(), an
+# equivalent of st_interpolate_aw() for plain area-weighted
+# interpolation, but it has no `weights=` argument: it cannot use
+# an auxiliary variable (like the address counts here) to redistribute
+# source values *within* each intersection, so it cannot reproduce
+# true dasymetric mapping. What follows is therefore plain
+# area-weighted interpolation, not dasymetric mapping; the numbers
+# will differ from R's (though, as with R, the totals are conserved).
+from tobler.area_weighted import area_interpolate
+
+bir_grd = area_interpolate(
+    source_df=nc[["BIR74", "BIR79", "geometry"]],
+    target_df=grd_addr,
+    extensive_variables=["BIR74", "BIR79"],
+)
+```
+:::
 
 We can verify the sums of births at the county level and at the 10 km cell level and see an exact match:
+
+::: panel-tabset
+#### R
 ```{r}
 apply(as.data.frame(bir.grd)[1:2], 2, sum)
 apply(as.data.frame(nc)[c("BIR74", "BIR79")], 2, sum)
 ```
+#### Python
+```{python}
+bir_grd[["BIR74", "BIR79"]].sum()
+nc[["BIR74", "BIR79"]].sum()
+```
+:::
 
 At the county-level the comparison can be made by aggregating the cell level values
 to counties, using area-weighted interpolation, shown in @fig-aw-scatter.
+
+::: panel-tabset
+#### R
 ```{r fig-aw-scatter, message = FALSE, echo=!knitr::is_latex_output()}
 #| fig.cap: "County level birth counts 1974 (x) and 10 km cell values aggregated to county (y); the line is drawn at x = y"
 #| code-fold: true
@@ -565,6 +706,27 @@ plot(nc$BIR74, aw$BIR74, log = 'xy', xlab = 'county-value',
 	 ylab = 'area-weighted interpolated')
 abline(0, 1)
 ```
+#### Python
+```{python}
+#| fig.cap: "County level birth counts 1974 (x) and 10 km cell values aggregated to county (y); the line is drawn at x = y"
+#| code-fold: true
+import matplotlib.pyplot as plt
+
+aw = area_interpolate(source_df=bir_grd[["BIR74", "geometry"]],
+                       target_df=nc[["geometry"]],
+                       extensive_variables=["BIR74"])
+
+fig, ax = plt.subplots()
+ax.scatter(nc["BIR74"], aw["BIR74"])
+lims = [1, max(nc["BIR74"].max(), aw["BIR74"].max())]
+ax.plot(lims, lims, color="black")
+ax.set_xscale("log")
+ax.set_yscale("log")
+ax.set_xlabel("county-value")
+ax.set_ylabel("area-weighted interpolated")
+plt.show()
+```
+:::
 The match at the county level is no longer exact because the values
 at the intersection level ($X_{ij}(S_{ij})$ in @sec-area-weighted)
 get lost after aggregating to the 10 km cell level.
@@ -576,25 +738,67 @@ dasymetric mapped, redistributed birth counts are shown in Figure
 spatially extensive variables the range depends on the target grid
 cell size.
 
+::: panel-tabset
+#### R
 ```{r fig-nc-bir, message = FALSE, echo=!knitr::is_latex_output()}
 #| fig.cap: "Birth counts at the county level, 1974"
 #| code-fold: true
 plot(nc["BIR74"], logz = TRUE, main = NULL)
 ```
+#### Python
+```{python}
+#| fig.cap: "Birth counts at the county level, 1974"
+#| code-fold: true
+import matplotlib.colors as mcolors
 
+fig, ax = plt.subplots()
+nc.plot(column="BIR74", ax=ax, legend=True, norm=mcolors.LogNorm())
+ax.set_axis_off()
+plt.show()
+```
+:::
+
+::: panel-tabset
+#### R
 ```{r fig-addresses, message = FALSE, echo=!knitr::is_latex_output()}
 #| fig.cap: "Number of addresses per 10 km cell, 2014"
 #| code-fold: true
 grd.addr$ones[grd.addr$ones==0] = 1 # so that logz shows finite values
 plot(grd.addr, logz=TRUE, main = NULL) # log scale
 ```
+#### Python
+```{python}
+#| fig.cap: "Number of addresses per 10 km cell, 2014"
+#| code-fold: true
+ones = grd_addr["ones"].replace(0, 1)  # so that the log scale shows finite values
 
+fig, ax = plt.subplots()
+grd_addr.plot(column=ones, ax=ax, legend=True, norm=mcolors.LogNorm())
+ax.set_axis_off()
+plt.show()
+```
+:::
+
+::: panel-tabset
+#### R
 ```{r fig-dasymetric, message = FALSE, echo=!knitr::is_latex_output()}
 #| fig.cap: "Dasymetric mapping of birth counts, using address counts as external variable"
 #| code-fold: true
 bir.grd$BIR74[bir.grd$BIR74 == 0] = 1 # so that logz shows finite values
 plot(bir.grd["BIR74"], logz = TRUE, main = NULL)
 ```
+#### Python
+```{python}
+#| fig.cap: "Area-weighted redistribution of birth counts (not dasymetric mapping, see note above)"
+#| code-fold: true
+vals = bir_grd["BIR74"].replace(0, 1)  # so that the log scale shows finite values
+
+fig, ax = plt.subplots()
+bir_grd.plot(column=vals, ax=ax, legend=True, norm=mcolors.LogNorm())
+ax.set_axis_off()
+plt.show()
+```
+:::
 
 ## Ellipsoidal coordinates {#sec-ccw}
 
@@ -662,7 +866,6 @@ plot(pt, add = TRUE, pch = 16, col = 'red')
 #| code-fold: true
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from descartes import PolygonPatch
 from shapely.geometry import Point, Polygon
 
 point = Point(50, 50.1)
@@ -793,7 +996,7 @@ library(stars)
 ```{python}
 import xarray as xr
 import rioxarray as rxr
-r = rxr.open_rasterio('https://github.com/r-spatial/stars/raw/refs/heads/main/inst/tif/L7_ETMs.tif')
+r = rxr.open_rasterio("data/L7_ETMs.tif")
 print(r)
 ```
 :::
@@ -890,7 +1093,7 @@ r[,1:100, seq(1, 250, 5), 4, drop = TRUE] |> dim()
 #### Python
 ```{python python-read-tif1}
 import rasterio
-src = rasterio.open('https://github.com/r-spatial/stars/raw/main/inst/tif/L7_ETMs.tif')
+src = rasterio.open("data/L7_ETMs.tif")
 band = src.read(4)
 subset = band[:100, :250:5]
 ```
@@ -934,7 +1137,7 @@ r[b]
 import rioxarray
 from shapely.geometry import box, Point
 import geopandas as gpd
-da = rioxarray.open_rasterio("https://github.com/r-spatial/stars/raw/refs/heads/main/inst/tif/L7_ETMs.tif")
+da = rioxarray.open_rasterio("data/L7_ETMs.tif")
 # Write the CRS explicitly if not already set
 if da.rio.crs is None:
     da = da.rio.write_crs("EPSG:32724")
@@ -1512,6 +1715,8 @@ A to zone B, by transportation mode.  We have feature geometries
 in `sf` object `bristol_zones` for the 102 origin and destination
 regions, shown in @fig-bristol1.
 
+::: panel-tabset
+#### R
 ```{r fig-bristol1, echo=!knitr::is_latex_output()}
 #| fig.height: 5
 #| fig.cap: "Origin destination data zones for Bristol, UK, with zone 33 (E02003043) coloured red"
@@ -1520,22 +1725,59 @@ library(spDataLarge)
 plot(st_geometry(bristol_zones), axes = TRUE, graticule = TRUE)
 plot(st_geometry(bristol_zones)[33], col = 'red', add = TRUE)
 ```
+#### Python
+```{python}
+#| fig.height: 5
+#| fig.cap: "Origin destination data zones for Bristol, UK, with zone 33 (E02003043) coloured red"
+#| code-fold: true
+import geopandas as gpd
+import pandas as pd
+import matplotlib.pyplot as plt
+
+bristol_zones = gpd.read_file("data/bristol_zones.gpkg")
+bristol_od = pd.read_csv("data/bristol_od.csv")
+
+fig, ax = plt.subplots(figsize=(7, 5))
+bristol_zones.boundary.plot(ax=ax, color="black", linewidth=0.5)
+bristol_zones.iloc[[32]].plot(ax=ax, color="red")  # zone 33, zero-based
+plt.show()
+```
+:::
 OD counts come in a table `bristol_od`
 with non-zero OD pairs as records, and transportation mode as variables:
+
+::: panel-tabset
+#### R
 ```{r}
 head(bristol_od)
 ```
+#### Python
+```{python}
+bristol_od.head(6)
+```
+:::
 The number of zero OD values is found by subtracting the number of
 non-zero records from the total number of OD combinations:
+
+::: panel-tabset
+#### R
 ```{r}
 nrow(bristol_zones)^2 - nrow(bristol_od) 
 ```
+#### Python
+```{python}
+len(bristol_zones)**2 - len(bristol_od)
+```
+:::
 
 We will form a three-dimensional vector data cube with origin,
 destination, and transportation mode as dimensions. For this, we
 first "tidy" the `bristol_od` table to have origin (o), destination (d),
 transportation mode (mode), and count (n) as variables, using 
 `pivot_longer`:
+
+::: panel-tabset
+#### R
 ```{r bristol_tidy}
 # create O-D-mode array:
 bristol_tidy <- bristol_od |> 
@@ -1543,7 +1785,19 @@ bristol_tidy <- bristol_od |>
 	pivot_longer(3:6, names_to = "mode", values_to = "n")
 head(bristol_tidy)
 ```
+#### Python
+```{python}
+# pivot_longer() is pandas' melt()
+bristol_tidy = bristol_od.drop(columns="all").melt(
+    id_vars=["o", "d"], var_name="mode", value_name="n"
+)
+bristol_tidy.head(6)
+```
+:::
 Next, we form the three-dimensional array `a`, filled with zeroes:
+
+::: panel-tabset
+#### R
 ```{r}
 od <- bristol_tidy |> pull("o") |> unique()
 nod <- length(od)
@@ -1553,23 +1807,54 @@ a = array(0L,  c(nod, nod, nmode),
 	dimnames = list(o = od, d = od, mode = mode))
 dim(a)
 ```
+#### Python
+```{python}
+import numpy as np
+
+od = bristol_tidy["o"].unique()
+mode = bristol_tidy["mode"].unique()
+a = np.zeros((len(od), len(od), len(mode)), dtype=int)
+a.shape
+```
+:::
 We see that the dimensions are named with the zone names (o, d)
 and the transportation mode name (mode). 
 Every row of `bristol_tidy` denotes a single array entry, and we can
 use this to fill the non-zero entries of `a` using the `bristol_tidy` 
 table to provide index (`o`, `d` and `mode`)  and value (`n`):
+
+::: panel-tabset
+#### R
 ```{r}
 a[as.matrix(bristol_tidy[c("o", "d", "mode")])] <- 
 		bristol_tidy$n
 ```
+#### Python
+```{python}
+o_idx = {v: i for i, v in enumerate(od)}
+mode_idx = {v: i for i, v in enumerate(mode)}
+a[bristol_tidy["o"].map(o_idx),
+  bristol_tidy["d"].map(o_idx),
+  bristol_tidy["mode"].map(mode_idx)] = bristol_tidy["n"].to_numpy()
+```
+:::
 
 To be sure that there is not an order mismatch between the zones
 in `bristol_zones` and the zone names in `bristol_tidy`, we can
 get the right set of zones by:
+
+::: panel-tabset
+#### R
 ```{r}
 order <- match(od, bristol_zones$geo_code)
 zones <- st_geometry(bristol_zones)[order]
 ```
+#### Python
+```{python}
+order = [bristol_zones.index[bristol_zones["geo_code"] == z][0] for z in od]
+zones = bristol_zones.geometry.iloc[order].reset_index(drop=True)
+```
+:::
 (It happens that the order is already correct, but it is good
 practice to not assume this.)
 
@@ -1580,16 +1865,51 @@ library(stars)
 ```
 
 and finally build a stars object from `a` and `d`:
+
+::: panel-tabset
+#### R
 ```{r}
 (odm <- st_as_stars(list(N = a), dimensions = d))
 ```
+#### Python
+```{python}
+# a plain xarray DataArray needs scalar coordinate labels, so o/d
+# could only hold zone *codes*, not the zone geometries themselves --
+# unlike a stars vector data cube. The xvec package adds a
+# GeometryIndex that lets a dimension coordinate hold actual
+# (shapely) geometries, which is what st_dimensions(o = zones, ...)
+# does above: it makes odm a genuine vector data cube, letting
+# xvec's own plotting and to_geodataframe() methods work spatially
+import xarray as xr
+import xvec
+
+odm = xr.DataArray(
+    a, dims=("o", "d", "mode"),
+    coords={"o": zones.values, "d": zones.values, "mode": mode},
+    name="N",
+).xvec.set_geom_indexes(["o", "d"], crs=bristol_zones.crs)
+odm
+```
+:::
 
 We can take a single slice through this three-dimensional
 array, for instance for zone 33 (@fig-bristol1), by `odm[ , , 33]`, 
 and plot it with
+
+::: panel-tabset
+#### R
 ```{r fig-odm33, fig.cap = "OD matrix sliced for destination zone 33, by transportation mode"}
 plot(adrop(odm[,,33]) + 1, logz = TRUE)
 ```
+#### Python
+```{python}
+#| fig.cap: "OD matrix sliced for destination zone 33, by transportation mode"
+import matplotlib.colors as mcolors
+
+slice33 = odm.isel(d=32) + 1  # zone 33, zero-based; dims (o, mode)
+slice33.xvec.plot(col="mode", col_wrap=4, norm=mcolors.LogNorm())
+```
+:::
 the result of which is shown in @fig-odm33.
 Subsetting this way, we take all attributes (there is only one: N)
 since the first argument is empty, we take all origin regions (second
@@ -1599,44 +1919,121 @@ and all transportation modes (fourth argument empty, or missing).
 We plotted this particular zone because it has the largest number of travellers
 as its destination. We can find this out by summing all origins and
 travel modes by destination:
+
+::: panel-tabset
+#### R
 ```{r}
 d <- st_apply(odm, 2, sum)
 which.max(d[[1]])
 ```
+#### Python
+```{python}
+d_tot = odm.sum(dim=["o", "mode"])
+int(np.argmax(d_tot.values)) + 1  # 1-based, to match R
+```
+:::
 
 Other aggregations we can carry out include: 
 
 Total transportation by OD (102 x 102):
+
+::: panel-tabset
+#### R
 ```{r}
 st_apply(odm, 1:2, sum)
 ```
+#### Python
+```{python}
+odm.sum(dim="mode")
+```
+:::
 Origin totals, by mode:
+
+::: panel-tabset
+#### R
 ```{r}
 st_apply(odm, c(1,3), sum)
 ```
+#### Python
+```{python}
+odm.sum(dim="d")
+```
+:::
 Destination totals, by mode:
+
+::: panel-tabset
+#### R
 ```{r}
 st_apply(odm, c(2,3), sum)
 ```
+#### Python
+```{python}
+odm.sum(dim="o")
+```
+:::
 Origin totals, summed over modes:
+
+::: panel-tabset
+#### R
 ```{r}
 o <- st_apply(odm, 1, sum)
 ```
+#### Python
+```{python}
+o_tot = odm.sum(dim=["d", "mode"])
+```
+:::
 Destination totals, summed over modes (we had this):
+
+::: panel-tabset
+#### R
 ```{r}
 d <- st_apply(odm, 2, sum)
 ```
+#### Python
+```{python}
+d_tot = odm.sum(dim=["o", "mode"])
+```
+:::
 We plot `o` and `d` together after joining them by
+
+::: panel-tabset
+#### R
 ```{r fig-odjoined, out.height = '90%', fig.cap = "Total commutes, summed by origin (left) or destination (right)"}
 x <- (c(o, d, along = list(od = c("origin", "destination"))))
 plot(x, logz = TRUE)
 ```
+#### Python
+```{python}
+#| out.height: '90%'
+#| fig.cap: "Total commutes, summed by origin (left) or destination (right)"
+import pandas as pd
+
+# xarray requires matching dimension *names* to concatenate along a
+# new dimension, regardless of index type, so "d" must be renamed to
+# "o" first -- this mirrors stars' c(o, d, along = list(od = ...)).
+# Renaming also lets GeometryIndex.equals() do a real geometry-aware
+# equality check (not just a name check) confirming the "o" and "d"
+# zones truly line up before combining them; join="exact" (rather
+# than the default "outer") makes concat fail loudly if they don't,
+# instead of silently (or, in this early xvec version, buggily)
+# realigning by geometry order
+d_tot_o = d_tot.rename(d="o")
+assert o_tot.xindexes["o"].equals(d_tot_o.xindexes["o"])
+x = xr.concat([o_tot, d_tot_o], dim=pd.Index(["origin", "destination"], name="od"),
+			  join="exact")
+x.xvec.plot(col="od", norm=mcolors.LogNorm())
+```
+:::
 the result of which is shown in @fig-odjoined.
 
 There is something to say for the argument that such maps
 give the wrong message, as both amount (colour) and polygon
 size give an impression of amount. To take out the amount
 in the count, we can compute densities (count / km$^2$), by
+
+::: panel-tabset
+#### R
 ```{r fig-odbykm, out.height = '90%', fig.cap = "Total commutes per square km, by area of origin (left) or destination (right)", message=FALSE}
 library(units)
 a <- set_units(st_area(st_as_sf(o)), km^2)
@@ -1646,6 +2043,22 @@ od <- c(o["sum_km"], d["sum_km"], along =
 		list(od = c("origin", "destination")))
 plot(od, logz = TRUE)
 ```
+#### Python
+```{python}
+#| out.height: '90%'
+#| fig.cap: "Total commutes per square km, by area of origin (left) or destination (right)"
+# division by a plain area array (not itself geometry-indexed) is
+# done on the underlying values to avoid xarray trying (and failing)
+# to align two different index types on the "o" dimension
+area_km2 = zones.to_crs(zones.estimate_utm_crs()).area.to_numpy() / 1e6
+o_km = o_tot.copy(data=o_tot.values / area_km2)
+d_km = d_tot_o.copy(data=d_tot_o.values / area_km2)
+
+xr.concat([o_km, d_km], dim=pd.Index(["origin", "destination"], name="od"),
+		  join="exact") \
+  .xvec.plot(norm=mcolors.LogNorm(), col="od")
+```
+:::
 shown in @fig-odbykm. Another way to normalize these
 totals would be to divide them by population size.
 
