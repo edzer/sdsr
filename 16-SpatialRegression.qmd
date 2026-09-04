@@ -4,6 +4,12 @@
 eval_inla = Sys.getenv("EVAL_INLA") != "false"
 ```
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reticulate)
+# use_condaenv("base", required = TRUE)
+```
+
 \index{spatial regression}
 \index{regression!spatial}
 
@@ -69,27 +75,64 @@ knitr::opts_chunk$set(echo = TRUE, paged.print = FALSE)
 ```
 
 We can start by reading in the 506 tract dataset from **spData** [@R-spData], and creating a contiguity neighbour object and from that again a row standardised spatial weights object. 
+
+::: panel-tabset
+#### R
 ```{r, message=FALSE}
 library(sf)
 library(spData)
 boston_506 <- st_read(system.file("shapes/boston_tracts.gpkg",
 					  package = "spData")[1], quiet = TRUE)
 ```
+#### Python
+```{python}
+import geopandas as gpd
+
+boston_506 = gpd.read_file("data/boston_tracts.gpkg")
+```
+:::
+
+::: panel-tabset
+#### R
 ```{r}
 nb_q <- spdep::poly2nb(boston_506)
 lw_q <- spdep::nb2listw(nb_q, style = "W")
 ```
+#### Python
+```{python}
+from libpysal import graph
+
+nb_q = graph.Graph.build_contiguity(boston_506, rook=False)
+lw_q = nb_q.transform("r")
+```
+:::
 
 If we examine the median house values, we find that those for censored values have been assigned as missing, and that 17 tracts are affected.
 
+::: panel-tabset
+#### R
 ```{r}
 table(boston_506$censored)
 ```
+#### Python
+```{python}
+boston_506["censored"].value_counts()
+```
+:::
+::: panel-tabset
+#### R
 ```{r}
 summary(boston_506$median)
 ```
+#### Python
+```{python}
+boston_506["median"].describe()
+```
+:::
 Next, we can subset to the remaining 489 tracts with non-censored house values, and the neighbour object to match. The neighbour object now has one observation with no neighbours.
 
+::: panel-tabset
+#### R
 ```{r}
 boston_506$CHAS <- as.factor(boston_506$CHAS)
 boston_489 <- boston_506[!is.na(boston_506$median),]
@@ -97,8 +140,20 @@ nb_q_489 <- spdep::poly2nb(boston_489)
 lw_q_489 <- spdep::nb2listw(nb_q_489, style = "W",
 							zero.policy = TRUE)
 ```
+#### Python
+```{python}
+boston_506["CHAS"] = boston_506["CHAS"].astype("category")
+boston_489 = boston_506[boston_506["median"].notna()].reset_index(drop=True)
+# libpysal represents no-neighbour polygons as isolates automatically,
+# so no explicit zero.policy equivalent is needed
+nb_q_489 = graph.Graph.build_contiguity(boston_489, rook=False)
+lw_q_489 = nb_q_489.transform("r")
+```
+:::
 The `NOX_ID` variable specifies the upper-level aggregation, letting us aggregate the tracts to air pollution model output zones. We can create aggregate neighbour and row standardised spatial weights objects, and aggregate the `NOX` variable taking means, and the `CHAS` Charles River dummy variable for observations on the river. Here we follow the principles outlined in @sec-extensiveintensive for spatially extensive and intensive variables; neither `NOX` nor `CHAS` can be summed, as they are not count variables.
 
+::: panel-tabset
+#### R
 ```{r}
 agg_96 <- list(as.character(boston_506$NOX_ID))
 boston_96 <- aggregate(boston_506[, "NOX_ID"], by = agg_96,
@@ -109,8 +164,25 @@ boston_96$NOX <- aggregate(boston_506$NOX, agg_96, mean)$x
 boston_96$CHAS <-
     aggregate(as.integer(boston_506$CHAS)-1, agg_96, max)$x
 ```
+#### Python
+```{python}
+boston_506["NOX_ID"] = boston_506["NOX_ID"].astype(str)
+boston_96 = boston_506.dissolve(by="NOX_ID",
+								 as_index=False)[["NOX_ID", "geometry"]]
+nb_q_96 = graph.Graph.build_contiguity(boston_96, rook=False)
+lw_q_96 = nb_q_96.transform("r")
+boston_96["NOX"] = boston_506.groupby("NOX_ID")["NOX"].mean().values
+boston_96["CHAS"] = (
+    boston_506.groupby("NOX_ID")["CHAS"]
+    .apply(lambda x: x.astype(int).max())
+    .values
+)
+```
+:::
 The response is aggregated using the `weightedMedian` function in **matrixStats**, and midpoint values for the house value classes. Counts of houses by value class were punched to check the published census values, which can be replicated using `weightedMedian` at the tract level. Here we find two output zones with calculated weighted medians over the upper census question limit of USD \$50,000, and remove them subsequently as they also are affected by not knowing the appropriate value to insert for the top class by value. This is a case of spatially extensive aggregation, for which the summation of counts is appropriate:
 
+::: panel-tabset
+#### R
 ```{r}
 nms <- names(boston_506)
 ccounts <- 23:31
@@ -126,9 +198,51 @@ boston_96$median <- apply(counts, 1, f)
 is.na(boston_96$median) <- boston_96$median > 50000
 summary(boston_96$median)
 ```
+#### Python
+```{python}
+import numpy as np
+
+count_cols = ["cu5k", "c5_7_5", "C7_5_10", "C10_15", "C15_20",
+              "C20_25", "C25_35", "C35_50", "co50k"]
+sum_cols = ["units"] + count_cols + ["POP"]
+for nm in sum_cols:
+    boston_96[nm] = boston_506.groupby("NOX_ID")[nm].sum().values
+
+br2 = np.array([3.50, 6.25, 8.75, 12.5, 17.5, 22.5, 30, 42.5, 60]) * 1000
+
+# No Python package exposes matrixStats::weightedMedian(interpolate =
+# TRUE); this reimplements its linear-interpolation algorithm directly.
+def weighted_median(x, w):
+    x, w = np.asarray(x, dtype=float), np.asarray(w, dtype=float)
+    keep = w > 0
+    x, w = x[keep], w[keep]
+    if len(x) == 0:
+        return np.nan
+    order = np.argsort(x)
+    x, w = x[order], w[order]
+    wnorm = w / w.sum()
+    cw = np.cumsum(wnorm)
+    wcum = cw - wnorm / 2
+    hits = np.flatnonzero(wcum >= 0.5)
+    idx = hits[0] if len(hits) else len(x) - 1
+    if idx == 0:
+        return x[0]
+    dx, dy_denom = x[idx] - x[idx - 1], wcum[idx] - wcum[idx - 1]
+    dy = 0.5 - wcum[idx]
+    return x[idx] + (dy / dy_denom) * dx
+
+boston_96["median"] = boston_96[count_cols].apply(
+    lambda row: weighted_median(br2, row.values), axis=1
+)
+boston_96.loc[boston_96["median"] > 50000, "median"] = np.nan
+boston_96["median"].describe()
+```
+:::
 
 Before subsetting, we aggregate the remaining covariates by weighted mean using the tract population counts punched from the census [@bivand17]; these are spatially intensive variables, not count data.
 
+::: panel-tabset
+#### R
 ```{r}
 POP <- boston_506$POP
 f <- function(x) matrixStats::weightedMean(x[,1], x[,2])
@@ -140,9 +254,30 @@ boston_94 <- boston_96[!is.na(boston_96$median),]
 nb_q_94 <- spdep::subset.nb(nb_q_96, !is.na(boston_96$median))
 lw_q_94 <- spdep::nb2listw(nb_q_94, style="W")
 ```
+#### Python
+```{python}
+mean_cols = ["CRIM", "ZN", "INDUS", "RM", "AGE", "DIS",
+             "RAD", "TAX", "PTRATIO", "LSTAT", "BB"]
+for nm in mean_cols:
+    boston_96[nm] = (
+        boston_506.groupby("NOX_ID")
+        .apply(lambda g: np.average(g[nm], weights=g["POP"]),
+               include_groups=False)
+        .values
+    )
+
+boston_94 = boston_96[boston_96["median"].notna()].reset_index(drop=True)
+# equivalent to subsetting nb_q_96 to the same rows, since adjacency here
+# is purely geometric
+nb_q_94 = graph.Graph.build_contiguity(boston_94, rook=False)
+lw_q_94 = nb_q_94.transform("r")
+```
+:::
 
 We now have two datasets at each level, at the lower, census tract level, and at the upper, air pollution model output zone level, one including the censored observations, the other excluding them.
 
+::: panel-tabset
+#### R
 ```{r}
 boston_94a <- aggregate(boston_489[,"NOX_ID"], 
 						list(boston_489$NOX_ID), unique)
@@ -157,6 +292,25 @@ row.names(boston_93) <- as.character(boston_93$NOX_ID)
 nb_q_93 <- spdep::poly2nb(boston_93,
         row.names = unique(as.character(boston_93$NOX_ID)))
 ```
+#### Python
+```{python}
+boston_489["NOX_ID"] = boston_489["NOX_ID"].astype(str)
+boston_94a = boston_489.dissolve(by="NOX_ID",
+								  as_index=False)[["NOX_ID", "geometry"]]
+nb_q_94a = graph.Graph.build_contiguity(boston_94a, rook=False)
+NOX_ID_no_neighs = boston_94a.loc[
+    nb_q_94a.cardinalities.values == 0, "NOX_ID"
+]
+
+boston_487 = boston_489[
+    ~boston_489["NOX_ID"].isin(NOX_ID_no_neighs)
+].reset_index(drop=True)
+boston_93 = boston_487.dissolve(by="NOX_ID",
+								 as_index=False)[["NOX_ID", "geometry"]]
+boston_93 = boston_93.set_index("NOX_ID", drop=False)
+nb_q_93 = graph.Graph.build_contiguity(boston_93, rook=False)
+```
+:::
 
 \newpage
 The original model related the log of median house values by tract to the square of NOX values, including other covariates usually related to house value by tract, such as aggregate room counts, aggregate age, ethnicity, social status, distance to downtown and to the nearest radial road, a crime rate, and town-level variables reflecting land use (zoning, industry), taxation and education [@bivand17]. This structure will be used here to exercise issues raised in fitting spatial regression models, including the presence of multiple levels.
@@ -165,33 +319,68 @@ The original model related the log of median house values by tract to the square
 \index{multilevel models}
 The ZN, INDUS, NOX, RAD, TAX, and PTRATIO variables show effectively no variability within the TASSIM zones, so in a multilevel model the random effect may absorb their influence. 
 
+::: panel-tabset
+#### R
 ```{r}
 form <- formula(log(median) ~ CRIM + ZN + INDUS + CHAS + 
 				I((NOX*10)^2) + I(RM^2) + AGE + log(DIS) +
 				log(RAD) + TAX + PTRATIO + I(BB/100) + 
 				log(I(LSTAT/100)))
 ```
+#### Python
+```{python}
+# a patsy formula string, reused below by statsmodels' MixedLM
+formula = (
+    "np.log(median) ~ CRIM + ZN + INDUS + C(CHAS) + "
+    "I((NOX * 10) ** 2) + I(RM ** 2) + AGE + np.log(DIS) + "
+    "np.log(RAD) + TAX + PTRATIO + I(BB / 100) + "
+    "np.log(I(LSTAT / 100))"
+)
+```
+:::
 
 ### IID random effects with lme4
 \index{lme4}
 The **lme4** package [@R-lme4] lets us add an independent and identically distributed (IID) unstructured random effect at the model output zone level by updating the model formula with a random effects term:
 
+::: panel-tabset
+#### R
 ```{r, message=FALSE}
 library(Matrix)
 library(lme4)
 MLM <- lmer(update(form, . ~ . + (1 | NOX_ID)), 
 			data = boston_487, REML = FALSE)
 ```
+#### Python
+```{python}
+import statsmodels.formula.api as smf
+
+MLM = smf.mixedlm(formula, data=boston_487,
+				   groups=boston_487["NOX_ID"]).fit(reml=False)
+```
+:::
 Copying the random effect into the `"sf"` object for mapping is performed below.
 
+::: panel-tabset
+#### R
 ```{r}
 boston_93$MLM_re <- ranef(MLM)[[1]][,1]
 ```
+#### Python
+```{python}
+import pandas as pd
+
+MLM_re = pd.Series({str(k): v.iloc[0] for k, v in MLM.random_effects.items()})
+boston_93["MLM_re"] = MLM_re.reindex(boston_93["NOX_ID"]).to_numpy()
+```
+:::
 
 ### IID and CAR random effects with hglm
 \index{hglm}
 The same model may be estimated using the **hglm** package [@R-hglm], which also permits the modelling of discrete responses, this time using an extra one-sided formula to express the random effects term:
 
+::: panel-tabset
+#### R
 ```{r}
 library(hglm) |> suppressPackageStartupMessages()
 suppressWarnings(HGLM_iid <- hglm(fixed = form,
@@ -200,16 +389,34 @@ suppressWarnings(HGLM_iid <- hglm(fixed = form,
 								  family = gaussian()))
 boston_93$HGLM_re <- unname(HGLM_iid$ranef)
 ```
+#### Python
+```{python}
+# No Python package reimplements hglm's h-likelihood estimation. The
+# IID random-intercept model it fits here is statistically the same
+# model as `MLM` above (a Gaussian LMM with a random intercept for
+# NOX_ID), estimated a different way; there is no separate `HGLM_re`
+# to compute independently in Python.
+```
+:::
 
 The same package has been extended to spatially structured SAR and CAR random effects, for which a sparse spatial weights matrix is required [@alam-ronnegard-shen:2015]; we choose binary spatial weights:
 
+::: panel-tabset
+#### R
 ```{r}
 library(spatialreg)
 W <- as(spdep::nb2listw(nb_q_93, style = "B"), "CsparseMatrix")
 ```
+#### Python
+```{python}
+W = nb_q_93.transform("b").sparse
+```
+:::
 
 We fit a CAR model at the upper level, using the `rand.family` argument, where the values of the indexing variable `NOX_ID` match the row names of $W$:
 
+::: panel-tabset
+#### R
 ```{r}
 suppressWarnings(HGLM_car <- hglm(fixed = form,
 								  random = ~ 1 | NOX_ID,
@@ -218,41 +425,93 @@ suppressWarnings(HGLM_car <- hglm(fixed = form,
 								  rand.family = CAR(D=W)))
 boston_93$HGLM_ss <- HGLM_car$ranef[,1]
 ```
+#### Python
+```{python}
+# No Python package fits an HGLM with a CAR-structured random effect
+# (hglm's `rand.family = CAR(D = W)`); libpysal/spreg fit spatial lag
+# or error dependence directly on the response, not this multilevel
+# CAR random-intercept specification, so there is no equivalent
+# `HGLM_ss` to compute here.
+```
+:::
 
 
 ### IID and ICAR random effects with R2BayesX
 \index{R2BayesX}
 The **R2BayesX** package [@R-R2BayesX] provides flexible support for structured additive regression models, including spatial multilevel models. The models include an IID unstructured random effect at the upper level using the `"re"` specification in the `sx` model term [@umlaufetal:15]; we choose the `"MCMC"` method:
 
+::: panel-tabset
+#### R
 ```{r}
 library(R2BayesX) |> suppressPackageStartupMessages()
 ```
+#### Python
+```{python}
+# R2BayesX (structured additive regression with MCMC estimation) has
+# no counterpart in the Python spatial ecosystem.
+```
+:::
 
+::: panel-tabset
+#### R
 ```{r, cache=TRUE}
 BX_iid <- bayesx(update(form, . ~ . + sx(NOX_ID, bs = "re")),
 				 family = "gaussian", data = boston_487,
 				 method = "MCMC", iterations = 12000,
 				 burnin = 2000, step = 2, seed = 123)
 ```
+#### Python
+```{python}
+# No Python equivalent of bayesx()'s MCMC-estimated IID random-effects
+# `sx(..., bs = "re")` term.
+```
+:::
 
+::: panel-tabset
+#### R
 ```{r}
 boston_93$BX_re <- BX_iid$effects["sx(NOX_ID):re"][[1]]$Mean
 ```
+#### Python
+```{python}
+# Depends on the unavailable `BX_iid` model fit above; no `BX_re` to
+# extract in Python.
+```
+:::
 
 and the `"mrf"` (Markov Random Field) spatially structured intrinsic CAR random effect specification based on a graph derived from converting a suitable `"nb"` object for the upper level. The `"region.id"` attribute of the `"nb"` object needs to contain values corresponding to the indexing variable in the `sx` effects term, to facilitate the internal construction of design matrix $Z$:
 
+::: panel-tabset
+#### R
 ```{r}
 RBX_gra <- nb2gra(nb_q_93)
 all.equal(row.names(RBX_gra), attr(nb_q_93, "region.id"))
 ```
+#### Python
+```{python}
+# `nb2gra()` builds R2BayesX's dense map matrix, only needed to feed
+# the unavailable `bayesx()` model below; no equivalent object is
+# needed in Python.
+```
+:::
 As we saw above in the intrinsic CAR model definition, the counts of neighbours are entered on the diagonal, but the current implementation uses a dense, not sparse, matrix:
 
+::: panel-tabset
+#### R
 ```{r}
 all.equal(unname(diag(RBX_gra)), spdep::card(nb_q_93))
 ```
+#### Python
+```{python}
+# Depends on the R2BayesX-specific `RBX_gra` object above; not
+# applicable in Python.
+```
+:::
 
 The `sx` model term continues to include the indexing variable, and now passes through the intrinsic CAR precision matrix:
 
+::: panel-tabset
+#### R
 ```{r, cache=TRUE}
 BX_mrf <- bayesx(update(form, . ~ . + sx(NOX_ID, bs = "mrf",
 										 map = RBX_gra)), 
@@ -260,101 +519,220 @@ BX_mrf <- bayesx(update(form, . ~ . + sx(NOX_ID, bs = "mrf",
 				 method = "MCMC", iterations = 12000,
 				 burnin = 2000, step = 2, seed = 123)
 ```
+#### Python
+```{python}
+# No Python equivalent of bayesx()'s MCMC-estimated intrinsic-CAR
+# `sx(..., bs = "mrf")` term.
+```
+:::
 
+::: panel-tabset
+#### R
 ```{r}
 boston_93$BX_ss <- BX_mrf$effects["sx(NOX_ID):mrf"][[1]]$Mean
 ```
+#### Python
+```{python}
+# Depends on the unavailable `BX_mrf` model fit above; no `BX_ss` to
+# extract in Python.
+```
+:::
 
 ### IID, ICAR and Leroux random effects with INLA
 \index{INLA}
 @JSSv063i20 and @gómez2020bayesian present the use of the **INLA** package [@R-INLA] and the `inla` model fitting function with spatial regression models:
 
+::: panel-tabset
+#### R
 ```{r}
 library(INLA) |> suppressPackageStartupMessages()
 ```
+#### Python
+```{python}
+# INLA has no Python port; a Bayesian alternative such as PyMC or
+# Stan would require a substantially different model specification,
+# so is not a drop-in equivalent and is not attempted here.
+```
+:::
 
 Although differing in details, the approach by updating the fixed model formula with an unstructured random effects term is very similar to that seen above:
 
+::: panel-tabset
+#### R
 ```{r, cache=TRUE, eval = eval_inla}
 INLA_iid <- inla(update(form, . ~ . + f(NOX_ID, model = "iid")),
 				 family = "gaussian", data = boston_487)
 ```
+#### Python
+```{python}
+# No INLA equivalent in Python; see note above.
+```
+:::
 
+::: panel-tabset
+#### R
 ```{r, eval = eval_inla}
 boston_93$INLA_re <- INLA_iid$summary.random$NOX_ID$mean
 ```
+#### Python
+```{python}
+# Depends on the unavailable `INLA_iid` fit above.
+```
+:::
 
 As with most implementations, care is needed to match the indexing variable with the spatial weights; in this case using indices $1, \dots, 93$ rather than the `NOX_ID` variable directly:
 
+::: panel-tabset
+#### R
 ```{r}
 ID2 <- as.integer(as.factor(boston_487$NOX_ID))
 ```
+#### Python
+```{python}
+import pandas as pd
+
+ID2 = pd.factorize(boston_487["NOX_ID"])[0] + 1
+```
+:::
 
 The same sparse binary spatial weights matrix is used, and the intrinsic CAR representation is constructed internally:
 
+::: panel-tabset
+#### R
 ```{r, cache=TRUE,warning=FALSE, eval = eval_inla}
 INLA_ss <- inla(update(form, . ~ . + f(ID2, model = "besag",
 									   graph = W)),
 				family = "gaussian", data = boston_487)
 ```
+#### Python
+```{python}
+# No INLA equivalent in Python; see note above.
+```
+:::
 
+::: panel-tabset
+#### R
 ```{r, eval = eval_inla}
 boston_93$INLA_ss <- INLA_ss$summary.random$ID2$mean
 ```
+#### Python
+```{python}
+# Depends on the unavailable `INLA_ss` fit above.
+```
+:::
 
 The sparse Leroux representation as given by @gómez2020bayesian can be constructed in the following way:
 
+::: panel-tabset
+#### R
 ```{r}
 M <- Diagonal(nrow(W), rowSums(W)) - W
 Cmatrix <- Diagonal(nrow(M), 1) -  M
 ```
+#### Python
+```{python}
+from scipy.sparse import diags, identity
+import numpy as np
+
+row_sums = np.asarray(W.sum(axis=1)).flatten()
+M = diags(row_sums) - W
+Cmatrix = identity(W.shape[0]) - M
+```
+:::
 
 This model can be estimated using the `"generic1"` model with the specified precision matrix:
 
+::: panel-tabset
+#### R
 ```{r, cache=TRUE, warning=FALSE, eval = eval_inla}
 INLA_lr <- inla(update(form, . ~ . + f(ID2, model = "generic1",
 									   Cmatrix = Cmatrix)),
 				family = "gaussian", data = boston_487)
 ```
+#### Python
+```{python}
+# No INLA equivalent in Python; see note above.
+```
+:::
 
+::: panel-tabset
+#### R
 ```{r, eval = eval_inla}
 boston_93$INLA_lr <- INLA_lr$summary.random$ID2$mean
 ```
+#### Python
+```{python}
+# Depends on the unavailable `INLA_lr` fit above.
+```
+:::
 
 ### ICAR random effects with mgcv::gam()
 \index{mgcv gam!ICAR}
 In a very similar way, the `gam` function in the **mgcv** package [@R-mgcv] can take an `"mrf"` term using a suitable `"nb"` object for the upper level. In this case the `"nb"` object needs to have the contents of the `"region.id"` attribute copied as the names of the neighbour list components, and the indexing variable needs to be a factor [@wood:17]:
 
+::: panel-tabset
+#### R
 ```{r}
 library(mgcv)
 names(nb_q_93) <- attr(nb_q_93, "region.id")
 boston_487$NOX_ID <- as.factor(boston_487$NOX_ID)
 ```
+#### Python
+```{python}
+# pyGAM (Python's closest analogue to mgcv) has no Markov random
+# field ("mrf") smooth basis, so the ICAR-structured smooth term
+# fitted below has no equivalent in Python.
+boston_487["NOX_ID"] = boston_487["NOX_ID"].astype("category")
+```
+:::
 
 The specification of the spatially structured term again differs in details from those above, but achieves the same purpose. The `"REML"` method of `bayesx` gives the same results as `gam` using `"REML"` in this case:
 
+::: panel-tabset
+#### R
 ```{r, cache=TRUE}
 GAM_MRF <- gam(update(form, . ~ . + s(NOX_ID, bs = "mrf",
 									  xt = list(nb = nb_q_93))),
 			   data = boston_487, method = "REML")
 ```
+#### Python
+```{python}
+# No Python equivalent of mgcv's `"mrf"` smooth basis; see note above.
+```
+:::
 
 The upper-level random effects may be extracted by predicting terms; as we can see, the values in all lower-level tracts belonging to the same upper-level air pollution model output zones are identical:
 
+::: panel-tabset
+#### R
 ```{r}
 ssre <- predict(GAM_MRF, type = "terms", 
 				se = FALSE)[, "s(NOX_ID)"]
 all(sapply(tapply(ssre, list(boston_487$NOX_ID), c),
 		   function(x) length(unique(round(x, 8))) == 1))
 ```
+#### Python
+```{python}
+# Depends on the unavailable `GAM_MRF` model fit above.
+```
+:::
 so we can return the first value for each upper-level unit:
 
+::: panel-tabset
+#### R
 ```{r}
 boston_93$GAM_ss <- aggregate(ssre, list(boston_487$NOX_ID), 
 							  head, n=1)$x
 ```
+#### Python
+```{python}
+# Depends on the unavailable `ssre` above.
+```
+:::
 
 ### Upper-level random effects: summary
+
+Readers following the Python tabs should note that `hglm`, `R2BayesX`, `INLA` and the `"mrf"` smooth in `mgcv::gam` are all R-only in this section: no Python package currently reimplements h-likelihood HGLM estimation, `R2BayesX`'s MCMC-based structured additive regression, INLA's approximate Bayesian inference, or `mgcv`'s Markov random field smooth basis. Only the `lme4` IID random-intercept model has a direct Python equivalent (via **statsmodels**' `MixedLM`): @fig-multi-levelmaps1 below therefore shows a single series on the Python side rather than the full four-way comparison available in R, and @fig-multi-levelmaps2, which compares only spatially structured random effects, has no Python counterpart at all.
 
 In the cases of `hglm`, `bayesx`, `inla` and `gam`, we could also model discrete responses without further major difficulty, and `bayesx`, `inla` and `gam` also facilitate the generalisation of functional form fitting for included covariates.
 
@@ -362,6 +740,8 @@ Unfortunately, the coefficient estimates for the air pollution variable for thes
 
 @fig-multi-levelmaps1 shows that the air pollution model output zone level IID random effects are very similar across the four model fitting functions reported. In all the maps, the central downtown zones have stronger negative random effect values, but strong positive values are also found in close proximity; suburban areas take values closer to zero.
 
+::: panel-tabset
+#### R
 ```{r fig-multi-levelmaps1, echo=!knitr::is_latex_output(), message=FALSE, eval = eval_inla}
 #| code-fold: true
 #| fig.cap: "Air pollution model output zone level IID random effects estimated using **lme4**, **hglm**, **INLA** and **R2BayesX**; the range of the response, `log(median)` is 2.1893"
@@ -384,9 +764,27 @@ tm_shape(boston_93) +
   tm_layout(panel.labels = c("lmer", "hglm", "inla", "bayesx"))
 }
 ```
+#### Python
+```{python}
+#| code-fold: true
+#| fig.cap: "Air pollution model output zone level IID random effect estimated using statsmodels' MixedLM (the hglm, INLA and R2BayesX equivalents have no Python counterpart, see notes above)"
+import matplotlib.pyplot as plt
+
+vmax = boston_93["MLM_re"].abs().max()
+ax = boston_93.plot(
+    column="MLM_re", cmap="RdYlGn", vmin=-vmax, vmax=vmax,
+    edgecolor="black", linewidth=0.1, legend=True,
+)
+ax.set_title("lmer (MixedLM) IID random effect")
+ax.set_axis_off()
+plt.show()
+```
+:::
 
 @fig-multi-levelmaps2 shows that the spatially structured random effects are also very similar to each other, with the `"SAR"` spatial smooth being perhaps a little smoother than the `"CAR"` smooths when considering the range of values taken by the random effect term.
 
+::: panel-tabset
+#### R
 ```{r fig-multi-levelmaps2, echo=!knitr::is_latex_output(), message=FALSE, eval = eval_inla}
 #| code-fold: true
 #| fig.cap: "Air pollution model output zone level spatially structured random effects estimated using **hglm**, **HSAR**, **INLA**, **R2BayesX** and **mgcv**"
@@ -410,6 +808,13 @@ tm_shape(boston_93) +
              "inla ICAR", "bayesx ICAR", "gam ICAR"))
 }
 ```
+#### Python
+```{python}
+# All five series plotted here (hglm CAR, INLA Leroux, INLA ICAR,
+# R2BayesX ICAR, mgcv ICAR) come from R-only models flagged above as
+# having no Python equivalent, so there is nothing to plot here.
+```
+:::
 
 Although there is still a great need for more thorough comparative studies of model fitting functions for spatial regression including multilevel capabilities, there has been much progress over recent years. @VRANCKX2019100302 offer a recent comparative survey of disease mapping spatial regression, typically set in a Poisson regression framework offset by an expected count. In @doi:10.1177/1471082X20967158, methods for estimating spatial survival models using spatial weights matrices are compared with spatial probit models. 
 

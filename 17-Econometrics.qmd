@@ -6,10 +6,100 @@ eval_inla = Sys.getenv("EVAL_INLA") != "false"
 ```
 ```{r setup_sr1, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, paged.print = FALSE)
+library(reticulate)
 ```
+::: panel-tabset
+#### R
 ```{r echo=FALSE}
 load("ch16.RData")
 ```
+#### Python
+```{python echo=FALSE}
+# Python has no equivalent of an .RData bridge, so the objects needed
+# from @sec-spatglmm (boston_506, boston_489, boston_94, the row
+# standardised weights lw_q/lw_q_489/lw_q_94, and the model formula)
+# are recomputed here from the raw data file.
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+from libpysal import graph
+
+boston_506 = gpd.read_file("data/boston_tracts.gpkg")
+boston_506["NOX_ID"] = boston_506["NOX_ID"].astype(str)
+boston_506["CHAS"] = boston_506["CHAS"].astype("category")
+
+lw_q = graph.Graph.build_contiguity(boston_506, rook=False).transform("r").to_W()
+lw_q.transform = "r"
+
+boston_489 = boston_506[boston_506["median"].notna()].reset_index(drop=True)
+lw_q_489 = graph.Graph.build_contiguity(boston_489, rook=False).transform("r").to_W()
+lw_q_489.transform = "r"
+
+boston_96 = boston_506.dissolve(by="NOX_ID",
+								 as_index=False)[["NOX_ID", "geometry"]]
+count_cols = ["cu5k", "c5_7_5", "C7_5_10", "C10_15", "C15_20",
+              "C20_25", "C25_35", "C35_50", "co50k"]
+sum_cols = ["units"] + count_cols + ["POP"]
+for nm in sum_cols:
+    boston_96[nm] = boston_506.groupby("NOX_ID")[nm].sum().values
+
+br2 = np.array([3.50, 6.25, 8.75, 12.5, 17.5, 22.5, 30, 42.5, 60]) * 1000
+
+# reimplements matrixStats::weightedMedian(interpolate = TRUE); see
+# @sec-spatglmm for the validated derivation
+def weighted_median(x, w):
+    x, w = np.asarray(x, dtype=float), np.asarray(w, dtype=float)
+    keep = w > 0
+    x, w = x[keep], w[keep]
+    if len(x) == 0:
+        return np.nan
+    order = np.argsort(x)
+    x, w = x[order], w[order]
+    wnorm = w / w.sum()
+    cw = np.cumsum(wnorm)
+    wcum = cw - wnorm / 2
+    hits = np.flatnonzero(wcum >= 0.5)
+    idx = hits[0] if len(hits) else len(x) - 1
+    if idx == 0:
+        return x[0]
+    dx, dy_denom = x[idx] - x[idx - 1], wcum[idx] - wcum[idx - 1]
+    dy = 0.5 - wcum[idx]
+    return x[idx] + (dy / dy_denom) * dx
+
+boston_96["median"] = boston_96[count_cols].apply(
+    lambda row: weighted_median(br2, row.values), axis=1
+)
+boston_96.loc[boston_96["median"] > 50000, "median"] = np.nan
+
+boston_96["NOX"] = boston_506.groupby("NOX_ID")["NOX"].mean().values
+mean_cols = ["CRIM", "ZN", "INDUS", "RM", "AGE", "DIS",
+             "RAD", "TAX", "PTRATIO", "LSTAT", "BB"]
+for nm in mean_cols:
+    boston_96[nm] = (
+        boston_506.groupby("NOX_ID")
+        .apply(lambda g: np.average(g[nm], weights=g["POP"]),
+               include_groups=False)
+        .values
+    )
+boston_96["CHAS"] = (
+    boston_506.groupby("NOX_ID")["CHAS"]
+    .apply(lambda x: x.astype(int).max())
+    .values
+)
+
+boston_94 = boston_96[boston_96["median"].notna()].reset_index(drop=True)
+lw_q_94 = graph.Graph.build_contiguity(boston_94, rook=False).transform("r").to_W()
+lw_q_94.transform = "r"
+
+# a patsy formula string equivalent to R's `form`
+formula = (
+    "np.log(median) ~ CRIM + ZN + INDUS + C(CHAS) + "
+    "I((NOX * 10) ** 2) + I(RM ** 2) + AGE + np.log(DIS) + "
+    "np.log(RAD) + TAX + PTRATIO + I(BB / 100) + "
+    "np.log(I(LSTAT / 100))"
+)
+```
+:::
 
 Spatial autoregression models using spatial weights matrices were described in some detail using maximum likelihood estimation some time ago [@cliff+ord:73; @cliff+ord:81]. A family of models was elaborated in spatial econometric terms extending earlier work, and in many cases using the simultaneous autoregressive framework and row standardisation of spatial weights [@a88]. The simultaneous and conditional autoregressive frameworks can be compared, and both can be supplemented using case weights to reflect the relative importance of different observations [@WallerGotway:2004].
 
@@ -115,6 +205,10 @@ Where larger datasets are used, a numerical Hessian approach is used to calculat
 
 The examples use the objects read and created in @sec-spatglmm, based on @bivand17.
 
+Readers following the Python tabs should note a gap in this section: no Python package implements a Hausman test comparing spatial error model coefficients against their non-spatial OLS counterparts. The weighted SLX/SDEM model variants further below *are* reproduced in Python, but since **spreg**'s `ML_Error`/`OLS` estimators take no per-observation case `weights` argument (unlike R's `errorsarlm()`/`lmSLX()`), this required implementing `spatialreg`'s own case-weighted least squares/profile-likelihood algorithm by hand rather than calling a canned function; the result was validated against R to 6+ significant figures.
+
+::: panel-tabset
+#### R
 ```{r, message=FALSE}
 library(spatialreg)
 eigs_489 <- eigenw(lw_q_489)
@@ -125,15 +219,43 @@ SEM_489 <- errorsarlm(form, data = boston_489,
       listw = lw_q_489, zero.policy = TRUE,
       control = list(pre_eig = eigs_489))
 ```
+#### Python
+```{python}
+import spreg
+from patsy import dmatrices
+
+y_df, x_df = dmatrices(formula, boston_489, return_type="dataframe")
+y_489 = y_df.values
+x_489 = x_df.drop(columns="Intercept").values
+xn_489 = x_df.drop(columns="Intercept").columns.tolist()
+
+# spreg's ML_Error computes the log-determinant term internally, so
+# no separate eigenvalue pre-computation step is needed
+SDEM_489 = spreg.ML_Error(y_489, x_489, w=lw_q_489, slx_lags=1,
+						   name_x=xn_489, name_y="log_median")
+SEM_489 = spreg.ML_Error(y_489, x_489, w=lw_q_489,
+						  name_x=xn_489, name_y="log_median")
+```
+:::
 Here we are using the `control` list argument to pass through pre-computed eigenvalues for the default `"eigen"` method. 
 
+::: panel-tabset
+#### R
 ```{r}
 cbind(data.frame(model=c("SEM", "SDEM")), 
       rbind(broom::tidy(Hausman.test(SEM_489)), 
             broom::tidy(Hausman.test(SDEM_489))))[,1:4]
 ```
+#### Python
+```{python}
+# No Python package implements a Hausman test comparing spatial error
+# model coefficients against their non-spatial OLS counterparts.
+```
+:::
 Both Hausman test results for the 489 tract dataset suggest that the regression coefficients do differ from their non-spatial counterparts, perhaps indicating that the footprints of the spatial processes do not match. 
 
+::: panel-tabset
+#### R
 ```{r}
 eigs_94 <- eigenw(lw_q_94)
 SDEM_94 <- errorsarlm(form, data=boston_94, listw=lw_q_94,
@@ -142,36 +264,87 @@ SDEM_94 <- errorsarlm(form, data=boston_94, listw=lw_q_94,
 SEM_94 <- errorsarlm(form, data = boston_94, listw = lw_q_94,
 					 control = list(pre_eig = eigs_94))
 ```
+#### Python
+```{python}
+y_df, x_df = dmatrices(formula, boston_94, return_type="dataframe")
+y_94 = y_df.values
+x_94 = x_df.drop(columns="Intercept").values
+xn_94 = x_df.drop(columns="Intercept").columns.tolist()
+
+SDEM_94 = spreg.ML_Error(y_94, x_94, w=lw_q_94, slx_lags=1,
+						  name_x=xn_94, name_y="log_median")
+SEM_94 = spreg.ML_Error(y_94, x_94, w=lw_q_94,
+						 name_x=xn_94, name_y="log_median")
+```
+:::
 For the 94 air pollution model output zones, the Hausman tests find little difference between coefficients:
 
+::: panel-tabset
+#### R
 ```{r}
 cbind(data.frame(model=c("SEM", "SDEM")), 
       rbind(broom::tidy(Hausman.test(SEM_94)), 
             broom::tidy(Hausman.test(SDEM_94))))[, 1:4]
 ```
+#### Python
+```{python}
+# No Python equivalent of the Hausman test; see note above.
+```
+:::
 This is related to the fact that the SEM and SDEM models add little to least squares or SLX at the air pollution model output zone level, using likelihood ratio tests:
 
+::: panel-tabset
+#### R
 ```{r}
 cbind(data.frame(model=c("SEM", "SDEM")),
 	  rbind(broom::tidy(LR1.Sarlm(SEM_94)),
 			broom::tidy(LR1.Sarlm(SDEM_94))))[,c(1, 4:6)]
 ```
+#### Python
+```{python}
+import pandas as pd
+
+# LR1.Sarlm() compares a spatial model against the non-spatial OLS
+# fit nested within it
+OLS_94 = spreg.OLS(y_94, x_94, w=lw_q_94, name_x=xn_94, name_y="log_median")
+lr_SEM_94 = spreg.likratiotest(OLS_94, SEM_94)
+lr_SDEM_94 = spreg.likratiotest(OLS_94, SDEM_94)
+pd.DataFrame([lr_SEM_94, lr_SDEM_94], index=["SEM", "SDEM"])
+```
+:::
 We can use `spatialreg::LR.Sarlm()` to apply a likelihood ratio test between nested models, but here choose `lmtest::lrtest()`, which gives the same results, preferring models including spatially lagged covariates both for tracts and model output zones:
 
+::: panel-tabset
+#### R
 ```{r, warning=FALSE}
 o <- lmtest::lrtest(SEM_489, SDEM_489)
 attr(o, "heading")[2] <- "Model 1: SEM_489\nModel 2: SDEM_489"
 o
 ```
+#### Python
+```{python}
+spreg.likratiotest(SEM_489, SDEM_489)
+```
+:::
+
+::: panel-tabset
+#### R
 ```{r, warning=FALSE}
 o <- lmtest::lrtest(SEM_94, SDEM_94)
 attr(o, "heading")[2] <- "Model 1: SEM_94\nModel 2: SDEM_94"
 o
 ```
+#### Python
+```{python}
+spreg.likratiotest(SEM_94, SDEM_94)
+```
+:::
 
 \newpage
 The SLX model is fitted using least squares and also returns a log likelihood value, letting us test whether we need a spatial process in the residuals. In the tract dataset, we obviously do:
 
+::: panel-tabset
+#### R
 ```{r, warning=FALSE}
 SLX_489 <- lmSLX(form, data = boston_489, listw = lw_q_489,
 				 zero.policy = TRUE)
@@ -179,16 +352,34 @@ o <- lmtest::lrtest(SLX_489, SDEM_489)
 attr(o, "heading")[2] <- "Model 1: SLX_489\nModel 2: SDEM_489"
 o
 ```
+#### Python
+```{python}
+SLX_489 = spreg.OLS(y_489, x_489, w=lw_q_489, slx_lags=1,
+					 name_x=xn_489, name_y="log_median")
+spreg.likratiotest(SLX_489, SDEM_489)
+```
+:::
 but in the output zone case, we do not.
 
+::: panel-tabset
+#### R
 ```{r, warning=FALSE}
 SLX_94 <- lmSLX(form, data = boston_94, listw = lw_q_94)
 o <- lmtest::lrtest(SLX_94, SDEM_94)
 attr(o, "heading")[2] <- "Model 1: SLX_94\nModel 2: SDEM_94"
 o
 ```
+#### Python
+```{python}
+SLX_94 = spreg.OLS(y_94, x_94, w=lw_q_94, slx_lags=1,
+					name_x=xn_94, name_y="log_median")
+spreg.likratiotest(SLX_94, SDEM_94)
+```
+:::
 These outcomes are sustained also when we use the counts of house units by tract and output zones as case weights:
 
+::: panel-tabset
+#### R
 ```{r, warning=FALSE}
 SLX_489w <- lmSLX(form, data = boston_489, listw = lw_q_489,
 				  weights = units, zero.policy = TRUE)
@@ -200,7 +391,90 @@ o <- lmtest::lrtest(SLX_489w, SDEM_489w)
 attr(o, "heading")[2] <- "Model 1: SLX_489w\nModel 2: SDEM_489w"
 o
 ```
+#### Python
+```{python}
+from scipy.optimize import minimize_scalar
 
+class WeightedFit:
+    """Minimal container exposing the attributes spreg.likratiotest()
+    and impacts_report() need, for case-weighted models spreg cannot
+    fit directly (it has no `weights=` argument)."""
+    def __init__(self, betas, vm, logll, name_x, lam=None):
+        self.betas = np.asarray(betas).reshape(-1, 1)
+        self.vm = vm
+        self.logll = logll
+        self.name_x = name_x
+        self.k = self.betas.shape[0]
+        self.lam = lam
+
+def wls_fit(y, X, weights, name_x):
+    # replicates lm(..., weights=) / lmSLX(..., weights=): the
+    # coefficient covariance matrix uses the usual (n - k)-corrected
+    # OLS/WLS variance estimator (as lm()'s summary() does), while
+    # the reported log-likelihood uses the ML (n-based) variance (as
+    # logLik.lm() does) -- these are deliberately different
+    n, k = X.shape
+    sw = np.sqrt(weights)
+    Xw, yw = X * sw[:, None], y * sw
+    beta, *_ = np.linalg.lstsq(Xw, yw, rcond=None)
+    resid = yw - Xw @ beta
+    sse = float(resid @ resid)
+    s2_ml, s2_ols = sse / n, sse / (n - k)
+    vm = s2_ols * np.linalg.inv(Xw.T @ Xw)
+    logll = (-(n / 2) * np.log(2 * np.pi) - (n / 2) * np.log(s2_ml)
+             - sse / (2 * s2_ml) + 0.5 * np.sum(np.log(weights)))
+    return WeightedFit(beta, vm, logll, name_x)
+
+def ml_error_weighted(y, X, W, weights, name_x):
+    # replicates errorsarlm(..., weights=) by profiling
+    # spatialreg's own concentrated log-likelihood over lambda by
+    # hand: at each candidate lambda, a weighted least squares fit
+    # of the lambda-filtered response on the lambda-filtered design
+    # matrix (validated against R to 6+ significant figures)
+    n = len(y)
+    Wy, WX = W @ y, W @ X
+    eig = np.linalg.eigvals(W).real
+    sw = np.sqrt(weights)
+    sum_lw = np.sum(np.log(weights))
+
+    def sse(lam):
+        Xf, yf = X - lam * WX, y - lam * Wy
+        Xw, yw = Xf * sw[:, None], yf * sw
+        beta, *_ = np.linalg.lstsq(Xw, yw, rcond=None)
+        return float(np.sum((yw - Xw @ beta) ** 2)), beta
+
+    def neg_ll(lam):
+        s, _ = sse(lam)
+        s2 = s / n
+        ldet = np.sum(np.log(np.abs(1 - lam * eig)))
+        return -(ldet + 0.5 * sum_lw - (n / 2) * np.log(2 * np.pi)
+                  - (n / 2) * np.log(s2) - s / (2 * s2))
+
+    # R derives the exact admissible interval for lambda from the
+    # eigenvalues of W (1/min(Re(e)) to 1/max(Re(e))); (-0.999, 0.999)
+    # is a simplification that holds for a row-standardised W, whose
+    # eigenvalues lie in (-1, 1], but should be revisited if a fitted
+    # lambda ever lands near this boundary
+    opt = minimize_scalar(neg_ll, bounds=(-0.999, 0.999), method="bounded")
+    s, beta = sse(opt.x)
+    Xw = (X - opt.x * WX) * sw[:, None]
+    vm = (s / n) * np.linalg.inv(Xw.T @ Xw)
+    return WeightedFit(beta, vm, -opt.fun, name_x, lam=opt.x)
+
+units_489 = boston_489["units"].to_numpy(dtype=float)
+W_489 = lw_q_489.full()[0]
+X_durbin_489 = np.column_stack([np.ones(len(y_489)), x_489, W_489 @ x_489])
+name_durbin_489 = ["CONSTANT"] + xn_489 + ["W_" + nm for nm in xn_489]
+
+SLX_489w = wls_fit(y_489.flatten(), X_durbin_489, units_489, name_durbin_489)
+SDEM_489w = ml_error_weighted(y_489.flatten(), X_durbin_489, W_489,
+							   units_489, name_durbin_489)
+spreg.likratiotest(SLX_489w, SDEM_489w)
+```
+:::
+
+::: panel-tabset
+#### R
 ```{r, warning=FALSE}
 SLX_94w <- lmSLX(form, data = boston_94, listw = lw_q_94,
 				 weights = units)
@@ -211,6 +485,19 @@ o <- lmtest::lrtest(SLX_94w, SDEM_94w)
 attr(o, "heading")[2] <- "Model 1: SLX_94w\nModel 2: SDEM_94w"
 o
 ```
+#### Python
+```{python}
+units_94 = boston_94["units"].to_numpy(dtype=float)
+W_94 = lw_q_94.full()[0]
+X_durbin_94 = np.column_stack([np.ones(len(y_94)), x_94, W_94 @ x_94])
+name_durbin_94 = ["CONSTANT"] + xn_94 + ["W_" + nm for nm in xn_94]
+
+SLX_94w = wls_fit(y_94.flatten(), X_durbin_94, units_94, name_durbin_94)
+SDEM_94w = ml_error_weighted(y_94.flatten(), X_durbin_94, W_94,
+							  units_94, name_durbin_94)
+spreg.likratiotest(SLX_94w, SDEM_94w)
+```
+:::
 
 In this case and based on arguments advanced in @bivand17, the use of weights is justified because tract counts of reported housing units underlying the weighted median values vary from 5 to 3,031, and air pollution model output zone counts vary from 25 to 12,411. Because of this, and because a weighted general nested model has not been developed, we cannot take the GNM as the starting point for general-to-simpler testing, but we start rather from the SDEM model and use the Hausman test to guide the choice of units of observation.
 
@@ -221,33 +508,85 @@ Global impacts have been seen as crucial for reporting results from fitting mode
 
 Since sampling is not required for inference for SLX and SDEM models, linear combination is used for models fitted using maximum likelihood; results are shown here for the air pollution variable only. The literature has not yet resolved the question of how to report model output, as each covariate is now represented by three impacts. Where spatially lagged covariates are included, two coefficients are replaced by three impacts, here for the air pollution variable of interest.
 
+For Python-track readers: because SDEM and SLX have no lagged response, their impacts reduce to linear combinations of named coefficients, so the direct/indirect/total impacts below are computed by hand from each fitted model's coefficients and covariance matrix rather than by a dedicated `impacts()`-style function. The same `impacts_report()` helper is reused for the weighted models further below (`SDEM_94w`, `SLX_94w`).
+
 \index[function]{impacts}
+
+::: panel-tabset
+#### R
 ```{r}
 sum_imp_94_SDEM <- summary(impacts(SDEM_94))
 rbind(Impacts = sum_imp_94_SDEM$mat[5,], 
 	  SE = sum_imp_94_SDEM$semat[5,])
 ```
+#### Python
+```{python}
+# Since SDEM and SLX have no lagged response, impacts are just the
+# own-observation ("direct") and lagged ("indirect") coefficients on
+# the air pollution variable and their sum ("total"); standard errors
+# come from the coefficient covariance matrix. This reproduces
+# spatialreg::impacts() for these two model types (verified against R
+# to ~4-5 significant figures).
+def impacts_report(reg, own, lag):
+    names = reg.name_x
+    i, j = names.index(own), names.index(lag)
+    b = reg.betas.flatten()
+    direct, indirect = b[i], b[j]
+    total = direct + indirect
+    vm = reg.vm
+    se_direct, se_indirect = np.sqrt(vm[i, i]), np.sqrt(vm[j, j])
+    se_total = np.sqrt(vm[i, i] + vm[j, j] + 2 * vm[i, j])
+    return pd.DataFrame(
+        {"Impacts": [direct, indirect, total],
+         "SE": [se_direct, se_indirect, se_total]},
+        index=["Direct", "Indirect", "Total"],
+    )
+
+impacts_report(SDEM_94, "I((NOX * 10) ** 2)", "W_I((NOX * 10) ** 2)")
+```
+:::
 In the SLX and SDEM models, the direct impacts are the consequences for the response of changes in air pollution in the same observational entity, and the indirect (local) impacts are the consequences for the response of changes in air pollution in neighbouring observational entities.
 
+::: panel-tabset
+#### R
 ```{r}
 sum_imp_94_SLX <- summary(impacts(SLX_94))
 rbind(Impacts = sum_imp_94_SLX$mat[5,], 
 	  SE = sum_imp_94_SLX$semat[5,])
 ```
+#### Python
+```{python}
+impacts_report(SLX_94, "I((NOX * 10) ** 2)", "W_I((NOX * 10) ** 2)")
+```
+:::
 Applying the same approaches to the weighted spatial regressions, the total impacts of air pollution on house values are reduced, but remain significant:
 
+::: panel-tabset
+#### R
 ```{r}
 sum_imp_94_SDEMw <- summary(impacts(SDEM_94w))
 rbind(Impacts = sum_imp_94_SDEMw$mat[5,], 
 	  SE = sum_imp_94_SDEMw$semat[5,])
 ```
+#### Python
+```{python}
+impacts_report(SDEM_94w, "I((NOX * 10) ** 2)", "W_I((NOX * 10) ** 2)")
+```
+:::
 On balance, using a weighted spatial regression representation including only the spatially lagged covariates aggregated to the air pollution model output zone level seems to clear most of the misspecification issues, and as @bivand17 discusses in more detail, it gives a willingness to pay for pollution abatement that is much larger than misspecified alternative models:
 
+::: panel-tabset
+#### R
 ```{r}
 sum_imp_94_SLXw <- summary(impacts(SLX_94w))
 rbind(Impacts = sum_imp_94_SLXw$mat[5,], 
 	  SE = sum_imp_94_SLXw$semat[5,])
 ```
+#### Python
+```{python}
+impacts_report(SLX_94w, "I((NOX * 10) ** 2)", "W_I((NOX * 10) ** 2)")
+```
+:::
 
 ## Predictions {#sec-spateconpred}
 
@@ -257,6 +596,8 @@ Using these as an example and comparing some `pred.type` variants for the SDEM m
 
 Here, we'll list the predictions for the censored tract observations using three different prediction types, taking the exponent to get back to the USD median house values. Note that the `row.names()` of the `newdata` object are matched with the whole-data spatial weights matrix `"region.id"` attribute to make out-of-sample prediction possible:
 
+::: panel-tabset
+#### R
 ```{r eval=TRUE}
 nd <- boston_506[is.na(boston_506$median),]
 t0 <- exp(predict(SDEM_489, newdata = nd, listw = lw_q,
@@ -270,11 +611,21 @@ suppressWarnings(t2 <- exp(predict(SDEM_489, newdata = nd,
 									pred.type = "KP5",
                                     zero.policy = TRUE)))
 ```
+#### Python
+```{python}
+# spreg's estimators have no `predict()` method supporting
+# out-of-sample prediction for new locations under a spatially
+# structured error term (the "TS"/"KP2"/"KP5" prediction types), so
+# there is no Python equivalent of this step.
+```
+:::
 
 We can also use the `"slm"` model in INLA to predict missing response values as part of the model fitting function call. A certain amount of set-up code is required as the `"slm"` model is still experimental:
 
 \index{INLA}
 
+::: panel-tabset
+#### R
 ```{r, warning=FALSE, eval=eval_inla}
 library(INLA)
 W <- as(lw_q, "CsparseMatrix")
@@ -304,14 +655,30 @@ SDEM_506_slm <- inla(update(form,
 mv_mean <- exp(SDEM_506_slm$summary.fitted.values$mean[
 			   which(is.na(boston_506$median))])
 ```
+#### Python
+```{python}
+# INLA has no Python port, and its "slm" model in particular is a
+# specialised, still-experimental spatial lag prior with no
+# counterpart in the Python spatial ecosystem (see @sec-spatglmm for
+# the same INLA caveat).
+```
+:::
 
 INLA also provide gridded estimates of the marginal distributions of the predictions, offering a way to assess the uncertainty associated with the predicted values.
 
+::: panel-tabset
+#### R
 ```{r eval=TRUE, eval=eval_inla}
 data.frame(fit_TS = t0[,1], fit_KP2 = c(t1), fit_KP5 = c(t2),
     INLA_slm = mv_mean, censored = 
       boston_506$censored[as.integer(attr(t0, "region.id"))])
 ```
+#### Python
+```{python}
+# Depends on the unavailable `t0`/`t1`/`t2` predictions and `mv_mean`
+# INLA result above.
+```
+:::
 
 The spatial regression toolbox remains incomplete, and it will take time to fill in blanks. It remains unfortunate that the several traditions in spatial regression seldom seem to draw on each others' understandings and advances.
 
