@@ -549,6 +549,9 @@ library(INLA) |> suppressPackageStartupMessages()
 ```
 #### Python
 ```{python}
+import contextlib
+import io
+
 import pyinla
 
 # Downloads and caches the INLA engine binary the first time a model
@@ -556,8 +559,12 @@ import pyinla
 # rather than inside a later cell. pyinla wraps the same `inla` C/C++
 # engine used by R-INLA, but as a young package (first public release
 # in 2026) it exposes a narrower set of latent models than R-INLA; the
-# gaps that matter below are flagged as they come up.
-pyinla.download_binary()
+# gaps that matter below are flagged as they come up. `download_binary`
+# has no quiet/verbose argument and writes a very long "Progress: x%"
+# stream straight to stdout, so it is silenced here by redirecting
+# stdout for the duration of the call.
+with contextlib.redirect_stdout(io.StringIO()):
+    pyinla.download_binary()
 
 # pyinla does not parse formula transforms such as I(x**2) or log(x);
 # the transformed covariates must exist as columns beforehand.
