@@ -549,9 +549,30 @@ library(INLA) |> suppressPackageStartupMessages()
 ```
 #### Python
 ```{python}
-# INLA has no Python port; a Bayesian alternative such as PyMC or
-# Stan would require a substantially different model specification,
-# so is not a drop-in equivalent and is not attempted here.
+import pyinla
+
+# Downloads and caches the INLA engine binary the first time a model
+# is fit; call this explicitly once so a network problem surfaces here
+# rather than inside a later cell. pyinla wraps the same `inla` C/C++
+# engine used by R-INLA, but as a young package (first public release
+# in 2026) it exposes a narrower set of latent models than R-INLA; the
+# gaps that matter below are flagged as they come up.
+pyinla.download_binary()
+
+# pyinla does not parse formula transforms such as I(x**2) or log(x);
+# the transformed covariates must exist as columns beforehand.
+boston_487 = boston_487.assign(
+    log_median=np.log(boston_487["median"]),
+    NOX2=(boston_487["NOX"] * 10) ** 2,
+    RM2=boston_487["RM"] ** 2,
+    log_DIS=np.log(boston_487["DIS"]),
+    log_RAD=np.log(boston_487["RAD"]),
+    BB100=boston_487["BB"] / 100,
+    log_LSTAT100=np.log(boston_487["LSTAT"] / 100),
+)
+fixed_cols = ["CRIM", "ZN", "INDUS", "CHAS", "NOX2", "RM2", "AGE",
+              "log_DIS", "log_RAD", "TAX", "PTRATIO", "BB100",
+              "log_LSTAT100"]
 ```
 :::
 
@@ -565,7 +586,16 @@ INLA_iid <- inla(update(form, . ~ . + f(NOX_ID, model = "iid")),
 ```
 #### Python
 ```{python}
-# No INLA equivalent in Python; see note above.
+# pyinla's `id` needs a plain 1..n integer index; `sort=True` mirrors
+# R's `as.integer(as.factor(...))`, assigning codes in sorted order.
+boston_487["ID2"] = pd.factorize(boston_487["NOX_ID"], sort=True)[0] + 1
+
+model_iid = {
+    "response": "log_median",
+    "fixed": fixed_cols,
+    "random": [{"id": "ID2", "model": "iid"}],
+}
+INLA_iid = pyinla(model=model_iid, family="gaussian", data=boston_487)
 ```
 :::
 
@@ -576,7 +606,7 @@ boston_93$INLA_re <- INLA_iid$summary.random$NOX_ID$mean
 ```
 #### Python
 ```{python}
-# Depends on the unavailable `INLA_iid` fit above.
+boston_93["INLA_re"] = INLA_iid.summary_random["ID2"]["mean"].to_numpy()
 ```
 :::
 
@@ -589,9 +619,9 @@ ID2 <- as.integer(as.factor(boston_487$NOX_ID))
 ```
 #### Python
 ```{python}
-import pandas as pd
-
-ID2 = pd.factorize(boston_487["NOX_ID"])[0] + 1
+# `ID2` was already added to `boston_487` above, since pyinla's `id`
+# key needs the same 1..n integer index regardless of which random
+# effect model is used.
 ```
 :::
 
@@ -606,7 +636,14 @@ INLA_ss <- inla(update(form, . ~ . + f(ID2, model = "besag",
 ```
 #### Python
 ```{python}
-# No INLA equivalent in Python; see note above.
+# `besag` accepts the adjacency directly as a scipy.sparse matrix, so
+# the same binary `W` built above is reused as-is.
+model_ss = {
+    "response": "log_median",
+    "fixed": fixed_cols,
+    "random": [{"id": "ID2", "model": "besag", "graph": W}],
+}
+INLA_ss = pyinla(model=model_ss, family="gaussian", data=boston_487)
 ```
 :::
 
@@ -617,7 +654,7 @@ boston_93$INLA_ss <- INLA_ss$summary.random$ID2$mean
 ```
 #### Python
 ```{python}
-# Depends on the unavailable `INLA_ss` fit above.
+boston_93["INLA_ss"] = INLA_ss.summary_random["ID2"]["mean"].to_numpy()
 ```
 :::
 
@@ -651,7 +688,12 @@ INLA_lr <- inla(update(form, . ~ . + f(ID2, model = "generic1",
 ```
 #### Python
 ```{python}
-# No INLA equivalent in Python; see note above.
+# pyinla's only custom-precision spatial model is `generic0`
+# (Q = tau * C, a single precision hyperparameter). It has no
+# `generic1` counterpart, which needs a second "mixing" hyperparameter
+# phi to blend the structured (Cmatrix) and unstructured components
+# the way this Leroux specification requires, so this model cannot be
+# fitted with pyinla's current (v0.1.x) release.
 ```
 :::
 
@@ -663,6 +705,72 @@ boston_93$INLA_lr <- INLA_lr$summary.random$ID2$mean
 #### Python
 ```{python}
 # Depends on the unavailable `INLA_lr` fit above.
+```
+:::
+
+Although pyinla cannot fit the Leroux model above, it does implement `"bym2"` [@riebler2016intuitive], the Riebler et al. reparameterisation of the classic Besag-York-Mollié convolution model. It is worth stressing that BYM2 is **not** a substitute for Leroux, despite both mixing a spatially structured (ICAR) and an unstructured (IID) component with a single interpretable mixing parameter: Leroux combines the two components' *precisions*, $Q = \tau[(1-\rho) I + \rho M]$, whereas BYM2 combines their *values* (equivalently, their covariances), $u_i = \tau^{-1/2}(\sqrt{\phi}\,s_i + \sqrt{1-\phi}\,v_i)$ with $s$ a scaled ICAR field and $v$ standard Normal noise. The two constructions coincide only at the boundary cases $\rho, \phi \in \{0, 1\}$ (pure IID or pure ICAR), so `INLA_bym2` below is not expected to match `INLA_lr`, and is not added to the comparison maps further down; it is included here only because readers following the Python tabs may otherwise wonder why pyinla's most commonly recommended spatial model has no place in this section. BYM2's own literature argues it is preferable to Leroux-style CAR models for disease-mapping-style applications, precisely because mixing in precisions (as Leroux does) confounds the two variance components and complicates prior specification, a problem BYM2 was designed to fix. `scale.model = True` is required so that the mixing parameter $\phi$ has the interpretation given by @riebler2016intuitive:
+
+::: panel-tabset
+#### R
+```{r}
+# BYM2 is not part of this chapter's R workflow. It is introduced only
+# as a Python-side aside because pyinla exposes it directly, unlike
+# generic1/Leroux (see the notes above); from R it is equally
+# available via inla(..., model = "bym2").
+```
+#### Python
+```{python}
+model_bym2 = {
+    "response": "log_median",
+    "fixed": fixed_cols,
+    "random": [{"id": "ID2", "model": "bym2", "graph": W,
+                 "scale.model": True}],
+}
+INLA_bym2 = pyinla(model=model_bym2, family="gaussian", data=boston_487)
+```
+:::
+
+BYM2's random-effect table stacks the combined field on top of the bare structured ICAR component, so it has $2n$ rows rather than $n$; the first half is the quantity comparable to `INLA_re`/`INLA_ss` above.
+
+::: panel-tabset
+#### R
+```{r}
+# See note above; not part of the original R workflow.
+```
+#### Python
+```{python}
+n_zones = len(boston_93)
+bym2_re = INLA_bym2.summary_random["ID2"]["mean"].to_numpy()
+boston_93["INLA_bym2"] = bym2_re[:n_zones]      # combined field b
+boston_93["INLA_bym2_u"] = bym2_re[n_zones:]    # structured part u alone
+```
+:::
+
+@fig-bym2-components maps the two components side by side: the combined field `INLA_bym2` (spatial plus unstructured variation together) and the bare structured component `INLA_bym2_u` (spatial variation alone). Since $\phi$ controls how much of the combined field's variance is attributed to the structured part, the two maps are expected to look broadly similar whenever the posterior mean of $\phi$ is high, and to diverge as $\phi$ moves towards zero.
+
+::: panel-tabset
+#### R
+```{r}
+# Standalone Python-side aside (see notes above); not part of this
+# chapter's R workflow.
+```
+#### Python
+```{python fig-bym2-components}
+#| code-fold: true
+#| fig.cap: "BYM2 combined field (left) and its bare structured (ICAR) component alone (right), fitted via pyinla; not a Leroux comparison, see notes above"
+import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+cols = ["INLA_bym2", "INLA_bym2_u"]
+labels = ["Combined field (b)", "Structured component (u)"]
+for ax, col, label in zip(axes, cols, labels):
+    vmax = boston_93[col].abs().max()
+    boston_93.plot(column=col, cmap="RdYlGn", vmin=-vmax, vmax=vmax,
+                   edgecolor="black", linewidth=0.1, legend=True, ax=ax)
+    ax.set_title(f"BYM2: {label}")
+    ax.set_axis_off()
+plt.tight_layout()
+plt.show()
 ```
 :::
 
@@ -732,7 +840,7 @@ boston_93$GAM_ss <- aggregate(ssre, list(boston_487$NOX_ID),
 
 ### Upper-level random effects: summary
 
-Readers following the Python tabs should note that `hglm`, `R2BayesX`, `INLA` and the `"mrf"` smooth in `mgcv::gam` are all R-only in this section: no Python package currently reimplements h-likelihood HGLM estimation, `R2BayesX`'s MCMC-based structured additive regression, INLA's approximate Bayesian inference, or `mgcv`'s Markov random field smooth basis. Only the `lme4` IID random-intercept model has a direct Python equivalent (via **statsmodels**' `MixedLM`): @fig-multi-levelmaps1 below therefore shows a single series on the Python side rather than the full four-way comparison available in R, and @fig-multi-levelmaps2, which compares only spatially structured random effects, has no Python counterpart at all.
+Readers following the Python tabs should note that `hglm`, `R2BayesX` and the `"mrf"` smooth in `mgcv::gam` remain R-only in this section: no Python package currently reimplements h-likelihood HGLM estimation, `R2BayesX`'s MCMC-based structured additive regression, or `mgcv`'s Markov random field smooth basis. INLA itself now has a Python interface, however: **pyinla** reproduces the IID and intrinsic CAR (`besag`) random effects fitted above, though its current release only exposes the single-hyperparameter `generic0` precision model, not the two-hyperparameter `generic1` specification needed for the Leroux model. @fig-multi-levelmaps1 below therefore compares the `lme4` (via **statsmodels**' `MixedLM`) and `INLA` (via **pyinla**) IID random effects on the Python side, and @fig-multi-levelmaps2 shows only the `pyinla` `besag` spatially structured random effect, omitting the `hglm` CAR, INLA Leroux, R2BayesX and `mgcv` variants that have no Python equivalent.
 
 In the cases of `hglm`, `bayesx`, `inla` and `gam`, we could also model discrete responses without further major difficulty, and `bayesx`, `inla` and `gam` also facilitate the generalisation of functional form fitting for included covariates.
 
@@ -767,16 +875,19 @@ tm_shape(boston_93) +
 #### Python
 ```{python}
 #| code-fold: true
-#| fig.cap: "Air pollution model output zone level IID random effect estimated using statsmodels' MixedLM (the hglm, INLA and R2BayesX equivalents have no Python counterpart, see notes above)"
+#| fig.cap: "Air pollution model output zone level IID random effects estimated using statsmodels' MixedLM and INLA via pyinla (the hglm and R2BayesX equivalents have no Python counterpart, see notes above)"
 import matplotlib.pyplot as plt
 
-vmax = boston_93["MLM_re"].abs().max()
-ax = boston_93.plot(
-    column="MLM_re", cmap="RdYlGn", vmin=-vmax, vmax=vmax,
-    edgecolor="black", linewidth=0.1, legend=True,
-)
-ax.set_title("lmer (MixedLM) IID random effect")
-ax.set_axis_off()
+fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+cols = ["MLM_re", "INLA_re"]
+labels = ["lmer (MixedLM)", "INLA (pyinla)"]
+for ax, col, label in zip(axes, cols, labels):
+    vmax = boston_93[col].abs().max()
+    boston_93.plot(column=col, cmap="RdYlGn", vmin=-vmax, vmax=vmax,
+                   edgecolor="black", linewidth=0.1, legend=True, ax=ax)
+    ax.set_title(f"{label} IID random effect")
+    ax.set_axis_off()
+plt.tight_layout()
 plt.show()
 ```
 :::
@@ -810,9 +921,18 @@ tm_shape(boston_93) +
 ```
 #### Python
 ```{python}
-# All five series plotted here (hglm CAR, INLA Leroux, INLA ICAR,
-# R2BayesX ICAR, mgcv ICAR) come from R-only models flagged above as
-# having no Python equivalent, so there is nothing to plot here.
+#| code-fold: true
+#| fig.cap: "Air pollution model output zone level spatially structured random effect estimated using INLA's besag (ICAR) model via pyinla (the hglm CAR, INLA Leroux, R2BayesX ICAR and mgcv ICAR variants have no Python counterpart, see notes above)"
+import matplotlib.pyplot as plt
+
+vmax = boston_93["INLA_ss"].abs().max()
+ax = boston_93.plot(
+    column="INLA_ss", cmap="RdYlGn", vmin=-vmax, vmax=vmax,
+    edgecolor="black", linewidth=0.1, legend=True,
+)
+ax.set_title("INLA besag (pyinla) spatially structured random effect")
+ax.set_axis_off()
+plt.show()
 ```
 :::
 
