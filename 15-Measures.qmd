@@ -91,6 +91,7 @@ with open('ch14_py.pkl', 'rb') as f:
 
 gdf = data['gdf']
 w_q_B = data['w_q']
+w_d183_idw_B = data['w_d183_idw_B']
 
 # Ensure weights are row-standardized
 w_q_B.transform = 'r'
@@ -297,9 +298,9 @@ Using an inverse distance based `listw` object does, however, change the z-value
 Types |> joincount.multi(listw = lw_d183_idw_B)
 ```
 #### Python
-```{python eval=FALSE}
+```{python}
 # 1. Convert the new IDW matrix to an adjacency list
-adj_idw = lw_d183_idw_B.to_adjlist(remove_symmetric=False)
+adj_idw = w_d183_idw_B.to_adjlist(remove_symmetric=False)
 
 # 2. Define a function that SUMS the continuous weights
 def get_weighted_counts(adj_df, type_series):
@@ -518,6 +519,7 @@ I_turnout |>
 ```
 #### Python
 ```{python}
+#| code-fold: true
 # Plot with zstandard=False, pass scatter_kwds to match pch="." and cex=1
 fig, ax = moran_scatterplot(
     moran_res, 
@@ -675,7 +677,7 @@ I_turnout |>
 					iseed = 1) -> locm_p
 ```
 #### Python
-```{python, message=FALSE, cache=TRUE,eval=FALSE}
+```{python, message=FALSE, cache=TRUE}
 ##no parallel option found
 locm_p = Moran_Local(I_turnout, w_q_B, permutations=9999, seed=1)
 ```
@@ -692,7 +694,7 @@ locm_p |>
 apply(pvsp, 2, f)
 ```
 #### Python
-```{python,eval=FALSE}
+```{python}
 #"Pr(z != E(Ii))" — permutation standard deviate p-values (two-sided)
 p_std_twosided = np.minimum(locm_p.p_z_sim * 2, 1.0)
 pvsp = pva(p_std_twosided)
@@ -711,7 +713,7 @@ locm_p |>
 apply(pvsp, 2, f)
 ```
 #### Python
-```{python,eval=FALSE}
+```{python}
 #"Pr(z != E(Ii)) Sim" — permutation rank p-values
 p_rank_twosided = np.minimum(locm_p.p_sim * 2, 1.0)
 pvsp = pva(p_rank_twosided)
@@ -731,7 +733,7 @@ pol_pres15$locm_p_pv <- p.adjust(locm_p[, "Pr(z != E(Ii)) Sim"],
 								 "fdr")
 ```
 #### Python
-```{python,eval=FALSE}
+```{python}
 gdf['locm_pv'] = multipletests(p_analytical, method='fdr_bh')[1]
 gdf['locm_std_pv'] = multipletests(p_std_twosided, method='fdr_bh')[1]
 gdf['locm_p_pv'] = multipletests(p_rank_twosided, method='fdr_bh')[1]
@@ -768,7 +770,8 @@ tm_shape(pol_pres15) +
 }
 ```
 #### Python
-```{python,eval=FALSE}
+```{python}
+#| code-fold: true
 from matplotlib.colors import BoundaryNorm
 
 pv_brks = [0, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.75, 1]
@@ -781,17 +784,20 @@ cols = ['locm_pv', 'locm_std_pv', 'locm_p_pv']
 titles = ['Analytical conditional', 'Permutation std. dev.', 'Permutation rank']
 
 for ax, col, title in zip(axes[:3], cols, titles):
-    gdf.plot(column=col, ax=ax, cmap=cmap, norm=norm,
-             edgecolor='grey', linewidth=0.01, legend=False)
-    ax.set_title(title)
-    ax.axis('off')
+    # assign to a dummy name (not `_`, see @sec-area) to suppress the
+    # per-call Axes/Text echo under the REPL-style python engine used
+    # to render this chunk
+    _unused = gdf.plot(column=col, ax=ax, cmap=cmap, norm=norm,
+                        edgecolor='grey', linewidth=0.01, legend=False)
+    _unused = ax.set_title(title)
+    _unused = ax.axis('off')
 
-axes[3].axis('off')
+_unused = axes[3].axis('off')
 
 sm_cb = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-fig.colorbar(sm_cb, ax=axes, orientation='horizontal',
-             fraction=0.03, pad=0.05,
-             label="Pseudo p-values Local Moran's I")
+_unused = fig.colorbar(sm_cb, ax=axes, orientation='horizontal',
+                        fraction=0.03, pad=0.05,
+                        label="Pseudo p-values Local Moran's I")
 plt.tight_layout()
 plt.show()
 ```
@@ -821,7 +827,7 @@ t(rbind("Moran plot quadrants" = a, "Analytical cond." = b,
   "Permutation std. cond." = c, "Permutation rank cond." = d))
 ```
 #### Python
-```{python,eval=FALSE}
+```{python}
 # Quadrant labels mapping from Moran_Local q attribute
 # PySAL: 1=HH, 2=LH, 3=LL, 4=HL
 q_labels = {1: 'High-High', 2: 'Low-High', 3: 'Low-Low', 4: 'High-Low'}
@@ -892,7 +898,8 @@ tm_shape(pol_pres15) +
 }
 ```
 #### Python
-```{python,eval=FALSE}
+```{python}
+#| code-fold: true
 import matplotlib.patches as mpatches
 
 cat_order = ['Low-Low', 'High-Low', 'Low-High', 'High-High']
@@ -905,21 +912,24 @@ cols = ['hs_an_q', 'hs_ac_q', 'hs_cp_q']
 titles = ['Analytical conditional', 'Permutation std. cond.', 'Permutation rank cond.']
 
 for ax, col, title in zip(axes[:3], cols, titles):
-    gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
+    # assign to a dummy name (not `_`, see @sec-area) to suppress the
+    # per-call Axes/Text echo under the REPL-style python engine used
+    # to render this chunk
+    _unused = gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
     for cat in cat_order:
         subset = gdf[gdf[col] == cat]
         if len(subset) > 0:
-            subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
-                        edgecolor='grey', linewidth=0.01)
-    ax.set_title(title)
-    ax.axis('off')
+            _unused = subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
+                                   edgecolor='grey', linewidth=0.01)
+    _unused = ax.set_title(title)
+    _unused = ax.axis('off')
 
-axes[3].axis('off')
+_unused = axes[3].axis('off')
 
 patches = [mpatches.Patch(color=cat_colors[c], label=c) for c in cat_order if c in cat_colors]
 patches.append(mpatches.Patch(color=na_color, label='Not "interesting"'))
-fig.legend(handles=patches, title="Turnout hotspot status\nLocal Moran's I",
-           loc='lower center', ncol=3, frameon=False)
+_unused = fig.legend(handles=patches, title="Turnout hotspot status\nLocal Moran's I",
+                      loc='lower center', ncol=3, frameon=False)
 plt.tight_layout(rect=[0, 0.08, 1, 1])
 plt.show()
 ```
@@ -1060,7 +1070,8 @@ tm_shape(pol_pres15) +
 }
 ```
 #### Python
-```{python,eval=FALSE}
+```{python}
+#| code-fold: true
 fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 axes = axes.flatten()
 cols = ['hs_cp_q', 'locm_sad0', 'locm_sad1', 'locm_sad2']
@@ -1069,19 +1080,22 @@ titles = ['Permutation rank', 'Null model residuals',
 na_color = '#F2F2F2'
 
 for ax, col, title in zip(axes, cols, titles):
-    gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
+    # assign to a dummy name (not `_`, see @sec-area) to suppress the
+    # per-call Axes/Text echo under the REPL-style python engine used
+    # to render this chunk
+    _unused = gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
     for cat in cat_order:
         subset = gdf[gdf[col] == cat]
         if len(subset) > 0:
-            subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
-                        edgecolor='grey', linewidth=0.01)
-    ax.set_title(title)
-    ax.axis('off')
+            _unused = subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
+                                   edgecolor='grey', linewidth=0.01)
+    _unused = ax.set_title(title)
+    _unused = ax.axis('off')
 
 patches = [mpatches.Patch(color=cat_colors[c], label=c) for c in cat_order if c in cat_colors]
 patches.append(mpatches.Patch(color=na_color, label='Not "interesting"'))
-fig.legend(handles=patches, title="Turnout hotspot status\nLocal Moran's I",
-           loc='lower center', ncol=3, frameon=False)
+_unused = fig.legend(handles=patches, title="Turnout hotspot status\nLocal Moran's I",
+                      loc='lower center', ncol=3, frameon=False)
 plt.tight_layout(rect=[0, 0.08, 1, 1])
 plt.show()
 ```
@@ -1172,25 +1186,29 @@ tm_shape(pol_pres15) +
 }
 ```
 #### Python
-```{python, eval=FALSE}
+```{python}
+#| code-fold: true
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 cols = ['locm_sad2', 'locm_ex']
 titles = ['Permutation weighted types', 'High-permutation weighted types']
 
 for ax, col, title in zip(axes, cols, titles):
-    gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
+    # assign to a dummy name (not `_`, see @sec-area) to suppress the
+    # per-call Axes/Text echo under the REPL-style python engine used
+    # to render this chunk
+    _unused = gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
     for cat in cat_order:
         subset = gdf[gdf[col] == cat]
         if len(subset) > 0:
-            subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
-                        edgecolor='grey', linewidth=0.01)
-    ax.set_title(title)
-    ax.axis('off')
+            _unused = subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
+                                   edgecolor='grey', linewidth=0.01)
+    _unused = ax.set_title(title)
+    _unused = ax.axis('off')
 
 patches = [mpatches.Patch(color=cat_colors[c], label=c) for c in cat_order if c in cat_colors]
 patches.append(mpatches.Patch(color=na_color, label='Not "interesting"'))
-fig.legend(handles=patches, title="Turnout hotspot status\nLocal Moran's I",
-           loc='lower center', ncol=3, frameon=False)
+_unused = fig.legend(handles=patches, title="Turnout hotspot status\nLocal Moran's I",
+                      loc='lower center', ncol=3, frameon=False)
 plt.tight_layout(rect=[0, 0.1, 1, 1])
 plt.show()
 ```
@@ -1413,49 +1431,54 @@ m3 <- tm_shape(pol_pres15) +
 tmap_arrange(m1, m2, m3, nrow=1)
 ```
 #### Python
-```{python,eval=FALSE}
+```{python}
+#| code-fold: true
 fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+# Assigning each plot call below to a dummy name (not `_`, see
+# @sec-area) suppresses the per-call Axes/Text echo under the
+# REPL-style python engine used to render this chunk.
 
 # Panel 1: Local Moran's I
 ax = axes[0]
-gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
+_unused = gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
 for cat in cat_order:
     subset = gdf[gdf['hs_cp_q'] == cat]
     if len(subset) > 0:
-        subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
-                    edgecolor='grey', linewidth=0.01)
-ax.set_title("Local Moran I")
-ax.axis('off')
+        _unused = subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
+                               edgecolor='grey', linewidth=0.01)
+_unused = ax.set_title("Local Moran I")
+_unused = ax.axis('off')
 
 # Panel 2: Local Getis-Ord G
 G_colors = {'Low': '#FFFFB3', 'High': '#8DD3C7'}
 ax = axes[1]
-gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
+_unused = gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
 for cat in ['Low', 'High']:
     subset = gdf[gdf['hs_G'] == cat]
     if len(subset) > 0:
-        subset.plot(color=G_colors[cat], ax=ax,
-                    edgecolor='grey', linewidth=0.01)
-ax.set_title("Local Getis/Ord G")
-ax.axis('off')
+        _unused = subset.plot(color=G_colors[cat], ax=ax,
+                               edgecolor='grey', linewidth=0.01)
+_unused = ax.set_title("Local Getis/Ord G")
+_unused = ax.axis('off')
 
 # Panel 3: Local Geary's C
 ax = axes[2]
-gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
+_unused = gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
 for cat in cat_order:
     subset = gdf[gdf['hs_C'] == cat]
     if len(subset) > 0:
-        subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
-                    edgecolor='grey', linewidth=0.01)
-ax.set_title("Local Geary C")
-ax.axis('off')
+        _unused = subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
+                               edgecolor='grey', linewidth=0.01)
+_unused = ax.set_title("Local Geary C")
+_unused = ax.axis('off')
 
 patches_I = [mpatches.Patch(color=cat_colors[c], label=c) for c in cat_order if c in cat_colors]
 patches_G = [mpatches.Patch(color=G_colors[c], label=c) for c in ['Low', 'High']]
 all_patches = patches_I + patches_G
 all_patches.append(mpatches.Patch(color=na_color, label='Not "interesting"'))
-fig.legend(handles=all_patches, title="Turnout hotspot status",
-           loc='lower center', ncol=4, frameon=False)
+_unused = fig.legend(handles=all_patches, title="Turnout hotspot status",
+                      loc='lower center', ncol=4, frameon=False)
 plt.tight_layout(rect=[0, 0.1, 1, 1])
 plt.show()
 ```
@@ -1616,46 +1639,51 @@ m5 <- tm_shape(pol_pres15) +
 tmap_arrange(m3, m4, m5, nrow=1)
 ```
 #### Python
-```{python,eval=FALSE}
+```{python}
+#| code-fold: true
 fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+# Assigning each plot call below to a dummy name (not `_`, see
+# @sec-area) suppresses the per-call Axes/Text echo under the
+# REPL-style python engine used to render this chunk.
 
 # Panel 1: Local Geary C, first-round turnout
 ax = axes[0]
-gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
+_unused = gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
 for cat in cat_order:
     subset = gdf[gdf['hs_C'] == cat]
     if len(subset) > 0:
-        subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
-                    edgecolor='grey', linewidth=0.01)
-ax.set_title("First round turnout\nLocal Geary C")
-ax.axis('off')
+        _unused = subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
+                               edgecolor='grey', linewidth=0.01)
+_unused = ax.set_title("First round turnout\nLocal Geary C")
+_unused = ax.axis('off')
 
 # Panel 2: Local Geary C, second-round turnout
 ax = axes[1]
-gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
+_unused = gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
 for cat in cat_order:
     subset = gdf[gdf['hs_C_II'] == cat]
     if len(subset) > 0:
-        subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
-                    edgecolor='grey', linewidth=0.01)
-ax.set_title("Second round turnout\nLocal Geary C")
-ax.axis('off')
+        _unused = subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
+                               edgecolor='grey', linewidth=0.01)
+_unused = ax.set_title("Second round turnout\nLocal Geary C")
+_unused = ax.axis('off')
 
 # Panel 3: Local Multivariate Geary C, both rounds
 ax = axes[2]
-gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
+_unused = gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
 for cat in cat_order:
     subset = gdf[gdf['hs_MvC'] == cat]
     if len(subset) > 0:
-        subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
-                    edgecolor='grey', linewidth=0.01)
-ax.set_title("Both rounds turnout\nLocal Multivariate Geary C")
-ax.axis('off')
+        _unused = subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
+                               edgecolor='grey', linewidth=0.01)
+_unused = ax.set_title("Both rounds turnout\nLocal Multivariate Geary C")
+_unused = ax.axis('off')
 
 patches = [mpatches.Patch(color=cat_colors[c], label=c) for c in cat_order if c in cat_colors]
 patches.append(mpatches.Patch(color=na_color, label='Not "interesting"'))
-fig.legend(handles=patches, title="Turnout hotspot status",
-           loc='lower center', ncol=3, frameon=False)
+_unused = fig.legend(handles=patches, title="Turnout hotspot status",
+                      loc='lower center', ncol=3, frameon=False)
 plt.tight_layout(rect=[0, 0.1, 1, 1])
 plt.show()
 ```
@@ -1897,7 +1925,8 @@ m6 <- tm_shape(pol_pres15) +
 tmap_arrange(m5, m6, nrow=1)
 ```
 #### Python
-```{python,eval=FALSE}
+```{python}
+#| code-fold: true
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
 cols = ['hs_MvCa', 'geoda_mvc']
@@ -1905,19 +1934,22 @@ titles = ['Both rounds turnout PySAL\nLocal Multivariate Geary C',
           'Both rounds turnout pygeoda\nLocal Multivariate Geary C']
 
 for ax, col, title in zip(axes, cols, titles):
-    gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
+    # assign to a dummy name (not `_`, see @sec-area) to suppress the
+    # per-call Axes/Text echo under the REPL-style python engine used
+    # to render this chunk
+    _unused = gdf.plot(color=na_color, ax=ax, edgecolor='grey', linewidth=0.01)
     for cat in cat_order:
         subset = gdf[gdf[col] == cat]
         if len(subset) > 0:
-            subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
-                        edgecolor='grey', linewidth=0.01)
-    ax.set_title(title)
-    ax.axis('off')
+            _unused = subset.plot(color=cat_colors.get(cat, 'white'), ax=ax,
+                                   edgecolor='grey', linewidth=0.01)
+    _unused = ax.set_title(title)
+    _unused = ax.axis('off')
 
 patches = [mpatches.Patch(color=cat_colors[c], label=c) for c in cat_order if c in cat_colors]
 patches.append(mpatches.Patch(color=na_color, label='Not "interesting"'))
-fig.legend(handles=patches, title="Turnout hotspot status",
-           loc='lower center', ncol=3, frameon=False)
+_unused = fig.legend(handles=patches, title="Turnout hotspot status",
+                      loc='lower center', ncol=3, frameon=False)
 plt.tight_layout(rect=[0, 0.1, 1, 1])
 plt.show()
 ```

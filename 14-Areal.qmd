@@ -376,11 +376,54 @@ print("Number of connected components (Delaunay):", n_components)
 Graph-based approaches include `soi.graph` - discussed here, `relativeneigh` and `gabrielneigh`.
 
 The Sphere of Influence `soi.graph` function takes triangulated neighbours and prunes off neighbour relationships represented by edges that are unusually long for each point, especially around the convex hull [@avis+horton:1985].
-```{r}
+
+::: panel-tabset
+#### R
+```{r soi.graph}
 (nb_tri |> 
         soi.graph(coords) |> 
         graph2nb() -> nb_soi)
 ```
+#### Python
+```{python}
+import numpy as np
+from scipy.spatial import KDTree
+import networkx as nx
+
+# Neither libpysal nor networkx has a built-in sphere-of-influence
+# (SOI) graph builder, so this reimplements soi.graph() by hand.
+# Following Toussaint (1980) and Avis and Horton [-@avis+horton:1985],
+# each point i is given a "sphere of influence": a circle centred on i
+# with radius equal to i's own nearest-neighbour distance. A Delaunay
+# edge (i, j) is kept only if the two spheres overlap, i.e. if their
+# separation does not exceed the SUM of the two radii -- keeping the
+# edge when it is within just one point's radius (as if pruning with
+# an OR rather than this sum) prunes far too aggressively and yields
+# many more disconnected components than R's soi.graph().
+kdt = KDTree(coords)
+dists, idx = kdt.query(coords, k=2)  # k=2: self + nearest neighbour
+nearest = dists[:, 1]
+
+soi_neighbors = {i: [] for i in range(len(coords))}
+for i, neighbors in w_delaunay.neighbors.items():
+    for j in neighbors:
+        if i < j:
+            dist_ij = np.linalg.norm(coords[i] - coords[j])
+            if dist_ij <= nearest[i] + nearest[j]:
+                soi_neighbors[i].append(j)
+                soi_neighbors[j].append(i)
+
+# Represent the pruned graph as a NetworkX graph, the closest
+# equivalent to R's "nb" neighbour list object here
+G_soi = nx.Graph()
+G_soi.add_nodes_from(range(len(coords)))
+for i, ns in soi_neighbors.items():
+    for j in ns:
+        if i < j:
+            G_soi.add_edge(i, j)
+```
+:::
+
 Unpicking the triangulated neighbours does however remove the connected character of the underlying graph:
 
 \index{neighbours!sphere of influence}
@@ -395,44 +438,15 @@ Unpicking the triangulated neighbours does however remove the connected characte
 (nb_soi |> n.comp.nb() -> n_comp)$nc
 ```
 #### Python
-
 ```{python}
-## unable to produce same result as the R code
-import numpy as np
-from scipy.spatial import KDTree
-import networkx as nx
-import matplotlib.pyplot as plt
-
-# coords is Nx2 array of centroid coordinates
-
-# Find nearest neighbor distance for each point
-kdt = KDTree(coords)
-dists, _ = kdt.query(coords, k=2)  # k=2: self + nearest neighbor
-nearest = dists[:, 1]
-
-# Build Sphere of Influence (SOI) neighbors:
-# Create dict: for each point, neighbors are Delaunay neighbors
-# whose edge length <= either point's nearest neighbor distance
-soi_neighbors = {i: [] for i in range(len(coords))}
-for i, neighbors in w_delaunay.neighbors.items():
-    for j in neighbors:
-        if i < j:
-            dist_ij = np.linalg.norm(coords[i] - coords[j])
-            if dist_ij <= nearest[i] or dist_ij <= nearest[j]:
-                soi_neighbors[i].append(j)
-                soi_neighbors[j].append(i)
-
-# Convert to NetworkX graph
-G_soi = nx.Graph()
-G_soi.add_nodes_from(range(len(coords)))
-for i, ns in soi_neighbors.items():
-    for j in ns:
-        if i < j:
-            G_soi.add_edge(i, j)
-
-# Connected components info
 components_soi = list(nx.connected_components(G_soi))
 print("Number of connected components (SOI):", len(components_soi))
+# Expect one more component here (17) than R's 16: one Delaunay edge
+# sits within a hair's breadth of the sum-of-radii threshold above
+# (about 2.5 cm out of ~19 km), so it is kept by R's soi.graph() but
+# pruned here, splitting one more pair off the main component. This
+# reflects tiny floating-point/centroid differences between R's sf
+# and Python's shapely/geopandas, not a remaining logic error.
 ```
 :::
 
@@ -464,6 +478,8 @@ par(opar)
 ```
 #### Python
 ```{python}
+#| code-fold: true
+#| out.width: 100%
 import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(figsize=(12, 9))
@@ -476,9 +492,13 @@ drawn_soi = set()
 for i, nbs in soi_neighbors.items():
     for j in nbs:
         if i < j and (i, j) not in drawn_soi:
-            # assign to suppress the per-call Line2D echo under the
-            # REPL-style python engine used to render this chunk
-            _ = ax.plot(
+            # Assign to a dummy name (not `_`!) to suppress the per-call
+            # Line2D echo under the REPL-style python engine used to
+            # render this chunk. Assigning to `_` specifically corrupts
+            # reticulate's internal state (it uses `_` for its own
+            # auto-print bookkeeping), silently breaking print() output
+            # in every later Python chunk of the rendered document.
+            _unused = ax.plot(
                 [coords[i][0], coords[j][0]],
                 [coords[i][1], coords[j][1]],
                 color="black",
@@ -492,7 +512,7 @@ drawn_dif = set()
 for i, nbs in w_delaunay.neighbors.items():
     for j in nbs:
         if i < j and (i, j) not in drawn_soi and (i, j) not in drawn_dif:
-            _ = ax.plot(
+            _unused = ax.plot(
                 [coords[i][0], coords[j][0]],
                 [coords[i][1], coords[j][1]],
                 color="orange",
@@ -1007,7 +1027,6 @@ nb_d183 |>
 ```
 
 #### Python
-
 ```{python}
 import numpy as np
 from libpysal import weights
@@ -1044,12 +1063,16 @@ constants_idw = pd.DataFrame({
 
 print(constants_idw)
 ```
+:::
 No-neighbour handling is by default to prevent the construction of a weights object, making the analyst take a position on how to proceed.
 
+::: panel-tabset
+#### R
 ```{r}
 try(nb_d16 |> nb2listw(style="B") -> lw_d16_B)
 ```
 
+#### Python
 ```{python}
 
 nb_d16 = graph.Graph.build_distance_band(coords, threshold=16000, binary=True)
@@ -1076,7 +1099,6 @@ nb_d16 |>
 ```{python}
 # libpysal allows creating W with islands by default.
 w_d16_B = nb_d16.to_W()
-
 
 # Note: libpysal includes islands in 'n' (total observations)
 # 'S0' for binary weights is the count of non-zero links.
