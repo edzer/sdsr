@@ -1506,21 +1506,52 @@ Further details and options are given in @sec-plotting.
 Element-wise mathematical functions (@sec-applydimension)
 on `stars` objects are just passed on to the arrays. This means
 that we can call functions and create expressions:
+
+::: panel-tabset
+#### R
 ```{r}
 log(r)
 r + 2 * log(r)
 ```
+#### Python
+```{python}
+np.log(da)
+da + 2 * np.log(da)
+```
+:::
+
 or even mask out certain values:
+
+::: panel-tabset
+#### R
 ```{r}
 r2 <- r
 r2[r < 50] <- NA
 r2
 ```
+#### Python
+```{python}
+# masking with NA requires a floating point array, since
+# integer arrays cannot hold NaN
+da2 = da.astype("float64").where(da >= 50)
+da2
+```
+:::
+
 or unmask areas:
+
+::: panel-tabset
+#### R
 ```{r}
 r2[is.na(r2)] <- 0
 r2
 ```
+#### Python
+```{python}
+da2 = da2.fillna(0)
+da2
+```
+:::
 
 \index{stars!apply}
 \index[function]{st\_apply}
@@ -1529,15 +1560,35 @@ Dimension-wise, we can apply functions to selected array dimensions
 (@sec-reducedimension)
 of stars objects similar to how `apply` does this to arrays. For
 instance, we can compute for each pixel the mean of the six band values by
+
+::: panel-tabset
+#### R
 ```{r}
 st_apply(r, c("x", "y"), mean)
 ```
+#### Python
+```{python}
+da.mean(dim="band")
+```
+:::
+
 A more meaningful function would for instance compute the NDVI (normalised
 differenced vegetation index):
+
+::: panel-tabset
+#### R
 ```{r}
 ndvi <- function(b1, b2, b3, b4, b5, b6) (b4 - b3)/(b4 + b3)
 st_apply(r, c("x", "y"), ndvi)
 ```
+#### Python
+```{python}
+daf = da.astype("float64")
+ndvi = (daf.sel(band=4) - daf.sel(band=3)) / (daf.sel(band=4) + daf.sel(band=3))
+ndvi
+```
+:::
+
 Alternatively, one could have defined
 ```{r}
 ndvi2 <- function(x) (x[4]-x[3])/(x[4]+x[3])
@@ -1547,21 +1598,47 @@ but also much slower than `ndvi` as it
 needs to be called for every pixel whereas `ndvi` can be called
 once for all pixels, or for large chunks of pixels.
 The mean for each band over the whole image is computed by
+
+::: panel-tabset
+#### R
 ```{r}
 st_apply(r, c("band"), mean) |> as.data.frame()
 ```
+#### Python
+```{python}
+da.mean(dim=["x", "y"]).to_dataframe(name="mean")
+```
+:::
+
 the result of which is small enough to be printed here as a `data.frame`. In these
 two examples, entire dimensions disappear. Sometimes, this does not
 happen (@sec-applydimension); we can for instance compute the three quartiles for each band
+
+::: panel-tabset
+#### R
 ```{r}
 st_apply(r, c("band"), quantile, c(.25, .5, .75))
 ```
+#### Python
+```{python}
+da.quantile([.25, .5, .75], dim=["x", "y"])
+```
+:::
+
 and see that this _creates_ a new dimension, `quantile`, with three values.
 Alternatively, the three quantiles over the six bands for each pixel are
 obtained by
+
+::: panel-tabset
+#### R
 ```{r}
 st_apply(r, c("x", "y"), quantile, c(.25, .5, .75))
 ```
+#### Python
+```{python}
+da.quantile([.25, .5, .75], dim="band")
+```
+:::
 
 
 ### Curvilinear rasters
@@ -1647,6 +1724,8 @@ options("rgdal_show_exportToProj4_warnings"="none") # led to:
 # lost in output
 ```
 
+::: panel-tabset
+#### R
 ```{r}
 load("data/air.rda") # this loads several datasets in .GlobalEnv
 dim(air)
@@ -1656,18 +1735,67 @@ stations |>
 d <- st_dimensions(station = st, time = dates)
 (aq <- st_as_stars(list(PM10 = air), dimensions = d))
 ```
+#### Python
+```{python}
+# air.rda was exported once from R to data/air_stations.csv
+# (station, longitude, latitude) and data/air_long.csv.gz
+# (station, date, PM10, in long/tidy form)
+import pandas as pd
+import geopandas as gpd
+import numpy as np
+import xarray as xr
+import xvec
+from shapely.geometry import Point
+
+stations = pd.read_csv("data/air_stations.csv")
+long = pd.read_csv("data/air_long.csv.gz", parse_dates=["date"])
+
+wide = long.pivot(index="station", columns="date", values="PM10") \
+	.reindex(stations["station"])
+geom = gpd.GeoSeries(
+	[Point(xy) for xy in zip(stations.longitude, stations.latitude)],
+	crs="EPSG:4326"
+)
+
+# a vector data cube: "station" is a geometry (point) dimension,
+# built using xvec's GeometryIndex
+aq = xr.DataArray(
+	wide.values, dims=("station", "time"),
+	coords={"station": geom.values, "time": wide.columns.values},
+	name="PM10",
+).xvec.set_geom_indexes("station", crs="EPSG:4326")
+aq
+```
+:::
 We can see from @fig-airst  that the time series are
 quite long, but also have large missing value gaps.
 @fig-airmap  shows the spatial distribution of measurement stations
 along with mean PM$_{10}$ values.
 
+::: panel-tabset
+#### R
 ```{r fig-airst, echo=!knitr::is_latex_output()}
 #| fig.cap: "Space time diagram of PM$_{10}$ measurements by time and station"
 #| code-fold: true
 par(mar = c(5.1, 4.1, 0.3, 0.1))
 image(aperm(log(aq), 2:1), main = NULL)
 ```
+#### Python
+```{python}
+#| fig.cap: "Space time diagram of PM$_{10}$ measurements by time and station"
+#| code-fold: true
+import matplotlib.pyplot as plt
 
+fig, ax = plt.subplots(figsize=(9, 4))
+im = ax.imshow(np.log(aq.values), aspect="auto", cmap="viridis")
+ax.set_xlabel("time (index)"); ax.set_ylabel("station")
+plt.colorbar(im, ax=ax, label="log(PM10)")
+plt.show()
+```
+:::
+
+::: panel-tabset
+#### R
 ```{r fig-airmap, echo=!knitr::is_latex_output()}
 #| fig.cap: "Locations of PM$_{10}$ measurement stations, showing mean values"
 #| code-fold: true
@@ -1676,33 +1804,101 @@ st_as_sf(st_apply(aq, 1, mean, na.rm = TRUE)) |>
     plot(reset = FALSE, pch = 16, extent = de_nuts1)
 st_union(de_nuts1) |> plot(add = TRUE)
 ```
+#### Python
+```{python}
+#| fig.cap: "Locations of PM$_{10}$ measurement stations, showing mean values"
+#| code-fold: true
+de_nuts1 = gpd.read_file("data/de_nuts1.gpkg").to_crs("EPSG:4326")
+station_mean = aq.mean(dim="time", skipna=True)
+gdf_mean = gpd.GeoDataFrame({"PM10": station_mean.values}, geometry=geom)
+
+fig, ax = plt.subplots(figsize=(6, 6))
+de_nuts1.boundary.plot(ax=ax, color="black", linewidth=0.5)
+gdf_mean.plot(ax=ax, column="PM10", markersize=25, legend=True, cmap="viridis")
+plt.show()
+```
+:::
 
 We can aggregate these station time series to area means, mostly
 as a simple exercise.  For this, we use the `aggregate` method for
 `stars` objects
 
+::: panel-tabset
+#### R
 ```{r}
 (a <- aggregate(aq, de_nuts1, mean, na.rm = TRUE))
 ```
+#### Python
+```{python}
+# stars' aggregate() spatially joins each point to the polygon it
+# falls in, then averages by polygon and time step; xvec has no
+# direct equivalent for point-in-polygon data cubes, so we do the
+# join with geopandas and average with xarray's groupby
+station_pts = gpd.GeoDataFrame(geometry=geom)
+region = gpd.sjoin_nearest(
+	station_pts, de_nuts1[["NAME_1", "geometry"]]
+)["NAME_1"].values
+
+a = aq.assign_coords(region=("station", region)) \
+	.groupby("region").mean(dim="station", skipna=True) \
+	.reindex(region=de_nuts1["NAME_1"].values) # keep all 16 states
+a
+```
+:::
 
 and we can now show the maps for six arbitrarily chosen days
 (@fig-airagg), using
 
+::: panel-tabset
+#### R
 ```{r fig-airagg}
 #| fig.cap: "Areal mean PM$_{10}$ values, for six days"
 library(tidyverse)
 a |> filter(time >= "2008-01-01", time < "2008-01-07") |> 
 	plot(key.pos = 4)
 ```
+#### Python
+```{python}
+#| fig.cap: "Areal mean PM$_{10}$ values, for six days"
+sub = a.sel(time=slice("2008-01-01", "2008-01-06"))
+de_nuts1_idx = de_nuts1.set_index("NAME_1")
+
+fig, axes = plt.subplots(2, 3, figsize=(10, 8))
+for ax, t in zip(axes.ravel(), sub["time"].values):
+	gdf_t = de_nuts1_idx.loc[sub["region"].values] \
+		.assign(PM10=sub.sel(time=t).values)
+	gdf_t.plot(ax=ax, column="PM10", legend=True, cmap="viridis",
+			   missing_kwds={"color": "lightgrey"})
+	ax.set_title(pd.Timestamp(t).date().isoformat())
+	ax.set_xticks([]); ax.set_yticks([])
+plt.tight_layout()
+plt.show()
+```
+:::
 
 \newpage
 or create a time series plot of mean values for a single state 
 (@fig-airts)  by
+
+::: panel-tabset
+#### R
 ```{r fig-airts}
 #| fig.cap: "Areal mean PM$_{10}$ time series for a single state"
 library(xts) |> suppressPackageStartupMessages()
 plot(as.xts(a)[,4], main = de_nuts1$NAME_1[4])
 ```
+#### Python
+```{python}
+#| fig.cap: "Areal mean PM$_{10}$ time series for a single state"
+name = de_nuts1["NAME_1"].iloc[3]  # matches R's de_nuts1$NAME_1[4]
+ts = a.sel(region=name).to_series()
+
+fig, ax = plt.subplots(figsize=(9, 3))
+ts.plot(ax=ax)
+ax.set_title(name); ax.set_ylabel("PM10")
+plt.show()
+```
+:::
 
 ### Example: Bristol origin-destination data cube {#sec-oddc}
 
